@@ -1,160 +1,174 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+/*
+ * Copyright (C) 2026 Jiale Xu (ANTmmmmm) (ant-cave)
+ * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
 
-const greetMsg = ref("");
-const name = ref("");
+import { computed, ref, provide } from 'vue'
+import { NConfigProvider, darkTheme, useOsTheme, NLoadingBarProvider, NMessageProvider, NDialogProvider } from 'naive-ui'
+import { RouterView } from 'vue-router'
+import { useFileStore } from './stores/useFileStore'
 
-async function greet() {
-  // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-  greetMsg.value = await invoke("greet", { name: name.value });
+const osTheme = useOsTheme()
+const fileStore = useFileStore()
+
+// 用户选择的主题（null表示跟随系统）
+const userTheme = ref<'light' | 'dark' | null>(null)
+
+// 实际使用的主题
+const currentTheme = computed(() => {
+  if (userTheme.value === 'dark') return darkTheme
+  if (userTheme.value === 'light') return undefined
+  return osTheme.value === 'dark' ? darkTheme : undefined
+})
+
+// 当前主题名称（用于CSS类）
+const themeClass = computed(() => {
+  if (userTheme.value) return userTheme.value
+  return osTheme.value
+})
+
+// 切换主题的函数
+function toggleTheme() {
+  if (userTheme.value === 'dark') {
+    userTheme.value = 'light'
+  } else if (userTheme.value === 'light') {
+    userTheme.value = null // 恢复跟随系统
+  } else {
+    // 当前跟随系统，切换到相反的主题
+    userTheme.value = osTheme.value === 'dark' ? 'light' : 'dark'
+  }
 }
+
+// 提供主题切换函数给子组件使用
+provide('toggleTheme', toggleTheme)
+provide('currentTheme', userTheme)
+
+const themeOverrides = {
+  common: {
+    primaryColor: '#0066ff',
+    primaryColorHover: '#2980ff',
+    primaryColorPressed: '#0052cc',
+    primaryColorSuppl: '#2980ff',
+    
+    infoColor: '#0066ff',
+    successColor: '#4caf50',
+    warningColor: '#ff9800',
+    errorColor: '#ff6b6b',
+    
+    borderRadius: '12px',
+    borderRadiusSmall: '8px',
+    borderRadiusLarge: '16px',
+    
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  }
+}
+
+// 初始化文件存储
+fileStore.init()
 </script>
 
 <template>
-  <main class="container">
-    <h1>Welcome to Tauri + Vue</h1>
-
-    <div class="row">
-      <a href="https://vite.dev" target="_blank">
-        <img src="/vite.svg" class="logo vite" alt="Vite logo" />
-      </a>
-      <a href="https://tauri.app" target="_blank">
-        <img src="/tauri.svg" class="logo tauri" alt="Tauri logo" />
-      </a>
-      <a href="https://vuejs.org/" target="_blank">
-        <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-      </a>
-    </div>
-    <p>Click on the Tauri, Vite, and Vue logos to learn more.</p>
-
-    <form class="row" @submit.prevent="greet">
-      <input id="greet-input" v-model="name" placeholder="Enter a name..." />
-      <button type="submit">Greet</button>
-    </form>
-    <p>{{ greetMsg }}</p>
-  </main>
+  <NConfigProvider 
+    :theme="currentTheme" 
+    :theme-overrides="themeOverrides"
+    class="config-provider"
+  >
+    <NLoadingBarProvider>
+      <NMessageProvider>
+        <NDialogProvider>
+          <div class="app" :class="themeClass">
+            <RouterView />
+          </div>
+        </NDialogProvider>
+      </NMessageProvider>
+    </NLoadingBarProvider>
+  </NConfigProvider>
 </template>
 
-<style scoped>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #249b73);
-}
-
-</style>
 <style>
-:root {
-  font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
-  font-size: 16px;
-  line-height: 24px;
-  font-weight: 400;
-
-  color: #0f0f0f;
-  background-color: #f6f6f6;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-.container {
+* {
   margin: 0;
-  padding-top: 10vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  text-align: center;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
+:root {
+  --n-color-body: #f5f5f7;
+  --n-color-modal: #ffffff;
+  --n-color-hover: #f0f0f0;
+  --n-color-info-hover: #e6f2ff;
 }
 
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
+.dark {
+  --n-color-body: #1a1a1a;
+  --n-color-modal: #363636;
+  --n-color-hover: #404040;
+  --n-color-info-hover: #1a3a5f;
+  
+  /* 提高文字对比度 */
+  --file-text-color: #ffffff;
+  --file-text-secondary: #b0b0b0;
 }
 
-.row {
-  display: flex;
-  justify-content: center;
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: var(--n-color-body);
+  color: var(--n-text-color);
+  overflow: hidden;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+#app {
+  height: 100vh;
+  overflow: hidden;
 }
 
-a:hover {
-  color: #535bf2;
+.config-provider {
+  height: 100%;
 }
 
-h1 {
-  text-align: center;
+.app {
+  height: 100%;
+  transition: background-color 0.3s ease;
 }
 
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-button {
-  cursor: pointer;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-button:hover {
-  border-color: #396cd8;
-}
-button:active {
-  border-color: #396cd8;
-  background-color: #e8e8e8;
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
 }
 
-input,
-button {
-  outline: none;
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
 }
 
-#greet-input {
-  margin-right: 5px;
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #2f2f2f;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  input,
-  button {
-    color: #ffffff;
-    background-color: #0f0f0f98;
-  }
-  button:active {
-    background-color: #0f0f0f69;
-  }
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
-
 </style>
