@@ -18,7 +18,7 @@
  */
 
 import { ref } from 'vue'
-import { NModal, NButton, NInput, NRadio, NSpace, NText, NDivider, NDatePicker, NSelect, NAlert } from 'naive-ui'
+import { NModal, NButton, NInput, NRadio, NSpace, NText, NDivider, NSelect, NAlert } from 'naive-ui'
 
 const props = defineProps<{
   show: boolean
@@ -26,7 +26,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  update:show: [value: boolean]
+  'update:show': [value: boolean]
   close: []
 }>()
 
@@ -34,7 +34,7 @@ const emit = defineEmits<{
 const shareType = ref('public') // public 或 private
 const hasPassword = ref(false)
 const password = ref('')
-const expiresAt = ref<number | null>(null)
+const expiresAt = ref<number>(-1)
 const shareLink = ref('https://camfc-cloud.com/share/abc123')
 const copied = ref(false)
 
@@ -43,7 +43,7 @@ const expiryOptions = [
   { label: '1天', value: 1 },
   { label: '7天', value: 7 },
   { label: '30天', value: 30 },
-  { label: '永久', value: null }
+  { label: '永久', value: -1 }
 ]
 
 function handleCopyLink() {
@@ -120,15 +120,17 @@ function handleCreateShare() {
           </div>
           <NSpace>
             <NRadio
-              v-model:checked="shareType"
-              value="public"
+              :value="'public'"
+              :checked="shareType === 'public'"
+              @update:checked="shareType = 'public'"
               name="share-type"
             >
               公开分享
             </NRadio>
             <NRadio
-              v-model:checked="shareType"
-              value="private"
+              :value="'private'"
+              :checked="shareType === 'private'"
+              @update:checked="shareType = 'private'"
               name="share-type"
             >
               私密分享（需要密码）
@@ -160,7 +162,7 @@ function handleCreateShare() {
             style="max-width: 200px;"
           />
           <NText depth="3" style="margin-left: 12px; font-size: 12px;">
-            {{ expiresAt ? `链接将在${expiresAt}天后失效` : '永久有效' }}
+            {{ expiresAt !== -1 ? `链接将在${expiresAt}天后失效` : '永久有效' }}
           </NText>
         </div>
       </div>

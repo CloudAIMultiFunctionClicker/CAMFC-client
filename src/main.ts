@@ -25,8 +25,6 @@ import router from './router'
 import {
   // 全局组件
   create,
-  // 主题
-  darkTheme,
   // 组件
   NConfigProvider,
   NMessageProvider,
@@ -45,54 +43,6 @@ const naive = create({
     NNotificationProvider
   ]
 })
-
-// 自定义主题
-const themeOverrides = {
-  common: {
-    primaryColor: '#0066ff',
-    primaryColorHover: '#2980ff',
-    primaryColorPressed: '#0052cc',
-    primaryColorSuppl: '#2980ff',
-    
-    infoColor: '#0066ff',
-    successColor: '#4caf50',
-    warningColor: '#ff9800',
-    errorColor: '#ff6b6b',
-    
-    borderRadius: '12px',
-    borderRadiusSmall: '8px',
-    borderRadiusLarge: '16px',
-    
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-    fontSize: '14px',
-    fontSizeMini: '12px',
-    fontSizeSmall: '13px',
-    fontSizeMedium: '14px',
-    fontSizeLarge: '16px',
-  },
-  Card: {
-    borderRadius: '12px',
-    paddingMedium: '20px'
-  },
-  Button: {
-    borderRadiusMedium: '10px',
-    borderRadiusSmall: '8px',
-    borderRadiusLarge: '12px'
-  },
-  Input: {
-    borderRadius: '10px'
-  },
-  Modal: {
-    borderRadius: '16px'
-  },
-  Tag: {
-    borderRadius: '6px'
-  },
-  Alert: {
-    borderRadius: '12px',
-    paddingMedium: '16px'
-  }
-}
 
 const app = createApp(App)
 

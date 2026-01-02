@@ -36,7 +36,7 @@ const isLoading = ref(false)
 // 表格列定义 - 使用 any 类型避免复杂类型问题
 const columns = [
   {
-    type: 'selection',
+    type: 'selection' as const,
     key: 'selection'
   },
   {

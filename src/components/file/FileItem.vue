@@ -18,7 +18,7 @@
  */
 
 import { NCheckbox, NIcon, NTag } from 'naive-ui'
-import { DocumentTextOutline, FolderOutline, StarOutline, Star } from '@vicons/ionicons5'
+import { DocumentTextOutline, FolderOutline, Star } from '@vicons/ionicons5'
 import type { FileItem } from '@/api/fileApi'
 
 const props = defineProps<{
@@ -135,10 +135,22 @@ function formatSize(bytes: number): string {
 .file-icon {
   text-align: center;
   margin-bottom: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.file-icon :deep(svg) {
+  width: 48px;
+  height: 48px;
+  padding: 12px;
+  background-color: var(--n-color-info-hover);
+  border-radius: 12px;
   color: var(--n-color-info);
 }
 
-.file-item.folder .file-icon {
+.file-item.folder .file-icon :deep(svg) {
+  background-color: var(--n-color-success-hover);
   color: var(--n-color-success);
 }
 

@@ -18,7 +18,6 @@
  */
 
 import { computed, h, ref, inject } from 'vue'
-import { useRoute } from 'vue-router'
 import { 
   NBreadcrumb, 
   NBreadcrumbItem, 
@@ -46,11 +45,8 @@ import {
   DesktopOutline
 } from '@vicons/ionicons5'
 import { useFileStore } from '@/stores/useFileStore'
-import { usePreferredDark } from '@vueuse/core'
 
-const route = useRoute()
 const fileStore = useFileStore()
-const isDark = usePreferredDark()
 
 // 从App.vue获取主题切换函数
 const toggleTheme = inject<() => void>('toggleTheme')
@@ -182,18 +178,11 @@ function handleUserMenuSelect(key: string) {
             :options="viewOptions"
             style="width: 120px"
             @update:value="handleViewModeChange"
-          >
-            <template #label="{ value }">
-              <NSpace align="center" :wrap="false" size="small">
-                <NIcon :component="value === 'grid' ? GridOutline : ListOutline" size="16" />
-                <span>{{ value === 'grid' ? '网格' : '列表' }}</span>
-              </NSpace>
-            </template>
-          </NSelect>
+          />
           
           <NButton type="primary" @click="handleUploadClick">
             <template #icon>
-              <NIcon :component="AddOutline" />
+              <NIcon :component="AddOutline" :color="currentTheme === 'dark' ? '#ffffff' : undefined" />
             </template>
             上传
           </NButton>
@@ -204,7 +193,7 @@ function handleUserMenuSelect(key: string) {
             @click="handleShareClick"
           >
             <template #icon>
-              <NIcon :component="ShareOutline" />
+              <NIcon :component="ShareOutline" :color="currentTheme === 'dark' ? '#ffffff' : undefined" />
             </template>
             分享
           </NButton>
@@ -215,7 +204,7 @@ function handleUserMenuSelect(key: string) {
             @click="fileStore.selectedFiles.forEach(f => fileStore.removeFile(f.id))"
           >
             <template #icon>
-              <NIcon :component="TrashOutline" />
+              <NIcon :component="TrashOutline" :color="currentTheme === 'dark' ? '#ffffff' : undefined" />
             </template>
             删除
           </NButton>
@@ -227,10 +216,10 @@ function handleUserMenuSelect(key: string) {
           >
             <NAvatar
               round
-              size="small"
-              style="cursor: pointer; background-color: var(--n-color-info)"
+              size="medium"
+              style="cursor: pointer; background-color: var(--n-color-info); border: 2px solid var(--n-color-info-hover)"
             >
-              <NIcon :component="PersonCircleOutline" size="20" />
+              <NIcon :component="PersonCircleOutline" size="24" color="#ffffff" />
             </NAvatar>
           </NDropdown>
         </NSpace>

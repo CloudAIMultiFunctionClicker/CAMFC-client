@@ -17,7 +17,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { computed } from 'vue'
 import { 
   NGrid, 
   NGridItem, 
@@ -27,8 +26,7 @@ import {
   NDropdown,
   NButton,
   NIcon,
-  NSpace,
-  NPopconfirm
+  NSpace
 } from 'naive-ui'
 import {
   DocumentTextOutline,
@@ -70,10 +68,7 @@ const fileMenuOptions = [
   {
     label: '删除',
     key: 'delete',
-    icon: () => h(TrashOutline),
-    props: {
-      type: 'error'
-    }
+    icon: () => h(TrashOutline)
   }
 ]
 
@@ -354,6 +349,7 @@ import { h } from 'vue'
   border-bottom: 1px solid var(--n-border-color);
   transition: background-color 0.2s ease;
   cursor: pointer;
+  background-color: var(--n-color-modal);
 }
 
 .list-row:hover {
@@ -413,6 +409,7 @@ import { h } from 'vue'
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--n-text-color, var(--file-text-color, inherit));
 }
 
 .star-icon {

@@ -42,7 +42,7 @@ export const useFileStore = defineStore('file', () => {
   const sortOrder = ref<'asc' | 'desc'>('asc')
   
   // 视图模式：grid 或 list
-  const viewMode = ref<'grid' | 'list'>('grid')
+  const viewMode = ref<'grid' | 'list'>('list')
   
   // 计算属性：排序后的文件列表
   const sortedFiles = computed(() => {

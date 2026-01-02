@@ -80,7 +80,7 @@ const router = createRouter({
 })
 
 // 路由守卫：更新页面标题
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const title = to.meta.title as string || '云盘'
   document.title = `${title} - CAMFC Cloud`
   next()

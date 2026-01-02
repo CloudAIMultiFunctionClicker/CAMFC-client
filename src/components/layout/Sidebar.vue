@@ -24,7 +24,6 @@ import {
   NLayoutSider, 
   NButton,
   NIcon,
-  NSpace,
   NDivider
 } from 'naive-ui'
 import {
@@ -35,8 +34,6 @@ import {
   ShareSocialOutline,
   TrashBinOutline,
   CloudOutline,
-  ChevronForwardOutline,
-  ChevronDownOutline,
   AddOutline
 } from '@vicons/ionicons5'
 import { useFileStore } from '@/stores/useFileStore'

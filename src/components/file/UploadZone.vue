@@ -18,7 +18,7 @@
  */
 
 import { ref, onMounted, onUnmounted } from 'vue'
-import { NUpload, NButton, NIcon, NProgress, NSpace, NAlert } from 'naive-ui'
+import { NButton, NIcon, NProgress, NSpace } from 'naive-ui'
 import { CloudUploadOutline, CloseOutline } from '@vicons/ionicons5'
 import { useUploadStore } from '@/stores/useUploadStore'
 
@@ -35,11 +35,6 @@ function handleFileSelect(event: Event) {
     // 重置文件输入
     input.value = ''
   }
-}
-
-// 触发文件选择
-function triggerFileSelect() {
-  fileInputRef.value?.click()
 }
 
 // 处理拖拽

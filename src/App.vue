@@ -119,9 +119,20 @@ fileStore.init()
   --n-color-hover: #404040;
   --n-color-info-hover: #1a3a5f;
   
-  /* 提高文字对比度 */
+  /* 提高文字对比度 - 确保所有文字都是浅色 */
   --file-text-color: #ffffff;
   --file-text-secondary: #b0b0b0;
+  
+  /* 确保Naive UI的文本颜色变量在暗色模式下也是浅色 */
+  --n-text-color: #ffffff;
+  --n-text-color-disabled: #b0b0b0;
+  --n-text-color-secondary: #cccccc;
+  
+  /* 图标颜色 */
+  --n-color-info: #66aaff;
+  --n-color-success: #4caf50;
+  --n-color-warning: #ff9800;
+  --n-color-error: #ff6b6b;
 }
 
 body {
