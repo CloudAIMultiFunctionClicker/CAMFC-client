@@ -144,3 +144,25 @@ export async function toggleStar(fileId: string): Promise<boolean> {
   console.log(`切换了文件 ${fileId} 的收藏状态，用户的心意变得真快`)
   return true
 }
+
+// 创建文件夹
+export async function createFolder(folderName: string, parentPath = '/'): Promise<FileItem> {
+  await mockDelay(400)
+  
+  console.log(`创建文件夹: "${folderName}"，父路径: ${parentPath}`)
+  
+  const newFolder: FileItem = {
+    id: `folder_${Date.now()}`,
+    name: folderName,
+    type: 'folder',
+    size: 4096, // 默认文件夹大小
+    modifiedAt: new Date().toISOString().replace('T', ' ').substring(0, 19),
+    isStarred: false,
+    path: parentPath === '/' ? `/${folderName}` : `${parentPath}/${folderName}`
+  }
+  
+  // 在实际项目中，这里应该将新文件夹添加到mockFiles数组
+  // mockFiles.push(newFolder)
+  
+  return newFolder
+}

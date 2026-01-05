@@ -19,7 +19,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { FileItem, FolderItem } from '@/api/fileApi'
-import { listFiles, getFolderTree, toggleStar, deleteFile, renameFile } from '@/api/fileApi'
+import { listFiles, getFolderTree, toggleStar, deleteFile, renameFile, createFolder } from '@/api/fileApi'
 
 export const useFileStore = defineStore('file', () => {
   // 当前路径
@@ -194,6 +194,26 @@ export const useFileStore = defineStore('file', () => {
     viewMode.value = mode
   }
   
+  // 创建文件夹
+  async function createNewFolder(folderName: string) {
+    try {
+      // 调用API创建文件夹
+      const newFolder = await createFolder(folderName, currentPath.value)
+      
+      // 将新文件夹添加到当前文件列表
+      files.value = [newFolder, ...files.value]
+      
+      // 刷新文件夹树
+      await loadFolderTree()
+      
+      console.log('文件夹创建成功:', newFolder)
+      return newFolder
+    } catch (error) {
+      console.error('创建文件夹失败：', error)
+      throw error
+    }
+  }
+  
   // 初始化时加载数据
   function init() {
     loadFiles()
@@ -228,6 +248,7 @@ export const useFileStore = defineStore('file', () => {
     clearSelection,
     changeSort,
     switchViewMode,
+    createNewFolder,
     init
   }
 })

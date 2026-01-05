@@ -17,7 +17,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { computed, h } from 'vue'
+import { computed, h, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   NMenu, 
@@ -37,9 +37,13 @@ import {
   AddOutline
 } from '@vicons/ionicons5'
 import { useFileStore } from '@/stores/useFileStore'
+import CreateFolderModal from '@/components/modals/CreateFolderModal.vue'
 
 const router = useRouter()
 const fileStore = useFileStore()
+
+// 新建文件夹模态框显示状态
+const showCreateFolderModal = ref(false)
 
 // 侧边栏菜单项
 const menuItems = computed(() => [
@@ -102,8 +106,7 @@ function handleMenuSelect(key: string) {
 
 // 处理新建文件夹
 function handleNewFolder() {
-  console.log('新建文件夹，这里应该弹出一个对话框')
-  // TODO: 弹出新建文件夹对话框
+  showCreateFolderModal.value = true
 }
 
 // 处理刷新文件夹树
@@ -207,6 +210,12 @@ const storageStats = computed(() => ({
       </div>
     </div>
   </NLayoutSider>
+  
+  <!-- 新建文件夹模态框 -->
+  <CreateFolderModal
+    v-model:show="showCreateFolderModal"
+    @created="() => console.log('文件夹创建成功')"
+  />
 </template>
 
 <style scoped>
