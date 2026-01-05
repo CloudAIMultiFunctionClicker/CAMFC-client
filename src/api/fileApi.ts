@@ -39,14 +39,14 @@ const mockFiles: FileItem[] = [
   { id: '1', name: '项目文档', type: 'folder', size: 4096, modifiedAt: '2026-01-02 10:30:00', isStarred: true, path: '/项目文档' },
   { id: '2', name: '年度报告.pdf', type: 'file', extension: 'pdf', size: 2048000, modifiedAt: '2026-01-01 14:20:00', isStarred: true, path: '/年度报告.pdf' },
   { id: '3', name: '设计稿.sketch', type: 'file', extension: 'sketch', size: 5120000, modifiedAt: '2025-12-30 09:15:00', isStarred: false, path: '/设计稿.sketch' },
-  { id: '4', name: '会议记录', type: 'folder', size: 8192, modifiedAt: '2025-12-28 16:45:00', isStarred: false, path: '/会议记录' },
+  { id: '4', name: '会议记录', type: 'folder', size: 81000092, modifiedAt: '2025-12-28 16:45:00', isStarred: false, path: '/会议记录' },
   { id: '5', name: '产品需求.docx', type: 'file', extension: 'docx', size: 307200, modifiedAt: '2025-12-25 11:00:00', isStarred: true, path: '/产品需求.docx' },
   { id: '6', name: '头像图片.png', type: 'file', extension: 'png', size: 102400, modifiedAt: '2025-12-20 13:30:00', isStarred: false, path: '/头像图片.png' },
   { id: '7', name: '视频素材', type: 'folder', size: 10485760, modifiedAt: '2025-12-15 18:20:00', isStarred: false, path: '/视频素材' },
   { id: '8', name: '配置文件.json', type: 'file', extension: 'json', size: 5120, modifiedAt: '2025-12-10 08:45:00', isStarred: false, path: '/配置文件.json' },
 ]
 
-// 模拟文件夹树结构
+// 模拟文件夹树结构 
 const mockFolderTree: FolderItem[] = [
   {
     id: 'root',

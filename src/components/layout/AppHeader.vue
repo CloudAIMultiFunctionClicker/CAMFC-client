@@ -219,7 +219,7 @@ function handleUserMenuSelect(key: string) {
               size="medium"
               style="cursor: pointer; background-color: var(--n-color-info); border: 2px solid var(--n-color-info-hover)"
             >
-              <NIcon :component="PersonCircleOutline" size="24" color="#ffffff" />
+              <NIcon :component="PersonCircleOutline" size="24" :color="currentTheme === 'dark' ? '#ffffff' : '#000000'" />
             </NAvatar>
           </NDropdown>
         </NSpace>
@@ -306,3 +306,4 @@ function handleUserMenuSelect(key: string) {
   }
 }
 </style>
+<!--  -->

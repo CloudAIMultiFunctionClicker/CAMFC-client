@@ -412,6 +412,12 @@ import { h } from 'vue'
   color: var(--n-text-color, var(--file-text-color, inherit));
 }
 
+/* 确保列表模式下大小和修改时间列的文字颜色在黑暗模式下清晰可见 */
+.list-cell.size,
+.list-cell.modified {
+  color: var(--n-text-color-secondary);
+}
+
 .star-icon {
   flex-shrink: 0;
   cursor: pointer;

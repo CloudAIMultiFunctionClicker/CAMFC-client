@@ -124,9 +124,10 @@ fileStore.init()
   --file-text-secondary: #b0b0b0;
   
   /* 确保Naive UI的文本颜色变量在暗色模式下也是浅色 */
+  /* 提高次级文本颜色的亮度，解决列表模式下大小和修改时间列看不清的问题 */
   --n-text-color: #ffffff;
   --n-text-color-disabled: #b0b0b0;
-  --n-text-color-secondary: #cccccc;
+  --n-text-color-secondary: #e6e6e6;
   
   /* 图标颜色 */
   --n-color-info: #66aaff;
