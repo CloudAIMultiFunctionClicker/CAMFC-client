@@ -78,15 +78,102 @@ function mockDelay(ms = 300): Promise<void> {
 
 // 获取文件列表
 export async function listFiles(path = '/'): Promise<FileItem[]> {
-  await mockDelay(200 + Math.random() * 300)
+  // 后端API格式根据OpenAPI规范：GET /files/
+  // 基础URL: http://localhost:8005
+  // 参数: path, recursive, page, limit
+  // 需要认证头: Authorization: Bearer test123
   
-  // 如果是根目录，返回所有文件
-  if (path === '/') {
-    return [...mockFiles]
+  try {
+    // 使用代理路径调用后端API，避免CORS问题
+    // Vite配置了代理：/api -> http://localhost:8005
+    const apiBase = '/api'
+    
+    // 构建查询参数
+    const params = new URLSearchParams()
+    // 注意：后端API的path参数是相对路径，前端传的是绝对路径如'/'
+    // 需要转换一下，去掉开头的斜杠或者特殊处理
+    const relativePath = path === '/' ? '' : path.startsWith('/') ? path.substring(1) : path
+    if (relativePath) {
+      params.append('path', relativePath)
+    }
+    // 默认不递归，前端的分页暂时用默认值
+    params.append('recursive', 'false')
+    params.append('page', '1')
+    params.append('limit', '100')  // 默认每页100个，最大100
+    
+    const url = `${apiBase}/files/?${params.toString()}`
+    console.log(`请求文件列表: ${url}, path参数: ${relativePath || '(空，表示根目录)'}`)
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json'
+        // 注意：认证头已经在Vite代理配置中添加了，这里不需要重复添加
+        // 如果直接调用后端，需要：'Authorization': 'Bearer test123'
+      }
+    })
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    }
+    
+    const data = await response.json()
+    console.log('后端返回的文件列表数据:', data)
+    
+    // 后端返回的数据结构：包含entries数组，每个entry有name, path, size, is_file, is_dir等信息
+    // 我们需要把这个转换为前端的FileItem格式
+    if (data.entries && Array.isArray(data.entries)) {
+      const fileItems: FileItem[] = data.entries.map((entry: any) => {
+        // 提取文件扩展名（如果有）
+        const nameParts = entry.name.split('.')
+        const extension = nameParts.length > 1 ? nameParts.pop() : undefined
+        
+        // 确定文件类型
+        const type: 'file' | 'folder' = entry.is_file ? 'file' : 'folder'
+        
+        // 将后端的时间格式转换为前端需要的格式
+        // 后端返回的是ISO格式：2026-01-06T18:32:58.449683
+        // 前端需要：2026-01-06 18:32:58
+        const modifiedAt = entry.modified_at 
+          ? entry.modified_at.replace('T', ' ').substring(0, 19)
+          : new Date().toISOString().replace('T', ' ').substring(0, 19)
+        
+        // 注意：后端返回的path是相对路径，如"test.js"
+        // 前端需要完整路径，所以这里要构建一下
+        const fullPath = path === '/' ? `/${entry.path}` : `${path}/${entry.path}`
+        
+        return {
+          id: entry.sha256 || entry.path, // 用sha256做ID，如果没有就用path
+          name: entry.name,
+          size: entry.size || 0,
+          type: type,
+          extension: extension,
+          modifiedAt: modifiedAt,
+          isStarred: false, // 后端没有收藏功能，暂时设为false
+          path: fullPath
+        }
+      })
+      
+      console.log(`成功转换了 ${fileItems.length} 个文件项`)
+      return fileItems
+    } else {
+      console.warn('后端返回的数据没有entries字段或不是数组:', data)
+      throw new Error('无效的响应格式')
+    }
+    
+  } catch (error) {
+    // 如果后端调用失败，回退到mock数据
+    console.warn('调用真实后端API失败，使用mock数据:', error)
+    
+    // 回退到mock数据（保证前端能正常工作）
+    await mockDelay(200 + Math.random() * 300)
+    
+    if (path === '/') {
+      return [...mockFiles]
+    }
+    
+    return mockFiles.filter(file => file.path.startsWith(path))
   }
-  
-  // 简单模拟子目录
-  return mockFiles.filter(file => file.path.startsWith(path))
 }
 
 // 获取文件夹树

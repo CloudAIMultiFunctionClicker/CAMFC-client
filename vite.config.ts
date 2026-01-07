@@ -35,5 +35,17 @@ export default defineConfig(async () => ({
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
     },
+    // 添加代理配置，解决CORS问题
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8005',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+        // 添加认证头
+        headers: {
+          'Authorization': 'Bearer test123'
+        }
+      }
+    }
   },
 }));
