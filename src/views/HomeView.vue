@@ -1,9 +1,11 @@
+<script setup>
+  import AppHeader from '../components/layout/AppHeader.vue'
+
+</script>
+
 <template>
-  <div class="home">
-    <h2>首页</h2>
-    <p>这是最简陋的多路由网页的首页。</p>
-    <p>点击上面的导航链接可以切换到其他页面。</p>
-  </div>
+  <AppHeader/>
+  <div class="content-area"></div>
 </template>
 
 <script>
@@ -13,9 +15,11 @@ export default {
 }
 </script>
 
+
 <style scoped>
-/* 加点最基本的样式，但保持简陋 */
-.home {
-  padding: 20px;
-}
+  .content-area {
+    width: 100%;
+    height: 100%;
+    background:#1a1a1a
+  }
 </style>

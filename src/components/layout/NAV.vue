@@ -1,5 +1,5 @@
 <template>
-    <header class="header">
+    <div class="header">
         <h1>最简陋的多路由网页</h1>
         <nav>
             <!-- 使用router-link进行导航 -->
@@ -7,7 +7,7 @@
             <router-link to="/about">关于</router-link> | 
             <router-link to="/contact">联系</router-link>
         </nav>
-    </header>
+    </div>
 </template>
 
 <style scoped>
