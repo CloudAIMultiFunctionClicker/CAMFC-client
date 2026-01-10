@@ -13,8 +13,8 @@
     "windows": [
       {
         "title": "camfc-client",
-        "width": 800,
-        "height": 600
+        "width": 1152,
+        "height": 648
       }
     ],
     "security": {
