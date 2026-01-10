@@ -63,30 +63,31 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     overflow: hidden; /* 防止滚动条出现在容器上 */
   }
 
-  /* 内容区域样式 */
+  /* 内容区域样式 - 使用CSS变量支持主题切换 */
   .content-area {
     flex: 1; /* 占据剩余空间 */
-    background: #0f172a; /* 深色背景，比侧边栏更深 */
+    background: var(--bg-primary, #0f172a); /* 使用主题主背景色 */
     padding: 24px;
     box-sizing: border-box;
     overflow-y: auto; /* 内容区域可滚动 */
+    transition: background 0.3s ease; /* 主题切换时的过渡效果 */
   }
 
-  /* 占位内容样式 */
+  /* 占位内容样式 - 也使用CSS变量 */
   .placeholder {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #64748b; /* 中等灰色 */
+    color: var(--text-muted, #64748b); /* 使用主题次要文字色 */
     text-align: center;
   }
 
   .placeholder i {
     font-size: 4rem;
     margin-bottom: 20px;
-    color: #334155; /* 稍浅的灰色 */
+    color: var(--text-muted, #334155); /* 使用主题次要文字色 */
     opacity: 0.5;
   }
 
@@ -94,7 +95,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     margin: 0 0 12px 0;
     font-size: 1.5rem;
     font-weight: 600;
-    color: #cbd5e1; /* 浅灰色 */
+    color: var(--text-secondary, #cbd5e1); /* 使用主题次要文字色 */
   }
 
   .placeholder p {

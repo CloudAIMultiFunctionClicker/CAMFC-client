@@ -145,17 +145,16 @@ FIXME: 现在路由高亮还没做，得等加上script再说
 </template>
 
 <style scoped>
-/* 侧边栏基础样式 - 跟AppHeader保持一致 */
-/* 尝试用类似的深色渐变，但稍微浅一点？ */
+/* 侧边栏基础样式 - 使用CSS变量支持主题切换 */
+/* 现在颜色都从全局变量获取，亮色/暗色模式自动切换 */
 
 .sidebar {
     width: 240px;
     height: 100vh;
     /* 全高 */
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-    /* 比头部浅一点的渐变 */
-    border-right: 1px solid rgba(255, 255, 255, 0.05);
-    /* 很细的分割线 */
+    background: var(--bg-sidebar, linear-gradient(135deg, #1e293b 0%, #334155 100%));
+    border-right: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
+    /* 主题化边框 */
     display: flex;
     flex-direction: column;
     /* 垂直布局 */
@@ -165,20 +164,21 @@ FIXME: 现在路由高亮还没做，得等加上script再说
     position: relative;
     z-index: 900;
     /* 在头部下面 */
+    transition: background 0.3s ease, border-color 0.3s ease;
+    /* 主题切换时的过渡效果 */
 }
 
 /* Logo区域样式 */
 .logo-area {
     padding: 0 20px 20px;
     /* 左右内边距，底部有间距 */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
     margin-bottom: 20px;
 }
 
 .logo-area h2 {
     margin: 0;
-    color: #f8fafc;
-    /* 跟头部一样的浅色 */
+    color: var(--text-primary, #f8fafc);
     font-size: 1.25rem;
     font-weight: 600;
     display: flex;
@@ -189,14 +189,13 @@ FIXME: 现在路由高亮还没做，得等加上script再说
 
 .logo-area h2 i {
     font-size: 1.5rem;
-    color: #3b82f6;
-    /* 蓝色图标，突出一点 */
+    color: var(--accent-blue, #3b82f6);
+    /* 使用主题蓝色 */
 }
 
 .subtitle {
     margin: 0;
-    color: #94a3b8;
-    /* 灰色文字 */
+    color: var(--text-muted, #94a3b8);
     font-size: 0.875rem;
     line-height: 1.4;
 }
@@ -211,8 +210,7 @@ FIXME: 现在路由高亮还没做，得等加上script再说
 
 .menu-title {
     margin: 0 0 12px 0;
-    color: #cbd5e1;
-    /* 中等灰色 */
+    color: var(--text-secondary, #cbd5e1);
     font-size: 0.875rem;
     font-weight: 500;
     text-transform: uppercase;
@@ -245,7 +243,7 @@ FIXME: 现在路由高亮还没做，得等加上script再说
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    color: #cbd5e1;
+    color: var(--text-secondary, #cbd5e1);
     text-decoration: none;
     border-radius: 8px;
     /* 跟按钮一样的圆角 */
@@ -263,23 +261,20 @@ FIXME: 现在路由高亮还没做，得等加上script再说
 }
 
 .menu-link:hover {
-    background-color: rgba(255, 255, 255, 0.08);
-    /* 半透明白色背景 */
-    color: #f1f5f9;
+    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+    color: var(--text-primary, #f1f5f9);
 }
 
 /* 路由链接激活状态 - 先写个样式，等有script了再用 */
 /* TODO: 这里需要router-link-active类来高亮当前页面 */
 .menu-link.router-link-active {
-    background-color: rgba(59, 130, 246, 0.15);
-    /* 半透明蓝色背景 */
-    color: #3b82f6;
-    /* 蓝色文字 */
+    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.15);
+    color: var(--accent-blue, #3b82f6);
     font-weight: 500;
 }
 
 .menu-link.router-link-active i {
-    color: #3b82f6;
+    color: var(--accent-blue, #3b82f6);
 }
 
 /* 底部区域样式 */
@@ -287,7 +282,7 @@ FIXME: 现在路由高亮还没做，得等加上script再说
     margin-top: auto;
     /* 推到最底部 */
     padding: 20px 20px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
 }
 
 .footer-btn {
@@ -298,8 +293,7 @@ FIXME: 现在路由高亮还没做，得等加上script再说
     padding: 10px 12px;
     background: none;
     border: none;
-    color: #94a3b8;
-    /* 灰色文字 */
+    color: var(--text-muted, #94a3b8);
     text-align: left;
     border-radius: 8px;
     cursor: pointer;
@@ -314,8 +308,8 @@ FIXME: 现在路由高亮还没做，得等加上script再说
 }
 
 .footer-btn:hover {
-    background-color: rgba(255, 255, 255, 0.05);
-    color: #cbd5e1;
+    background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
+    color: var(--text-secondary, #cbd5e1);
 }
 
 /* 响应式设计 - 小屏幕时可能需要调整 */
@@ -368,4 +362,4 @@ FIXME: 现在路由高亮还没做，得等加上script再说
         /* 取消固定宽度 */
     }
 }
-</style>
+</style>    .footer-btn i {

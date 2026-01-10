@@ -23,10 +23,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <script setup>
-// 头部组件 - 就一个UI展示，暂时没啥复杂逻辑
+import { inject } from 'vue'
+
+// 头部组件 - 现在加了主题切换功能
 // 之前试过加点击事件，但好像会跟路由冲突？先放着不管
 // FIXME: 云按钮点了没反应，得找时间加上去
 // TODO: 按钮的状态管理还没做，比如上传中的loading状态
+
+// 从App.vue注入的主题功能
+const theme = inject('theme')
+
+
+
+setInterval(() => {
+    console.log(theme?.isLightMode.value)
+}, 2000);
 </script>
 
 
@@ -45,26 +56,35 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
             <!-- 右侧：操作按钮区域 -->
             <div class="operation">
+                <!-- 主题切换按钮 -->
+                <button class="btn-theme" @click="theme?.toggleTheme">
+                    <!-- 亮色模式时显示月亮图标（切换到暗色），暗色模式时显示太阳图标（切换到亮色） -->
+                    <i class="ri-moon-line" v-if="theme?.isLightMode.value"></i>
+                    <i class="ri-sun-line" v-else></i>
+                    <!-- 小屏幕时隐藏文字 -->
+                    <span class="btn-text">{{ theme?.isLightMode.value ? '切换到暗色' : '切换到亮色' }}</span>
+                </button>
+                
                 <!-- 下拉菜单按钮 -->
                 <button class="btn-dropdown">
                     <i class="ri-list-view"></i>
-                    列表视图
+                    <span class="btn-text">列表视图</span>
                     <i class="ri-arrow-down-s-line"></i>
                 </button>
                 <!-- 上传按钮 -->
                 <button class="btn-upload">
                     <i class="ri-upload-cloud-line"></i>
-                    上传
+                    <span class="btn-text">上传</span>
                 </button>
                 <!-- 分享按钮 -->
                 <button class="btn-share">
                     <i class="ri-share-forward-line"></i>
-                    分享
+                    <span class="btn-text">分享</span>
                 </button>
                 <!-- 删除按钮 -->
                 <button class="btn-delete">
                     <i class="ri-delete-bin-line"></i>
-                    删除
+                    <span class="btn-text">删除</span>
                 </button>
                 <!-- 用户头像按钮 -->
                 <button class="btn-avatar">
@@ -77,21 +97,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
 <style scoped>
-/* 头部样式 - 尝试搞个现代点的深色主题 */
+/* 头部样式 - 现在支持主题切换了 */
 /* 之前用纯黑色太压抑了，试了几个渐变，这个看起来还行 */
+/* TODO: 亮色模式的阴影可能需要调整，现在看起来还行 */
 
 header {
     width: 100%;
     height: 64px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    /* 原先是 #e0e0e6，太亮了 */
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-    /* 从tailwind配色里扒的 */
+    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    /* 使用主题边框色 */
+    background: var(--bg-header, linear-gradient(135deg, #0f172a 0%, #1e293b 100%));
+    /* 使用主题头部背景 */
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     /* 加点阴影有层次感 */
     position: relative;
     z-index: 1000;
     /* 确保在最上面 */
+    transition: background 0.3s ease, border-color 0.3s ease;
+    /* 主题切换过渡效果 */
 }
 
 /* 工具栏布局 */
@@ -117,12 +140,14 @@ h1 {
     align-items: center;
     gap: 12px;
     /* flex gap真好用 */
-    color: #f8fafc;
-    /* 不是纯白，偏灰一点 */
+    color: var(--text-primary, #f8fafc);
+    /* 使用主题主要文字色 */
     font-size: 1.5rem;
     font-weight: 600;
     letter-spacing: -0.025em;
     /* 字距收紧一点感觉更现代？ */
+    transition: color 0.3s ease;
+    /* 文字颜色过渡 */
 }
 
 /* 右侧按钮区域 */
@@ -137,6 +162,7 @@ h1 {
 
 /* 按钮基础样式 - 统一一下 */
 .btn-cloud,
+.btn-theme,
 .btn-dropdown,
 .btn-upload,
 .btn-share,
@@ -160,12 +186,25 @@ h1 {
     /* 统一高度 */
 }
 
+/* 主题切换按钮 - 放在第一个 */
+.btn-theme {
+    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+    color: var(--text-secondary, #cbd5e1);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.btn-theme:hover {
+    background-color: var(--accent-blue, #3b82f6);
+    color: white;
+    border-color: var(--accent-blue, #3b82f6);
+}
+
 /* 云按钮 - 就是个装饰性的 */
 .btn-cloud {
-    background: rgba(255, 255, 255, 0.08);
-    /* 半透明白 */
-    color: #94a3b8;
-    /* 灰色图标 */
+    background: var(--hover-bg, rgba(255, 255, 255, 0.08));
+    /* 使用主题hover背景色 */
+    color: var(--text-muted, #94a3b8);
+    /* 使用主题次要文字色 */
     padding: 8px;
     border-radius: 50%;
     /* 圆形 */
@@ -175,47 +214,48 @@ h1 {
 
 /* 下拉按钮 - 中性色 */
 .btn-dropdown {
-    background-color: rgba(255, 255, 255, 0.08);
-    color: #cbd5e1;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    /* 很细的边框 */
+    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+    /* 使用主题hover背景色 */
+    color: var(--text-secondary, #cbd5e1);
+    /* 使用主题次要文字色 */
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
 }
 
 /* 上传按钮 - 主操作按钮，突出显示 */
 .btn-upload {
-    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-    /* 渐变蓝 */
+    background: linear-gradient(135deg, var(--accent-blue, #3b82f6) 0%, #1d4ed8 100%);
+    /* 使用主题蓝色 */
     color: white;
     border: none;
-    box-shadow: 0 2px 10px rgba(59, 130, 246, 0.3);
-    /* 发光效果 */
+    box-shadow: 0 2px 10px rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
+    /* 使用主题蓝色发光 */
 }
 
 /* 分享按钮 - 深蓝色 */
 .btn-share {
-    background-color: rgba(30, 58, 138, 0.8);
-    /* 半透明深蓝 */
+    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.2);
+    /* 使用主题蓝色，半透明 */
     color: white;
-    border: 1px solid rgba(59, 130, 246, 0.3);
+    border: 1px solid rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
 }
 
 /* 删除按钮 - 红色警告色 */
 .btn-delete {
-    background-color: rgba(220, 53, 69, 0.8);
-    /* 半透明红 */
+    background-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.8);
+    /* 使用主题红色，半透明 */
     color: white;
-    border: 1px solid rgba(220, 53, 69, 0.3);
+    border: 1px solid rgba(var(--accent-red-rgb, 220, 53, 69), 0.3);
 }
 
 /* 头像按钮 - 圆形 */
 .btn-avatar {
-    background-color: rgba(59, 130, 246, 0.1);
-    border: 2px solid rgba(59, 130, 246, 0.5);
+    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.1);
+    border: 2px solid rgba(var(--accent-blue-rgb, 59, 130, 246), 0.5);
     /* 蓝色边框 */
     border-radius: 50%;
     width: 40px;
     height: 40px;
-    color: #3b82f6;
+    color: var(--accent-blue, #3b82f6);
     /* 蓝色图标 */
     padding: 0;
 }
@@ -223,37 +263,39 @@ h1 {
 /* ====== HOVER 效果 ====== */
 
 .btn-cloud:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: #f1f5f9;
+    background: var(--accent-blue, #3b82f6);
+    /* hover时用主题蓝色 */
+    color: white;
 }
 
 .btn-dropdown:hover {
-    background-color: rgba(255, 255, 255, 0.15);
+    background-color: var(--accent-blue, #3b82f6);
+    /* hover时用主题蓝色 */
     color: white;
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: var(--accent-blue, #3b82f6);
 }
 
 /* 上传按钮hover - 让它亮一点 */
 .btn-upload:hover {
     background: linear-gradient(135deg, #4a94ff 0%, #2563eb 100%);
-    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 4px 15px rgba(var(--accent-blue-rgb, 59, 130, 246), 0.4);
     /* hover时阴影强一点 */
 }
 
 .btn-share:hover {
-    background-color: rgba(30, 58, 138, 0.95);
-    /* 更不透明 */
-    border-color: rgba(59, 130, 246, 0.5);
+    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
+    /* hover时更不透明 */
+    border-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.5);
 }
 
 .btn-delete:hover {
-    background-color: rgba(220, 53, 69, 0.95);
-    border-color: rgba(220, 53, 69, 0.5);
+    background-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.95);
+    border-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.5);
 }
 
 .btn-avatar:hover {
-    background-color: rgba(59, 130, 246, 0.2);
-    border-color: #3b82f6;
+    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.2);
+    border-color: var(--accent-blue, #3b82f6);
     color: #60a5fa;
     /* 亮一点的蓝 */
 }
@@ -264,11 +306,17 @@ h1 {
 .btn-upload i,
 .btn-share i,
 .btn-delete i,
-.btn-avatar i {
+.btn-avatar i,
+.btn-theme i {
     font-size: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* 按钮文字通用类 - 方便响应式隐藏 */
+.btn-text {
+    display: inline;
 }
 
 /* 响应式 - 小屏幕时按钮只显示图标 */
@@ -285,13 +333,11 @@ h1 {
     }
 
     /* 隐藏按钮文字，只留图标 */
-    .btn-dropdown span,
-    .btn-upload span,
-    .btn-share span,
-    .btn-delete span {
+    .btn-text {
         display: none;
     }
 
+    .btn-theme,
     .btn-dropdown,
     .btn-upload,
     .btn-share,
