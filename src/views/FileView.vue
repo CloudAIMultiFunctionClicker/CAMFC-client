@@ -29,6 +29,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   import Sidebar from '../components/layout/Sidebar.vue'
   // 这个主页视图很简单，就是显示头部、侧边栏和一个内容区域
   // TODO: 未来可能需要在这里添加更多内容，比如文件列表等
+
+  import FileTree from '../components/file/FileTree.vue'
 </script>
 
 <template>
@@ -49,6 +51,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <p>这里将来会显示文件列表、预览等内容</p>
         <!-- TODO: 添加实际的文件管理界面 -->
         <!-- FIXME: 现在只是个占位，需要实现真正的文件浏览功能 -->
+        <FileTree/>
       </div>
     </div>
   </div>

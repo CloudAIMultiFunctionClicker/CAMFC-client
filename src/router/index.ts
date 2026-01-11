@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import FileView from '../views/FileView.vue'
 
 /**
  * 应用路由配置
@@ -16,7 +16,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView  // 首页直接导入，保证首次加载速度
+      component: FileView  // 首页直接导入，保证首次加载速度
     },
     {
       path: '/about',

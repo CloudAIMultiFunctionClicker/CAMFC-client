@@ -32,12 +32,6 @@ import { inject } from 'vue'
 
 // 从App.vue注入的主题功能
 const theme = inject('theme')
-
-
-
-setInterval(() => {
-    console.log(theme?.isLightMode.value)
-}, 2000);
 </script>
 
 

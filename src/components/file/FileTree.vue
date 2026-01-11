@@ -23,18 +23,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 
-<script>
+<script setup type="js">
+    import ls from '../data/fileSystem.js'
 
+    const result = await ls('test1');
+    console.log(result);
 </script>
 
 <template> 
 
-
-
-
-
-
-
+<span>hello world</span>
 
 </template>
 
