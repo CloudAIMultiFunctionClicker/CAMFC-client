@@ -108,8 +108,6 @@ header {
     /* 使用主题边框色 */
     background: var(--bg-header, linear-gradient(135deg, #0f172a 0%, #1e293b 100%));
     /* 使用主题头部背景 */
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    /* 加点阴影有层次感 */
     position: relative;
     z-index: 1000;
     /* 确保在最上面 */

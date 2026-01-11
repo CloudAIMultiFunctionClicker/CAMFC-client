@@ -23,17 +23,50 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <script setup>
-import { ref, provide } from 'vue'
+import { ref, provide, onMounted, onUnmounted } from 'vue'
 
-// 主题状态管理 - 简单实现亮色/暗色切换
-// 用ref存储当前主题，默认暗色（跟现有一致）
-// TODO: 可以持久化到localStorage，下次打开记住选择
-const isLightMode = ref(false)
+// 主题状态管理 - 默认跟随系统配色
+// 先尝试从localStorage读取用户之前的选择
+// 如果没保存过，就检测系统偏好
+const getInitialTheme = () => {
+  // 先看看localStorage有没有保存用户的选择
+  const savedTheme = localStorage.getItem('theme-preference')
+  if (savedTheme === 'light' || savedTheme === 'dark') {
+    return savedTheme === 'light'
+  }
+  
+  // 没有保存过的话，检测系统偏好
+  // 优先检测用户明确设置的系统主题
+  // matchMedia返回的是MediaQueryList对象，matches属性表示是否匹配
+  const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+  
+  // 如果系统明确设置了亮色主题，就用亮色
+  if (prefersLight) {
+    return true
+  }
+  
+  // 如果系统明确设置了暗色主题，就用暗色
+  // 注意：有些浏览器可能同时返回false（比如no-preference），那我们就默认暗色
+  // 之前想过默认暗色会不会不友好？但项目原来就是暗色主题，保持一致性吧
+  return false
+}
+
+const isLightMode = ref(getInitialTheme())
 
 // 切换主题函数
 const toggleTheme = () => {
   isLightMode.value = !isLightMode.value
   // 给body添加/移除类名，用于全局样式切换
+  updateBodyClass()
+  
+  // 保存用户选择到localStorage
+  // 存为字符串，方便下次读取
+  localStorage.setItem('theme-preference', isLightMode.value ? 'light' : 'dark')
+}
+
+// 更新body类名的辅助函数
+const updateBodyClass = () => {
   if (isLightMode.value) {
     document.body.classList.add('light-mode')
   } else {
@@ -48,15 +81,36 @@ provide('theme', {
 })
 
 // 在组件挂载时设置初始主题
-// 这里用onMounted确保在客户端执行
-import { onMounted } from 'vue'
 onMounted(() => {
   // 初始时确保body有正确的类
-  if (isLightMode.value) {
-    document.body.classList.add('light-mode')
-  } else {
-    document.body.classList.remove('light-mode')
+  updateBodyClass()
+  
+  // 监听系统主题变化，如果用户没有手动设置过，就跟着系统变
+  // 这里监听亮色主题的变化，因为我们的逻辑是基于亮色/暗色来判断的
+  const lightMediaQuery = window.matchMedia('(prefers-color-scheme: light)')
+  
+  const handleSystemThemeChange = (e) => {
+    // 只有当用户没有保存过偏好时才跟随系统变化
+    // 检查localStorage里有没有保存过主题偏好
+    const hasUserPreference = localStorage.getItem('theme-preference') !== null
+    if (!hasUserPreference) {
+      // e.matches为true表示现在系统是亮色主题
+      isLightMode.value = e.matches
+      updateBodyClass()
+      
+      // 这里有个问题：如果系统从light变成dark，e.matches就是false
+      // 但如果系统从dark变成light，e.matches就是true
+      // 我们的逻辑应该没问题，因为getInitialTheme里也是用light匹配来判断
+    }
   }
+  
+  // 添加监听
+  lightMediaQuery.addEventListener('change', handleSystemThemeChange)
+  
+  // 在组件卸载时清理监听器
+  onUnmounted(() => {
+    lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
+  })
 })
 </script>
 
