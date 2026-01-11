@@ -29,8 +29,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   import Sidebar from '../components/layout/Sidebar.vue'
   // 这个主页视图很简单，就是显示头部、侧边栏和一个内容区域
   // TODO: 未来可能需要在这里添加更多内容，比如文件列表等
+  
+  // 导入Vue响应式功能
+  import { ref } from 'vue'
 
   import FileTree from '../components/file/FileTree.vue'
+  
+  // 创建一个响应式的折叠状态，用于控制内容区域的扩展
+  // 默认是展开的（侧边栏没折叠）
+  const isSidebarCollapsed = ref(false)
+  
+  // 处理侧边栏折叠状态变化的函数
+  // 当Sidebar触发collapse-change事件时调用
+  const handleCollapseChange = (collapsed) => {
+    isSidebarCollapsed.value = collapsed
+  }
 </script>
 
 <template>
@@ -40,15 +53,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   <!-- 主内容区域容器 -->
   <div class="main-container">
     <!-- 左侧边栏 -->
-    <Sidebar/>
+    <!-- 监听collapse-change事件来同步状态 -->
+    <Sidebar @collapse-change="handleCollapseChange"/>
     
     <!-- 右侧主要内容区域 - 目前是空的，只是占位 -->
-    <div class="content-area">
+    <!-- 根据侧边栏折叠状态添加类名 -->
+    <div class="content-area" :class="{ 'expanded': isSidebarCollapsed }">
       <!-- 内容区域占位文本 -->
       <div class="placeholder">
         <i class="ri-file-cloud-line"></i>
         <h3>文件内容区域</h3>
         <p>这里将来会显示文件列表、预览等内容</p>
+        <!-- 测试文字：显示当前状态 -->
+        <p class="hint">侧边栏状态：{{ isSidebarCollapsed ? '已收起' : '展开中' }}</p>
         <!-- TODO: 添加实际的文件管理界面 -->
         <!-- FIXME: 现在只是个占位，需要实现真正的文件浏览功能 -->
         <FileTree/>
@@ -71,9 +88,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     flex: 1; /* 占据剩余空间 */
     background: var(--bg-primary, #0f172a); /* 使用主题主背景色 */
     padding: 24px;
+    margin-left: 0; /* 默认没有左边距 */
     box-sizing: border-box;
     overflow-y: auto; /* 内容区域可滚动 */
-    transition: background 0.3s ease; /* 主题切换时的过渡效果 */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 添加平滑过渡效果，与侧边栏动画保持一致 */
+  }
+  
+  /* 当侧边栏收起时，内容区域向左扩展填充空间 */
+  /* 通过添加负的margin-left来实现平滑的左移效果 */
+  .content-area.expanded {
+    margin-left: -240px; /* 向左移动240px，填充侧边栏的空间 */
+    /* 注意：这里用负的margin-left，实际上内容区域会向左移动 */
+    /* 配合侧边栏的transform: translateX(-100%)，实现同步的滑动效果 */
+  }
+  
+  /* 提示文字样式 */
+  .hint {
+    margin-top: 10px;
+    font-size: 0.9rem;
+    color: var(--text-muted, #64748b);
+    font-style: italic;
   }
 
   /* 占位内容样式 - 也使用CSS变量 */

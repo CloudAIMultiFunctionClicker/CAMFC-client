@@ -26,15 +26,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import axios from "axios";
 import { ref, reactive } from "vue";
 
-const basicUrl = "http://localhost:8005";
-const timeOut=1500;
+const basicUrl = "http://192.168.32.101:8005";
+const timeOut = 1000;
 
 async function ls(path) {
     try {
         // 创建一个Promise，用于控制超时
         const timeoutPromise = new Promise((_, reject) => {
             setTimeout(() => {
-                reject(new Error('Request timeout'));
+                reject(new Error("Request timeout"));
             }, timeOut);
         });
 
@@ -49,7 +49,7 @@ async function ls(path) {
         console.log(response.data);
         return response.data;
     } catch (error) {
-        if (error.message === 'Request timeout') {
+        if (error.message === "Request timeout") {
             console.warn(`Request timed out after ${timeOut}ms`);
             return null;
         } else {
