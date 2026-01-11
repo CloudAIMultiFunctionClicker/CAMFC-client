@@ -27,22 +27,32 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   import AppHeader from '../components/layout/AppHeader.vue'
   // 导入侧边栏组件
   import Sidebar from '../components/layout/Sidebar.vue'
-  // 这个主页视图很简单，就是显示头部、侧边栏和一个内容区域
-  // TODO: 未来可能需要在这里添加更多内容，比如文件列表等
   
   // 导入Vue响应式功能
   import { ref } from 'vue'
 
+  // 导入文件表格组件
+  import FileTable from '../components/file/FileTable.vue'
+  // 原来的FileTree暂时留着，后面可能有用
   import FileTree from '../components/file/FileTree.vue'
   
   // 创建一个响应式的折叠状态，用于控制内容区域的扩展
   // 默认是展开的（侧边栏没折叠）
   const isSidebarCollapsed = ref(false)
   
+  // 当前路径 - 默认为空字符串表示根目录
+  const currentPath = ref('')
+  
   // 处理侧边栏折叠状态变化的函数
   // 当Sidebar触发collapse-change事件时调用
   const handleCollapseChange = (collapsed) => {
     isSidebarCollapsed.value = collapsed
+  }
+  
+  // 处理路径变化
+  const handlePathChange = (newPath) => {
+    console.log('路径变化:', newPath)
+    currentPath.value = newPath
   }
 </script>
 
@@ -59,17 +69,23 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     <!-- 右侧主要内容区域 - 目前是空的，只是占位 -->
     <!-- 根据侧边栏折叠状态添加类名 -->
     <div class="content-area" :class="{ 'expanded': isSidebarCollapsed }">
-      <!-- 内容区域占位文本 -->
+      <!-- 文件表格组件 -->
+      <FileTable 
+        :currentPath="currentPath"
+        @path-change="handlePathChange"
+      />
+      
+      <!-- 原来的占位内容先注释掉，测试用 -->
+      <!-- 
       <div class="placeholder">
         <i class="ri-file-cloud-line"></i>
         <h3>文件内容区域</h3>
         <p>这里将来会显示文件列表、预览等内容</p>
-        <!-- 测试文字：显示当前状态 -->
         <p class="hint">侧边栏状态：{{ isSidebarCollapsed ? '已收起' : '展开中' }}</p>
-        <!-- TODO: 添加实际的文件管理界面 -->
-        <!-- FIXME: 现在只是个占位，需要实现真正的文件浏览功能 -->
+        <p class="hint">当前路径：{{ currentPath || '根目录' }}</p>
         <FileTree/>
       </div>
+      -->
     </div>
   </div>
 </template>

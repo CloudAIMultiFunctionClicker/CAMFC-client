@@ -26,7 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 <script setup type="js">
     import ls from '../data/fileSystem.js'
 
-    const result = await ls('test1');
+    const result = await ls('');
     console.log(result);
 </script>
 

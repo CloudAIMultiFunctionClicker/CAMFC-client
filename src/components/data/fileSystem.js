@@ -26,8 +26,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import axios from "axios";
 import { ref, reactive } from "vue";
 
-const basicUrl = "http://192.168.32.101:8005";
-const timeOut = 1000;
+const basicUrl = "http://localhost:8005";
+const timeOut = 10000;
 
 async function ls(path) {
     try {
@@ -47,10 +47,14 @@ async function ls(path) {
 
         const response = await Promise.race([requestPromise, timeoutPromise]);
         console.log(response.data);
+
+        // 返回结果
         return response.data;
     } catch (error) {
         if (error.message === "Request timeout") {
             console.warn(`Request timed out after ${timeOut}ms`);
+
+            //  返回 null
             return null;
         } else {
             throw error; // 如果不是超时错误，则重新抛出原始错误
