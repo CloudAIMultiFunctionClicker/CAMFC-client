@@ -26,6 +26,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import ls from '../data/fileSystem.js'
 import { ref, watch, onMounted } from 'vue'
 
+// TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
+
 // 接受当前路径作为参数，默认空字符串就是根目录
 const props = defineProps({
   currentPath: {
@@ -38,6 +40,32 @@ const props = defineProps({
 const fileList = ref([])
 const loading = ref(false)
 const error = ref(null)
+
+// 路径编辑相关状态 - 支持点击当前路径手动输入
+const isEditingPath = ref(false)
+const editingPathValue = ref('')
+
+// 操作按钮点击处理 - 暂时先定义空函数，功能后面再加
+const handleListClick = () => {
+  console.log('列表视图点击，还没想好要干嘛')
+  // 列表视图不就是当前视图吗？有点重复，先留着吧
+}
+
+const handleUploadClick = () => {
+  console.log('上传点击，后面再实现')
+}
+
+const handleDownloadClick = () => {
+  console.log('下载点击，得想想怎么处理选中的文件')
+}
+
+const handleNewFolderClick = () => {
+  console.log('新建文件夹点击，可能需要弹个输入框')
+}
+
+const handleDeleteClick = () => {
+  console.log('删除点击，这个得小心点，要加确认对话框')
+}
 
 // 获取文件列表
 const fetchFiles = async (path) => {
@@ -74,14 +102,58 @@ const enterFolder = (folderPath) => {
   emit('path-change', folderPath)
 }
 
+// 开始编辑路径 - 点击当前路径时触发
+const startEditing = () => {
+  isEditingPath.value = true
+  // 显示路径时要以'/'开头，空路径显示为'/'，非空路径也加上'/'前缀
+  // 这样用户编辑时看到的就是/test1这样的格式
+  editingPathValue.value = props.currentPath === '' ? '/' : '/' + props.currentPath
+  console.log('开始编辑路径，当前值:', editingPathValue.value)
+}
+
+// 确认路径编辑 - 回车或点击确认按钮
+const confirmEdit = () => {
+  if (!isEditingPath.value) return
+  
+  let newPath = editingPathValue.value.trim()
+  console.log('确认编辑路径，输入值:', newPath)
+  
+  // 处理输入值：如果输入的是'/'，转为空字符串（根目录）
+  if (newPath === '/') {
+    newPath = ''
+  } else if (newPath.startsWith('/')) {
+    // 去掉开头的斜杠，因为API不需要开头的斜杠
+    // 用户输入/test1，传到后端应该是test1
+    newPath = newPath.substring(1)
+  }
+  
+  // 结束编辑模式
+  isEditingPath.value = false
+  
+  // 如果路径没变，就不发请求了
+  if (newPath !== props.currentPath) {
+    console.log('路径变化，跳转到:', newPath)
+    emit('path-change', newPath)
+  }
+}
+
+// 取消路径编辑
+const cancelEdit = () => {
+  isEditingPath.value = false
+  console.log('取消路径编辑')
+}
+
 // 返回上级目录
 const goUp = () => {
   if (!props.currentPath) return // 已经在根目录
   
-  // 简单处理：去掉最后一个路径部分
-  const parts = props.currentPath.split('\\')
-  parts.pop()
-  const newPath = parts.join('\\')
+  // 改用正斜杠作为路径分隔符 - 之前用的反斜杠是Windows风格，不通用
+  // 注意：这里要过滤掉空字符串，因为split('/')会在路径开头产生空元素
+  const parts = props.currentPath.split('/').filter(p => p !== '')
+  parts.pop() // 去掉最后一级
+  
+  // 重新拼接路径，如果parts空了就返回根目录''
+  const newPath = parts.length > 0 ? parts.join('/') : ''
   emit('path-change', newPath)
 }
 
@@ -95,6 +167,9 @@ watch(() => props.currentPath, (newPath) => {
 onMounted(() => {
   fetchFiles(props.currentPath)
 })
+
+// 点击其他地方取消编辑 - 简单处理，先不弄，用ESC键取消就行
+// TODO: 可以加个点击外部关闭编辑的功能，但需要处理事件冒泡，有点麻烦
 
 // 格式化文件大小显示
 const formatSize = (size) => {
@@ -119,7 +194,55 @@ const formatTime = (timeStr) => {
       <button @click="goUp" :disabled="!currentPath" class="nav-btn">
         <i class="ri-arrow-left-line"></i> 上一级
       </button>
-      <span class="current-path">当前路径: {{ currentPath || '根目录' }}</span>
+      
+      <!-- 路径编辑模式 -->
+      <div v-if="isEditingPath" class="path-edit-container">
+        <input 
+          v-model="editingPathValue" 
+          @keyup.enter="confirmEdit"
+          @keyup.esc="cancelEdit"
+          class="path-input"
+          placeholder="输入路径，如 /home/user 或 /"
+          ref="pathInputRef"
+          autofocus
+        />
+        <button @click="confirmEdit" class="path-confirm-btn">
+          <i class="ri-check-line"></i>
+        </button>
+        <button @click="cancelEdit" class="path-cancel-btn">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+      
+      <!-- 路径显示模式（可点击） -->
+      <div v-else class="current-path" @click="startEditing">
+        {{ currentPath === '' ? '/' : currentPath }}
+        <i class="ri-edit-line edit-icon" title="点击编辑路径"></i>
+      </div>
+      
+      <!-- 操作按钮区域 - 路径编辑模式下隐藏 -->
+      <div v-if="!isEditingPath" class="operation-buttons">
+        <button class="btn-dropdown" @click="handleListClick">
+          <i class="ri-list-view"></i>
+          <span class="btn-text">列表视图</span>
+        </button>
+        <button class="btn-upload" @click="handleUploadClick">
+          <i class="ri-upload-cloud-line"></i>
+          <span class="btn-text">上传</span>
+        </button>
+        <button class="btn-download" @click="handleDownloadClick">
+          <i class="ri-download-line"></i>
+          <span class="btn-text">下载</span>
+        </button>
+        <button class="btn-new-folder" @click="handleNewFolderClick">
+          <i class="ri-folder-add-line"></i>
+          <span class="btn-text">新建文件夹</span>
+        </button>
+        <button class="btn-delete" @click="handleDeleteClick">
+          <i class="ri-delete-bin-line"></i>
+          <span class="btn-text">删除</span>
+        </button>
+      </div>
     </div>
 
     <!-- 加载状态 -->
@@ -194,7 +317,8 @@ const formatTime = (timeStr) => {
     <!-- 底部信息 -->
     <div class="table-footer">
       <span>共 {{ fileList.length }} 个项目</span>
-      <span v-if="currentPath">路径: {{ currentPath }}</span>
+      <span v-if="currentPath !== ''">路径: /{{ currentPath }}</span>
+      <span v-else>路径: /</span>
     </div>
   </div>
 </template>
@@ -245,6 +369,80 @@ const formatTime = (timeStr) => {
   color: var(--text-secondary);
   font-size: 14px;
   flex: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 添加悬停效果，让用户知道可以点击 */
+  transition: color 0.2s ease;
+}
+
+.current-path:hover {
+  color: var(--accent-blue);
+}
+
+.edit-icon {
+  font-size: 12px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.current-path:hover .edit-icon {
+  opacity: 1;
+}
+
+/* 路径编辑容器 */
+.path-edit-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.path-input {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--accent-blue);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.path-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(var(--accent-blue-rgb), 0.2);
+}
+
+.path-confirm-btn,
+.path-cancel-btn {
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.path-confirm-btn {
+  color: var(--accent-blue);
+}
+
+.path-confirm-btn:hover {
+  background: rgba(var(--accent-blue-rgb), 0.1);
+}
+
+.path-cancel-btn {
+  color: var(--text-muted);
+}
+
+.path-cancel-btn:hover {
+  background: rgba(var(--text-muted), 0.1);
 }
 
 /* 加载和错误状态 */
@@ -275,6 +473,12 @@ const formatTime = (timeStr) => {
   to { transform: rotate(360deg); }
 }
 
+/* 淡入动画，给空状态用 */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .retry-btn {
   background: var(--accent-red);
   color: white;
@@ -284,12 +488,14 @@ const formatTime = (timeStr) => {
   cursor: pointer;
 }
 
-/* 表格样式 */
+/* 表格样式 - 添加渐变效果解决闪烁问题 */
 .file-table {
   flex: 1;
   overflow-y: auto;
   background: var(--bg-secondary);
   border-radius: 8px;
+  /* 给整个表格添加淡入淡出效果，解决内容切换时的闪烁 */
+  transition: opacity 0.3s ease;
 }
 
 .table-header {
@@ -320,6 +526,8 @@ const formatTime = (timeStr) => {
   border-bottom: 1px solid var(--border-color);
   align-items: center;
   cursor: default;
+  /* 给行添加背景色变化的渐变效果，让悬停更平滑 */
+  transition: background-color 0.2s ease;
 }
 
 .table-row:hover {
@@ -381,7 +589,7 @@ const formatTime = (timeStr) => {
   color: var(--text-muted);
 }
 
-/* 空状态 */
+/* 空状态 - 添加淡入动画 */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -390,6 +598,8 @@ const formatTime = (timeStr) => {
   padding: 60px 20px;
   color: var(--text-muted);
   text-align: center;
+  /* 空状态出现时的淡入效果 */
+  animation: fadeIn 0.5s ease;
 }
 
 .empty-state i {
@@ -410,6 +620,125 @@ const formatTime = (timeStr) => {
   border-radius: 8px;
 }
 
+/* 操作按钮区域 */
+.operation-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto; /* 靠右对齐 */
+  flex-wrap: nowrap;
+}
+
+/* 按钮基础样式 - 参考AppHeader的样式 */
+.btn-dropdown,
+.btn-upload,
+.btn-download,
+.btn-new-folder,
+.btn-delete {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  height: 40px;
+  white-space: nowrap; /* 防止文字换行 */
+}
+
+/* 下拉按钮 - 中性色 */
+.btn-dropdown {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--text-secondary, #cbd5e1);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+/* 上传按钮 - 主操作按钮 */
+.btn-upload {
+  background: linear-gradient(135deg, var(--accent-blue, #3b82f6) 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  box-shadow: 0 2px 10px rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
+}
+
+/* 下载按钮 - 深蓝色 */
+.btn-download {
+  background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.2);
+  color: white;
+  border: 1px solid rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
+}
+
+/* 新建文件夹按钮 - 绿色 */
+.btn-new-folder {
+  background-color: rgba(var(--accent-green-rgb, 40, 167, 69), 0.2);
+  color: white;
+  border: 1px solid rgba(var(--accent-green-rgb, 40, 167, 69), 0.3);
+}
+
+/* 删除按钮 - 红色 */
+.btn-delete {
+  background-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.8);
+  color: white;
+  border: 1px solid rgba(var(--accent-red-rgb, 220, 53, 69), 0.3);
+}
+
+/* 按钮hover效果 */
+.btn-dropdown:hover {
+  background-color: var(--accent-blue, #3b82f6);
+  color: white;
+  border-color: var(--accent-blue, #3b82f6);
+}
+
+.btn-upload:hover {
+  background: linear-gradient(135deg, #4a94ff 0%, #2563eb 100%);
+  box-shadow: 0 4px 15px rgba(var(--accent-blue-rgb, 59, 130, 246), 0.4);
+}
+
+.btn-download:hover {
+  background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
+  border-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.5);
+}
+
+.btn-new-folder:hover {
+  background-color: rgba(var(--accent-green-rgb, 40, 167, 69), 0.3);
+  border-color: rgba(var(--accent-green-rgb, 40, 167, 69), 0.5);
+}
+
+.btn-delete:hover {
+  background-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.95);
+  border-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.5);
+}
+
+/* 按钮文字 - 响应式隐藏 */
+.btn-text {
+  display: inline;
+}
+
+/* 小屏幕只显示图标 */
+@media (max-width: 1024px) {
+  .btn-text {
+    display: none;
+  }
+  
+  .btn-dropdown,
+  .btn-upload,
+  .btn-download,
+  .btn-new-folder,
+  .btn-delete {
+    padding: 8px;
+    width: 40px;
+    justify-content: center;
+  }
+  
+  .operation-buttons {
+    gap: 6px;
+  }
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
   .table-header,
@@ -420,6 +749,15 @@ const formatTime = (timeStr) => {
   .cell.size,
   .cell.time {
     font-size: 12px;
+  }
+  
+  .path-nav {
+    gap: 12px;
+    padding: 10px 12px;
+  }
+  
+  .operation-buttons {
+    gap: 4px;
   }
 }
 </style>

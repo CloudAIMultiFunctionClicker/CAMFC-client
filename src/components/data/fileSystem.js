@@ -26,7 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import axios from "axios";
 import { ref, reactive } from "vue";
 
-const basicUrl = "http://localhost:8005";
+const basicUrl = "http://192.168.32.154:8005";
 const timeOut = 10000;
 
 async function ls(path) {

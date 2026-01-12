@@ -59,27 +59,6 @@ const theme = inject('theme')
                     <span class="btn-text">{{ theme?.isLightMode.value ? '切换到暗色' : '切换到亮色' }}</span>
                 </button>
                 
-                <!-- 下拉菜单按钮 -->
-                <button class="btn-dropdown">
-                    <i class="ri-list-view"></i>
-                    <span class="btn-text">列表视图</span>
-                    <i class="ri-arrow-down-s-line"></i>
-                </button>
-                <!-- 上传按钮 -->
-                <button class="btn-upload">
-                    <i class="ri-upload-cloud-line"></i>
-                    <span class="btn-text">上传</span>
-                </button>
-                <!-- 分享按钮 -->
-                <button class="btn-share">
-                    <i class="ri-share-forward-line"></i>
-                    <span class="btn-text">分享</span>
-                </button>
-                <!-- 删除按钮 -->
-                <button class="btn-delete">
-                    <i class="ri-delete-bin-line"></i>
-                    <span class="btn-text">删除</span>
-                </button>
                 <!-- 用户头像按钮 -->
                 <button class="btn-avatar">
                     <i class="ri-user-line"></i>
