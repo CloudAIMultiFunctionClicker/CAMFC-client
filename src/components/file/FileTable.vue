@@ -86,8 +86,27 @@ const fetchFiles = async (path) => {
       console.warn('API返回数据格式不对:', result)
     }
   } catch (err) {
-    error.value = err.message || '获取文件列表失败'
-    console.error('获取文件列表出错:', err)
+    // 处理错误信息，根据状态码显示不同的提示
+    if (err.response) {
+      // 服务器返回了错误状态码
+      const status = err.response.status
+      if (status === 400) {
+        error.value = '路径违规'
+      } else if (status === 404) {
+        error.value = '路径不存在'
+      } else {
+        error.value = `服务器错误 (${status})`
+      }
+      console.error('获取文件列表出错 - 状态码:', status, err)
+    } else if (err.request) {
+      // 请求已发出但没有收到响应
+      error.value = '网络错误，请检查连接'
+      console.error('网络错误:', err)
+    } else {
+      // 其他错误
+      error.value = err.message || '获取文件列表失败'
+      console.error('其他错误:', err)
+    }
     fileList.value = []
   } finally {
     loading.value = false
@@ -245,21 +264,16 @@ const formatTime = (timeStr) => {
       </div>
     </div>
 
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading-state">
-      <i class="ri-loader-4-line spin"></i>
-      <span>加载中...</span>
-    </div>
 
-    <!-- 错误状态 -->
-    <div v-else-if="error" class="error-state">
-      <i class="ri-error-warning-line"></i>
-      <span>出错了: {{ error }}</span>
-      <button @click="fetchFiles(currentPath)" class="retry-btn">重试</button>
-    </div>
 
-    <!-- 文件表格 -->
-    <div v-else class="file-table">
+    <!-- 文件表格 - 始终显示，加载时加上遮罩 -->
+    <div class="file-table" :class="{ 'loading-overlay': loading }">
+      <!-- 加载遮罩 -->
+      <div v-if="loading" class="loading-overlay-content">
+        <i class="ri-loader-4-line spin"></i>
+        <span>加载中...</span>
+      </div>
+      
       <!-- 表头 -->
       <div class="table-header">
         <div class="header-cell name">名称</div>
@@ -269,7 +283,7 @@ const formatTime = (timeStr) => {
       </div>
 
       <!-- 空状态 -->
-      <div v-if="fileList.length === 0" class="empty-state">
+      <div v-if="fileList.length === 0 && !loading" class="empty-state">
         <i class="ri-folder-open-line"></i>
         <p>这个目录是空的</p>
       </div>
@@ -280,8 +294,8 @@ const formatTime = (timeStr) => {
           v-for="item in fileList" 
           :key="item.path" 
           class="table-row" 
-          @dblclick="item.is_dir ? enterFolder(item.path) : null"
-          :class="{ 'is-dir': item.is_dir, 'is-file': item.is_file }"
+          @dblclick="item.is_dir && !loading ? enterFolder(item.path) : null"
+          :class="{ 'is-dir': item.is_dir, 'is-file': item.is_file, 'loading-disabled': loading }"
         >
           <div class="cell name">
             <i :class="item.is_dir ? 'ri-folder-line' : 'ri-file-line'"></i>
@@ -289,9 +303,10 @@ const formatTime = (timeStr) => {
             <!-- 如果是文件夹，可以点击 -->
             <button 
               v-if="item.is_dir" 
-              @click="enterFolder(item.path)"
+              @click="!loading && enterFolder(item.path)"
               class="enter-btn"
               title="进入文件夹"
+              :disabled="loading"
             >
               <i class="ri-arrow-right-s-line"></i>
             </button>
@@ -445,9 +460,8 @@ const formatTime = (timeStr) => {
   background: rgba(var(--text-muted), 0.1);
 }
 
-/* 加载和错误状态 */
-.loading-state,
-.error-state {
+.spin {
+  animation: spin 1s linear infinite;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -456,9 +470,6 @@ const formatTime = (timeStr) => {
   background: var(--bg-secondary);
   border-radius: 8px;
   margin-bottom: 16px;
-}
-
-.error-state {
   color: var(--accent-red);
   flex-direction: column;
   gap: 16px;
@@ -668,14 +679,14 @@ const formatTime = (timeStr) => {
 /* 下载按钮 - 深蓝色 */
 .btn-download {
   background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.2);
-  color: white;
+  color: var(--text-secondary);
   border: 1px solid rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
 }
 
 /* 新建文件夹按钮 - 绿色 */
 .btn-new-folder {
   background-color: rgba(var(--accent-green-rgb, 40, 167, 69), 0.2);
-  color: white;
+  color: var(--text-secondary);
   border: 1px solid rgba(var(--accent-green-rgb, 40, 167, 69), 0.3);
 }
 
@@ -701,11 +712,13 @@ const formatTime = (timeStr) => {
 .btn-download:hover {
   background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
   border-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.5);
+  color:white
 }
 
 .btn-new-folder:hover {
   background-color: rgba(var(--accent-green-rgb, 40, 167, 69), 0.3);
   border-color: rgba(var(--accent-green-rgb, 40, 167, 69), 0.5);
+  color:white
 }
 
 .btn-delete:hover {
@@ -716,6 +729,41 @@ const formatTime = (timeStr) => {
 /* 按钮文字 - 响应式隐藏 */
 .btn-text {
   display: inline;
+}
+
+/* 加载遮罩效果 */
+.file-table.loading-overlay {
+  position: relative;
+}
+
+.loading-overlay-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-primary);
+  z-index: 10;
+  border-radius: 8px;
+  flex-direction: column;
+}
+
+.loading-overlay-content i {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.table-row.loading-disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.table-row.loading-disabled.is-dir {
+  cursor: not-allowed;
 }
 
 /* 小屏幕只显示图标 */
@@ -736,6 +784,14 @@ const formatTime = (timeStr) => {
   
   .operation-buttons {
     gap: 6px;
+  }
+  
+  .loading-overlay-content {
+    padding: 20px;
+  }
+  
+  .loading-overlay-content i {
+    font-size: 20px;
   }
 }
 
@@ -758,6 +814,15 @@ const formatTime = (timeStr) => {
   
   .operation-buttons {
     gap: 4px;
+  }
+  
+  .loading-overlay-content {
+    padding: 15px;
+    font-size: 14px;
+  }
+  
+  .loading-overlay-content i {
+    font-size: 18px;
   }
 }
 </style>
