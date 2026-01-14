@@ -23,8 +23,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <script setup>
-import ls from '../data/fileSystem.js'
-import { ref, watch, onMounted } from 'vue'
+import { ls,mkdir,rm } from '../data/fileSystem.js'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 
 // TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
 
@@ -40,6 +40,12 @@ const props = defineProps({
 const fileList = ref([])
 const loading = ref(false)
 const error = ref(null)
+
+// 文件选择相关状态
+const selectedFiles = ref(new Set()) // 用Set存储选中的文件路径，因为Set查询更快
+const lastSelectedIndex = ref(-1) // 记录上一次选中的文件索引，用于Shift连续选择
+const ctrlPressed = ref(false) // 是否按下了Ctrl键
+const shiftPressed = ref(false) // 是否按下了Shift键
 
 // 路径编辑相关状态 - 支持点击当前路径手动输入
 const isEditingPath = ref(false)
@@ -57,14 +63,48 @@ const handleUploadClick = () => {
 
 const handleDownloadClick = () => {
   console.log('下载点击，得想想怎么处理选中的文件')
+  // TODO: 需要选中有文件才能下载，不然不知道下什么
+  console.log('当前选中的文件:', Array.from(selectedFiles.value))
 }
 
 const handleNewFolderClick = () => {
   console.log('新建文件夹点击，可能需要弹个输入框')
+  // 先简单实现，用prompt输入框
+  const folderName = prompt('请输入新文件夹名称', '新建文件夹')
+  if (folderName && folderName.trim()) {
+    console.log('创建文件夹:', folderName)
+    // TODO: 这里要调用API创建文件夹，创建成功后刷新列表
+    // 暂时先提示一下
+    console.info(props.currentPath.value, folderName  )
+    
+    if(props.currentPath.value === '/' || props.currentPath.value === undefined){
+      var path = ''
+    }
+    else{
+      var path=props.currentPath.value
+
+    }
+    mkdir(path, folderName) 
+
+    
+   }
 }
 
 const handleDeleteClick = () => {
   console.log('删除点击，这个得小心点，要加确认对话框')
+  const selectedCount = selectedFiles.value.size
+  if (selectedCount === 0) {
+    alert('请先选择要删除的文件')
+    return
+  }
+  
+  if (confirm(`确定要删除选中的 ${selectedCount} 个文件吗？`)) {
+    console.log('删除选中的文件:', Array.from(selectedFiles.value))
+    // TODO: 调用API删除文件，删除成功后刷新列表
+    for(const file of selectedFiles.value){
+      rm(file, true)
+    }
+  }
 }
 
 // 获取文件列表
@@ -113,11 +153,16 @@ const fetchFiles = async (path) => {
   }
 }
 
+
+
 // 点击文件夹进入子目录 - 这里只处理，让父组件知道路径变化
 const emit = defineEmits(['path-change'])
 
 const enterFolder = (folderPath) => {
   console.log('点击进入文件夹:', folderPath)
+  // 进入新文件夹时清空选择状态，不然上个目录选中的文件在新目录里可能不存在
+  selectedFiles.value.clear()
+  lastSelectedIndex.value = -1
   emit('path-change', folderPath)
 }
 
@@ -179,12 +224,61 @@ const goUp = () => {
 // 监听路径变化，重新获取数据
 watch(() => props.currentPath, (newPath) => {
   console.log('路径变化了，重新获取:', newPath)
+  // 路径变化时清空选择状态
+  selectedFiles.value.clear()
+  lastSelectedIndex.value = -1
   fetchFiles(newPath)
 })
 
 // 组件挂载时获取初始数据
 onMounted(() => {
   fetchFiles(props.currentPath)
+  
+  // 添加键盘事件监听，用于检测Ctrl和Shift键
+  const handleKeyDown = (e) => {
+    if (e.key === 'Control' || e.key === 'Meta') { // Meta是Mac的Command键
+      ctrlPressed.value = true
+    } else if (e.key === 'Shift') {
+      shiftPressed.value = true
+    }
+  }
+  
+  const handleKeyUp = (e) => {
+    if (e.key === 'Control' || e.key === 'Meta') {
+      ctrlPressed.value = false
+    } else if (e.key === 'Shift') {
+      shiftPressed.value = false
+    }
+  }
+  
+  // 全局点击事件，点击空白处清空选择（除了Ctrl和Shift操作时）
+  // 这里有个问题：如果点击的是按钮或其他可交互元素，不应该清空选择
+  // 先简单实现，后面再优化
+  const handleGlobalClick = (e) => {
+    // 检查点击的是不是文件行，如果是的话就不在这里处理（文件行有自己的点击事件）
+    // 主要处理点击表格空白区域的情况
+    const isFileRow = e.target.closest('.table-row') !== null
+    const isClickableElement = e.target.closest('button') !== null || 
+                              e.target.closest('input') !== null ||
+                              e.target.closest('.current-path') !== null
+    
+    if (!isFileRow && !isClickableElement && !ctrlPressed.value && !shiftPressed.value) {
+      // 点击空白处且没有按Ctrl/Shift，清空选择
+      selectedFiles.value.clear()
+      lastSelectedIndex.value = -1
+    }
+  }
+  
+  window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('keyup', handleKeyUp)
+  window.addEventListener('click', handleGlobalClick)
+  
+  // 组件卸载时清理事件监听
+  onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeyDown)
+    window.removeEventListener('keyup', handleKeyUp)
+    window.removeEventListener('click', handleGlobalClick)
+  })
 })
 
 // 点击其他地方取消编辑 - 简单处理，先不弄，用ESC键取消就行
@@ -203,6 +297,66 @@ const formatTime = (timeStr) => {
   if (!timeStr) return ''
   // 去掉时区部分，简单显示
   return timeStr.split('T')[0]
+}
+
+// 文件选择逻辑 - 处理三种情况：普通点击、Ctrl+点击、Shift+点击
+const handleFileClick = (item, index, event) => {
+  if (loading.value) return // 加载时不能点击
+  if (event) event.stopPropagation() // 阻止事件冒泡
+  
+  const itemPath = item.path
+  /*
+  
+  // 处理Shift+点击（连续选择）
+  if (shiftPressed.value && lastSelectedIndex.value !== -1) {
+    // 找到开始和结束索引（从小到大）
+    const start = Math.min(lastSelectedIndex.value, index)
+    const end = Math.max(lastSelectedIndex.value, index)
+    
+    // 清除选择（除非按着Ctrl，但Shift+Ctrl组合比较复杂，先不处理）
+    if (!ctrlPressed.value) {
+      selectedFiles.value.clear()
+    }
+    
+    // 选择这个范围内的所有文件
+    for (let i = start; i <= end; i++) {
+      if (i < fileList.value.length) {
+        selectedFiles.value.add(fileList.value[i].path)
+      }
+    }
+    
+    // 更新最后一次选中的索引
+    lastSelectedIndex.value = index
+    return
+  }
+  
+  // 处理Ctrl+点击（多选/取消选择）
+  if (ctrlPressed.value) {
+    if (selectedFiles.value.has(itemPath)) {
+      // 已经选中了，就取消选择
+      selectedFiles.value.delete(itemPath)
+      // 这里有个问题：如果取消了最后一个选中的，lastSelectedIndex不好处理
+      // 先简单设为-1，后面可能会出bug
+      if (selectedFiles.value.size === 0) {
+        lastSelectedIndex.value = -1
+      }
+    } else {
+      // 没选中，就添加选择
+      selectedFiles.value.add(itemPath)
+      lastSelectedIndex.value = index
+    }
+    return
+  }
+  */
+  // 普通点击（单选）
+  selectedFiles.value.clear()
+  selectedFiles.value.add(itemPath)
+  lastSelectedIndex.value = index
+}
+
+// 检查文件是否被选中
+const isFileSelected = (itemPath) => {
+  return selectedFiles.value.has(itemPath)
 }
 </script>
 
@@ -291,11 +445,17 @@ const formatTime = (timeStr) => {
       <!-- 文件列表 -->
       <div v-else class="table-body">
         <div 
-          v-for="item in fileList" 
+          v-for="(item, index) in fileList" 
           :key="item.path" 
           class="table-row" 
+          @click="(e) => handleFileClick(item, index, e)"
           @dblclick="item.is_dir && !loading ? enterFolder(item.path) : null"
-          :class="{ 'is-dir': item.is_dir, 'is-file': item.is_file, 'loading-disabled': loading }"
+          :class="{ 
+            'is-dir': item.is_dir, 
+            'is-file': item.is_file, 
+            'loading-disabled': loading,
+            'selected': isFileSelected(item.path)
+          }"
         >
           <div class="cell name">
             <i :class="item.is_dir ? 'ri-folder-line' : 'ri-file-line'"></i>
@@ -332,6 +492,7 @@ const formatTime = (timeStr) => {
     <!-- 底部信息 -->
     <div class="table-footer">
       <span>共 {{ fileList.length }} 个项目</span>
+      <span v-if="selectedFiles.size > 0">已选中 {{ selectedFiles.size }} 个</span>
       <span v-if="currentPath !== ''">路径: /{{ currentPath }}</span>
       <span v-else>路径: /</span>
     </div>
@@ -547,6 +708,16 @@ const formatTime = (timeStr) => {
 
 .table-row.is-dir {
   cursor: pointer;
+}
+
+/* 选中状态 - 给选中的行添加明显的背景色 */
+.table-row.selected {
+  background: rgba(var(--accent-blue-rgb), 0.15) !important;
+  border-left: 3px solid var(--accent-blue);
+}
+
+.table-row.selected:hover {
+  background: rgba(var(--accent-blue-rgb), 0.25) !important;
 }
 
 .cell {

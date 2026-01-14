@@ -29,6 +29,8 @@ import { ref, reactive } from "vue";
 const basicUrl = "http://localhost:8005";
 const timeOut = 10000;
 
+
+
 async function ls(path) {
     try {
         // 创建一个Promise，用于控制超时
@@ -62,4 +64,98 @@ async function ls(path) {
     }
 }
 
-export default ls;
+/**
+ * 创建新目录
+ *
+ * @param {string} path - 目录的父路径（相对于 storage 目录）
+ * @param {string} directoryName - 要创建的目录名称（不能包含路径分隔符）
+ * @returns {Promise<Object|null>} - 成功时返回响应数据，超时时返回 null，其他错误将抛出
+ */
+async function mkdir(path, directoryName) {
+    try {
+        // 创建超时 Promise
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error("Request timeout"));
+            }, timeOut);
+        });
+
+        // 构造查询参数
+        const params = new URLSearchParams({
+            path: path,
+            directory_name: directoryName,
+        });
+
+        // 发起 POST 请求（axios 默认会将 params 附加到 URL 上）
+        const requestPromise = axios.post(
+            basicUrl + "/files/directories",
+            null, // 没有请求体，使用 null
+            {
+                params: params,
+                headers: {
+                    Authorization: "Bearer test123",
+                },
+            }
+        );
+
+        const response = await Promise.race([requestPromise, timeoutPromise]);
+        console.log("Directory created:", response.data);
+
+        return response.data;
+    } catch (error) {
+        if (error.message === "Request timeout") {
+            console.warn(`Request timed out after ${timeOut}ms`);
+            return null;
+        } else {
+            throw error; // 重新抛出非超时错误
+        }
+    }
+}
+
+/**
+ * 删除文件或目录
+ *
+ * @param {string} path - 要删除的文件或目录路径（相对于 storage 目录）
+ * @param {boolean} [permanent=false] - 是否永久删除（不进入回收站）
+ * @returns {Promise<Object|null>} - 成功时返回响应数据，超时时返回 null，其他错误将抛出
+ */
+async function rm(path, permanent = false) {
+    try {
+        // 创建超时 Promise
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error("Request timeout"));
+            }, timeOut);
+        });
+
+        // 构造查询参数
+        const params = new URLSearchParams({
+            permanent: permanent.toString(),
+        });
+
+        // 发起 DELETE 请求
+        const requestPromise = axios.delete(
+            `${basicUrl}/files/${encodeURIComponent(path)}`,
+            {
+                params: params,
+                headers: {
+                    Authorization: "Bearer test123",
+                },
+            }
+        );
+
+        const response = await Promise.race([requestPromise, timeoutPromise]);
+        console.log("File or directory deleted:", response.data);
+
+        return response.data;
+    } catch (error) {
+        if (error.message === "Request timeout") {
+            console.warn(`Request timed out after ${timeOut}ms`);
+            return null;
+        } else {
+            throw error; // 重新抛出非超时错误
+        }
+    }
+}
+export {ls,mkdir,rm};
+
