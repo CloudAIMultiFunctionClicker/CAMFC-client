@@ -24,6 +24,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 <script setup>
 import { ls,mkdir,rm } from '../data/fileSystem.js'
+import { showToast} from '../layout/showToast.js'
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 
 // TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
@@ -67,42 +68,83 @@ const handleDownloadClick = () => {
   console.log('当前选中的文件:', Array.from(selectedFiles.value))
 }
 
-const handleNewFolderClick = () => {
-  console.log('新建文件夹点击，可能需要弹个输入框')
-  // 先简单实现，用prompt输入框
+const handleNewFolderClick = async () => {
+  console.log('新建文件夹点击')
+  // 用prompt输入框，虽然不太好看但简单
   const folderName = prompt('请输入新文件夹名称', '新建文件夹')
   if (folderName && folderName.trim()) {
-    console.log('创建文件夹:', folderName)
-    // TODO: 这里要调用API创建文件夹，创建成功后刷新列表
-    // 暂时先提示一下
-    console.info(props.currentPath.value, folderName  )
+    console.log('创建文件夹:', folderName, '在当前路径:', props.currentPath)
     
-    if(props.currentPath.value === '/' || props.currentPath.value === undefined){
-      var path = ''
+    try {
+      // 调用API创建文件夹，创建成功后刷新列表
+      // 注意：props.currentPath是字符串，不是ref
+      const result = await mkdir(props.currentPath, folderName)
+      if (result !== null) {
+        showToast(`文件夹 "${folderName}" 创建成功`)
+        // 创建成功后刷新文件列表
+        await fetchFiles(props.currentPath)
+      } else {
+        // mkdir返回null表示超时
+        showToast('请求超时，请稍后重试', '#f59e0b')
+      }
+    } catch (error) {
+      console.error('创建文件夹失败:', error)
+      // TODO: 这里可以根据错误类型显示不同提示
+      showToast(`创建失败: ${error.message}`, '#ef4444')
     }
-    else{
-      var path=props.currentPath.value
-
-    }
-    mkdir(path, folderName) 
-
-    
-   }
+  } else {
+    // 用户取消了输入或输入为空
+    console.log('用户取消了创建文件夹')
+  }
 }
 
-const handleDeleteClick = () => {
-  console.log('删除点击，这个得小心点，要加确认对话框')
+const handleDeleteClick = async () => {
+  console.log('删除点击')
   const selectedCount = selectedFiles.value.size
   if (selectedCount === 0) {
-    alert('请先选择要删除的文件')
+    // 这里改成showToast，比alert好看点
+    showToast('请先选择要删除的文件', '#f59e0b')
     return
   }
   
+  // 确认对话框还是用原生的吧，简单
   if (confirm(`确定要删除选中的 ${selectedCount} 个文件吗？`)) {
     console.log('删除选中的文件:', Array.from(selectedFiles.value))
-    // TODO: 调用API删除文件，删除成功后刷新列表
-    for(const file of selectedFiles.value){
-      rm(file, true)
+    
+    try {
+      // 依次删除选中的文件
+      let successCount = 0
+      let errorCount = 0
+      
+      for (const file of selectedFiles.value) {
+        try {
+          const result = await rm(file, true)
+          if (result !== null) {
+            successCount++
+            console.log('删除成功:', file)
+          } else {
+            // 超时
+            errorCount++
+            console.warn('删除超时:', file)
+          }
+        } catch (error) {
+          errorCount++
+          console.error('删除失败:', file, error)
+        }
+      }
+      
+      // 显示结果
+      if (successCount > 0) {
+        showToast(`成功删除 ${successCount} 个文件${errorCount > 0 ? `，${errorCount} 个失败` : ''}`)
+        // 删除成功后刷新文件列表，保持当前路径
+        await fetchFiles(props.currentPath)
+      } else {
+        showToast('删除失败，请重试', '#ef4444')
+      }
+      
+    } catch (error) {
+      console.error('删除过程中出错:', error)
+      showToast(`删除出错: ${error.message}`, '#ef4444')
     }
   }
 }
