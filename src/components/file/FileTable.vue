@@ -27,6 +27,7 @@ import { ls,mkdir,rm } from '../data/fileSystem.js'
 import { showToast} from '../layout/showToast.js'
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 
+
 // TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
 
 // 接受当前路径作为参数，默认空字符串就是根目录
@@ -36,6 +37,8 @@ const props = defineProps({
     default: ''
   }
 })
+
+
 
 // 响应式数据
 const fileList = ref([])
@@ -180,6 +183,7 @@ const fetchFiles = async (path) => {
         error.value = `服务器错误 (${status})`
       }
       console.error('获取文件列表出错 - 状态码:', status, err)
+      
     } else if (err.request) {
       // 请求已发出但没有收到响应
       error.value = '网络错误，请检查连接'
@@ -190,6 +194,7 @@ const fetchFiles = async (path) => {
       console.error('其他错误:', err)
     }
     fileList.value = []
+    showToast(error.value,'#ff0000')
   } finally {
     loading.value = false
   }
