@@ -24,6 +24,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 <script setup>
 import { ref, provide, onMounted, onUnmounted } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
+
+  // 导入应用头部组件
+import AppHeader from './components/layout/AppHeader.vue'
 
 // 主题状态管理 - 默认跟随系统配色
 // 先尝试从localStorage读取用户之前的选择
@@ -74,6 +78,25 @@ const updateBodyClass = () => {
   }
 }
 
+// 扫描蓝牙设备的函数
+const scanBluetooth = async () => {
+  try {
+    console.info('开始扫描蓝牙设备...')
+    // 调用Rust后端的蓝牙扫描命令
+    const devices = await invoke('scan_bluetooth_devices')
+    console.info('蓝牙设备扫描完成，发现设备：', devices)
+    
+    // 如果返回的是数组，逐条输出
+    if (Array.isArray(devices)) {
+      devices.forEach((device, index) => {
+        console.info(`蓝牙设备 ${index + 1}: ${device}`)
+      })
+    }
+  } catch (error) {
+    console.error('蓝牙扫描失败:', error)
+  }
+}
+
 // 把主题状态和切换函数提供给子组件使用
 provide('theme', {
   isLightMode,
@@ -111,13 +134,21 @@ onMounted(() => {
   onUnmounted(() => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
   })
+  
+  // 窗口启动后扫描蓝牙设备
+  // 加个短暂延迟，确保应用完全加载
+  setTimeout(() => {
+    scanBluetooth()
+  }, 1000)
 })
 </script>
 
 <template>
   <!-- router-view用来显示路由组件 -->
   <!-- 整个应用的主题通过body类名控制 -->
-  <router-view></router-view>
+  <AppHeader/>
+
+    <router-view></router-view>
 </template>
 
 <style>

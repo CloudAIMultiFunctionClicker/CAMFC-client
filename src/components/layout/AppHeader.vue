@@ -60,9 +60,12 @@ const theme = inject('theme')
                 </button>
                 
                 <!-- 用户头像按钮 -->
-                <button class="btn-avatar">
+                <!--现在的跳转 测试用-->
+                <router-link to="/fileView">
+                <button class="btn-avatar" >
+                    
                     <i class="ri-user-line"></i>
-                </button>
+                </button></router-link>
             </div>
         </div>
     </header>

@@ -58,7 +58,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 <template>
   <!-- 主页布局 -->
-  <AppHeader/>
   
   <!-- 主内容区域容器 -->
   <div class="main-container">
