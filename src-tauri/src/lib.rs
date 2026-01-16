@@ -150,11 +150,119 @@ async fn scan_bluetooth_devices() -> Result<Vec<String>, String> {
     Ok(devices)
 }
 
+/// 连接蓝牙设备
+/// 
+/// 这个函数会尝试连接指定的设备
+/// 参数是设备名称（从扫描结果里拿到的完整字符串）
+/// 
+/// 注意：btleplug的连接API有点复杂，这里先实现一个基础版本
+/// 实际使用中可能需要处理更多错误情况
+#[tauri::command]
+async fn connect_to_device(device_info: String) -> Result<String, String> {
+    use btleplug::api::{Central, Manager as _, Peripheral, ScanFilter};
+    use btleplug::platform::Manager;
+    use std::time::Duration;
+    use tokio::time::sleep;
+    
+    println!("开始连接设备: {}", device_info);
+    
+    // 解析设备信息，格式是 "设备名 - 地址"
+    // 不过我们主要用地址来连接，名字只是给人看的
+    let parts: Vec<&str> = device_info.split(" - ").collect();
+    let target_address = if parts.len() >= 2 {
+        parts[1].to_string()
+    } else {
+        // 如果格式不对，就用整个字符串当地址
+        device_info.clone()
+    };
+    
+    // 先启用蓝牙（虽然main_func里已经启用了，但这里再确保一下）
+    enable_bluetooth().map_err(|e| format!("启用蓝牙失败: {}", e))?;
+    
+    // 获取蓝牙管理器
+    let manager = Manager::new().await.map_err(|e| e.to_string())?;
+    let adapters = manager.adapters().await.map_err(|e| e.to_string())?;
+    
+    if adapters.is_empty() {
+        return Err("没有可用的蓝牙适配器".to_string());
+    }
+    
+    let central = adapters.into_iter().next().unwrap();
+    
+    // 开始扫描来找到目标设备
+    println!("正在扫描以找到设备 {}...", target_address);
+    central.start_scan(ScanFilter::default()).await.map_err(|e| e.to_string())?;
+    
+    // 等待一会儿让设备被发现
+    sleep(Duration::from_secs(2)).await;
+    
+    // 获取所有发现的设备
+    let peripherals = central.peripherals().await.map_err(|e| e.to_string())?;
+    
+    // 停止扫描
+    central.stop_scan().await.map_err(|e| e.to_string())?;
+    
+    // 查找目标设备
+    let mut target_peripheral = None;
+    
+    for peripheral in &peripherals {
+        if let Ok(properties) = peripheral.properties().await {
+            if let Some(props) = properties {
+                let address = props.address.to_string();
+                
+                // 检查地址是否匹配
+                if address == target_address {
+                    println!("找到目标设备，地址: {}", address);
+                    target_peripheral = Some(peripheral.clone());
+                    break;
+                }
+            }
+        }
+    }
+    
+    match target_peripheral {
+        Some(peripheral) => {
+            println!("正在连接设备...");
+            
+            // 尝试连接
+            // 这里有个问题：btleplug的connect方法可能需要适配器级别的权限
+            // 先试试看，不行再想其他办法
+            match peripheral.connect().await {
+                Ok(_) => {
+                    println!("连接成功！");
+                    
+                    // 检查连接状态
+                    if peripheral.is_connected().await.map_err(|e| e.to_string())? {
+                        // 可以在这里添加更多操作，比如发现服务、读取特征等
+                        // 不过对于Cpen设备，可能需要特定的服务UUID
+                        println!("设备已连接，可以开始通信");
+                        
+                        // TODO: 这里应该发现设备服务，但不知道Cpen的具体服务UUID
+                        // 暂时先返回成功
+                        return Ok(format!("成功连接到设备: {}", device_info));
+                    } else {
+                        println!("连接状态检查失败，可能实际没连上");
+                        return Err("连接状态异常".to_string());
+                    }
+                }
+                Err(e) => {
+                    println!("连接失败: {}", e);
+                    return Err(format!("连接失败: {}", e));
+                }
+            }
+        }
+        None => {
+            println!("未找到设备: {}", target_address);
+            Err(format!("未找到设备: {}", target_address))
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, scan_bluetooth_devices,main_func])
+        .invoke_handler(tauri::generate_handler![greet, scan_bluetooth_devices, main_func, connect_to_device])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
@@ -170,13 +278,50 @@ async fn main_func() -> Result<String, String> {
         .map_err(|e| format!("扫描设备失败: {}", e))?;
     
     // 3. 查找Cpen开头的设备
+    // 这里先检查有没有Cpen设备，不管有没有找到都要输出结果
+    // 用户要求：扫描到Cpen也要输出，所以即使没找到也不能直接报错
     let target_device = devices.iter()
-        .find(|d| d.starts_with("Cpen"))
-        .cloned()
-        .ok_or("未找到Cpen开头的设备".to_string())?;
+        .find(|d| d.starts_with("Cpen"));
     
-    // 4. 连接设备（需要实现连接逻辑）
-    // ... 连接代码 ...
+    // 4. 输出扫描结果
+    println!("扫描完成，共发现 {} 个设备:", devices.len());
+    for (i, device) in devices.iter().enumerate() {
+        println!("设备 {}: {}", i + 1, device);
+    }
     
-    Ok(format!("成功连接设备: {}", target_device))
+    // 5. 如果有Cpen设备，尝试连接
+    match target_device {
+        Some(device_name) => {
+            println!("发现Cpen设备: {}", device_name);
+            
+            // 尝试连接设备 - 现在有了实际的连接函数
+            println!("正在尝试连接Cpen设备...");
+            
+            // 调用连接函数
+            match connect_to_device(device_name.clone()).await {
+                Ok(connection_result) => {
+                    println!("连接成功: {}", connection_result);
+                    Ok(format!("扫描完成，发现并成功连接Cpen设备: {}。共扫描到 {} 个设备。连接结果: {}", 
+                        device_name, devices.len(), connection_result))
+                }
+                Err(e) => {
+                    println!("连接失败: {}", e);
+                    // 思考：连接失败要不要算作整个main_func失败？
+                    // 我觉得不应该，因为扫描本身成功了，只是连接失败
+                    // 但用户可能更关心连接结果，所以返回错误信息但格式是成功的？
+                    // 先返回包含错误信息的成功结果吧，这样前端能看到发生了什么
+                    Ok(format!("扫描完成，发现Cpen设备但连接失败: {}。错误: {}。共扫描到 {} 个设备。", 
+                        device_name, e, devices.len()))
+                }
+            }
+        }
+        None => {
+            // 没找到Cpen设备，但还是要输出扫描结果
+            println!("未发现Cpen开头的设备，但有其他设备");
+            
+            // 思考：这里要不要返回错误？用户说"扫描到Cpen也要输出"
+            // 我的理解是：即使没找到Cpen，也要输出扫描结果，所以返回成功但提示没找到
+            Ok(format!("扫描完成，未发现Cpen设备。共扫描到 {} 个其他设备。", devices.len()))
+        }
+    }
 }

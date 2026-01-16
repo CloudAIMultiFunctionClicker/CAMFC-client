@@ -78,10 +78,36 @@ const updateBodyClass = () => {
   }
 }
 
-// 扫描蓝牙设备的函数
+// 自动连接Cpen设备的函数
+// 这个函数会调用main_func，它会：
+// 1. 启用蓝牙
+// 2. 扫描设备
+// 3. 如果找到Cpen设备，自动连接
+// 4. 返回扫描和连接结果
+const autoConnectCpen = async () => {
+  try {
+    console.info('开始自动连接Cpen设备...')
+    
+    // 调用main_func命令，它会自动扫描并连接Cpen设备
+    const result = await invoke('main_func')
+    
+    console.info('自动连接完成:', result)
+    
+    // 这里可以把结果显示给用户
+    // TODO: 可以添加一个toast通知或者状态显示
+    
+  } catch (error) {
+    console.error('自动连接Cpen失败:', error)
+    
+    // 即使出错，也输出错误信息，方便调试
+    // 思考：这里要不要重试？或者提示用户手动操作？
+    // 先保持简单，只输出错误
+  }
+}
+
+// 扫描蓝牙设备的函数（保留原有功能，可能需要手动调用）
 const scanBluetooth = async () => {
   try {
-    console.info('k')
     console.info('开始扫描蓝牙设备...')
     // 调用Rust后端的蓝牙扫描命令
     const devices = await invoke('scan_bluetooth_devices')
@@ -95,7 +121,6 @@ const scanBluetooth = async () => {
           console.info(`找到Cpen设备`)
         }
       })
-
     }
   } catch (error) {
     console.error('蓝牙扫描失败:', error)
@@ -140,10 +165,10 @@ onMounted(() => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
   })
   
-  // 窗口启动后扫描蓝牙设备
+  // 窗口启动后自动连接Cpen设备
   // 加个短暂延迟，确保应用完全加载
   setTimeout(() => {
-    scanBluetooth()
+    autoConnectCpen()
   }, 1000)
 })
 </script>
