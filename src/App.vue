@@ -81,6 +81,7 @@ const updateBodyClass = () => {
 // 扫描蓝牙设备的函数
 const scanBluetooth = async () => {
   try {
+    console.info('k')
     console.info('开始扫描蓝牙设备...')
     // 调用Rust后端的蓝牙扫描命令
     const devices = await invoke('scan_bluetooth_devices')
@@ -90,7 +91,11 @@ const scanBluetooth = async () => {
     if (Array.isArray(devices)) {
       devices.forEach((device, index) => {
         console.info(`蓝牙设备 ${index + 1}: ${device}`)
+        if (String(device).slice(0,4)=='Cpen'){
+          console.info(`找到Cpen设备`)
+        }
       })
+
     }
   } catch (error) {
     console.error('蓝牙扫描失败:', error)
