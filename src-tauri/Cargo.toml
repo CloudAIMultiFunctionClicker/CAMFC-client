@@ -31,3 +31,4 @@ windows = { version = "0.58", features = [
     "Foundation_Collections",
     "Foundation_Numerics",  
 ] }
+uuid = "1.19.0"

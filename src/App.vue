@@ -24,7 +24,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 <script setup>
 import { ref, provide, onMounted, onUnmounted } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
+// 导入蓝牙业务逻辑模块（独立文件）
+// 使用新的增强版函数：自动连接Cpen并获取TOTP
+import { autoConnectAndGetTotp } from './components/data/bluetooth'
+
+import {showToast} from './components/layout/showToast.js'
 
   // 导入应用头部组件
 import AppHeader from './components/layout/AppHeader.vue'
@@ -78,47 +82,28 @@ const updateBodyClass = () => {
   }
 }
 
-// 自动连接Cpen设备的函数
-// 这个函数会调用main_func，它会：
-// 1. 启用蓝牙
-// 2. 扫描设备
-// 3. 如果找到Cpen设备，自动连接
-// 4. 返回扫描和连接结果
-const autoConnectCpen = async () => {
-  try {
-    console.info('开始自动连接Cpen设备...')
-    
-    // 调用main_func命令，它会自动扫描并连接Cpen设备
-    const result = await invoke('main_func')
-    
-    console.info('自动连接完成:', result)
-    
-    // 这里可以把结果显示给用户
-    // TODO: 可以添加一个toast通知或者状态显示
-    
-  } catch (error) {
-    console.error('自动连接Cpen失败:', error)
-    
-    // 即使出错，也输出错误信息，方便调试
-    // 思考：这里要不要重试？或者提示用户手动操作？
-    // 先保持简单，只输出错误
-  }
-}
+// 注意：现在使用autoConnectAndGetTotp函数
+// 这个函数会：扫描设备 → 查找Cpen → 连接设备 → 发送"getTotp" → 获取TOTP
+// 主要的业务逻辑都在bluetooth.js中实现，Rust端只提供基础的蓝牙交互功能
+// 这完全符合"主要逻辑在前端"的设计原则
 
 // 扫描蓝牙设备的函数（保留原有功能，可能需要手动调用）
+// 这个函数现在也调用蓝牙模块，保持向后兼容
 const scanBluetooth = async () => {
   try {
-    console.info('开始扫描蓝牙设备...')
-    // 调用Rust后端的蓝牙扫描命令
-    const devices = await invoke('scan_bluetooth_devices')
-    console.info('蓝牙设备扫描完成，发现设备：', devices)
+    showToast('开始扫描蓝牙设备...')
+    // 调用蓝牙模块的扫描功能
+    const { scanDevices } = await import('./components/data/bluetooth')
+    const devices = await scanDevices()
+    showToast('蓝牙设备扫描完成，发现设备：', devices)
     
     // 如果返回的是数组，逐条输出
     if (Array.isArray(devices)) {
       devices.forEach((device, index) => {
-        console.info(`蓝牙设备 ${index + 1}: ${device}`)
-        if (String(device).slice(0,4)=='Cpen'){
-          console.info(`找到Cpen设备`)
+        showToast(`蓝牙设备 ${index + 1}: ${device}`)
+        // 这里还可以调用findCpenDevices来检查，但为了简单先保持原样
+        if (String(device).slice(0,4).toLowerCase() === 'cpen'){
+          showToast(`找到Cpen设备`)
         }
       })
     }
@@ -165,10 +150,25 @@ onMounted(() => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
   })
   
-  // 窗口启动后自动连接Cpen设备
+  // 窗口启动后自动连接Cpen设备并获取TOTP
+  // 这是用户要求的主要功能：连接Cpen之后发送'getTotp'并且把返回值打印在console
   // 加个短暂延迟，确保应用完全加载
   setTimeout(() => {
-    autoConnectCpen()
+    showToast('应用启动，开始自动连接Cpen设备并获取TOTP...')
+    autoConnectAndGetTotp()
+      .then(result => {
+        if (result.success) {
+          showToast('自动连接并获取TOTP成功:', result.message)
+          if (result.totp) {
+            console.log(`应用启动时获取的TOTP: ${result.totp}`)
+          }
+        } else {
+          console.warn('自动连接并获取TOTP失败:', result.message)
+        }
+      })
+      .catch(error => {
+        console.error('自动连接并获取TOTP过程中发生错误:', error)
+      })
   }, 1000)
 })
 </script>

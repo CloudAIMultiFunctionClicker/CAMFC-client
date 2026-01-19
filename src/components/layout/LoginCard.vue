@@ -21,22 +21,31 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
-
 <style>
+    .parent-container {
+        display: flex;
+        justify-content: center; /* 水平居中 */
+        align-items: center;       /* 垂直居中 */
+        height: calc(100vh - 65px);            /* 设置父容器高度为视口高度 */
+    }
+    
     .card-container {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 12px 16px;
-    background: var(--bg-secondary);
-    border-bottom: 1px solid var(--border-color);
-    margin-bottom: 16px;
-    border-radius: 8px;
-}
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 12px 16px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 16px;
+        border-radius: 8px;
+        margin-top: -64px; /* 偏上64px */
+    }
 </style>
 
 <template> 
-<div class="card-container"> 
-    <h1>hello</h1>
+<div class="parent-container">
+    <div class="card-container"> 
+        <h1>hello</h1>
+    </div>
 </div>
 </template>
