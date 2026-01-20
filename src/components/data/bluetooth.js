@@ -431,84 +431,167 @@ export async function disconnectCurrentDevice() {
 }
 
 /**
- * 开始监听设备数据
+ * recv()函数 - 类似Python的socket.recv()
+ * 阻塞等待接收蓝牙数据，直到收到数据或超时
  * 
- * 这个函数会调用Rust端的start_listening_for_data命令
- * 启动后台任务持续监听来自设备的数据包
+ * 思考：用户想要类似Python recv()的函数，简单直接
+ * 不像"开始监听"那么复杂，就是等待数据而已
  * 
- * 注意：需要先连接设备才能使用这个函数
- * 当收到数据时，会通过TAURI事件系统发送到前端
- * 
- * @returns {Promise<void>}
+ * @param {number} timeout - 超时时间，默认2000ms
+ * @returns {Promise<string>} 收到的数据，超时返回空字符串
  */
-export async function startListeningForData() {
+export async function recv(timeout = 2000) {
   try {
-    // 确保蓝牙管理器已初始化
+    // 先确保蓝牙管理器初始化
     await ensureBluetoothManagerInitialized()
     
-    showToast('开始监听设备数据...')
+    console.log(`recv()开始等待数据，超时${timeout}ms`)
+    // 不显示toast，避免频繁打扰用户，recv应该低调点
     
-    // 调用Rust端的start_listening_for_data命令
-    // 注意：这个命令需要传入app handle，但TAURI会自动处理
-    await invoke('start_listening_for_data')
+    return new Promise((resolve) => {
+      let gotData = false
+      let unlistenFunc = null
+      
+      // 超时定时器
+      const timeoutTimer = setTimeout(() => {
+        if (!gotData) {
+          console.log(`recv()超时${timeout}ms，没收到数据`)
+          // 超时不显示toast，避免干扰
+          
+          // 清理监听
+          if (unlistenFunc) {
+            try {
+              unlistenFunc()
+            } catch (e) {
+              console.log('清理监听时有点小问题:', e)
+            }
+          }
+          resolve('')  // 返回空字符串表示超时
+        }
+      }, timeout)
+      
+      // 监听Rust端发来的事件
+      // 用动态import避免循环依赖问题
+      import('@tauri-apps/api/event').then(({ listen }) => {
+        // 监听蓝牙数据事件
+        listen('bluetooth-data', (event) => {
+          if (!gotData) {
+            gotData = true
+            clearTimeout(timeoutTimer)
+            
+            const data = event.payload
+            console.log('recv()收到数据:', data)
+            
+            // 返回数据
+            const result = typeof data === 'string' ? data : JSON.stringify(data)
+            resolve(result)
+            
+            // 自动取消监听
+            if (unlistenFunc) {
+              try {
+                unlistenFunc()
+              } catch (e) {
+                console.log('取消监听时有点小问题:', e)
+              }
+            }
+          }
+        }).then(unlisten => {
+          // 保存取消监听的函数
+          unlistenFunc = unlisten
+        }).catch(err => {
+          console.warn('设置recv监听时出错:', err)
+          // 出错的话，等200ms就返回空
+          setTimeout(() => {
+            if (!gotData) {
+              gotData = true
+              clearTimeout(timeoutTimer)
+              console.log('recv监听设置失败，返回空数据')
+              resolve('')
+            }
+          }, 200)
+        })
+      }).catch(err => {
+        console.error('导入事件模块失败:', err)
+        // 导入失败，直接返回空
+        if (!gotData) {
+          gotData = true
+          clearTimeout(timeoutTimer)
+          console.log('事件模块加载失败，recv返回空数据')
+          resolve('')
+        }
+      })
+    })
     
-    showToast('数据监听已启动', '#55aa55')
-    console.log('数据监听已启动，等待设备发送数据...')
   } catch (error) {
-    console.error('开始监听设备数据失败:', error)
-    showToast(`开始监听失败: ${error}`, '#ff0000')
-    throw new Error(`开始监听失败: ${error}`)
+    console.error('recv()函数出错:', error)
+    // recv失败不throw，直接返回空字符串，简单点
+    return ''
   }
 }
 
 /**
- * 停止监听设备数据
+ * 开始监听设备数据（阻塞式）
+ * 这个函数现在只是recv()的包装，保持兼容性
  * 
- * 这个函数会调用Rust端的stop_listening_for_data命令
- * 停止当前的数据监听任务
+ * @returns {Promise<string>} 收到的数据，如果超时返回空字符串
+ */
+export async function startListeningForData() {
+  console.log('startListeningForData调用recv()...')
+  // 调用Rust端启动监听（如果有必要的话）
+  try {
+    await ensureBluetoothManagerInitialized()
+    await invoke('start_listening_for_data')
+  } catch (err) {
+    console.warn('调用Rust端启动监听失败:', err)
+    // 继续，recv函数不依赖这个
+  }
+  
+  return recv(2000)  // 默认2000ms超时
+}
+
+/**
+ * 停止监听设备数据
+ * 对于recv()这种阻塞函数，这个函数其实没啥用
+ * 因为recv()会自己结束（超时或收到数据）
+ * 但保留着吧，也许有其他用途
  * 
  * @returns {Promise<void>}
  */
 export async function stopListeningForData() {
   try {
-    // 确保蓝牙管理器已初始化
     await ensureBluetoothManagerInitialized()
     
-    showToast('停止监听设备数据...')
+    console.log('尝试停止监听...')
+    // 不显示toast了，recv相关操作要低调
     
-    // 调用Rust端的stop_listening_for_data命令
     await invoke('stop_listening_for_data')
     
-    showToast('数据监听已停止', '#55aa55')
-    console.log('数据监听已停止')
+    console.log('监听已停止')
   } catch (error) {
-    console.error('停止监听设备数据失败:', error)
-    showToast(`停止监听失败: ${error}`, '#ff0000')
-    throw new Error(`停止监听失败: ${error}`)
+    console.warn('停止监听时出错:', error)
+    // 出错就出错吧，不显示toast了
   }
 }
 
 /**
  * 检查是否正在监听数据
+ * 对于阻塞式监听，这个函数其实不太准
+ * 因为阻塞函数执行期间就是在监听，但Rust端可能有自己的状态
+ * 保留这个函数吧，也许有用
  * 
- * 这个函数会调用Rust端的is_listening_for_data命令
- * 返回当前的数据监听状态
- * 
- * @returns {Promise<boolean>} 是否正在监听数据
+ * @returns {Promise<boolean>} 是否正在监听
  */
 export async function isListeningForData() {
   try {
-    // 确保蓝牙管理器已初始化
     await ensureBluetoothManagerInitialized()
     
-    // 调用Rust端的is_listening_for_data命令
     const isListening = await invoke('is_listening_for_data')
     
-    console.log(`数据监听状态: ${isListening}`)
+    console.log(`Rust端说监听状态是: ${isListening}`)
     return isListening
   } catch (error) {
-    console.error('检查监听状态失败:', error)
-    return false
+    console.warn('检查监听状态出错:', error)
+    return false  // 出错就当作没在监听
   }
 }
 
@@ -572,7 +655,7 @@ export async function autoConnectAndGetTotp() {
       // 5. 连接成功后，等待一小会儿让设备稳定
       // 思考：要不要等？从MicroPython代码看，设备连接后应该立即可以通信
       // 但为了保险，等100ms吧
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise(resolve => setTimeout(resolve, 1000))
       
       // 6. 获取TOTP
       let totp
@@ -580,11 +663,21 @@ export async function autoConnectAndGetTotp() {
         totp = await getTotpFromDevice()
         
         // 7. 成功获取TOTP后，开始监听设备数据（用户新需求）
-        // 注意：这里不等待监听启动，因为监听是后台任务
-        // 如果监听启动失败，不影响TOTP获取的成功状态
+        // 现在用recv()函数来监听
         try {
-          await startListeningForData()
-          console.log('TOTP获取成功后已自动开始监听设备数据')
+          console.log('TOTP获取成功，开始recv()监听数据...')
+          // 这里不等待recv()，因为它是阻塞的
+          // 启动一个异步任务来监听
+          recv(2000).then(data => {
+            if (data) {
+              console.log('自动监听收到数据:', data)
+            } else {
+              console.log('自动监听超时，没收到数据')
+            }
+          }).catch(err => {
+            console.warn('自动监听出错:', err)
+          })
+          console.log('已启动recv()监听任务')
         } catch (listenError) {
           console.warn('开始监听设备数据失败，但不影响TOTP获取:', listenError)
         }
@@ -604,8 +697,17 @@ export async function autoConnectAndGetTotp() {
       } catch (totpError) {
         // 连接成功但获取TOTP失败，仍然尝试开始监听（用户需求）
         try {
-          await startListeningForData()
-          console.log('TOTP获取失败但已开始监听设备数据')
+          console.log('TOTP获取失败，但尝试recv()监听数据...')
+          recv(2000).then(data => {
+            if (data) {
+              console.log('自动监听收到数据:', data)
+            } else {
+              console.log('自动监听超时，没收到数据')
+            }
+          }).catch(err => {
+            console.warn('自动监听出错:', err)
+          })
+          console.log('已启动recv()监听任务')
         } catch (listenError) {
           console.warn('开始监听设备数据失败:', listenError)
         }
@@ -667,7 +769,8 @@ export default {
   getTotpFromDevice,
   disconnectCurrentDevice,
   cleanupBluetoothManager, // 新增：清理函数
-  startListeningForData,  // 新增：开始监听数据
-  stopListeningForData,   // 新增：停止监听数据
-  isListeningForData      // 新增：检查监听状态
+  recv,                   // 新增：recv()函数，类似Python的socket.recv()
+  startListeningForData,  // 保留兼容性
+  stopListeningForData,   // 保留兼容性
+  isListeningForData      // 保留兼容性
 }
