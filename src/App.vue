@@ -33,6 +33,12 @@ import {showToast} from './components/layout/showToast.js'
   // 导入应用头部组件
 import AppHeader from './components/layout/AppHeader.vue'
 
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && (e.key === 'r' || e.key === 'p')) {
+    e.preventDefault(); // 阻止浏览器默认行为
+  }
+});
+
 // 主题状态管理 - 默认跟随系统配色
 // 先尝试从localStorage读取用户之前的选择
 // 如果没保存过，就检测系统偏好
