@@ -24,33 +24,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 <script setup>
 import { ref, provide, onMounted, onUnmounted } from 'vue'
-// 导入蓝牙业务逻辑模块（独立文件）
-// 使用新的增强版函数：自动连接Cpen并获取TOTP
-import { autoConnectAndGetTotp } from './components/data/bluetooth'
+// 导入Pinia store来获取蓝牙状态
+import { useBluetoothStore } from './stores/bluetooth.js'
 
 import {showToast} from './components/layout/showToast.js'
 
-  // 导入应用头部组件
+// 导入应用头部组件
 import AppHeader from './components/layout/AppHeader.vue'
 
-import { getTotp } from './components/data/bluetooth'
+// 注意：现在不直接导入蓝牙函数了
+// 根据用户要求，除了bluetooth.js中，其他地方不要调用TOTP有关函数
+// 通过Pinia store获取数据
 
-// 在 setup 中定义一个方法来包装或直接调用 getTotp
-const handleClickGetTotp = async () => {
-  try {
-    // 调用导入的函数
-    const result = await getTotp(); // 或者如果它需要参数，传入所需参数
-    console.log('getTotp result:', result); // 或者处理 result
-    showToast('获取TOTP成功：'+result);
-  } catch (error) {
-    console.error('获取TOTP失败:', error);
-    showToast('获取TOTP失败');
-  }
-};
-
-
+// 处理Ctrl+R等快捷键
 document.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && (e.key === 'r' || e.key === 'p')) {
+  if (e.ctrlKey && (e.key === 'r' || e.key === 'p'|| e.key === 'h'|| e.key === 'z' || e.key === 'f')) {
     e.preventDefault(); // 阻止浏览器默认行为
   }
 });
@@ -106,33 +94,36 @@ const updateBodyClass = () => {
   }
 }
 
-// 注意：现在使用autoConnectAndGetTotp函数
-// 这个函数会：扫描设备 → 查找Cpen → 连接设备 → 发送"getTotp" → 获取TOTP
-// 主要的业务逻辑都在bluetooth.js中实现，Rust端只提供基础的蓝牙交互功能
-// 这完全符合"主要逻辑在前端"的设计原则
+// 注意：现在不直接调用蓝牙函数了，通过Pinia store管理状态
+// InitialView.vue会处理蓝牙连接和TOTP获取
+// 这里只提供基础的工具函数，如果需要的话
 
-// 扫描蓝牙设备的函数（保留原有功能，可能需要手动调用）
-// 这个函数现在也调用蓝牙模块，保持向后兼容
+// 创建bluetooth store实例
+const bluetoothStore = useBluetoothStore()
+
+// 扫描蓝牙设备的函数（保留兼容性，但通过store状态反馈）
+// 这个函数现在主要给其他组件用，如果它们需要手动扫描
 const scanBluetooth = async () => {
   try {
     showToast('开始扫描蓝牙设备...')
-    // 调用蓝牙模块的扫描功能
-    const { scanDevices } = await import('./components/data/bluetooth')
+    // 动态导入蓝牙模块，避免循环依赖
+    const { scanDevices, findCpenDevices } = await import('./components/data/bluetooth')
     const devices = await scanDevices()
-    showToast('蓝牙设备扫描完成，发现设备：', devices)
+    const cpenDevices = findCpenDevices(devices)
     
-    // 如果返回的是数组，逐条输出
-    if (Array.isArray(devices)) {
-      devices.forEach((device, index) => {
-        showToast(`蓝牙设备 ${index + 1}: ${device}`)
-        // 这里还可以调用findCpenDevices来检查，但为了简单先保持原样
-        if (String(device).slice(0,4).toLowerCase() === 'cpen'){
-          showToast(`找到Cpen设备`)
-        }
-      })
+    showToast(`扫描完成，发现 ${devices.length} 个设备，其中 ${cpenDevices.length} 个Cpen设备`)
+    
+    // 如果发现Cpen设备，可以尝试自动连接（可选）
+    // 但根据设计，连接应该由InitialView.vue处理
+    if (cpenDevices.length > 0) {
+      showToast(`发现Cpen设备: ${cpenDevices[0].displayInfo}`)
     }
+    
+    return { devices, cpenDevices }
   } catch (error) {
     console.error('蓝牙扫描失败:', error)
+    showToast('蓝牙扫描失败')
+    return { devices: [], cpenDevices: [] }
   }
 }
 
@@ -174,26 +165,14 @@ onMounted(() => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
   })
   
-  // 窗口启动后自动连接Cpen设备并获取TOTP
-  // 这是用户要求的主要功能：连接Cpen之后发送'getTotp'并且把返回值打印在console
-  // 加个短暂延迟，确保应用完全加载
-  setTimeout(() => {
-    showToast('应用启动，开始自动连接Cpen设备并获取TOTP...')
-    autoConnectAndGetTotp()
-      .then(result => {
-        if (result.success) {
-          showToast('自动连接并获取TOTP成功:', result.message)
-          if (result.totp) {
-            console.log(`应用启动时获取的TOTP: ${result.totp}`)
-          }
-        } else {
-          console.warn('自动连接并获取TOTP失败:', result.message)
-        }
-      })
-      .catch(error => {
-        console.error('自动连接并获取TOTP过程中发生错误:', error)
-      })
-  }, 1000)
+// 窗口启动后，不再自动连接Cpen设备
+// 因为InitialView.vue现在是专门的连接界面，它会处理连接
+// 这里只显示启动提示
+setTimeout(() => {
+  console.log('应用启动完成，InitialView将处理蓝牙连接')
+  // 可以显示一个简单的启动提示
+  // showToast('CAMFC客户端已启动')
+}, 1000)
 })
 </script>
 
@@ -204,7 +183,6 @@ onMounted(() => {
 
     <router-view></router-view>
 
-  <button @click="handleClickGetTotp">clickme</button>
 </template>
 
 <style>

@@ -1,4 +1,5 @@
 import { createApp } from "vue";
+import { createPinia } from 'pinia'  // 导入Pinia
 import App from "./App.vue";
 import router from "./router"; // 导入路由配置
 
@@ -18,9 +19,14 @@ document.addEventListener('contextmenu', e => e.preventDefault());
  * 1. 删除了CDN动态加载，改用本地导入（Tauri打包后无法访问CDN）
  * 2. Remix Icon图标库现在使用本地npm包，确保离线可用
  * 3. Normalize.css也改用本地包，避免外部依赖
+ * 4. 添加Pinia状态管理
  */
 
-// 创建Vue应用实例，使用路由插件，然后挂载到#app元素
+// 创建Pinia实例
+const pinia = createPinia()
+
+// 创建Vue应用实例，使用路由和Pinia插件，然后挂载到#app元素
 createApp(App)
+    .use(pinia)  // 注册Pinia
     .use(router) // 注册路由
     .mount("#app");

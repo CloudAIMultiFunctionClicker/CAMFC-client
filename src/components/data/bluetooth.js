@@ -14,6 +14,16 @@
 import { invoke } from '@tauri-apps/api/core'
 import { showToast } from '../../composables/useToast'
 
+// 引入Pinia store，但要注意循环依赖问题
+// 不能直接导入，通过回调函数的方式
+let updatePiniaTotpCallback = null
+let updatePiniaStatusCallback = null
+let updatePiniaDeviceInfoCallback = null
+
+// 定时刷新TOTP的定时器
+let totpRefreshTimer = null
+const TOTP_REFRESH_INTERVAL = 30000 // 30秒
+
 // 蓝牙管理器初始化状态
 let isBluetoothManagerInitialized = false
 
@@ -812,13 +822,256 @@ export async function autoConnectAndGetTotp() {
   }
 }
 
+/**
+ * 注册Pinia回调函数
+ * 让bluetooth.js可以更新Pinia store的状态
+ * 
+ * @param {Function} totpCallback - 更新TOTP的回调
+ * @param {Function} statusCallback - 更新状态的回调  
+ * @param {Function} deviceInfoCallback - 更新设备信息的回调
+ */
+export function registerPiniaCallbacks(totpCallback, statusCallback, deviceInfoCallback) {
+  updatePiniaTotpCallback = totpCallback
+  updatePiniaStatusCallback = statusCallback
+  updatePiniaDeviceInfoCallback = deviceInfoCallback
+  console.log('Pinia回调已注册')
+}
+
+/**
+ * 内部函数：更新Pinia中的TOTP
+ * @param {string} totp - 新的TOTP值
+ */
+function updatePiniaTotp(totp) {
+  if (updatePiniaTotpCallback) {
+    updatePiniaTotpCallback(totp)
+  }
+}
+
+/**
+ * 内部函数：更新Pinia中的状态
+ * @param {string} status - 新的状态
+ */
+function updatePiniaStatus(status) {
+  if (updatePiniaStatusCallback) {
+    updatePiniaStatusCallback(status)
+  }
+}
+
+/**
+ * 内部函数：更新Pinia中的设备信息
+ * @param {string} deviceInfo - 设备信息
+ */
+function updatePiniaDeviceInfo(deviceInfo) {
+  if (updatePiniaDeviceInfoCallback) {
+    updatePiniaDeviceInfoCallback(deviceInfo)
+  }
+}
+
+/**
+ * 启动定时刷新TOTP
+ * 连接成功后每30秒刷新一次TOTP
+ */
+function startTotpRefreshTimer() {
+  // 先清除已有的定时器
+  stopTotpRefreshTimer()
+  
+  console.log('启动TOTP定时刷新，每30秒一次')
+  
+  totpRefreshTimer = setInterval(async () => {
+    try {
+      console.log('定时刷新TOTP...')
+      const totp = await getTotp()
+      updatePiniaTotp(totp)
+      console.log('定时刷新TOTP完成:', totp)
+    } catch (error) {
+      console.warn('定时刷新TOTP失败:', error)
+      // 刷新失败不更新Pinia，保持原值
+    }
+  }, TOTP_REFRESH_INTERVAL)
+}
+
+/**
+ * 停止定时刷新TOTP
+ */
+function stopTotpRefreshTimer() {
+  if (totpRefreshTimer) {
+    clearInterval(totpRefreshTimer)
+    totpRefreshTimer = null
+    console.log('已停止TOTP定时刷新')
+  }
+}
+
+/**
+ * 修改版：增强版自动连接Cpen设备并获取TOTP（带Pinia状态更新）
+ * 
+ * 这个版本会：
+ * 1. 更新Pinia状态
+ * 2. 连接成功后启动定时刷新TOTP
+ * 3. 通过回调更新Pinia而不是直接返回TOTP
+ * 
+ * @returns {Promise<{success: boolean, message: string, scannedCount: number, cpenCount: number, connectedDevice?: string, totp?: string, error?: string}>}
+ */
+export async function autoConnectAndGetTotpWithPinia() {
+  try {
+    console.info('开始自动连接Cpen设备并获取TOTP（带Pinia更新）...')
+    updatePiniaStatus('connecting')
+    
+    // 1. 扫描设备
+    let devices
+    try {
+      devices = await scanDevices()
+    } catch (scanError) {
+      updatePiniaStatus('error')
+      return {
+        success: false,
+        message: `扫描设备失败: ${scanError.message}`,
+        scannedCount: 0,
+        cpenCount: 0
+      }
+    }
+    
+    const scannedCount = devices.length
+    
+    // 2. 查找Cpen设备
+    const cpenDevices = findCpenDevices(devices)
+    const cpenCount = cpenDevices.length
+    
+    // 3. 处理结果
+    if (cpenDevices.length === 0) {
+      const message = `扫描完成，未发现Cpen设备。共扫描到 ${scannedCount} 个其他设备。`
+      console.info(message, '#ff0000')
+      updatePiniaStatus('disconnected')
+      return {
+        success: true, // 扫描本身成功了
+        message,
+        scannedCount,
+        cpenCount
+      }
+    }
+    
+    // 4. 连接第一个Cpen设备
+    const targetDevice = cpenDevices[0]
+    console.info(`发现 ${cpenCount} 个Cpen设备，尝试连接第一个: ${targetDevice.displayInfo}`)
+    updatePiniaDeviceInfo(targetDevice.displayInfo)
+    
+    try {
+      const connectResult = await connectDevice(targetDevice.displayInfo)
+      console.info('连接成功', '#55aa55')
+      updatePiniaStatus('connected')
+      
+      // 5. 连接成功后，等待一小会儿让设备稳定
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // 6. 获取TOTP
+      let totp
+      try {
+        totp = await getTotp()
+        updatePiniaTotp(totp)
+        
+        // 7. 启动定时刷新TOTP
+        startTotpRefreshTimer()
+        
+        // 8. 成功获取TOTP后，开始监听设备数据
+        try {
+          console.log('TOTP获取成功，开始recv()监听数据...')
+          recv(2000).then(data => {
+            if (data) {
+              console.log('自动监听收到数据:', data)
+            } else {
+              console.log('自动监听超时，没收到数据')
+            }
+          }).catch(err => {
+            console.warn('自动监听出错:', err)
+          })
+          console.log('已启动recv()监听任务')
+        } catch (listenError) {
+          console.warn('开始监听设备数据失败，但不影响TOTP获取:', listenError)
+        }
+        
+        const successMessage = `扫描完成，成功连接Cpen设备并获取TOTP: ${totp}。设备: ${targetDevice.displayInfo}。共扫描到 ${scannedCount} 个设备。`
+        console.info(successMessage, '#55aa55')
+        
+        return {
+          success: true,
+          message: successMessage,
+          scannedCount,
+          cpenCount,
+          connectedDevice: targetDevice.displayInfo,
+          totp,
+          rawResult: connectResult
+        }
+      } catch (totpError) {
+        // 连接成功但获取TOTP失败，仍然尝试开始监听
+        try {
+          console.log('TOTP获取失败，但尝试recv()监听数据...')
+          recv(2000).then(data => {
+            if (data) {
+              console.log('自动监听收到数据:', data)
+            } else {
+              console.log('自动监听超时，没收到数据')
+            }
+          }).catch(err => {
+            console.warn('自动监听出错:', err)
+          })
+          console.log('已启动recv()监听任务')
+        } catch (listenError) {
+          console.warn('开始监听设备数据失败:', listenError)
+        }
+        
+        const failMessage = `扫描完成，成功连接Cpen设备但获取TOTP失败: ${totpError.message}。设备: ${targetDevice.displayInfo}。共扫描到 ${scannedCount} 个设备。`
+        console.warn(failMessage)
+        console.info(failMessage, '#ff0000')
+        
+        return {
+          success: false,
+          message: failMessage,
+          scannedCount,
+          cpenCount,
+          connectedDevice: targetDevice.displayInfo,
+          error: totpError.message
+        }
+      }
+      
+    } catch (connectError) {
+      // 连接失败
+      const failMessage = `扫描完成，发现Cpen设备但连接失败: ${targetDevice.displayInfo}。错误: ${connectError.message}。共扫描到 ${scannedCount} 个设备。`
+      console.warn(failMessage)
+      console.info(failMessage, '#ff0000')
+      updatePiniaStatus('error')
+      
+      return {
+        success: false,
+        message: failMessage,
+        scannedCount,
+        cpenCount,
+        attemptedDevice: targetDevice.displayInfo,
+        error: connectError.message
+      }
+    }
+    
+  } catch (error) {
+    // 未知错误
+    console.error('自动连接Cpen并获取TOTP过程中发生未知错误:', error)
+    console.info(`自动连接失败: ${error.message}`, '#ff0000')
+    updatePiniaStatus('error')
+    return {
+      success: false,
+      message: `自动连接失败: ${error.message}`,
+      scannedCount: 0,
+      cpenCount: 0,
+      error: error.message
+    }
+  }
+}
+
 // 导出所有函数
 export default {
   scanDevices,
   connectDevice,
   findCpenDevices,
   autoConnectCpen,
-  autoConnectAndGetTotp, // 新增：增强版自动连接并获取TOTP
+  autoConnectAndGetTotp, // 原始版本
+  autoConnectAndGetTotpWithPinia, // 新增：带Pinia更新的版本
   simpleScan,
   testBluetooth,
   sendCommandToDevice,
@@ -828,5 +1081,8 @@ export default {
   recv,                   // 新增：recv()函数，类似Python的socket.recv()
   startListeningForData,  // 保留兼容性
   stopListeningForData,   // 保留兼容性
-  isListeningForData      // 保留兼容性
+  isListeningForData,     // 保留兼容性
+  registerPiniaCallbacks, // 新增：注册Pinia回调
+  startTotpRefreshTimer,  // 新增：启动定时刷新
+  stopTotpRefreshTimer    // 新增：停止定时刷新
 }
