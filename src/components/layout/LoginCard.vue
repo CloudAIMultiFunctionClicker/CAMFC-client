@@ -42,6 +42,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     }
 </style>
 
+<script setup>
+</script>
+
+
 <template> 
 <div class="parent-container">
     <div class="card-container"> 

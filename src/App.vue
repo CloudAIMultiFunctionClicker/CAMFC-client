@@ -33,11 +33,29 @@ import {showToast} from './components/layout/showToast.js'
   // 导入应用头部组件
 import AppHeader from './components/layout/AppHeader.vue'
 
+import { getTotp } from './components/data/bluetooth'
+
+// 在 setup 中定义一个方法来包装或直接调用 getTotp
+const handleClickGetTotp = async () => {
+  try {
+    // 调用导入的函数
+    const result = await getTotp(); // 或者如果它需要参数，传入所需参数
+    console.log('getTotp result:', result); // 或者处理 result
+    showToast('获取TOTP成功：'+result);
+  } catch (error) {
+    console.error('获取TOTP失败:', error);
+    showToast('获取TOTP失败');
+  }
+};
+
+
 document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && (e.key === 'r' || e.key === 'p')) {
     e.preventDefault(); // 阻止浏览器默认行为
   }
 });
+
+
 
 // 主题状态管理 - 默认跟随系统配色
 // 先尝试从localStorage读取用户之前的选择
@@ -185,6 +203,8 @@ onMounted(() => {
   <AppHeader/>
 
     <router-view></router-view>
+
+  <button @click="handleClickGetTotp">clickme</button>
 </template>
 
 <style>

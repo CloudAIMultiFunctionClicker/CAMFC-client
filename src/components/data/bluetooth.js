@@ -17,6 +17,50 @@ import { showToast } from '../../composables/useToast'
 // 蓝牙管理器初始化状态
 let isBluetoothManagerInitialized = false
 
+// TOTP缓存相关
+let lastTotp = null
+let lastTotpTime = null
+const TOTP_CACHE_DURATION = 30000 // 30秒
+
+/**
+ * 获取缓存的TOTP
+ * 
+ * 如果上一次获取TOTP时间在30秒内，返回缓存的TOTP
+ * 如果是第一次请求TOTP，直接请求TOTP
+ * 如果超过30秒，请求新TOTP并刷新时间
+ * 
+ * @returns {Promise<string|null>} 缓存的TOTP或null
+ */
+function getCachedTotp() {
+  const now = Date.now()
+  
+  // 如果还没有获取过TOTP
+  if (!lastTotpTime) {
+    return null
+  }
+  
+  // 检查是否在缓存时间内
+  if (now - lastTotpTime < TOTP_CACHE_DURATION) {
+    console.log('返回缓存的TOTP')
+    return lastTotp
+  }
+  
+  // 超过缓存时间，需要重新获取
+  console.log('TOTP已过期，需要重新获取')
+  return null
+}
+
+/**
+ * 更新TOTP缓存
+ * 
+ * @param {string} totp - 要缓存的TOTP
+ */
+function updateTotpCache(totp) {
+  lastTotp = totp
+  lastTotpTime = Date.now()
+  console.log('TOTP已缓存，下次30秒内可复用')
+}
+
 /**
  * 初始化蓝牙管理器
  * 
@@ -34,13 +78,13 @@ async function ensureBluetoothManagerInitialized() {
   }
   
   try {
-    showToast('初始化蓝牙管理器...')
+    console.info('初始化蓝牙管理器...')
     await invoke('init_bluetooth_manager')
     isBluetoothManagerInitialized = true
-    showToast('蓝牙管理器初始化完成')
+    console.info('蓝牙管理器初始化完成')
   } catch (error) {
     console.error('蓝牙管理器初始化失败:', error)
-    showToast(`蓝牙管理器初始化失败: ${error}`, '#ff0000')
+    console.info(`蓝牙管理器初始化失败: ${error}`, '#ff0000')
     throw new Error(`蓝牙管理器初始化失败: ${error}`)
   }
 }
@@ -56,13 +100,13 @@ async function ensureBluetoothManagerInitialized() {
  */
 export async function cleanupBluetoothManager() {
   try {
-    showToast('清理蓝牙管理器...')
+    console.info('清理蓝牙管理器...')
     await invoke('cleanup_bluetooth_manager')
     isBluetoothManagerInitialized = false
-    showToast('蓝牙管理器清理完成')
+    console.info('蓝牙管理器清理完成')
   } catch (error) {
     console.error('蓝牙管理器清理失败:', error)
-    showToast(`蓝牙管理器清理失败: ${error}`, '#ff0000')
+    console.info(`蓝牙管理器清理失败: ${error}`, '#ff0000')
     // 清理失败不抛出错误，因为可能只是小问题
   }
 }
@@ -80,12 +124,12 @@ export async function scanDevices() {
     // 确保蓝牙管理器已初始化
     await ensureBluetoothManagerInitialized()
     
-    showToast('开始扫描蓝牙设备...')
+    console.info('开始扫描蓝牙设备...')
     const devices = await invoke('scan_bluetooth_devices')
-    showToast(`扫描完成，发现设备：${devices.join(', ')}`, '#55aa55')
+    console.info(`扫描完成，发现设备：${devices.join(', ')}`, '#55aa55')
     return devices
   } catch (error) {
-    showToast(`扫描失败：${error}`, '#ff0000')
+    console.info(`扫描失败：${error}`, '#ff0000')
     throw new Error(`扫描失败: ${error}`)
   }
 }
@@ -104,13 +148,13 @@ export async function connectDevice(deviceInfo) {
     // 确保蓝牙管理器已初始化
     await ensureBluetoothManagerInitialized()
     
-    showToast(`开始连接设备: ${deviceInfo}`)
+    console.info(`开始连接设备: ${deviceInfo}`)
     const result = await invoke('connect_to_device', { deviceInfo })
-    showToast(`连接结果: ${result}`, '#55aa55')
+    console.info(`连接结果: ${result}`, '#55aa55')
     return result
   } catch (error) {
     console.error('连接设备失败:', error)
-    showToast(`连接设备失败: ${error}`, '#ff0000')
+    console.info(`连接设备失败: ${error}`, '#ff0000')
     throw new Error(`连接失败: ${error}`)
   }
 }
@@ -127,7 +171,7 @@ export async function connectDevice(deviceInfo) {
 export function findCpenDevices(devices) {
   if (!Array.isArray(devices)) {
     console.warn('设备列表不是数组:', devices)
-    showToast('设备列表不是数组', '#ff0000')
+    console.info('设备列表不是数组', '#ff0000')
     return []
   }
   
@@ -160,11 +204,11 @@ export function findCpenDevices(devices) {
         address,
         displayInfo: deviceStr
       })
-      showToast(`找到Cpen设备: ${deviceStr}`, '#55aa55')
+      console.info(`找到Cpen设备: ${deviceStr}`, '#55aa55')
     }
   })
   
-  showToast(`共找到 ${cpenDevices.length} 个Cpen设备`, '#55aa55')
+  console.info(`共找到 ${cpenDevices.length} 个Cpen设备`, '#55aa55')
   return cpenDevices
 }
 
@@ -182,7 +226,7 @@ export function findCpenDevices(devices) {
  */
 export async function autoConnectCpen() {
   try {
-    showToast('开始自动连接Cpen设备...')
+    console.info('开始自动连接Cpen设备...')
     
     // 1. 扫描设备
     let devices
@@ -208,7 +252,7 @@ export async function autoConnectCpen() {
     if (cpenDevices.length === 0) {
       // 没找到Cpen设备
       const message = `扫描完成，未发现Cpen设备。共扫描到 ${scannedCount} 个其他设备。`
-      showToast(message, '#ff0000')
+      console.info(message, '#ff0000')
       return {
         success: true, // 扫描本身成功了
         message,
@@ -221,14 +265,14 @@ export async function autoConnectCpen() {
     // 业务逻辑：如果有多个Cpen设备，连接第一个
     // TODO: 以后可以改进，比如让用户选择，或者连接信号最强的
     const targetDevice = cpenDevices[0]
-    showToast(`发现 ${cpenCount} 个Cpen设备，尝试连接第一个: ${targetDevice.displayInfo}`)
+    console.info(`发现 ${cpenCount} 个Cpen设备，尝试连接第一个: ${targetDevice.displayInfo}`)
     
     // 5. 尝试连接
     try {
       const connectResult = await connectDevice(targetDevice.displayInfo)
       
       const successMessage = `扫描完成，发现并成功连接Cpen设备: ${targetDevice.displayInfo}。共扫描到 ${scannedCount} 个设备。`
-      showToast(successMessage, '#55aa55')
+      console.info(successMessage, '#55aa55')
       
       return {
         success: true,
@@ -242,7 +286,7 @@ export async function autoConnectCpen() {
       // 连接失败，但仍然返回扫描结果
       const failMessage = `扫描完成，发现Cpen设备但连接失败: ${targetDevice.displayInfo}。错误: ${connectError.message}。共扫描到 ${scannedCount} 个设备。`
       console.warn(failMessage)
-      showToast(failMessage, '#ff0000')
+      console.info(failMessage, '#ff0000')
       
       return {
         success: false,
@@ -257,7 +301,7 @@ export async function autoConnectCpen() {
   } catch (error) {
     // 未知错误
     console.error('自动连接Cpen过程中发生未知错误:', error)
-    showToast(`自动连接失败: ${error.message}`, '#ff0000')
+    console.info(`自动连接失败: ${error.message}`, '#ff0000')
     return {
       success: false,
       message: `自动连接失败: ${error.message}`,
@@ -285,7 +329,7 @@ export async function simpleScan() {
       message: `扫描完成，发现 ${devices.length} 个设备`
     }
   } catch (error) {
-    showToast(`扫描失败: ${error.message}`, '#ff0000')
+    console.info(`扫描失败: ${error.message}`, '#ff0000')
     return {
       success: false,
       devices: [],
@@ -305,7 +349,7 @@ export async function simpleScan() {
  */
 export async function testBluetooth() {
   try {
-    showToast('开始测试蓝牙功能...')
+    console.info('开始测试蓝牙功能...')
     
     // 尝试扫描设备，但只持续很短时间
     // 注意：scanDevices内部会调用Rust命令，Rust那边有固定的3秒扫描时间
@@ -327,7 +371,7 @@ export async function testBluetooth() {
       }
     }
   } catch (error) {
-    showToast(`蓝牙测试失败: ${error.message}`, '#ff0000')
+    console.info(`蓝牙测试失败: ${error.message}`, '#ff0000')
     return {
       bluetoothAvailable: false,
       testResult: `蓝牙测试失败: ${error.message}`,
@@ -353,17 +397,17 @@ export async function sendCommandToDevice(command) {
     // 确保蓝牙管理器已初始化
     await ensureBluetoothManagerInitialized()
     
-    showToast(`准备向设备发送命令: ${command}`)
+    console.info(`准备向设备发送命令: ${command}`)
     
     // 调用Rust端的send_command_to_device命令
     // 注意：超时已经在Rust端实现（500ms）
     const response = await invoke('send_command_to_device', { command })
     
-    showToast(`命令发送完成，响应: ${response}`, '#55aa55')
+    console.info(`命令发送完成，响应: ${response}`, '#55aa55')
     return response
   } catch (error) {
     console.error('发送命令失败:', error)
-    showToast(`发送命令失败: ${error}`, '#ff0000')
+    console.info(`发送命令失败: ${error}`, '#ff0000')
     throw new Error(`发送命令失败: ${error}`)
   }
 }
@@ -372,37 +416,49 @@ export async function sendCommandToDevice(command) {
  * 获取TOTP（主要功能）
  * 
  * 这个函数会：
- * 1. 向已连接的设备发送"getTotp"命令
- * 2. 接收TOTP响应
- * 3. 将TOTP打印到console（用户要求）
- * 4. 返回TOTP字符串
+ * 1. 检查是否可以使用缓存的TOTP（30秒内）
+ * 2. 如果可以，返回缓存的TOTP
+ * 3. 如果不行，向已连接的设备发送"getTotp"命令
+ * 4. 接收TOTP响应
+ * 5. 将TOTP打印到console（用户要求）
+ * 6. 更新缓存
+ * 7. 返回TOTP字符串
  * 
  * 注意：需要先连接设备才能使用这个函数
  * 超时设为500ms，这是用户要求的
  * 
  * @returns {Promise<string>} TOTP字符串
  */
-export async function getTotpFromDevice() {
+export async function getTotp() {
   try {
     // 确保蓝牙管理器已初始化
     await ensureBluetoothManagerInitialized()
     
-    showToast('开始获取TOTP...')
+    // 1. 检查是否有缓存的TOTP
+    const cachedTotp = getCachedTotp()
+    if (cachedTotp !== null) {
+      console.info('使用缓存的TOTP')
+      return cachedTotp
+    }
     
-    // 调用Rust端的get_totp_from_device命令
+    console.info('开始获取TOTP...')
+    
+    // 2. 调用Rust端的get_totp_from_device命令
     // 这个命令会处理完整的"getTotp"发送和接收流程
     const totp = await invoke('get_totp_from_device')
     
-    showToast(`成功获取TOTP: ${totp}`, '#55aa55')
+    // 3. 更新缓存
+    updateTotpCache(totp)
     
-    // 用户要求：把返回值打印在console
-    // 这里我们已经用console.info打印了，但再明确打印一次
+    console.info(`成功获取TOTP: ${totp}`, '#55aa55')
+    
+    // 4. 用户要求：把返回值打印在console
     console.log(`TOTP: ${totp}`)
     
     return totp
   } catch (error) {
     console.error('获取TOTP失败:', error)
-    showToast(`获取TOTP失败: ${error}`, '#ff0000')
+    console.info(`获取TOTP失败: ${error}`, '#ff0000')
     throw new Error(`获取TOTP失败: ${error}`)
   }
 }
@@ -419,13 +475,13 @@ export async function disconnectCurrentDevice() {
     // 确保蓝牙管理器已初始化
     await ensureBluetoothManagerInitialized()
     
-    showToast('准备断开当前设备连接...')
+    console.info('准备断开当前设备连接...')
     const result = await invoke('disconnect_current_device')
-    showToast(`断开连接结果: ${result}`, '#55aa55')
+    console.info(`断开连接结果: ${result}`, '#55aa55')
     return result
   } catch (error) {
     console.error('断开连接失败:', error)
-    showToast(`断开连接失败: ${error}`, '#ff0000')
+    console.info(`断开连接失败: ${error}`, '#ff0000')
     throw new Error(`断开连接失败: ${error}`)
   }
 }
@@ -611,7 +667,7 @@ export async function isListeningForData() {
  */
 export async function autoConnectAndGetTotp() {
   try {
-    showToast('开始自动连接Cpen设备并获取TOTP...')
+    console.info('开始自动连接Cpen设备并获取TOTP...')
     
     // 1. 扫描设备
     let devices
@@ -635,7 +691,7 @@ export async function autoConnectAndGetTotp() {
     // 3. 处理结果
     if (cpenDevices.length === 0) {
       const message = `扫描完成，未发现Cpen设备。共扫描到 ${scannedCount} 个其他设备。`
-      showToast(message, '#ff0000')
+      console.info(message, '#ff0000')
       return {
         success: true, // 扫描本身成功了
         message,
@@ -646,11 +702,11 @@ export async function autoConnectAndGetTotp() {
     
     // 4. 连接第一个Cpen设备
     const targetDevice = cpenDevices[0]
-    showToast(`发现 ${cpenCount} 个Cpen设备，尝试连接第一个: ${targetDevice.displayInfo}`)
+    console.info(`发现 ${cpenCount} 个Cpen设备，尝试连接第一个: ${targetDevice.displayInfo}`)
     
     try {
       const connectResult = await connectDevice(targetDevice.displayInfo)
-      showToast('连接成功', '#55aa55')
+      console.info('连接成功', '#55aa55')
       
       // 5. 连接成功后，等待一小会儿让设备稳定
       // 思考：要不要等？从MicroPython代码看，设备连接后应该立即可以通信
@@ -660,7 +716,7 @@ export async function autoConnectAndGetTotp() {
       // 6. 获取TOTP
       let totp
       try {
-        totp = await getTotpFromDevice()
+        totp = await getTotp()
         
         // 7. 成功获取TOTP后，开始监听设备数据（用户新需求）
         // 现在用recv()函数来监听
@@ -683,7 +739,7 @@ export async function autoConnectAndGetTotp() {
         }
         
         const successMessage = `扫描完成，成功连接Cpen设备并获取TOTP: ${totp}。设备: ${targetDevice.displayInfo}。共扫描到 ${scannedCount} 个设备。`
-        showToast(successMessage, '#55aa55')
+        console.info(successMessage, '#55aa55')
         
         return {
           success: true,
@@ -714,7 +770,7 @@ export async function autoConnectAndGetTotp() {
         
         const failMessage = `扫描完成，成功连接Cpen设备但获取TOTP失败: ${totpError.message}。设备: ${targetDevice.displayInfo}。共扫描到 ${scannedCount} 个设备。`
         console.warn(failMessage)
-        showToast(failMessage, '#ff0000')
+        console.info(failMessage, '#ff0000')
         
         return {
           success: false,
@@ -730,7 +786,7 @@ export async function autoConnectAndGetTotp() {
       // 连接失败
       const failMessage = `扫描完成，发现Cpen设备但连接失败: ${targetDevice.displayInfo}。错误: ${connectError.message}。共扫描到 ${scannedCount} 个设备。`
       console.warn(failMessage)
-      showToast(failMessage, '#ff0000')
+      console.info(failMessage, '#ff0000')
       
       return {
         success: false,
@@ -745,7 +801,7 @@ export async function autoConnectAndGetTotp() {
   } catch (error) {
     // 未知错误
     console.error('自动连接Cpen并获取TOTP过程中发生未知错误:', error)
-    showToast(`自动连接失败: ${error.message}`, '#ff0000')
+    console.info(`自动连接失败: ${error.message}`, '#ff0000')
     return {
       success: false,
       message: `自动连接失败: ${error.message}`,
@@ -766,7 +822,7 @@ export default {
   simpleScan,
   testBluetooth,
   sendCommandToDevice,
-  getTotpFromDevice,
+  getTotp,               // 修改：使用新的TOTP缓存逻辑
   disconnectCurrentDevice,
   cleanupBluetoothManager, // 新增：清理函数
   recv,                   // 新增：recv()函数，类似Python的socket.recv()
