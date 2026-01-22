@@ -19,6 +19,7 @@ import { showToast } from '../../composables/useToast'
 let updatePiniaTotpCallback = null
 let updatePiniaStatusCallback = null
 let updatePiniaDeviceInfoCallback = null
+let updatePiniaDeviceIdCallback = null  // 新增：设备ID回调
 
 // 定时刷新TOTP的定时器
 let totpRefreshTimer = null
@@ -477,6 +478,7 @@ export async function getTotp() {
  * 断开当前设备连接
  * 
  * 断开当前已连接的蓝牙设备
+ * 用户要求：断开设备后 totp和id都设为null(不论主动还是被动断开）
  * 
  * @returns {Promise<string>} 断开连接结果
  */
@@ -488,10 +490,43 @@ export async function disconnectCurrentDevice() {
     console.info('准备断开当前设备连接...')
     const result = await invoke('disconnect_current_device')
     console.info(`断开连接结果: ${result}`, '#55aa55')
+    
+    // 用户要求：断开设备后 totp和id都设为null
+    // 无论主动断开还是被动断开，都要清理状态
+    console.log('断开连接成功，开始清理状态...')
+    
+    // 1. 停止定时刷新TOTP（如果有的话）
+    stopTotpRefreshTimer()
+    
+    // 2. 更新Pinia状态为'disconnected'
+    updatePiniaStatus('disconnected')
+    
+    // 3. 清空设备ID
+    updatePiniaDeviceId(null)
+    
+    // 4. 清空TOTP
+    updatePiniaTotp(null)
+    
+    console.log('状态清理完成：TOTP和设备ID已清空', '#55aa55')
+    
     return result
   } catch (error) {
     console.error('断开连接失败:', error)
     console.info(`断开连接失败: ${error}`, '#ff0000')
+    
+    // 即使断开失败，也尝试清理状态，防止状态不一致
+    // 比如设备自己断开了，但调用Rust接口失败了
+    try {
+      console.log('断开连接失败，但尝试清理状态...')
+      stopTotpRefreshTimer()
+      updatePiniaStatus('disconnected')
+      updatePiniaDeviceId(null)
+      updatePiniaTotp(null)
+      console.log('失败后的状态清理完成')
+    } catch (cleanupError) {
+      console.warn('状态清理时出错:', cleanupError)
+    }
+    
     throw new Error(`断开连接失败: ${error}`)
   }
 }
@@ -829,12 +864,14 @@ export async function autoConnectAndGetTotp() {
  * @param {Function} totpCallback - 更新TOTP的回调
  * @param {Function} statusCallback - 更新状态的回调  
  * @param {Function} deviceInfoCallback - 更新设备信息的回调
+ * @param {Function} deviceIdCallback - 更新设备ID的回调（新增）
  */
-export function registerPiniaCallbacks(totpCallback, statusCallback, deviceInfoCallback) {
+export function registerPiniaCallbacks(totpCallback, statusCallback, deviceInfoCallback, deviceIdCallback = null) {
   updatePiniaTotpCallback = totpCallback
   updatePiniaStatusCallback = statusCallback
   updatePiniaDeviceInfoCallback = deviceInfoCallback
-  console.log('Pinia回调已注册')
+  updatePiniaDeviceIdCallback = deviceIdCallback  // 新增：设备ID回调
+  console.log('Pinia回调已注册（包括设备ID回调）')
 }
 
 /**
@@ -864,6 +901,18 @@ function updatePiniaStatus(status) {
 function updatePiniaDeviceInfo(deviceInfo) {
   if (updatePiniaDeviceInfoCallback) {
     updatePiniaDeviceInfoCallback(deviceInfo)
+  }
+}
+
+/**
+ * 内部函数：更新Pinia中的设备ID
+ * @param {string} deviceId - 设备UUID
+ */
+function updatePiniaDeviceId(deviceId) {
+  if (updatePiniaDeviceIdCallback) {
+    updatePiniaDeviceIdCallback(deviceId)
+  } else {
+    console.warn('设备ID回调未注册，无法更新设备ID到Pinia')
   }
 }
 
@@ -962,16 +1011,28 @@ export async function autoConnectAndGetTotpWithPinia() {
       // 5. 连接成功后，等待一小会儿让设备稳定
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      // 6. 获取TOTP
+      // 6. 用户要求：连接设备后先请求ID（发包'Id'）获取设备UUID
+      try {
+        console.info('发送Id命令获取设备UUID...')
+        const deviceId = await sendCommandToDevice('getId')
+        console.info(`获取到设备UUID: ${deviceId}`)
+        updatePiniaDeviceId(deviceId)
+      } catch (idError) {
+        console.warn(`获取设备ID失败: ${idError.message}，但继续获取TOTP`)
+        // 失败不阻止后续操作，但设备ID保持null
+        updatePiniaDeviceId(null)  // 确保清空设备ID
+      }
+      
+      // 7. 获取TOTP
       let totp
       try {
         totp = await getTotp()
         updatePiniaTotp(totp)
         
-        // 7. 启动定时刷新TOTP
+        // 8. 启动定时刷新TOTP
         startTotpRefreshTimer()
         
-        // 8. 成功获取TOTP后，开始监听设备数据
+        // 9. 成功获取TOTP后，开始监听设备数据
         try {
           console.log('TOTP获取成功，开始recv()监听数据...')
           recv(2000).then(data => {

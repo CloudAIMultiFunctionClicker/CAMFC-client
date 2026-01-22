@@ -29,6 +29,40 @@ import { ref, reactive } from "vue";
 const basicUrl = "http://localhost:8005";
 const timeOut = 10000;
 
+// 获取当前认证头信息
+// 从bluetooth store获取设备ID和TOTP
+async function getAuthHeader() {
+  // 尝试从bluetooth store获取当前值
+  // 注意：这里需要导入store，但可能会引起循环依赖
+  // 暂时用简单实现：尝试导入，如果失败返回空对象
+  try {
+    // 动态导入避免循环依赖
+    const { useBluetoothStore } = await import('../../stores/bluetooth.js');
+    const store = useBluetoothStore();
+    
+    const deviceId = store.deviceId;
+    const currentTotp = store.currentTotp;
+    
+    if (deviceId && currentTotp) {
+    console.info({
+        "Id": deviceId,
+        "Totp": currentTotp
+      })
+
+      return {
+        "Id": deviceId,
+        "Totp": currentTotp
+      };
+    }
+  } catch (error) {
+    console.warn('无法获取bluetooth store，使用空header:', error);
+  }
+  
+  // 如果没有设备ID或TOTP，返回空对象（或保持向后兼容？）
+  // 先返回空对象，看看API会怎么响应
+  return {};
+}
+
 
 
 async function ls(path) {
@@ -40,11 +74,12 @@ async function ls(path) {
             }, timeOut);
         });
 
+        // 获取认证头信息
+        const authHeader = await getAuthHeader();
+        
         // 使用Promise.race来竞争请求和超时
         const requestPromise = axios.get(basicUrl + "/files/?path=" + path, {
-            headers: {
-                Authorization: "Bearer test123",
-            },
+            headers: authHeader,
         });
 
         const response = await Promise.race([requestPromise, timeoutPromise]);
@@ -80,6 +115,9 @@ async function mkdir(path, directoryName) {
             }, timeOut);
         });
 
+        // 获取认证头信息
+        const authHeader = await getAuthHeader();
+        
         // 构造查询参数
         const params = new URLSearchParams({
             path: path,
@@ -92,9 +130,7 @@ async function mkdir(path, directoryName) {
             null, // 没有请求体，使用 null
             {
                 params: params,
-                headers: {
-                    Authorization: "Bearer test123",
-                },
+                headers: authHeader,
             }
         );
 
@@ -128,6 +164,9 @@ async function rm(path, permanent = false) {
             }, timeOut);
         });
 
+        // 获取认证头信息
+        const authHeader = await getAuthHeader();
+        
         // 构造查询参数
         const params = new URLSearchParams({
             permanent: permanent.toString(),
@@ -138,9 +177,7 @@ async function rm(path, permanent = false) {
             `${basicUrl}/files/${encodeURIComponent(path)}`,
             {
                 params: params,
-                headers: {
-                    Authorization: "Bearer test123",
-                },
+                headers: authHeader,
             }
         );
 
@@ -158,4 +195,3 @@ async function rm(path, permanent = false) {
     }
 }
 export {ls,mkdir,rm};
-

@@ -21,6 +21,10 @@ const router = createRouter({
       name: 'fileView',
       component: () => import('../views/FileView.vue')
     },
+    {path:'/main',
+      name: 'main',
+      component: () => import('../views/Main.vue')
+    },
     {
       path: '/about',
       name: 'about',
@@ -33,6 +37,12 @@ const router = createRouter({
       name: 'contact',
       // 懒加载：联系页面
       component: () => import('../views/ContactView.vue')
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      // 懒加载：联系页面
+      component: () => import('../views/Settings.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]

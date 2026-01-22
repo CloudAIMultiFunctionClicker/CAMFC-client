@@ -43,9 +43,11 @@ const theme = inject('theme')
             <h1>
                 <span>CAMFC Cloud</span>
                 <!-- 云按钮 - 现在使用 Remix Icon 云图标 -->
+                <router-link to="/main">
                 <button class="btn-cloud">
+                    
                     <i class="ri-cloud-line"></i>
-                </button>
+                </button></router-link>
             </h1>
 
             <!-- 右侧：操作按钮区域 -->
@@ -184,6 +186,13 @@ h1 {
     /* 圆形 */
     width: 40px;
     height: 40px;
+}
+
+a {
+   text-decoration: none;
+}
+a:hover { 
+    text-decoration: none;
 }
 
 /* 下拉按钮 - 中性色 */

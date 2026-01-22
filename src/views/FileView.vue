@@ -94,7 +94,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   .main-container {
     display: flex;
     width: 100%;
-    height: calc(100vh - 64px); /* 减去头部高度 */
+    height: calc(100vh - 65px); /* 减去头部高度 */
     overflow: hidden; /* 防止滚动条出现在容器上 */
   }
 

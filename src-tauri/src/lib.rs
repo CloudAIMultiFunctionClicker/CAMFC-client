@@ -7,6 +7,7 @@ use bluetooth::BluetoothManager;
 // 改成tokio::sync::Mutex，它的MutexGuard是Send的，适合异步环境
 use tokio::sync::Mutex;
 use std::sync::OnceLock;
+use chrono;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -120,8 +121,40 @@ async fn get_totp_from_device() -> Result<String, String> {
     let service_uuid = "d816e4c6-1b99-4da7-bcd5-7c37cc2642c4";
     let char_uuid = "d816e4c7-1b99-4da7-bcd5-7c37cc2642c4";
     
+    // 先发送setTime时间戳
+    let timestamp = chrono::Utc::now().timestamp().to_string();
+    let set_time_command = format!("setTime:{}", timestamp);
+    println!("发送setTime命令: {}", set_time_command);
+    
+    
+    manager.send(service_uuid, char_uuid, set_time_command.as_bytes()).await
+        .map_err(|e| format!("发送setTime失败: {}", e))?;
+    
+    // 等待一小段时间让设备处理setTime命令
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    
+    // 尝试读取setTime的响应，避免它干扰后续的getTotp响应
+    // 注意：这里使用短超时，因为setTime可能没有响应，或者响应可能已经在通道中
+    match tokio::time::timeout(tokio::time::Duration::from_millis(500), manager.recv(service_uuid, char_uuid)).await {
+        Ok(Ok(set_time_response)) => {
+            let set_time_response_str = String::from_utf8_lossy(&set_time_response);
+            println!("收到setTime响应: {}", set_time_response_str);
+            // 如果是OK:setTime:xxx，说明收到了setTime的确认，继续执行
+            // 如果不是，可能是其他数据，记录下来但继续执行
+        }
+        Ok(Err(e)) => {
+            println!("读取setTime响应时出错: {}，但继续执行", e);
+            // 出错也继续，可能是设备没有响应
+        }
+        Err(_) => {
+            println!("读取setTime响应超时，可能是设备没有响应，继续执行");
+            // 超时也继续，设备可能不回复setTime
+        }
+    }
+    
+    // 然后发送getTotp命令
     manager.send(service_uuid, char_uuid, b"getTotp").await
-        .map_err(|e| format!("发送失败: {}", e))?;
+        .map_err(|e| format!("发送getTotp失败: {}", e))?;
     
     let response = manager.recv(service_uuid, char_uuid).await
         .map_err(|e| format!("接收失败: {}", e))?;

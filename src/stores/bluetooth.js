@@ -18,6 +18,9 @@ export const useBluetoothStore = defineStore('bluetooth', () => {
   // 设备信息
   const deviceInfo = ref(null)
   
+  // 设备ID（UUID），连接后从设备获取
+  const deviceId = ref(null)
+  
   // 错误信息，有错误才显示
   const error = ref(null)
   
@@ -42,17 +45,25 @@ export const useBluetoothStore = defineStore('bluetooth', () => {
     deviceInfo.value = info
   }
   
+  // 设置设备ID（UUID），连接后从设备获取
+  const setDeviceId = (id) => {
+    deviceId.value = id
+    console.log('设备ID已更新:', id)
+  }
+  
   const setError = (err) => {
     error.value = err
     bluetoothStatus.value = 'error'
   }
   
-  // 重置状态
+  // 重置状态（断开连接时用）
   const reset = () => {
     bluetoothStatus.value = 'disconnected'
     currentTotp.value = null
     deviceInfo.value = null
+    deviceId.value = null  // 断开时清空设备ID
     error.value = null
+    console.log('状态已重置：断开连接')
   }
   
   return {
@@ -60,6 +71,7 @@ export const useBluetoothStore = defineStore('bluetooth', () => {
     bluetoothStatus,
     currentTotp,
     deviceInfo,
+    deviceId,  // 新增：设备ID
     error,
     
     // 计算属性
@@ -71,6 +83,7 @@ export const useBluetoothStore = defineStore('bluetooth', () => {
     setStatus,
     setTotp,
     setDeviceInfo,
+    setDeviceId,  // 新增：设置设备ID的方法
     setError,
     reset
   }

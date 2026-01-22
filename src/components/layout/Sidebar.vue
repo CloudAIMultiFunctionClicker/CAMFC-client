@@ -192,7 +192,7 @@ const toggleCollapse = () => {
 
 .sidebar {
     width: 240px;
-    height: 100vh;
+    height: calc(100vh - 65px);
     /* 全高 */
     background: var(
         --bg-sidebar,

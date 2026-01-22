@@ -27,20 +27,31 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     <!-- 标题 -->
     <h1 class="title">等待蓝牙连接Cpen设备</h1>
     
-    <!-- 弹跳进度条 -->
-    <div class="progress-container">
+    <!-- 弹跳进度条（连接中显示） -->
+    <div class="progress-container" v-if="isConnecting">
       <div class="bouncing-progress"></div>
+    </div>
+    
+    <!-- 5秒倒计时进度条（连接成功后显示） -->
+    <div class="countdown-container" v-if="isConnected && showCountdown">
+      <h2 class="countdown-title">连接成功！5秒后跳转到文件管理</h2>
+      <div class="countdown-bar">
+        <div 
+          class="countdown-progress" 
+          :style="{ width: countdownProgress + '%' }"
+        ></div>
+      </div>
+      <p class="countdown-text">{{ countdownSeconds }}秒</p>
+      <!-- 跳过按钮，可以手动跳过等待 -->
+      <button class="skip-btn" @click="skipCountdown">跳过等待</button>
     </div>
     
     <!-- 状态显示 -->
     <div class="status-info">
       <p v-if="isConnecting">正在扫描并连接蓝牙设备...</p>
       <p v-if="error" class="error">错误：{{ error }}</p>
-      <p v-if="isConnected && hasTotp" class="success">
-        连接成功！TOTP: {{ currentTotp }}
-      </p>
-      <p v-else-if="isConnected && !hasTotp" class="info">
-        设备已连接，正在获取TOTP...
+      <p v-if="isConnected && !showCountdown" class="success">
+        设备连接成功！
       </p>
     </div>
     
@@ -53,7 +64,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useBluetoothStore } from '../stores/bluetooth.js'
 import { 
   autoConnectAndGetTotpWithPinia, 
@@ -63,7 +75,14 @@ import { showToast } from '../components/layout/showToast.js'
 
 console.info('InitialView - 蓝牙连接界面（带Pinia回调）')
 
+const router = useRouter()
 const bluetoothStore = useBluetoothStore()
+
+// 倒计时相关状态
+const showCountdown = ref(false)
+const countdownSeconds = ref(5)
+const countdownProgress = ref(100)
+let countdownTimer = null
 
 // 状态计算（直接用store的计算属性）
 const isConnecting = computed(() => bluetoothStore.isConnecting())
@@ -71,6 +90,15 @@ const isConnected = computed(() => bluetoothStore.isConnected())
 const hasTotp = computed(() => bluetoothStore.hasTotp())
 const currentTotp = computed(() => bluetoothStore.currentTotp)
 const error = computed(() => bluetoothStore.error)
+
+// 监听连接成功状态
+watch(isConnected, (newVal) => {
+  if (newVal) {
+    // 设备连接成功，开始倒计时
+    console.log('设备已连接，开始5秒倒计时')
+    startCountdown()
+  }
+})
 
 /**
  * 注册Pinia回调给bluetooth.js用
@@ -96,15 +124,77 @@ function setupPiniaCallbacks() {
     (deviceInfo) => {
       console.log('Pinia回调：更新设备信息', deviceInfo)
       bluetoothStore.setDeviceInfo(deviceInfo)
+    },
+    // 设备ID更新回调（新增）
+    (deviceId) => {
+      console.log('Pinia回调：更新设备ID', deviceId)
+      bluetoothStore.setDeviceId(deviceId)
     }
   )
-  console.log('Pinia回调注册完成')
+  console.log('Pinia回调注册完成（包括设备ID回调）')
+}
+
+/**
+ * 开始5秒倒计时
+ * 用户要求连接成功后显示5秒倒计时，然后跳转到文件管理
+ * 
+ * 实现思路：每秒更新一次，更新进度条和剩余时间
+ * TODO: 倒计时结束后要跳转路由，还要清理定时器避免内存泄漏
+ */
+function startCountdown() {
+  showCountdown.value = true
+  countdownSeconds.value = 5
+  countdownProgress.value = 100
+  
+  // 清理之前的定时器（安全起见）
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
+  
+  countdownTimer = setInterval(() => {
+    countdownSeconds.value--
+    countdownProgress.value = countdownSeconds.value * 20 // 5秒对应100%
+    
+    console.log(`倒计时剩余: ${countdownSeconds.value}秒`)
+    
+    if (countdownSeconds.value <= 0) {
+      // 倒计时结束，跳转到文件管理
+      clearInterval(countdownTimer)
+      jumpToFileView()
+    }
+  }, 1000)
+}
+
+/**
+ * 手动跳过倒计时
+ * 用户可能不想等5秒，所以加个跳过按钮
+ */
+function skipCountdown() {
+  console.log('用户跳过倒计时')
+  
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
+  
+  jumpToFileView()
+}
+
+/**
+ * 跳转到文件管理路由
+ * 直接用router.push跳转
+ */
+function jumpToFileView() {
+  console.log('跳转到文件管理页面')
+  showCountdown.value = false  // 先隐藏倒计时UI
+  router.push('/fileView')
 }
 
 /**
  * 开始连接蓝牙设备（新版本）
  * 调用带Pinia更新的函数，它会自动通过回调更新store状态
  * 我们这里主要处理UI反馈和错误显示
+ * 
+ * 注意：用户说不需要显示TOTP，所以去掉相关提示
  */
 async function startConnection() {
   try {
@@ -116,12 +206,8 @@ async function startConnection() {
     // 检查结果，显示相应提示
     if (result.success) {
       console.log('连接过程完成:', result.message)
-      
-      // 如果成功获取到TOTP，显示成功提示
-      if (result.totp) {
-        showToast(`连接成功！TOTP: ${result.totp}`)
-        console.log('TOTP获取成功:', result.totp)
-      }
+      // 成功连接，显示简单提示（不要TOTP）
+      showToast('设备连接成功！')
     } else {
       console.warn('连接失败:', result.message)
       // 注意：错误信息已经在回调中更新到store了
@@ -196,6 +282,67 @@ onMounted(() => {
   50% {
     transform: translateY(-20px);
   }
+}
+
+/* 倒计时容器 */
+.countdown-container {
+  margin: 30px 0;
+  padding: 20px;
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  width: 100%;
+}
+
+.countdown-title {
+  font-size: 20px;
+  margin-bottom: 20px;
+  color: #55aa55;
+}
+
+/* 倒计时进度条 */
+.countdown-bar {
+  width: 100%;
+  height: 20px;
+  background-color: var(--bg-primary);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 10px;
+  border: 1px solid var(--border-color);
+}
+
+.countdown-progress {
+  height: 100%;
+  background-color: #55aa55;
+  border-radius: 10px;
+  transition: width 0.3s ease;
+  /* 渐变效果 */
+  background: linear-gradient(90deg, #55aa55, #7ccc7c);
+}
+
+.countdown-text {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--text-primary);
+  margin: 10px 0;
+}
+
+/* 跳过按钮 */
+.skip-btn {
+  margin-top: 15px;
+  padding: 8px 20px;
+  background-color: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.skip-btn:hover {
+  background-color: #4a8bd6;
 }
 
 .status-info {
