@@ -123,6 +123,30 @@ async fn get_connection_status() -> Result<String, String> {
     Ok(status)
 }
 
+/// 检查是否已建立稳定连接
+/// 
+/// 前端可以调用这个命令检查连接是否真的还活着。
+/// 返回布尔值：true表示已建立稳定连接，false表示未连接或连接已断开。
+/// 
+/// 注意：这个方法会实际检查蓝牙物理连接状态，而不仅仅是内存中的记录。
+#[tauri::command]
+async fn is_connected() -> Result<bool, String> {
+    println!("前端调用is_connected命令...");
+    
+    let mut manager = get_cpen_device_manager()?.lock().await;
+    
+    match manager.is_connected().await {
+        Ok(connected) => {
+            println!("连接状态检查结果: {}", if connected { "已连接" } else { "未连接" });
+            Ok(connected)
+        }
+        Err(e) => {
+            println!("检查连接状态失败: {}", e);
+            // 检查失败时，保守返回false，表示连接不可用
+            Err(format!("检查连接状态失败: {}", e))
+        }
+    }
+}
 /// 断开连接并清理资源
 /// 
 /// 前端可以调用这个命令手动断开蓝牙连接。
@@ -188,6 +212,7 @@ pub fn run() {
             get_totp,           // 主要功能：获取TOTP
             get_device_id,      // 获取设备ID
             get_connection_status, // 获取连接状态
+            is_connected,       // 检查是否已建立稳定连接
             disconnect,         // 断开连接
             cleanup,            // 清理资源
         ])

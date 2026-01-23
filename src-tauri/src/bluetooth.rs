@@ -3,10 +3,6 @@ use btleplug::platform::{Manager, Adapter};
 use futures::StreamExt;
 use std::time::Duration;
 use tokio::time::{sleep, timeout};
-use windows::Devices::Radios::Radio;
-use windows::Devices::Radios::RadioAccessStatus;
-use windows::Devices::Radios::RadioKind;
-use windows::Devices::Radios::RadioState;
 use std::error::Error;
 use uuid::Uuid;
 
@@ -148,17 +144,37 @@ impl BluetoothManager {
         Ok(())
     }
 
+    /// 检查是否已建立稳定连接
+    /// 
+    /// 这里不只是检查是否有连接的peripheral对象，还实际检查蓝牙物理连接状态
+    /// 注意：这个方法可能会有一定的延迟（蓝牙设备响应时间）
+    pub async fn is_connected(&self) -> Result<bool, BtError> {
+        match &self.connected_peripheral {
+            Some(peripheral) => {
+                // 实际检查蓝牙连接状态，不光是内存中的状态
+                let connected = peripheral.is_connected().await
+                    .map_err(|e| format!("检查连接状态失败: {}", e))?;
+                
+                println!("蓝牙连接状态检查: {}", if connected { "已连接" } else { "未连接" });
+                Ok(connected)
+            }
+            None => {
+                println!("没有连接的peripheral对象");
+                Ok(false)
+            }
+        }
+    }
+
   /// 获取已连接的peripheral
     fn peripheral(&self) -> Result<&btleplug::platform::Peripheral, BtError> {
         self.connected_peripheral.as_ref().ok_or_else(|| "未连接".to_string())
     }
-
     /// 4. 发送数据
     pub async fn send(&mut self, service_uuid: &str, char_uuid: &str, data: &[u8]) -> Result<(), BtError> {
         let peripheral = self.peripheral()?;
         
         // 发现服务
-        timeout(Duration::from_millis(5000), peripheral.discover_services()).await
+        timeout(Duration::from_millis(3000), peripheral.discover_services()).await
             .map_err(|_| "服务发现超时".to_string())?
             .map_err(|e| format!("服务发现失败: {}", e))?;
         
@@ -268,7 +284,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     
     // 2. 扫描设备
     println!("开始扫描蓝牙设备...\n");
-    let devices = bt.scan_devices(5000).await?;
+    let devices = bt.scan_devices(3000).await?;
     
     println!("\n========== 扫描结果 ==========");
     println!("共找到 {} 个设备:\n", devices.len());

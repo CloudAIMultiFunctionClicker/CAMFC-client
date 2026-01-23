@@ -43,6 +43,26 @@ const router = createRouter({
       name: 'settings',
       // 懒加载：联系页面
       component: () => import('../views/Settings.vue')
+    },
+    // 新增仪表板相关路由
+    {
+      path: '/hardware-settings',
+      name: 'hardwareSettings',
+      // 硬件设置占位页面
+      // TODO: 这个页面还没具体功能，先放个占位
+      component: () => import('../views/HardwareSettings.vue')
+    },
+    {
+      path: '/software-settings',
+      name: 'softwareSettings',
+      // 软件设置占位页面
+      component: () => import('../views/SoftwareSettings.vue')
+    },
+    {
+      path: '/more-info',
+      name: 'moreInfo',
+      // 更多信息占位页面
+      component: () => import('../views/MoreInfo.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]

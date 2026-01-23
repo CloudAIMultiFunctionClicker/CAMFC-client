@@ -38,7 +38,7 @@ export async function getTotp() {
     
     console.info(`成功获取TOTP: ${totp}`)
     
-    // 用户要求：把返回值打印在console
+    // 计划：把返回值打印在console
     console.log(`TOTP: ${totp}`)
     
     return totp
@@ -103,6 +103,33 @@ export async function getConnectionStatus() {
 }
 
 /**
+ * 检查是否已建立稳定连接
+ * 
+ * 调用Rust端的is_connected命令
+ * 返回布尔值：true表示已建立稳定连接，false表示未连接或连接已断开
+ * 
+ * 注意：这个方法会实际检查蓝牙物理连接状态，而不仅仅是内存中的记录
+ * 可以用来在操作前验证连接是否真的还活着
+ * 
+ * @returns {Promise<boolean>} 是否已建立稳定连接
+ */
+export async function isConnected() {
+  try {
+    console.info('检查稳定连接状态...')
+    
+    const connected = await invoke('is_connected')
+    
+    console.info(`稳定连接状态: ${connected ? '已连接' : '未连接'}`)
+    
+    return connected
+  } catch (error) {
+    console.error(`检查连接状态失败: ${error}`)
+    // 检查失败时，保守返回false
+    return false
+  }
+}
+
+/**
  * 断开蓝牙连接
  * 
  * 调用Rust端的disconnect命令
@@ -150,28 +177,34 @@ export async function cleanup() {
 }
 
 /**
- * 测试蓝牙功能（简化版）
+ * 测试蓝牙功能（加强版）
  * 
- * 通过获取连接状态来测试蓝牙功能是否正常
- * 这个函数不会尝试连接设备，只检查当前状态
+ * 通过检查连接状态来测试蓝牙功能是否正常
+ * 现在使用isConnected来验证稳定连接状态
  * 
- * @returns {Promise<{available: boolean, status: string}>}
+ * @returns {Promise<{available: boolean, status: string, connected: boolean}>}
  */
 export async function testBluetooth() {
   try {
-    console.info('测试蓝牙功能...')
+    console.info('测试蓝牙功能（加强版）...')
     
+    // 首先检查稳定连接状态
+    const connected = await isConnected()
+    
+    // 获取详细的连接状态描述
     const status = await getConnectionStatus()
     
     return {
       available: true,
+      connected, // 新增：稳定连接状态
       status,
-      message: '蓝牙功能正常'
+      message: connected ? '蓝牙功能正常，设备已连接' : '蓝牙功能正常，但设备未连接'
     }
   } catch (error) {
     console.error(`蓝牙测试失败: ${error}`)
     return {
       available: false,
+      connected: false,
       status: 'error',
       message: `蓝牙测试失败: ${error}`,
       error: error.toString()
@@ -184,6 +217,7 @@ export default {
   getTotp,
   getDeviceId,
   getConnectionStatus,
+  isConnected,
   disconnect,
   cleanup,
   testBluetooth

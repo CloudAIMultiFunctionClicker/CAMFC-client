@@ -33,7 +33,7 @@ import {showToast} from './components/layout/showToast.js'
 import AppHeader from './components/layout/AppHeader.vue'
 
 // 注意：现在不直接导入蓝牙函数了
-// 根据用户要求，除了bluetooth.js中，其他地方不要调用TOTP有关函数
+// 根据计划，除了bluetooth.js中，其他地方不要调用TOTP有关函数
 // 通过Pinia store获取数据
 
 // 处理Ctrl+R等快捷键

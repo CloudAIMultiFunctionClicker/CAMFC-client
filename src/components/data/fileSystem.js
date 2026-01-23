@@ -26,41 +26,34 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import axios from "axios";
 import { ref, reactive } from "vue";
 
-const basicUrl = "http://localhost:8005";
-const timeOut = 10000;
+const basicUrl = "http://cloud.api.ant-cave-2026.asia";
+const timeOut = 5000;
 
 // 获取当前认证头信息
-// 从bluetooth store获取设备ID和TOTP
+// 直接从Rust命令获取设备ID和TOTP
 async function getAuthHeader() {
-  // 尝试从bluetooth store获取当前值
-  // 注意：这里需要导入store，但可能会引起循环依赖
-  // 暂时用简单实现：尝试导入，如果失败返回空对象
   try {
     // 动态导入避免循环依赖
-    const { useBluetoothStore } = await import('../../stores/bluetooth.js');
-    const store = useBluetoothStore();
+    const { getDeviceId, getTotp } = await import('./bluetooth.js');
     
-    const deviceId = store.deviceId;
-    const currentTotp = store.currentTotp;
+    // 直接调用Rust命令获取实时数据
+    const deviceId = await getDeviceId();
+    const currentTotp = await getTotp();
     
-    if (deviceId && currentTotp) {
     console.info({
         "Id": deviceId,
         "Totp": currentTotp
       })
 
-      return {
-        "Id": deviceId,
-        "Totp": currentTotp
-      };
-    }
+    return {
+      "Id": deviceId,
+      "Totp": currentTotp
+    };
   } catch (error) {
-    console.warn('无法获取bluetooth store，使用空header:', error);
+    console.warn('无法获取设备ID或TOTP，使用空header:', error);
+    // 如果获取失败，返回空对象
+    return {};
   }
-  
-  // 如果没有设备ID或TOTP，返回空对象（或保持向后兼容？）
-  // 先返回空对象，看看API会怎么响应
-  return {};
 }
 
 

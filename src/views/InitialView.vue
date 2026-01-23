@@ -24,8 +24,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 <template>
   <div class="initial-container">
-    <!-- 标题 -->
-    <h1 class="title">等待蓝牙连接Cpen设备</h1>
+    <!-- 动态标题 -->
+    <h1 class="title" :class="{ 'error-title': showConnectionFailed }">
+      {{ showConnectionFailed ? '无法连接' : '等待蓝牙连接Cpen设备' }}
+    </h1>
     
     <!-- 弹跳进度条（连接中显示） -->
     <div class="progress-container" v-if="isConnecting">
@@ -34,7 +36,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     
     <!-- 5秒倒计时进度条（连接成功后显示） -->
     <div class="countdown-container" v-if="isConnected && showCountdown">
-      <h2 class="countdown-title">连接成功！5秒后跳转到文件管理</h2>
+      <h2 class="countdown-title">连接成功！5秒后跳转到主页面
+
+      </h2>
       <div class="countdown-bar">
         <div 
           class="countdown-progress" 
@@ -49,16 +53,32 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     <!-- 状态显示 -->
     <div class="status-info">
       <p v-if="isConnecting">正在扫描并连接蓝牙设备...</p>
-      <p v-if="error" class="error">错误：{{ error }}</p>
+      <p v-if="showConnectionFailed" class="error">无法连接到Cpen设备</p>
       <p v-if="isConnected && !showCountdown" class="success">
         设备连接成功！
       </p>
     </div>
     
-    <!-- 调试用按钮，可以隐藏 -->
-    <div class="debug-buttons" v-if="false">
-      <button @click="startConnection">手动连接</button>
-      <button @click="resetState">重置</button>
+    <!-- 操作按钮 -->
+    <div class="action-buttons">
+      <!-- 连接失败或超时时显示"再次尝试"按钮 -->
+      <button 
+        v-if="showConnectionFailed && !isConnecting" 
+        class="retry-btn"
+        @click="retryConnection"
+        :disabled="isConnecting"
+      >
+        {{ isConnecting ? '连接中...' : '再次尝试' }}
+      </button>
+      
+      <!-- 连接成功时显示"进入主页面"按钮 -->
+      <button 
+        v-if="isConnected && !showCountdown" 
+        class="enter-btn"
+        @click="jumpToFileView"
+      >
+        进入主界面
+      </button>
     </div>
   </div>
 </template>
@@ -87,12 +107,23 @@ const countdownSeconds = ref(5)
 const countdownProgress = ref(100)
 let countdownTimer = null
 
-// 状态计算（直接用store的计算属性）
+// 状态计算（直接从store获取连接状态和错误信息）
+// 注意：TOTP和deviceId不再从store读取，改为直接调用Rust命令
 const isConnecting = computed(() => bluetoothStore.isConnecting())
 const isConnected = computed(() => bluetoothStore.isConnected())
-const hasTotp = computed(() => bluetoothStore.hasTotp())
-const currentTotp = computed(() => bluetoothStore.currentTotp)
 const error = computed(() => bluetoothStore.error)
+
+// 超时状态
+const connectionTimedOut = ref(false)
+
+// 重试次数计数（用于调试和循环显示）
+const retryCount = ref(0)
+
+// 连接失败状态（包括错误和超时）
+const showConnectionFailed = computed(() => {
+  // 当有错误，或者连接超过一定时间但仍然没有连接成功时显示"无法连接"
+  return error.value || connectionTimedOut.value
+})
 
 // 监听连接成功状态
 watch(isConnected, (newVal) => {
@@ -100,6 +131,8 @@ watch(isConnected, (newVal) => {
     // 设备连接成功，开始倒计时
     console.log('设备已连接，开始5秒倒计时')
     startCountdown()
+    // 连接成功，清除超时状态
+    connectionTimedOut.value = false
   }
 })
 
@@ -108,21 +141,15 @@ watch(isConnected, (newVal) => {
  * 
  * 重构后，业务逻辑在Rust端，前端只需要：
  * 1. 调用Rust命令获取结果
- * 2. 根据结果更新Pinia状态
+ * 2. 根据结果更新连接状态
  * 3. 处理UI反馈
  * 
- * 注意：不再需要复杂的回调机制，直接更新store即可
+ * 注意：TOTP和deviceId不再存入store，直接使用
  */
 function updateStoreFromResult(result) {
   if (result.success) {
     // 成功连接，更新状态
     bluetoothStore.setStatus('connected')
-    if (result.totp) {
-      bluetoothStore.setTotp(result.totp)
-    }
-    if (result.deviceId) {
-      bluetoothStore.setDeviceId(result.deviceId)
-    }
     if (result.deviceInfo) {
       bluetoothStore.setDeviceInfo(result.deviceInfo)
     }
@@ -134,7 +161,7 @@ function updateStoreFromResult(result) {
 
 /**
  * 开始5秒倒计时
- * 用户要求连接成功后显示5秒倒计时，然后跳转到文件管理
+ * 计划连接成功后显示5秒倒计时，然后跳转到文件管理
  * 
  * 实现思路：每秒更新一次，更新进度条和剩余时间
  * TODO: 倒计时结束后要跳转路由，还要清理定时器避免内存泄漏
@@ -182,9 +209,9 @@ function skipCountdown() {
  * 直接用router.push跳转
  */
 function jumpToFileView() {
-  console.log('跳转到文件管理页面')
+  console.log('跳转到主页面')
   showCountdown.value = false  // 先隐藏倒计时UI
-  router.push('/fileView')
+  router.push('/main')
 }
 
 /**
@@ -201,66 +228,116 @@ async function startConnection() {
   try {
     console.log('开始自动连接Cpen设备（简化版）...')
     
+    // 重置超时状态
+    connectionTimedOut.value = false
+    
     // 先设置状态为连接中
     bluetoothStore.setStatus('connecting')
     
-    // 1. 获取TOTP（这会自动扫描、连接设备、发送命令）
-    const totp = await getTotp()
+    // 设置超时检测 - 15秒后如果还没有连接成功，就显示"无法连接"
+    // 思考：15秒够吗？Rust端扫描5秒，再加上连接、发送命令的时间...
+    // 先这样吧，不够再调
+    const timeoutDuration = 15000 // 15秒
+    let timeoutId = null
     
-    console.log('TOTP获取成功，设备已连接:', totp)
+    // 用户提到"当没有cpen连接已经超时并且toast已经出来了"
+    // 所以我们需要在超时后显示"无法连接"而不仅仅是等待状态
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => {
+        console.warn('蓝牙连接超时（15秒）')
+        connectionTimedOut.value = true
+        // 超时时设置错误状态，让界面显示"无法连接"
+        bluetoothStore.setError('连接超时')
+        showToast('连接超时，请重试')
+        reject(new Error('连接超时'))
+      }, timeoutDuration)
+    })
     
-    // 2. 更新状态为已连接
-    bluetoothStore.setStatus('connected')
-    bluetoothStore.setTotp(totp)
+    // 连接任务
+    const connectionPromise = (async () => {
+      // 1. 获取TOTP（这会自动扫描、连接设备、发送命令）
+      const totp = await getTotp()
+      
+      console.log('TOTP获取成功，设备已连接:', totp)
+      
+      // 2. 更新状态为已连接
+      bluetoothStore.setStatus('connected')
+      // 注意：TOTP不再存入store，直接使用返回值
+      
+      // 3. 尝试获取设备ID（可选）
+      try {
+        const deviceId = await getDeviceId()
+        console.log('设备ID获取成功:', deviceId)
+        // 注意：deviceId也不再存入store，直接使用返回值
+      } catch (idError) {
+        console.warn('获取设备ID失败，但不影响连接:', idError)
+        // 设备ID获取失败不影响整体连接状态
+      }
+      
+      // 4. 获取连接状态信息（包含设备名）
+      try {
+        const status = await getConnectionStatus()
+        console.log('连接状态:', status)
+        // 可以尝试从状态信息中提取设备名，但先简单处理
+        bluetoothStore.setDeviceInfo(status)
+      } catch (statusError) {
+        console.warn('获取连接状态失败:', statusError)
+      }
+      
+      // 5. 显示成功提示
+      showToast('设备连接成功！')
+      
+      console.log('连接过程完成')
+    })()
     
-    // 3. 尝试获取设备ID（可选）
-    try {
-      const deviceId = await getDeviceId()
-      console.log('设备ID获取成功:', deviceId)
-      bluetoothStore.setDeviceId(deviceId)
-    } catch (idError) {
-      console.warn('获取设备ID失败，但不影响连接:', idError)
-      // 设备ID获取失败不影响整体连接状态
+    // 使用Promise.race等待连接完成或超时
+    await Promise.race([connectionPromise, timeoutPromise])
+    
+    // 清除超时定时器（如果还没触发）
+    if (timeoutId) {
+      clearTimeout(timeoutId)
     }
-    
-    // 4. 获取连接状态信息（包含设备名）
-    try {
-      const status = await getConnectionStatus()
-      console.log('连接状态:', status)
-      // 可以尝试从状态信息中提取设备名，但先简单处理
-      bluetoothStore.setDeviceInfo(status)
-    } catch (statusError) {
-      console.warn('获取连接状态失败:', statusError)
-    }
-    
-    // 5. 显示成功提示
-    showToast('设备连接成功！')
-    
-    console.log('连接过程完成')
     
   } catch (error) {
     console.error('连接过程中出错:', error)
     
     // 处理错误
     const errorMsg = error.message || error.toString()
-    bluetoothStore.setError(errorMsg)
-    showToast(`连接失败: ${errorMsg}`)
     
-    // 根据错误类型决定状态
-    if (errorMsg.includes('没有找到Cpen设备')) {
-      bluetoothStore.setStatus('disconnected')
-    } else {
-      bluetoothStore.setStatus('error')
+    // 用户说"要显示连接失败"，所以我们统一显示"连接失败"
+    // 但保留具体错误信息在store中供调试用
+    const displayErrorMsg = '连接失败'
+    // 注意：超时时已经设置过错误了，这里不再重复设置
+    if (!connectionTimedOut.value) {
+      bluetoothStore.setError(displayErrorMsg)
+      showToast(displayErrorMsg)
     }
+    
+    // 设置状态为断开连接
+    bluetoothStore.setStatus('disconnected')
   }
 }
 
 /**
- * 重置状态
- * 调试用，可以不用
+ * 再次尝试连接
+ * 用户点击"再次尝试"按钮时调用
+ * 
+ * 照逻辑：如果再次失败，循环显示错误信息和重试按钮
+ * 所以这个函数会重置状态并重新尝试，形成循环
  */
-function resetState() {
-  bluetoothStore.reset()
+async function retryConnection() {
+  console.log('用户点击再次尝试连接')
+  
+  // 增加重试计数
+  retryCount.value++
+  console.log(`第 ${retryCount.value} 次尝试连接`)
+  
+  // 重置错误状态和超时状态
+  bluetoothStore.setError(null)
+  connectionTimedOut.value = false
+  
+  // 开始新的连接尝试
+  await startConnection()
 }
 
 // 组件挂载时设置
@@ -269,6 +346,8 @@ onMounted(() => {
   
   // 重置状态，确保从干净状态开始
   bluetoothStore.reset()
+  connectionTimedOut.value = false
+  retryCount.value = 0
   
   // 延迟一下，确保UI渲染完成
   setTimeout(() => {
@@ -292,6 +371,11 @@ onMounted(() => {
   font-size: 24px;
   margin-bottom: 40px;
   color: var(--text-primary);
+  transition: color 0.3s ease;
+}
+
+.error-title {
+  color: var(--accent-red);
 }
 
 .progress-container {
@@ -395,27 +479,63 @@ onMounted(() => {
 
 .error {
   color: var(--accent-red);
+  font-weight: bold;
 }
 
 .info {
   color: var(--text-secondary);
 }
 
-.debug-buttons {
-  margin-top: 20px;
+/* 操作按钮样式 */
+.action-buttons {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
 }
 
-.debug-buttons button {
-  margin: 0 10px;
-  padding: 8px 16px;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+.retry-btn {
+  padding: 12px 30px;
+  background-color: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
   cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 150px;
 }
 
-.debug-buttons button:hover {
-  background-color: var(--hover-bg);
+.retry-btn:hover:not(:disabled) {
+  background-color: #4a8bd6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 139, 214, 0.3);
+}
+
+.retry-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.enter-btn {
+  padding: 12px 30px;
+  background-color: #55aa55;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 150px;
+}
+
+.enter-btn:hover {
+  background-color: #4a994a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(85, 170, 85, 0.3);
 }
 </style>
