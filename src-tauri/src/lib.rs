@@ -1,13 +1,10 @@
-// 使用简化的蓝牙模块
+// 使用模块化的蓝牙模块
 mod bluetooth;
-use bluetooth::BluetoothManager;
+use bluetooth::CpenService;
 
 // 导入同步原语
-// 注意：原来用std::sync::Mutex，但MutexGuard不是Send，会导致编译错误
-// 改成tokio::sync::Mutex，它的MutexGuard是Send的，适合异步环境
 use tokio::sync::Mutex;
 use std::sync::OnceLock;
-use chrono;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -15,216 +12,97 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-// 全局蓝牙管理器实例
+// 全局CPen服务实例
 // 用OnceLock确保只初始化一次，Mutex保证线程安全
-static BLUETOOTH_MANAGER: OnceLock<Mutex<BluetoothManager>> = OnceLock::new();
+static CPEN_SERVICE: OnceLock<Mutex<CpenService>> = OnceLock::new();
 
-/// 初始化蓝牙管理器
-#[tauri::command]
-async fn init_bluetooth_manager() -> Result<(), String> {
-    println!("初始化蓝牙管理器...");
+/// 初始化CPen服务
+fn init_cpen_service() -> Result<(), String> {
+    println!("初始化CPen服务...");
     
-    if BLUETOOTH_MANAGER.get().is_some() {
-        println!("蓝牙管理器已经初始化过了");
+    if CPEN_SERVICE.get().is_some() {
+        println!("CPen服务已经初始化过了");
         return Ok(());
     }
     
-    let manager = BluetoothManager::new();
+    let service = CpenService::new();
     
-    BLUETOOTH_MANAGER.set(Mutex::new(manager))
-        .map_err(|_| "蓝牙管理器设置失败".to_string())?;
+    CPEN_SERVICE.set(Mutex::new(service))
+        .map_err(|_| "CPen服务设置失败".to_string())?;
     
-    println!("蓝牙管理器初始化成功");
+    println!("CPen服务初始化成功");
     Ok(())
 }
 
-/// 获取全局蓝牙管理器的引用
-fn get_bluetooth_manager() -> Result<&'static Mutex<BluetoothManager>, String> {
-    BLUETOOTH_MANAGER.get().ok_or("蓝牙管理器未初始化，请先调用init_bluetooth_manager".to_string())
-}
-
-/// 扫描蓝牙设备
-#[tauri::command]
-async fn scan_bluetooth_devices() -> Result<Vec<String>, String> {
-    let mut manager = get_bluetooth_manager()?.lock().await;
-    
-    // 扫描5秒
-    let devices = manager.scan_devices(5000).await
-        .map_err(|e| format!("扫描失败: {}", e))?;
-    
-    if devices.is_empty() {
-        Ok(vec!["没有发现蓝牙设备".to_string()])
-    } else {
-        let device_strings: Vec<String> = devices
-            .iter()
-            .map(|d| format!("{} - {}", d.name, d.address))
-            .collect();
-        Ok(device_strings)
-    }
-}
-
-
-/// 连接蓝牙设备
-/// 参数是 deviceInfo 字符串，格式 "设备名 - 地址"
-/// 我们只提取地址部分使用
-#[tauri::command]
-async fn connect_to_device(device_info: String) -> Result<String, String> {
-    println!("开始连接设备: {}", device_info);
-    
-    // 解析地址，格式是 "设备名 - 地址"
-    let address = if let Some(addr) = device_info.split(" - ").nth(1) {
-        addr.to_string()
-    } else {
-        // 如果格式不对，就用整个字符串作为地址
-        device_info.clone()
-    };
-    
-    let mut manager = get_bluetooth_manager()?.lock().await;
-    
-    manager.connect(&address).await
-        .map_err(|e| format!("连接失败: {}", e))?;
-    
-    Ok(format!("成功连接到设备: {}", device_info))
-}
-
-/// 发送命令到设备并获取响应
-/// 使用Cpen设备的默认UUID
-#[tauri::command]
-async fn send_command_to_device(command: String) -> Result<String, String> {
-    println!("发送命令: {}", command);
-    
-    let mut manager = get_bluetooth_manager()?.lock().await;
-    
-    // Cpen设备UUID
-    let service_uuid = "d816e4c6-1b99-4da7-bcd5-7c37cc2642c4";
-    let char_uuid = "d816e4c7-1b99-4da7-bcd5-7c37cc2642c4";
-    
-    // 发送命令
-    manager.send(service_uuid, char_uuid, command.as_bytes()).await
-        .map_err(|e| format!("发送失败: {}", e))?;
-    
-    // 接收响应
-    let response = manager.recv(service_uuid, char_uuid).await
-        .map_err(|e| format!("接收失败: {}", e))?;
-    
-    String::from_utf8(response)
-        .map_err(|e| format!("响应数据不是有效UTF-8: {}", e))
-}
-
-/// 获取TOTP（快捷命令）
-#[tauri::command]
-async fn get_totp_from_device() -> Result<String, String> {
-    println!("开始获取TOTP...");
-    
-    let mut manager = get_bluetooth_manager()?.lock().await;
-    
-    let service_uuid = "d816e4c6-1b99-4da7-bcd5-7c37cc2642c4";
-    let char_uuid = "d816e4c7-1b99-4da7-bcd5-7c37cc2642c4";
-    
-    // 先发送setTime时间戳
-    let timestamp = chrono::Utc::now().timestamp().to_string();
-    let set_time_command = format!("setTime:{}", timestamp);
-    println!("发送setTime命令: {}", set_time_command);
-    
-    
-    manager.send(service_uuid, char_uuid, set_time_command.as_bytes()).await
-        .map_err(|e| format!("发送setTime失败: {}", e))?;
-    
-    // 等待一小段时间让设备处理setTime命令
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-    
-    // 尝试读取setTime的响应，避免它干扰后续的getTotp响应
-    // 注意：这里使用短超时，因为setTime可能没有响应，或者响应可能已经在通道中
-    match tokio::time::timeout(tokio::time::Duration::from_millis(500), manager.recv(service_uuid, char_uuid)).await {
-        Ok(Ok(set_time_response)) => {
-            let set_time_response_str = String::from_utf8_lossy(&set_time_response);
-            println!("收到setTime响应: {}", set_time_response_str);
-            // 如果是OK:setTime:xxx，说明收到了setTime的确认，继续执行
-            // 如果不是，可能是其他数据，记录下来但继续执行
-        }
-        Ok(Err(e)) => {
-            println!("读取setTime响应时出错: {}，但继续执行", e);
-            // 出错也继续，可能是设备没有响应
-        }
-        Err(_) => {
-            println!("读取setTime响应超时，可能是设备没有响应，继续执行");
-            // 超时也继续，设备可能不回复setTime
-        }
+/// 获取全局CPen服务的引用
+fn get_cpen_service() -> Result<&'static Mutex<CpenService>, String> {
+    // 如果服务未初始化，先初始化
+    if CPEN_SERVICE.get().is_none() {
+        init_cpen_service()?;
     }
     
-    // 然后发送getTotp命令
-    manager.send(service_uuid, char_uuid, b"getTotp").await
-        .map_err(|e| format!("发送getTotp失败: {}", e))?;
-    
-    let response = manager.recv(service_uuid, char_uuid).await
-        .map_err(|e| format!("接收失败: {}", e))?;
-    
-    String::from_utf8(response)
-        .map_err(|e| format!("响应数据不是有效UTF-8: {}", e))
+    CPEN_SERVICE.get().ok_or("CPen服务初始化失败".to_string())
 }
 
-/// 断开当前设备连接
+/// 获取TOTP - 核心API #1
+/// 前端只需要调用这个函数，所有连接、缓存逻辑都在Rust端处理
+#[tauri::command]
+async fn get_totp() -> Result<String, String> {
+    println!("前端调用get_totp()...");
+    
+    let service_mutex = get_cpen_service()?;
+    let service = service_mutex.lock().await;
+    
+    // 调用CpenService的get_totp方法
+    // 这个方法会：1.检查缓存 2.自动连接设备 3.获取TOTP 4.返回结果
+    let totp = service.get_totp().await?;
+    
+    println!("get_totp()返回: {}", totp);
+    Ok(totp)
+}
+
+/// 获取设备ID - 核心API #2  
+/// 前端只需要调用这个函数，所有连接、缓存逻辑都在Rust端处理
+#[tauri::command]
+async fn get_device_id() -> Result<String, String> {
+    println!("前端调用get_device_id()...");
+    
+    let service_mutex = get_cpen_service()?;
+    let service = service_mutex.lock().await;
+    
+    // 调用CpenService的get_device_id方法
+    // 这个方法会：1.检查缓存 2.自动连接设备 3.获取设备ID 4.返回结果
+    let device_id = service.get_device_id().await?;
+    
+    println!("get_device_id()返回: {}", device_id);
+    Ok(device_id)
+}
+
+/// 断开连接（可选，保持兼容性）
 #[tauri::command]
 async fn disconnect_current_device() -> Result<String, String> {
-    println!("准备断开设备连接...");
+    println!("前端调用断开连接...");
     
-    let mut manager = get_bluetooth_manager()?.lock().await;
+    let service_mutex = get_cpen_service()?;
+    let service = service_mutex.lock().await;
     
-    manager.disconnect().await
-        .map_err(|e| format!("断开失败: {}", e))?;
-    
-    Ok("成功断开设备连接".to_string())
-}
-
-/// 清理蓝牙管理器
-#[tauri::command]
-async fn cleanup_bluetooth_manager() -> Result<(), String> {
-    println!("清理蓝牙管理器...");
-    
-    if let Ok(manager_mutex) = get_bluetooth_manager() {
-        let mut manager = manager_mutex.lock().await;
-        let _ = manager.disconnect().await;
+    match service.disconnect().await {
+        Ok(_) => Ok("成功断开设备连接".to_string()),
+        Err(e) => Err(format!("断开连接失败: {}", e)),
     }
+}
+
+/// 启动后台服务（可选，内部使用）
+/// 应用启动时自动调用，不需要前端关心
+#[tauri::command]
+async fn start_background_service() -> Result<(), String> {
+    println!("启动后台服务...");
     
-    println!("蓝牙管理器清理完成");
+    let service_mutex = get_cpen_service()?;
+    let mut service = service_mutex.lock().await;
+    
+    service.start_background_service();
     Ok(())
-}
-
-/// 简单的设备扫描功能（基础版本）
-#[tauri::command]
-async fn simple_scan_devices() -> Result<Vec<String>, String> {
-    println!("执行简单设备扫描...");
-    
-    let mut manager = get_bluetooth_manager()?.lock().await;
-    
-    let devices = manager.scan_devices(5000).await
-        .map_err(|e| format!("扫描失败: {}", e))?;
-    
-    let device_strings: Vec<String> = devices
-        .iter()
-        .map(|d| format!("{} - {}", d.name, d.address))
-        .collect();
-    
-    println!("扫描完成，发现 {} 个设备", device_strings.len());
-    Ok(device_strings)
-}
-
-// 监听功能暂时移除，bluetooth.rs没有实现
-#[tauri::command]
-async fn start_listening_for_data(_app: tauri::AppHandle) -> Result<(), String> {
-    Err("数据监听功能未实现".to_string())
-}
-
-
-
-#[tauri::command]
-async fn stop_listening_for_data() -> Result<(), String> {
-    Err("数据监听功能未实现".to_string())
-}
-
-#[tauri::command]
-async fn is_listening_for_data() -> Result<bool, String> {
-    Ok(false)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -232,18 +110,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
-            greet, 
-            scan_bluetooth_devices, 
-            simple_scan_devices, 
-            connect_to_device,
-            send_command_to_device,
-            get_totp_from_device,
-            disconnect_current_device,
-            init_bluetooth_manager,
-            cleanup_bluetooth_manager,
-            start_listening_for_data,
-            stop_listening_for_data,
-            is_listening_for_data,
+            greet,
+            get_totp,           // 核心API #1
+            get_device_id,      // 核心API #2
+            disconnect_current_device, // 可选API
+            start_background_service, // 内部API
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -64,19 +64,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useBluetoothStore } from '../stores/bluetooth.js'
 import { 
-  autoConnectAndGetTotpWithPinia, 
-  registerPiniaCallbacks 
+  getTotp,  // 新的核心API：获取TOTP
+  getDeviceId,  // 新的核心API：获取设备ID
+  startBackgroundService  // 启动后台服务
 } from '../components/data/bluetooth.js'
 import { showToast } from '../components/layout/showToast.js'
 
-console.info('InitialView - 蓝牙连接界面（带Pinia回调）')
+console.info('InitialView - 蓝牙连接界面（使用新版API）')
 
 const router = useRouter()
-const bluetoothStore = useBluetoothStore()
 
 // 倒计时相关状态
 const showCountdown = ref(false)
@@ -84,54 +83,32 @@ const countdownSeconds = ref(5)
 const countdownProgress = ref(100)
 let countdownTimer = null
 
-// 状态计算（直接用store的计算属性）
-const isConnecting = computed(() => bluetoothStore.isConnecting())
-const isConnected = computed(() => bluetoothStore.isConnected())
-const hasTotp = computed(() => bluetoothStore.hasTotp())
-const currentTotp = computed(() => bluetoothStore.currentTotp)
-const error = computed(() => bluetoothStore.error)
+// 状态计算
+const isConnecting = ref(false)
+const isConnected = ref(false)
+const error = ref(null)
 
-// 监听连接成功状态
-watch(isConnected, (newVal) => {
-  if (newVal) {
-    // 设备连接成功，开始倒计时
+// 设备连接状态（通过调用API间接判断）
+function updateConnectionStatus(connected, connecting = false, err = null) {
+  isConnecting.value = connecting
+  isConnected.value = connected
+  error.value = err
+  
+  if (connected) {
     console.log('设备已连接，开始5秒倒计时')
     startCountdown()
   }
-})
+}
 
 /**
- * 注册Pinia回调给bluetooth.js用
- * 这样bluetooth.js能直接更新store状态，不用我们手动操作
- * 
- * 思考：这样设计是为了避免模块间的循环依赖
- * bluetooth.js不能直接import store，store也不能直接调用bluetooth.js
- * 用回调函数解耦，感觉挺巧妙的
+ * 启动后台服务
+ * 应用启动时调用，让Rust端处理定时刷新等后台任务
  */
-function setupPiniaCallbacks() {
-  registerPiniaCallbacks(
-    // TOTP更新回调
-    (totp) => {
-      console.log('Pinia回调：更新TOTP', totp)
-      bluetoothStore.setTotp(totp)
-    },
-    // 状态更新回调
-    (status) => {
-      console.log('Pinia回调：更新状态', status)
-      bluetoothStore.setStatus(status)
-    },
-    // 设备信息更新回调
-    (deviceInfo) => {
-      console.log('Pinia回调：更新设备信息', deviceInfo)
-      bluetoothStore.setDeviceInfo(deviceInfo)
-    },
-    // 设备ID更新回调（新增）
-    (deviceId) => {
-      console.log('Pinia回调：更新设备ID', deviceId)
-      bluetoothStore.setDeviceId(deviceId)
-    }
-  )
-  console.log('Pinia回调注册完成（包括设备ID回调）')
+function setupBackgroundService() {
+  console.log('设置后台服务...')
+  startBackgroundService().catch(err => {
+    console.warn('后台服务启动失败，但不影响主要功能:', err)
+  })
 }
 
 /**
@@ -190,52 +167,63 @@ function jumpToFileView() {
 }
 
 /**
- * 开始连接蓝牙设备（新版本）
- * 调用带Pinia更新的函数，它会自动通过回调更新store状态
- * 我们这里主要处理UI反馈和错误显示
+ * 开始连接蓝牙设备（新版）
+ * 直接调用bluetooth.js的新API，不通过Pinia
  * 
- * 注意：用户说不需要显示TOTP，所以去掉相关提示
+ * 流程：
+ * 1. 更新状态为"连接中"
+ * 2. 调用getTotp() API（Rust端会自动连接）
+ * 3. 成功后调用getDeviceId()获取设备ID
+ * 4. 更新状态并显示结果
  */
 async function startConnection() {
   try {
-    console.log('开始自动连接Cpen设备（带Pinia回调）...')
-    // 注意：不需要手动设置状态，因为bluetooth.js会通过回调自动更新
+    console.log('开始自动连接Cpen设备（使用新版API）...')
+    updateConnectionStatus(false, true, null)  // 连接中
     
-    const result = await autoConnectAndGetTotpWithPinia()
+    // 1. 调用getTotp() - Rust端会自动连接设备并获取TOTP
+    const totp = await getTotp()
+    console.log('获取TOTP成功:', totp)
     
-    // 检查结果，显示相应提示
-    if (result.success) {
-      console.log('连接过程完成:', result.message)
-      // 成功连接，显示简单提示（不要TOTP）
-      showToast('设备连接成功！')
-    } else {
-      console.warn('连接失败:', result.message)
-      // 注意：错误信息已经在回调中更新到store了
-      // 这里只显示toast提示
-      showToast(`连接失败: ${result.message || '未知错误'}`)
-    }
+      // 2. 成功获取TOTP后，更新状态为已连接
+      updateConnectionStatus(true, false, null)
+      
+      // 3. 获取设备ID（直接调用API，不需要存储到Pinia）
+      try {
+        const deviceId = await getDeviceId()
+        console.log('获取设备ID成功:', deviceId)
+        // 注意：现在不再存储到Pinia，因为所有地方都直接调用API
+      } catch (idError) {
+        console.warn('获取设备ID失败，但不影响连接状态:', idError)
+        // 设备ID获取失败不影响整体连接状态
+      }
+    
+    // 5. 显示成功提示
+    showToast('设备连接成功！')
+    
   } catch (err) {
     console.error('连接过程中出错:', err)
-    // 处理意外错误
-    bluetoothStore.setError(err.message || '未知错误')
-    showToast(`连接出错: ${err.message || '未知错误'}`)
+    // 处理错误
+    updateConnectionStatus(false, false, err.message)
+    showToast(`连接失败: ${err.message || '未知错误'}`)
   }
 }
 
 /**
- * 重置状态
- * 调试用，可以不用
+ * 重置状态（现在不再需要，因为状态由Rust端管理）
+ * 保留函数定义但注释掉，以防其他地方调用
  */
 function resetState() {
-  bluetoothStore.reset()
+  console.log('resetState已禁用：状态现在由Rust端管理')
+  // bluetoothStore.reset() // 不再需要
 }
 
 // 组件挂载时设置
 onMounted(() => {
-  console.log('InitialView mounted，设置Pinia回调并开始连接')
+  console.log('InitialView mounted，启动后台服务并开始连接')
   
-  // 1. 先注册回调函数
-  setupPiniaCallbacks()
+  // 1. 启动后台服务（让Rust端处理定时刷新等）
+  setupBackgroundService()
   
   // 2. 延迟一下，确保UI渲染完成
   setTimeout(() => {

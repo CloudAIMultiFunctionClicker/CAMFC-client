@@ -24,8 +24,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 <script setup>
 import { ref, provide, onMounted, onUnmounted } from 'vue'
-// 导入Pinia store来获取蓝牙状态
-import { useBluetoothStore } from './stores/bluetooth.js'
 
 import {showToast} from './components/layout/showToast.js'
 
@@ -34,7 +32,7 @@ import AppHeader from './components/layout/AppHeader.vue'
 
 // 注意：现在不直接导入蓝牙函数了
 // 根据用户要求，除了bluetooth.js中，其他地方不要调用TOTP有关函数
-// 通过Pinia store获取数据
+// 蓝牙逻辑已移到Rust端，前端通过bluetooth.js的新API调用
 
 // 处理Ctrl+R等快捷键
 document.addEventListener('keydown', (e) => {
@@ -94,37 +92,16 @@ const updateBodyClass = () => {
   }
 }
 
-// 注意：现在不直接调用蓝牙函数了，通过Pinia store管理状态
-// InitialView.vue会处理蓝牙连接和TOTP获取
-// 这里只提供基础的工具函数，如果需要的话
+// 注意：现在不直接调用蓝牙函数了，蓝牙逻辑已移到Rust端处理
+// InitialView.vue会通过bluetooth.js的新API处理蓝牙连接和TOTP获取
+// 这里不再需要蓝牙相关的函数
 
-// 创建bluetooth store实例
-const bluetoothStore = useBluetoothStore()
-
-// 扫描蓝牙设备的函数（保留兼容性，但通过store状态反馈）
-// 这个函数现在主要给其他组件用，如果它们需要手动扫描
+// 扫描蓝牙设备的函数（已弃用，因为连接逻辑已移到Rust端）
+// 保留函数定义但注释掉，以防其他地方调用
 const scanBluetooth = async () => {
-  try {
-    showToast('开始扫描蓝牙设备...')
-    // 动态导入蓝牙模块，避免循环依赖
-    const { scanDevices, findCpenDevices } = await import('./components/data/bluetooth')
-    const devices = await scanDevices()
-    const cpenDevices = findCpenDevices(devices)
-    
-    showToast(`扫描完成，发现 ${devices.length} 个设备，其中 ${cpenDevices.length} 个Cpen设备`)
-    
-    // 如果发现Cpen设备，可以尝试自动连接（可选）
-    // 但根据设计，连接应该由InitialView.vue处理
-    if (cpenDevices.length > 0) {
-      showToast(`发现Cpen设备: ${cpenDevices[0].displayInfo}`)
-    }
-    
-    return { devices, cpenDevices }
-  } catch (error) {
-    console.error('蓝牙扫描失败:', error)
-    showToast('蓝牙扫描失败')
-    return { devices: [], cpenDevices: [] }
-  }
+  console.warn('scanBluetooth已弃用：蓝牙连接逻辑已移到Rust端')
+  showToast('蓝牙扫描功能已禁用，连接由Rust端自动处理')
+  return { devices: [], cpenDevices: [] }
 }
 
 // 把主题状态和切换函数提供给子组件使用

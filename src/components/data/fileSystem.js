@@ -30,37 +30,35 @@ const basicUrl = "http://localhost:8005";
 const timeOut = 10000;
 
 // 获取当前认证头信息
-// 从bluetooth store获取设备ID和TOTP
+// 直接调用bluetooth.js的新API获取设备ID和TOTP
 async function getAuthHeader() {
-  // 尝试从bluetooth store获取当前值
-  // 注意：这里需要导入store，但可能会引起循环依赖
-  // 暂时用简单实现：尝试导入，如果失败返回空对象
   try {
-    // 动态导入避免循环依赖
-    const { useBluetoothStore } = await import('../../stores/bluetooth.js');
-    const store = useBluetoothStore();
+    // 动态导入bluetooth.js避免循环依赖
+    const { getDeviceId, getTotp } = await import('../../components/data/bluetooth.js');
     
-    const deviceId = store.deviceId;
-    const currentTotp = store.currentTotp;
+    // 获取设备ID和TOTP
+    const deviceId = await getDeviceId();
+    const currentTotp = await getTotp();
     
     if (deviceId && currentTotp) {
-    console.info({
+      console.info({
         "Id": deviceId,
         "Totp": currentTotp
-      })
+      });
 
       return {
         "Id": deviceId,
         "Totp": currentTotp
       };
+    } else {
+      console.warn('无法获取完整的认证信息:', { deviceId, currentTotp });
+      return {};
     }
   } catch (error) {
-    console.warn('无法获取bluetooth store，使用空header:', error);
+    console.warn('获取蓝牙认证信息失败，使用空header:', error);
+    // 返回空对象，API可能会返回错误或降级处理
+    return {};
   }
-  
-  // 如果没有设备ID或TOTP，返回空对象（或保持向后兼容？）
-  // 先返回空对象，看看API会怎么响应
-  return {};
 }
 
 
