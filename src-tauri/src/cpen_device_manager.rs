@@ -65,15 +65,51 @@ impl CpenDeviceManager {
     /// 确保连接到一个Cpen设备（单设备保证的核心！）
     /// 
     /// 这个函数实现了完整的连接逻辑：
-    /// 1. 如果已经连接了设备，直接返回成功（复用连接）
-    /// 2. 如果没有连接，扫描设备
-    /// 3. 从扫描结果中找出Cpen设备
-    /// 4. 如果有多个Cpen设备，只连接第一个（单设备保证）
-    /// 5. 连接设备并记录状态
+    /// 1. 在一切最开始，检查蓝牙是否开启，如果没开就尝试开启
+    /// 2. 如果已经连接了设备，直接返回成功（复用连接）
+    /// 3. 如果没有连接，扫描设备
+    /// 4. 从扫描结果中找出Cpen设备
+    /// 5. 如果有多个Cpen设备，只连接第一个（单设备保证）
+    /// 6. 连接设备并记录状态
     /// 
-    /// 思考：如果有多个Cpen设备，用户可能想连特定的那个？
-    /// 计划说"保证全局只连着1个cpen"，那就先连第一个，以后有需求再改进。
+    /// 思考：用户要求"在一切的一切最开始 应当监测蓝牙是否开启 如果不是 就开"
+    /// 所以这里要在扫描设备之前先检查蓝牙状态
     pub async fn ensure_connected(&mut self) -> Result<(), CpenError> {
+        println!("开始Cpen设备连接流程...");
+        
+        // ==== 新增：在一切最开始检查蓝牙状态 ====
+        // 用户要求：在尝试扫描设备之前检查并且开启
+        println!("=== 蓝牙状态检查开始 ===");
+        
+        // 方法1：先尝试用Windows API检查蓝牙状态
+        // 注意：enable_bluetooth是同步方法，但我们在异步上下文中
+        // 可以用tokio::task::spawn_blocking或者直接调用
+        match self.bluetooth_manager.enable_bluetooth() {
+            Ok(_) => {
+                println!("✅ 蓝牙状态检查通过（Windows API）");
+            }
+            Err(e) => {
+                // Windows API检查失败，可能是API不可用或权限问题
+                // 尝试用btleplug的fallback方法
+                println!("⚠️ Windows蓝牙API检查失败，尝试用btleplug检测: {}", e);
+                
+                match self.bluetooth_manager.check_bluetooth_via_btleplug().await {
+                    Ok(_) => {
+                        println!("✅ 蓝牙状态检查通过（btleplug fallback）");
+                    }
+                    Err(btleplug_err) => {
+                        // 两个方法都失败了，蓝牙可能真的不可用
+                        let err_msg = format!("蓝牙检测失败，请确保蓝牙已开启并可用。Windows API错误: {}, btleplug错误: {}", e, btleplug_err);
+                        println!("❌ {}", err_msg);
+                        return Err(err_msg);
+                    }
+                }
+            }
+        }
+        
+        println!("=== 蓝牙状态检查完成 ===");
+        // ==== 蓝牙状态检查结束 ====
+        
         // 1. 检查是否已经连接
         if self.connected_address.is_some() {
             // 新增：使用bluetooth.rs提供的is_connected方法检查连接是否真的还活着
@@ -104,7 +140,8 @@ impl CpenDeviceManager {
         self.connection_status = "connecting".to_string();
         println!("开始连接Cpen设备...");
         
-        // 3. 扫描设备
+        // 3. 扫描设备（现在蓝牙已经确认开启）
+        println!("开始扫描蓝牙设备（蓝牙状态已确认）...");
         let devices = self.bluetooth_manager.scan_devices(SCAN_DURATION_MS).await
             .map_err(|e| format!("扫描设备失败: {}", e))?;
         

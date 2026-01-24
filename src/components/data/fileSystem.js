@@ -27,7 +27,7 @@ import axios from "axios";
 import { ref, reactive } from "vue";
 
 const basicUrl = "http://cloud.api.ant-cave-2026.asia";
-const timeOut = 5000;
+const timeOut = 3000;
 
 // 获取当前认证头信息
 // 直接从Rust命令获取设备ID和TOTP

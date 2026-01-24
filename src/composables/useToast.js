@@ -170,7 +170,7 @@ export function useToast() {
       if (toastEl.parentNode) {
         removeToast(toastEl, id)
       }
-    }, 5000)
+    }, 3000)
 
     return id
   }
