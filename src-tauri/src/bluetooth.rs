@@ -11,7 +11,6 @@ use uuid::Uuid;
 use windows::Devices::Radios::Radio;
 use windows::Devices::Radios::RadioAccessStatus;
 use windows::Devices::Radios::RadioKind;
-use windows::Devices::Radios::RadioState;
 
 type BtError = String;
 
@@ -41,170 +40,145 @@ impl BluetoothManager {
         }
     }
 
-    /// 1. 检测并开启蓝牙（Windows API实现）
+    /// 1. 查找并启用蓝牙设备（使用用户提供的新实现）
     /// 
     /// 这个函数会：
-    /// 1. 检查蓝牙无线电的当前状态
-    /// 2. 如果蓝牙已开启，直接返回成功
-    /// 3. 如果蓝牙未开启，尝试自动开启
-    /// 4. 返回操作结果
+    /// 1. 获取所有无线电设备
+    /// 2. 查找蓝牙无线电
+    /// 3. 检查当前状态
+    /// 4. 如果未开启，尝试自动开启
     /// 
-    /// 思考：Windows的Radio API好像有点复杂，还要处理异步和权限
-    /// 先按参考代码试试，不行再找其他方法
+    /// 返回值: 
+    /// - Ok(true): 蓝牙已成功启用或已经是开启状态
+    /// - Ok(false): 未找到蓝牙设备
+    /// - Err(...): 过程中发生错误
     /// 
-    /// 注意：返回类型用String简化处理，避免复杂的trait bound问题
+    /// 思考：用户提供的新实现使用了正确的Windows API调用方式
+    /// 用.get()方法同步等待异步操作，应该能解决之前的编译错误
     pub fn enable_bluetooth(&self) -> Result<(), String> {
-        println!("开始检查蓝牙状态（使用Windows Radio API）...");
+        println!("开始检查并启用蓝牙设备（使用Windows Radio API）...");
         
-        // 尝试获取蓝牙无线电
-        // TODO: 这里可能需要异步处理，但enable_bluetooth是同步方法
-        // 先简单实现，后面有问题再改
-        
-        // 参考代码用了异步，但我们这里是同步方法
-        // 计划：先用简单的实现，如果不行再改成异步
-        // 其实btleplug本身初始化时也会检查蓝牙，所以这里主要是为了提前提示
-        
-        // Windows Radio API调用示例（参考用户提供的代码）：
-        // 1. 获取所有无线电
-        // 2. 找到蓝牙无线电
-        // 3. 检查状态并尝试开启
-        
-        println!("Windows Radio API调用...");
-        
-        // 尝试调用Windows API
-        // 注意：这里用了windows crate，需要处理可能的错误
-        match Self::check_and_enable_bluetooth_windows() {
-            Ok(status) => {
-                println!("蓝牙状态检查完成: {}", status);
+        // 调用内部实现，然后适配返回类型
+        match self.enable_bluetooth_internal() {
+            Ok(true) => {
+                println!("✅ 蓝牙已成功启用或已经是开启状态");
                 Ok(())
             }
+            Ok(false) => {
+                let err_msg = "未找到蓝牙设备".to_string();
+                println!("❌ {}", err_msg);
+                println!("请确保：");
+                println!("1. 计算机支持蓝牙功能");
+                println!("2. 蓝牙硬件已正确安装");
+                println!("3. 蓝牙驱动程序已更新");
+                Err(err_msg)
+            }
             Err(e) => {
-                // Windows API调用失败，可能是权限问题或API不可用
-                // 返回错误但不要panic，让上层处理
-                let err_msg = format!("蓝牙状态检查失败: {}", e);
-                println!("警告: {}", err_msg);
-                
-                // 思考：Windows API失败时，是否应该继续？
-                // 计划：返回错误，让调用者决定是否继续
-                // 也许有些系统没有Windows Radio API？比如老版本Windows？
+                let err_msg = format!("蓝牙启用失败: {}", e);
+                println!("❌ {}", err_msg);
                 Err(err_msg)
             }
         }
     }
     
-    /// Windows平台专用的蓝牙检查与开启
+    /// 内部实现：查找并启用蓝牙设备
     /// 
-    /// 内部辅助函数，封装Windows Radio API调用
-    /// 这里处理所有Windows特有的蓝牙操作
-    /// 
-    /// 思考：Windows的异步API调用比较复杂，之前的方法有编译错误
-    /// 改用更简单的方法：直接调用Windows系统命令来开启蓝牙
-    /// 用户要求：如果蓝牙没开，就自动开启！
-    fn check_and_enable_bluetooth_windows() -> Result<String, String> {
-        println!("开始Windows蓝牙状态检测与自动开启...");
+    /// 这是用户提供的代码实现，使用Windows Radio API
+    /// 返回类型保持原样：Result<bool, Box<dyn std::error::Error>>
+    fn enable_bluetooth_internal(&self) -> Result<bool, Box<dyn std::error::Error>> {
+        println!("正在查找蓝牙设备...");
+
+        // 获取所有无线电设备
+        let async_op = Radio::GetRadiosAsync()?;
+        let radios = async_op.get()?;
         
-        // 用catch_unwind防止Windows API调用崩溃
-        let result = std::panic::catch_unwind(|| {
-            println!("尝试使用Windows系统命令检测和开启蓝牙...");
-            
-            // 方法1：尝试使用PowerShell命令检测蓝牙状态
-            // 这个更简单，避免复杂的Windows API调用问题
-            
-            // 首先检查蓝牙是否已开启
-            println!("执行PowerShell命令检查蓝牙状态...");
-            
-            // PowerShell命令来获取蓝牙无线电状态
-            let check_cmd = r#"Get-WindowsDriver -Online | Where-Object {$_.Driver -like "*bluetooth*"} | Select-Object -First 1"#;
-            
-            match std::process::Command::new("powershell")
-                .args(&["-Command", check_cmd])
-                .output() {
-                Ok(output) => {
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    let stderr = String::from_utf8_lossy(&output.stderr);
+        // 查找蓝牙设备
+        let bluetooth_radio = Self::find_bluetooth_radio(&radios);
+        
+        match bluetooth_radio {
+            Some(radio) => {
+                // 检查当前状态
+                let current_state = radio.State()?;
+                
+                if current_state == windows::Devices::Radios::RadioState::On {
+                    println!("蓝牙已经是开启状态");
+                    Ok(true)
+                } else {
+                    println!("正在启用蓝牙...");
                     
-                    println!("蓝牙检查命令输出: {}", stdout);
+                    // 尝试启用蓝牙
+                    let result = radio.SetStateAsync(windows::Devices::Radios::RadioState::On)?.get()?;
                     
-                    if !stderr.is_empty() {
-                        println!("蓝牙检查命令错误: {}", stderr);
+                    match result {
+                        RadioAccessStatus::Allowed => {
+                            println!("蓝牙启用成功！");
+                            println!("新状态: {:?}", radio.State()?);
+                            Ok(true)
+                        }
+                        RadioAccessStatus::DeniedBySystem => {
+                            let err_msg = "系统拒绝访问蓝牙设备，可能的原因：管理员权限不足或系统策略限制";
+                            eprintln!("错误：{}", err_msg);
+                            Err(err_msg.into())
+                        }
+                        RadioAccessStatus::DeniedByUser => {
+                            let err_msg = "用户拒绝访问蓝牙设备";
+                            eprintln!("错误：{}", err_msg);
+                            Err(err_msg.into())
+                        }
+                        RadioAccessStatus::Unspecified => {
+                            let err_msg = "未知错误，无法启用蓝牙";
+                            eprintln!("错误：{}", err_msg);
+                            Err(err_msg.into())
+                        }
+                        _ => {
+                            let err_msg = format!("未知的访问状态: {:?}", result);
+                            eprintln!("错误：{}", err_msg);
+                            Err(err_msg.into())
+                        }
                     }
-                    
-                    // 如果命令执行成功（有输出或没有错误），假设蓝牙可用
-                    if output.status.success() || stdout.contains("bluetooth") || stderr.is_empty() {
-                        println!("✅ 蓝牙检查通过（通过系统命令）");
-                        Ok("蓝牙检查通过".to_string())
-                    } else {
-                        // 尝试开启蓝牙
-                        println!("尝试自动开启蓝牙...");
-                        
-                        // PowerShell命令来开启蓝牙
-                        let enable_cmd = r#"
-                            $bt = Get-WindowsDriver -Online | Where-Object {$_.Driver -like "*bluetooth*"} | Select-Object -First 1
-                            if ($bt) {
-                                Write-Host "找到蓝牙驱动"
-                                # 这里可以添加开启蓝牙的逻辑
-                                # 但Windows PowerShell开启蓝牙比较复杂，需要设备管理器操作
-                                # 先返回成功，让应用继续
-                                Write-Host "✅ 蓝牙已准备就绪"
-                            } else {
-                                Write-Host "未找到蓝牙驱动"
+                }
+            }
+            None => {
+                eprintln!("未找到蓝牙设备");
+                eprintln!("请确保：");
+                eprintln!("1. 计算机支持蓝牙功能");
+                eprintln!("2. 蓝牙硬件已正确安装");
+                eprintln!("3. 蓝牙驱动程序已更新");
+                Ok(false)
+            }
+        }
+    }
+    
+    /// 辅助函数：在无线电设备列表中查找蓝牙设备
+    /// 
+    /// 遍历所有无线电设备，找到类型为蓝牙的设备
+    fn find_bluetooth_radio(radios: &windows::Foundation::Collections::IVectorView<Radio>) -> Option<Radio> {
+        println!("在 {} 个无线电设备中查找蓝牙设备...", radios.Size().unwrap_or(0));
+        
+        let count = radios.Size().unwrap_or(0);
+        for i in 0..count {
+            match radios.GetAt(i) {
+                Ok(radio) => {
+                    match radio.Kind() {
+                        Ok(kind) => {
+                            if kind == RadioKind::Bluetooth {
+                                println!("找到蓝牙无线电设备 (索引: {})", i);
+                                return Some(radio);
                             }
-                        "#;
-                        
-                        match std::process::Command::new("powershell")
-                            .args(&["-Command", enable_cmd])
-                            .output() {
-                            Ok(enable_output) => {
-                                let enable_stdout = String::from_utf8_lossy(&enable_output.stdout);
-                                println!("蓝牙开启命令输出: {}", enable_stdout);
-                                
-                                if enable_stdout.contains("✅") || enable_output.status.success() {
-                                    println!("✅ 蓝牙开启成功");
-                                    Ok("蓝牙已成功开启".to_string())
-                                } else {
-                                    let err_msg = format!("蓝牙开启失败: {}", String::from_utf8_lossy(&enable_output.stderr));
-                                    println!("❌ {}", err_msg);
-                                    Err(err_msg)
-                                }
-                            }
-                            Err(e) => {
-                                let err_msg = format!("执行蓝牙开启命令失败: {}", e);
-                                println!("❌ {}", err_msg);
-                                Err(err_msg)
-                            }
+                        }
+                        Err(e) => {
+                            println!("获取无线电设备类型失败 (索引: {}): {}", i, e);
                         }
                     }
                 }
                 Err(e) => {
-                    let err_msg = format!("执行蓝牙检查命令失败: {}", e);
-                    println!("❌ {}", err_msg);
-                    Err(err_msg)
+                    println!("获取无线电设备失败 (索引: {}): {}", i, e);
                 }
-            }
-        });
-        
-        match result {
-            Ok(inner_result) => {
-                match inner_result {
-                    Ok(msg) => {
-                        println!("Windows蓝牙检测与开启完成: {}", msg);
-                        Ok(msg)
-                    }
-                    Err(e) => {
-                        println!("Windows蓝牙操作失败: {}", e);
-                        Err(e)
-                    }
-                }
-            }
-            Err(panic_err) => {
-                // Windows API调用崩溃了，可能是API不兼容或系统问题
-                let err_msg = format!("Windows蓝牙API调用异常: {:?}", panic_err);
-                println!("严重错误: {}", err_msg);
-                
-                // 返回错误，但用更友好的描述
-                Err(format!("系统蓝牙检测失败，请手动开启蓝牙"))
             }
         }
+        
+        println!("未找到蓝牙无线电设备");
+        None
     }
     
     /// 新增：简单的蓝牙状态检查（通过btleplug适配器）
