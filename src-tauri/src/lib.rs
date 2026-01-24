@@ -1,9 +1,12 @@
 // 蓝牙模块导入
 mod bluetooth;
 mod cpen_device_manager;
+// 下载模块导入
+mod download;
 
 // 使用新的Cpen设备管理器作为业务逻辑层
 use cpen_device_manager::CpenDeviceManager;
+use download::{DownloadTask, AuthInfo, get_app_data_dir};
 
 // 导入同步原语
 // 原来用tokio::sync::Mutex，继续用这个，适合异步环境
@@ -203,6 +206,109 @@ async fn cleanup() -> Result<(), String> {
 // 如果前端需要设备扫描功能，可以考虑加一个简单的scan命令，但用户说尽量简化接口。
 // 先不加，等有需求再说。
 
+// 下载相关命令
+
+/// 下载文件
+/// 
+/// 前端调用这个命令下载文件到应用内目录
+/// 会自动从蓝牙设备获取认证信息，支持分片下载和断点续传
+/// 
+/// 思考：这里有个问题，需要实时获取TOTP，但get_totp()可能正在被其他线程使用
+/// 暂时先简单实现，后续再优化并发访问
+#[tauri::command]
+async fn download_file(file_id: String) -> Result<String, String> {
+    println!("前端调用download_file命令，文件ID: {}", file_id);
+    
+    // 先获取设备ID和TOTP
+    let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
+    let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
+    
+    // 创建认证信息
+    let auth_info = AuthInfo {
+        device_id,
+        totp,
+    };
+    
+    // 获取下载目录
+    let download_dir = get_app_data_dir()
+        .await
+        .map_err(|e| format!("获取下载目录失败: {}", e))?;
+    
+    // 创建保存路径
+    let timestamp = chrono::Utc::now().timestamp();
+    let save_path = download_dir.join(format!("{}_{}.bin", file_id, timestamp));
+    
+    // 创建下载任务
+    let task = DownloadTask::new(file_id.clone(), save_path.clone(), auth_info)
+        .await
+        .map_err(|e| format!("创建下载任务失败: {}", e))?;
+    
+    // 开始下载（异步执行，不阻塞返回）
+    // TODO: 这里应该用tokio::spawn后台执行，并保存任务引用
+    // 先简单实现，直接开始下载
+    match task.start().await {
+        Ok(_) => {
+            let result = format!("文件下载完成，保存到: {:?}", save_path);
+            println!("{}", result);
+            Ok(result)
+        }
+        Err(e) => {
+            let error = format!("下载失败: {}", e);
+            println!("{}", error);
+            Err(error)
+        }
+    }
+}
+
+/// 获取下载进度
+/// 
+/// TODO: 这个需要下载任务管理器来追踪多个下载任务
+/// 先简单返回一个占位信息
+#[tauri::command]
+async fn get_download_progress(file_id: String) -> Result<serde_json::Value, String> {
+    println!("前端调用get_download_progress命令，文件ID: {}", file_id);
+    
+    // 暂时返回一个模拟的进度信息
+    let progress = serde_json::json!({
+        "file_id": file_id,
+        "file_name": "示例文件.bin",
+        "total_size": 10485760, // 10MB
+        "downloaded": 5242880,  // 5MB
+        "status": "Downloading",
+        "chunks_total": 3,
+        "chunks_completed": 1,
+        "speed_kbps": 1024.5,
+    });
+    
+    Ok(progress)
+}
+
+/// 暂停下载
+/// 
+/// TODO: 需要下载任务管理器来实现真正的暂停功能
+/// 先简单返回成功
+#[tauri::command]
+async fn pause_download(file_id: String) -> Result<(), String> {
+    println!("前端调用pause_download命令，文件ID: {}", file_id);
+    
+    // 暂时简单实现
+    println!("下载暂停功能待实现");
+    Ok(())
+}
+
+/// 恢复下载
+/// 
+/// TODO: 需要下载任务管理器来实现真正的恢复功能
+/// 先简单返回成功
+#[tauri::command]
+async fn resume_download(file_id: String) -> Result<(), String> {
+    println!("前端调用resume_download命令，文件ID: {}", file_id);
+    
+    // 暂时简单实现
+    println!("下载恢复功能待实现");
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -215,6 +321,11 @@ pub fn run() {
             is_connected,       // 检查是否已建立稳定连接
             disconnect,         // 断开连接
             cleanup,            // 清理资源
+            // 下载相关命令
+            download_file,
+            get_download_progress,
+            pause_download,
+            resume_download,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -40,7 +40,7 @@ impl BluetoothManager {
         }
     }
 
-    /// 1. 查找并启用蓝牙设备（使用用户提供的新实现）
+    /// 1. 查找并启用蓝牙设备（使用新实现）
     /// 
     /// 这个函数会：
     /// 1. 获取所有无线电设备
@@ -53,7 +53,7 @@ impl BluetoothManager {
     /// - Ok(false): 未找到蓝牙设备
     /// - Err(...): 过程中发生错误
     /// 
-    /// 思考：用户提供的新实现使用了正确的Windows API调用方式
+    /// 思考：新实现使用了正确的Windows API调用方式
     /// 用.get()方法同步等待异步操作，应该能解决之前的编译错误
     pub fn enable_bluetooth(&self) -> Result<(), String> {
         println!("开始检查并启用蓝牙设备（使用Windows Radio API）...");
@@ -83,7 +83,7 @@ impl BluetoothManager {
     
     /// 内部实现：查找并启用蓝牙设备
     /// 
-    /// 这是用户提供的代码实现，使用Windows Radio API
+    /// 这是代码实现，使用Windows Radio API
     /// 返回类型保持原样：Result<bool, Box<dyn std::error::Error>>
     fn enable_bluetooth_internal(&self) -> Result<bool, Box<dyn std::error::Error>> {
         println!("正在查找蓝牙设备...");
