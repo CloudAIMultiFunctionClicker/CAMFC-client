@@ -18,6 +18,16 @@ use tokio::time::sleep;
 // 错误类型别名，简单点就用String
 type CpenError = String;
 
+// 新增：蓝牙错误类型分类
+#[derive(Debug)]
+pub enum BluetoothErrorType {
+    NoBluetoothHardware,   // 没有蓝牙硬件
+    BluetoothDisabled,     // 蓝牙未开启
+    NoCpenDeviceFound,     // 未找到Cpen设备
+    ConnectionFailed,      // 连接失败
+    Other(String),         // 其他错误
+}
+
 // 缓存时间常量
 const TOTP_CACHE_DURATION_SECONDS: u64 = 30;
 const SCAN_DURATION_MS: u64 = 3000; // 扫描3秒
@@ -59,6 +69,112 @@ impl CpenDeviceManager {
             totp_cache: None,
             device_id_cache: None,
             connection_status: "disconnected".to_string(),
+        }
+    }
+    
+    /// 检查是否是开发者模式（通过环境变量判断）
+    /// 
+    /// 开发者模式允许使用环境变量中的CPEN_ID和CPEN_KEY，
+    /// 而不需要实际连接蓝牙设备。
+    /// 
+    /// 判断标准：环境变量CPEN_ID和CPEN_KEY都存在
+    fn is_developer_mode(&self) -> bool {
+        match (std::env::var("CPEN_ID"), std::env::var("CPEN_KEY")) {
+            (Ok(_), Ok(_)) => {
+                println!("检测到开发者模式：CPEN_ID和CPEN_KEY环境变量已设置");
+                true
+            }
+            _ => false,
+        }
+    }
+    
+    /// 获取开发者模式下的设备ID（从环境变量）
+    fn get_device_id_from_env(&self) -> Result<String, CpenError> {
+        match std::env::var("CPEN_ID") {
+            Ok(id) => {
+                println!("开发者模式：使用环境变量中的设备ID: {}", id);
+                Ok(id)
+            }
+            Err(_) => Err("开发者模式：未找到CPEN_ID环境变量".to_string()),
+        }
+    }
+    
+    /// 获取开发者模式下的TOTP（从环境变量）
+    fn get_totp_from_env(&self) -> Result<String, CpenError> {
+        match std::env::var("CPEN_KEY") {
+            Ok(key) => {
+                println!("开发者模式：使用环境变量中的TOTP密钥: {}", key);
+                Ok(key)
+            }
+            Err(_) => Err("开发者模式：未找到CPEN_KEY环境变量".to_string()),
+        }
+    }
+    
+    /// 检查蓝牙是否可用（硬件层面）
+    /// 
+    /// 这个函数会检查蓝牙硬件是否存在，而不仅仅是是否开启
+    /// 返回详细的错误类型，方便前端显示不同的提示
+    pub async fn check_bluetooth_available(&mut self) -> Result<(), BluetoothErrorType> {
+        println!("检查蓝牙硬件可用性...");
+        
+        // 先尝试用Windows API检查蓝牙状态
+        match self.bluetooth_manager.enable_bluetooth() {
+            Ok(_) => {
+                println!("蓝牙硬件检查通过（Windows API）");
+                return Ok(());
+            }
+            Err(e) => {
+                println!("Windows蓝牙API检查失败: {}", e);
+                
+                // 根据错误信息判断是否是硬件问题
+                // Windows API的错误信息可能会提示硬件不存在
+                if e.contains("未找到蓝牙设备") || e.contains("No Bluetooth") || e.contains("找不到") {
+                    return Err(BluetoothErrorType::NoBluetoothHardware);
+                }
+                
+                // 尝试用btleplug的fallback方法
+                println!("尝试btleplug fallback检测...");
+                match self.bluetooth_manager.check_bluetooth_via_btleplug().await {
+                    Ok(_) => {
+                        println!("蓝牙硬件检查通过（btleplug fallback）");
+                        return Ok(());
+                    }
+                    Err(btleplug_err) => {
+                        println!("btleplug检查也失败: {}", btleplug_err);
+                        
+                        // 分析错误信息，判断是否是硬件问题
+                        if btleplug_err.contains("没有适配器") || 
+                           btleplug_err.contains("no adapter") ||
+                           btleplug_err.contains("adapter not found") {
+                            return Err(BluetoothErrorType::NoBluetoothHardware);
+                        }
+                        
+                        // 其他错误，可能是蓝牙未开启
+                        return Err(BluetoothErrorType::BluetoothDisabled);
+                    }
+                }
+            }
+        }
+    }
+    
+    /// 获取详细的蓝牙错误信息（用于前端显示）
+    fn get_bluetooth_error_message(&self, error_type: &BluetoothErrorType) -> String {
+        match error_type {
+            BluetoothErrorType::NoBluetoothHardware => {
+                "未检测到蓝牙硬件\n\n请确保：\n1. 计算机支持蓝牙功能\n2. 蓝牙硬件已正确安装\n3. 蓝牙驱动程序已更新\n\n应用需要蓝牙设备才能正常工作。".to_string()
+            }
+            BluetoothErrorType::BluetoothDisabled => {
+                "蓝牙未开启\n\n请开启蓝牙后重试。".to_string()
+            }
+            BluetoothErrorType::NoCpenDeviceFound => {
+                "未找到Cpen设备\n\n请确保：\n1. Cpen设备已开机\n2. 设备在蓝牙范围内\n3. 设备名以'Cpen'开头".to_string()
+            }
+            BluetoothErrorType::ConnectionFailed => {
+                "连接失败\n\n请检查设备状态并重试。".to_string()
+            }
+            BluetoothErrorType::Other(msg) => {
+                format!("蓝牙错误: {}", msg)
+            }
         }
     }
     
@@ -273,16 +389,34 @@ impl CpenDeviceManager {
     /// 获取TOTP（主要业务逻辑！）
     /// 
     /// 这个函数实现了完整的TOTP获取流程：
-    /// 1. 检查TOTP缓存是否需要刷新（提前5秒刷新策略）
-    /// 2. 如果需要刷新，重新获取TOTP
-    /// 3. 如果不需要刷新，返回缓存的TOTP
-    /// 4. 确保设备已连接（单设备保证）
-    /// 5. 发送setTime和getTotp命令
+    /// 1. 检查是否是开发者模式，如果是则从环境变量获取
+    /// 2. 检查TOTP缓存是否需要刷新（提前5秒刷新策略）
+    /// 3. 如果需要刷新，重新获取TOTP
+    /// 4. 如果不需要刷新，返回缓存的TOTP
+    /// 5. 确保设备已连接（单设备保证）
+    /// 6. 发送setTime和getTotp命令
     /// 
     /// 照逻辑：每30秒重新请求TOTP
     /// 实现策略：在缓存还有5秒过期时主动刷新，这样get_totp返回的值总是新鲜的
     pub async fn get_totp(&mut self) -> Result<String, CpenError> {
         println!("===== TOTP获取开始 =====");
+        
+        // 新增：检查开发者模式
+        if self.is_developer_mode() {
+            println!("开发者模式：从环境变量获取TOTP");
+            match self.get_totp_from_env() {
+                Ok(totp) => {
+                    println!("开发者模式：成功获取TOTP: {}", totp);
+                    // 在开发者模式下也缓存TOTP，保持接口一致性
+                    self.update_totp_cache(totp.clone());
+                    return Ok(totp);
+                }
+                Err(e) => {
+                    println!("开发者模式：获取TOTP失败，回退到正常模式: {}", e);
+                    // 开发者模式失败，继续走正常流程
+                }
+            }
+        }
         
         // 1. 检查是否需要刷新TOTP（提前5秒刷新策略）
         let need_refresh = self.should_refresh_totp();
@@ -402,12 +536,30 @@ impl CpenDeviceManager {
     /// 获取设备ID（设备UUID）
     /// 
     /// 流程：
-    /// 1. 检查设备ID缓存
-    /// 2. 确保设备已连接
-    /// 3. 发送getId命令
-    /// 4. 接收并缓存设备ID
+    /// 1. 检查是否是开发者模式，如果是则从环境变量获取
+    /// 2. 检查设备ID缓存
+    /// 3. 确保设备已连接
+    /// 4. 发送getId命令
+    /// 5. 接收并缓存设备ID
     pub async fn get_device_id(&mut self) -> Result<String, CpenError> {
         println!("开始获取设备ID...");
+        
+        // 新增：检查开发者模式
+        if self.is_developer_mode() {
+            println!("开发者模式：从环境变量获取设备ID");
+            match self.get_device_id_from_env() {
+                Ok(device_id) => {
+                    println!("开发者模式：成功获取设备ID: {}", device_id);
+                    // 在开发者模式下也缓存设备ID，保持接口一致性
+                    self.device_id_cache = Some(device_id.clone());
+                    return Ok(device_id);
+                }
+                Err(e) => {
+                    println!("开发者模式：获取设备ID失败，回退到正常模式: {}", e);
+                    // 开发者模式失败，继续走正常流程
+                }
+            }
+        }
         
         // 1. 检查缓存
         if let Some(cached_id) = &self.device_id_cache {

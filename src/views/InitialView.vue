@@ -22,11 +22,11 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
-<template>
+    <template>
   <div class="initial-container">
     <!-- 动态标题 -->
     <h1 class="title" :class="{ 'error-title': showConnectionFailed }">
-      {{ showConnectionFailed ? '无法连接' : '等待蓝牙连接Cpen设备' }}
+      {{ getTitleText() }}
     </h1>
     
     <!-- 弹跳进度条（连接中显示） -->
@@ -53,9 +53,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     <!-- 状态显示 -->
     <div class="status-info">
       <p v-if="isConnecting">正在扫描并连接蓝牙设备...</p>
-      <p v-if="showConnectionFailed" class="error">无法连接到Cpen设备</p>
+      <p v-if="showConnectionFailed" class="error">{{ getErrorText() }}</p>
       <p v-if="isConnected && !showCountdown" class="success">
         设备连接成功！
+      </p>
+      <!-- 开发者模式提示 -->
+      <p v-if="isDeveloperMode" class="info">
+        <strong>开发者模式：</strong>使用环境变量CPEN_ID和CPEN_KEY
       </p>
     </div>
     
@@ -124,6 +128,75 @@ const showConnectionFailed = computed(() => {
   // 当有错误，或者连接超过一定时间但仍然没有连接成功时显示"无法连接"
   return error.value || connectionTimedOut.value
 })
+
+// 开发者模式检测（通过错误信息判断）
+const isDeveloperMode = computed(() => {
+  // 如果错误信息中包含"开发者模式"，说明是开发者模式
+  return error.value && error.value.includes('开发者模式')
+})
+
+// 蓝牙硬件不可用检测
+const isBluetoothHardwareUnavailable = computed(() => {
+  // 检查错误信息是否包含蓝牙硬件相关关键词
+  if (!error.value) return false
+  const err = error.value.toLowerCase()
+  return err.includes('蓝牙硬件') || 
+         err.includes('no bluetooth') || 
+         err.includes('未找到蓝牙设备') ||
+         err.includes('没有适配器') ||
+         err.includes('adapter not found')
+})
+
+// 蓝牙未开启检测
+const isBluetoothDisabled = computed(() => {
+  if (!error.value) return false
+  const err = error.value.toLowerCase()
+  return err.includes('蓝牙未开启') || 
+         err.includes('bluetooth disabled') ||
+         err.includes('蓝牙检测失败')
+})
+
+// 获取标题文本
+function getTitleText() {
+  if (showConnectionFailed.value) {
+    if (isBluetoothHardwareUnavailable.value) {
+      return '应用不可用'
+    } else if (isBluetoothDisabled.value) {
+      return '蓝牙未开启'
+    } else {
+      return '无法连接'
+    }
+  }
+  return '等待蓝牙连接Cpen设备'
+}
+
+// 获取错误文本
+function getErrorText() {
+  if (!error.value) return '无法连接到Cpen设备'
+  
+  // 如果是开发者模式错误，显示友好提示
+  if (error.value.includes('开发者模式')) {
+    return '开发者模式：请设置CPEN_ID和CPEN_KEY环境变量'
+  }
+  
+  // 蓝牙硬件不可用
+  if (isBluetoothHardwareUnavailable.value) {
+    return `未检测到蓝牙硬件\n\n请确保：\n1. 计算机支持蓝牙功能\n2. 蓝牙硬件已正确安装\n3. 蓝牙驱动程序已更新\n\n应用需要蓝牙设备才能正常工作。`
+  }
+  
+  // 蓝牙未开启
+  if (isBluetoothDisabled.value) {
+    return `蓝牙未开启\n\n请开启蓝牙后重试。`
+  }
+  
+  // 默认错误处理
+  if (error.value.includes('未找到Cpen设备')) {
+    return `未找到Cpen设备\n\n请确保：\n1. Cpen设备已开机\n2. 设备在蓝牙范围内\n3. 设备名以'Cpen'开头`
+  }
+  
+  // 其他错误
+  return error.value
+}
 
 // 监听连接成功状态
 watch(isConnected, (newVal) => {
@@ -288,6 +361,11 @@ async function startConnection() {
       showToast('设备连接成功！')
       
       console.log('连接过程完成')
+      
+      // 如果是开发者模式，添加额外提示
+      if (isDeveloperMode.value) {
+        showToast('开发者模式：使用环境变量')
+      }
     })()
     
     // 使用Promise.race等待连接完成或超时
@@ -304,13 +382,48 @@ async function startConnection() {
     // 处理错误
     const errorMsg = error.message || error.toString()
     
-    // 用户说"要显示连接失败"，所以我们统一显示"连接失败"
-    // 但保留具体错误信息在store中供调试用
-    const displayErrorMsg = '连接失败'
+    console.log('连接错误详情:', errorMsg)
+    
+    // 分析错误信息，提供更具体的错误提示
+    let displayErrorMsg = errorMsg
+    
+    // 检查是否是蓝牙硬件问题
+    if (errorMsg.includes('未找到蓝牙设备') || 
+        errorMsg.includes('No Bluetooth') || 
+        errorMsg.includes('找不到') ||
+        errorMsg.includes('没有适配器') ||
+        errorMsg.includes('adapter not found')) {
+      displayErrorMsg = '蓝牙硬件不可用：未检测到蓝牙设备'
+    } 
+    // 检查是否是蓝牙未开启
+    else if (errorMsg.includes('蓝牙未开启') || 
+             errorMsg.includes('bluetooth disabled') ||
+             errorMsg.includes('蓝牙检测失败')) {
+      displayErrorMsg = '蓝牙未开启：请检查蓝牙设置'
+    }
+    // 检查是否是开发者模式相关错误
+    else if (errorMsg.includes('开发者模式')) {
+      displayErrorMsg = errorMsg // 保留原始错误信息
+    }
+    // 其他错误统一处理
+    else {
+      displayErrorMsg = '连接失败：' + errorMsg
+    }
+    
     // 注意：超时时已经设置过错误了，这里不再重复设置
     if (!connectionTimedOut.value) {
       bluetoothStore.setError(displayErrorMsg)
-      showToast(displayErrorMsg)
+      
+      // 根据错误类型显示不同的toast
+      if (displayErrorMsg.includes('蓝牙硬件不可用')) {
+        showToast('未检测到蓝牙硬件，应用不可用')
+      } else if (displayErrorMsg.includes('蓝牙未开启')) {
+        showToast('蓝牙未开启，请检查蓝牙设置')
+      } else if (displayErrorMsg.includes('开发者模式')) {
+        showToast('开发者模式：请检查环境变量')
+      } else {
+        showToast('连接失败，请重试')
+      }
     }
     
     // 设置状态为断开连接
