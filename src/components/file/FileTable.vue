@@ -26,6 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { ls,mkdir,rm } from '../data/fileSystem.js'
 import { showToast} from '../layout/showToast.js'
 import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { batchDownloadFiles, extractFileId } from '../data/download.js'
 
 
 // TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
@@ -65,10 +66,74 @@ const handleUploadClick = () => {
   console.log('上传点击，后面再实现')
 }
 
-const handleDownloadClick = () => {
-  console.log('下载点击，得想想怎么处理选中的文件')
-  // TODO: 需要选中有文件才能下载，不然不知道下什么
-  console.log('当前选中的文件:', Array.from(selectedFiles.value))
+const handleDownloadClick = async () => {
+  console.log('下载点击，处理选中的文件')
+  
+  const selectedCount = selectedFiles.value.size
+  if (selectedCount === 0) {
+    showToast('请先选择要下载的文件', '#f59e0b')
+    return
+  }
+  
+  // 获取选中的文件信息
+  const selectedFileInfos = fileList.value.filter(item => 
+    selectedFiles.value.has(item.path)
+  )
+  
+  console.log('选中的文件信息:', selectedFileInfos)
+  
+  // 提取文件ID - 使用完整的文件路径，因为文件可能在子目录中
+  const fileIds = selectedFileInfos.map(file => {
+    // 如果是文件夹，不能下载
+    if (file.is_dir) {
+      console.warn(`跳过文件夹下载: ${file.name}`)
+      return null
+    }
+    
+    // 使用完整的文件路径，而不仅仅是文件名
+    // 文件路径相对于用户存储目录，例如 "ds/下载.png"
+    // 注意：path字段已经包含完整路径，不需要再拼接当前路径
+    if (file.path) {
+      console.log(`下载文件完整路径: ${file.path}`)
+      return file.path
+    }
+    
+    // 如果没有path字段，尝试使用file_id或name
+    // 但这种情况应该很少见，因为API应该总是返回path
+    console.warn(`文件缺少path字段，使用name作为备用: ${file.name}`)
+    return file.file_id || file.name
+  }).filter(id => id !== null)
+  
+  if (fileIds.length === 0) {
+    showToast('选中的都是文件夹，请选择文件进行下载', '#f59e0b')
+    return
+  }
+  
+  console.log('要下载的文件ID:', fileIds)
+  
+  // 确认下载
+  if (confirm(`确定要下载选中的 ${fileIds.length} 个文件吗？`)) {
+    try {
+      // 调用批量下载函数
+      const results = await batchDownloadFiles(fileIds)
+      
+      // 显示下载结果
+      const successCount = results.filter(r => r.success).length
+      const errorCount = results.filter(r => !r.success).length
+      
+      console.log(`下载完成：${successCount} 成功，${errorCount} 失败`)
+      
+      if (errorCount > 0) {
+        // 如果有失败的文件，显示详细信息
+        const errorFiles = results.filter(r => !r.success)
+        console.error('下载失败的文件:', errorFiles)
+      }
+      
+    } catch (error) {
+      console.error('下载过程中出错:', error)
+      showToast(`下载出错: ${error.message}`, '#ef4444')
+    }
+  }
 }
 
 const handleNewFolderClick = async () => {
