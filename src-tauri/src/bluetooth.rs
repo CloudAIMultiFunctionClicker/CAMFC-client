@@ -338,7 +338,7 @@ impl BluetoothManager {
         let peripheral = self.peripheral()?;
         
         // 发现服务
-        timeout(Duration::from_millis(3000), peripheral.discover_services()).await
+        timeout(Duration::from_millis(5000), peripheral.discover_services()).await
             .map_err(|_| "服务发现超时".to_string())?
             .map_err(|e| format!("服务发现失败: {}", e))?;
         
@@ -448,7 +448,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     
     // 2. 扫描设备
     println!("开始扫描蓝牙设备...\n");
-    let devices = bt.scan_devices(3000).await?;
+    let devices = bt.scan_devices(5000).await?;
     
     println!("\n========== 扫描结果 ==========");
     println!("共找到 {} 个设备:\n", devices.len());

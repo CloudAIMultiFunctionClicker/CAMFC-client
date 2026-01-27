@@ -20,11 +20,11 @@ use sha2::{Sha256, Digest};
 use hex::encode as hex_encode;
 
 // 基础URL - 和前端保持一致
-const BASE_URL: &str = "http://cloud.api.ant-cave-2026.asia";
+const BASE_URL: &str = "http://localhost:8005";
 // 默认分片大小 4MB - 和后端保持一致
 const CHUNK_SIZE: u64 = 4 * 1024 * 1024; // 4MB
 // 下载目录名称
-const DOWNLOAD_DIR: &str = "downloads";
+const DOWNLOAD_DIR: &str = "C:\\Users\\user";
 
 // 下载状态枚举
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,12 +95,18 @@ impl ChunkDownloader {
     // 下载单个分片
     pub async fn download_chunk(
         &self,
-        file_id: &str,
-        chunk_index: u32,
+        file_id: &str,  // 注意：file_id应该是完整的云盘路径，如"ds/下载.png"
+        _chunk_index: u32,
         range_start: u64,
         range_end: u64,
     ) -> Result<Vec<u8>> {
-        let url = format!("{}/download/{}", BASE_URL, file_id);
+        // 构建URL：file_id应该包含完整路径
+        // 例如：file_id = "ds/下载.png" -> URL = "http://localhost:8005/download/ds/下载.png"
+        let encoded_file_id = urlencoding::encode(file_id);
+        let url = format!("{}/download/{}", BASE_URL, encoded_file_id);
+        
+        println!("下载请求URL: {}", url);
+        println!("原始文件路径: {}", file_id);
         
         // 构建Range头
         let range_header = format!("bytes={}-{}", range_start, range_end);
@@ -142,12 +148,19 @@ impl ChunkDownloader {
     
     // 获取文件元数据（大小等信息）
     pub async fn get_file_metadata(&self, file_id: &str) -> Result<(u64, String)> {
-        let url = format!("{}/files/info/{}", BASE_URL, file_id);
+        // 根据API文档，应该使用HEAD /download/{file_path} 获取文件元数据
+        // 例如：file_id = "ds/下载.png" -> URL = "http://localhost:8005/download/ds/下载.png"
+        let encoded_file_id = urlencoding::encode(file_id);
+        let url = format!("{}/download/{}", BASE_URL, encoded_file_id);
+        
+        println!("获取文件元数据URL (HEAD): {}", url);
+        println!("原始文件路径: {}", file_id);
         
         let headers = self.auth_info.get_auth_header()?;
         
+        // 发送HEAD请求获取文件元数据
         let response = self.client
-            .get(&url)
+            .head(&url)
             .headers(headers)
             .send()
             .await
@@ -155,15 +168,19 @@ impl ChunkDownloader {
             
         if !response.status().is_success() {
             let status = response.status();
+            let error_text = if status == reqwest::StatusCode::NOT_FOUND {
+                "文件不存在".to_string()
+            } else {
+                response.text().await.unwrap_or_default()
+            };
             return Err(anyhow::anyhow!(
-                "获取文件元数据失败: {}", 
-                status
+                "获取文件元数据失败: {} - {}", 
+                status, 
+                error_text
             ));
         }
         
-        // 解析响应JSON
-        // TODO: 这里应该解析实际的响应结构，先简单返回一个默认值
-        // 假设文件大小从Content-Length获取，名字从URL获取
+        // 从响应头获取文件大小
         let content_length = response
             .headers()
             .get(header::CONTENT_LENGTH)
@@ -171,7 +188,14 @@ impl ChunkDownloader {
             .and_then(|s| s.parse::<u64>().ok())
             .unwrap_or(0);
             
-        let filename = format!("{}.bin", file_id); // 临时文件名
+        // 从文件路径中提取文件名
+        let filename = std::path::Path::new(file_id)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or(file_id)
+            .to_string();
+        
+        println!("获取到文件元数据: 文件名={}, 大小={}字节", filename, content_length);
         
         Ok((content_length, filename))
     }
@@ -198,7 +222,7 @@ impl DownloadTask {
         // 创建下载器
         let downloader = ChunkDownloader::new(auth_info)?;
         
-        // 获取文件元数据
+        // 获取文件元数据 - file_id应该包含完整的云盘路径
         let (total_size, file_name) = downloader.get_file_metadata(&file_id).await?;
         
         // 确保保存目录存在
@@ -232,14 +256,44 @@ impl DownloadTask {
         
         println!("开始下载文件: {}, 总分片数: {}", self.file_name, chunks_count);
         
-        // 分片下载
-        for chunk_index in 0..chunks_count {
+        // 检查哪些分片已经下载（断点续传）
+        // 如果文件已存在，检查已下载的大小，跳过已下载的分片
+        let mut starting_chunk = 0;
+        let mut already_downloaded = 0;
+        
+        if self.save_path.exists() {
+            let file_size = fs::metadata(&self.save_path).await
+                .context("检查已下载文件失败")?
+                .len();
+            
+            already_downloaded = file_size;
+            starting_chunk = (file_size / CHUNK_SIZE) as u32;
+            
+            println!("发现已下载文件: {} 字节，从分片 {} 开始继续下载", 
+                already_downloaded, starting_chunk);
+            
+            // 更新已下载大小
+            let mut downloaded = self.downloaded_size.lock().await;
+            *downloaded = already_downloaded;
+        } else {
+            println!("开始新下载，文件不存在");
+        }
+        
+        // 分片下载，增加重试机制
+        for chunk_index in starting_chunk..chunks_count {
             // 检查状态，如果暂停了就退出循环
             {
                 let status = self.status.lock().await;
-                if let DownloadStatus::Paused = *status {
-                    println!("下载已暂停");
-                    return Ok(());
+                match *status {
+                    DownloadStatus::Paused => {
+                        println!("下载已暂停");
+                        return Ok(());
+                    }
+                    DownloadStatus::Error(_) => {
+                        // 如果已经有错误，直接返回
+                        return Ok(());
+                    }
+                    _ => {}
                 }
             }
             
@@ -251,61 +305,162 @@ impl DownloadTask {
                 start + CHUNK_SIZE - 1
             };
             
-            // 下载分片
-            match self.downloader.download_chunk(
-                &self.file_id,
-                chunk_index,
-                start,
-                end,
-            ).await {
-                Ok(chunk_data) => {
-                    // 写入文件
-                    self.write_chunk(start, &chunk_data).await?;
-                    
-                    // 更新进度
-                    let mut downloaded = self.downloaded_size.lock().await;
-                    *downloaded += chunk_data.len() as u64;
-                    
-                    println!("分片 {}/{} 下载完成，当前进度: {}/{}", 
-                        chunk_index + 1, 
-                        chunks_count,
-                        *downloaded,
-                        self.total_size
-                    );
+            // 分片重试机制
+            let mut last_error = None;
+            for retry_count in 0..3 { // 最多重试3次
+                match self.downloader.download_chunk(
+                    &self.file_id,
+                    chunk_index,
+                    start,
+                    end,
+                ).await {
+                    Ok(chunk_data) => {
+                        // 检查分片大小是否合理
+                        let expected_size = (end - start + 1) as usize;
+                        let actual_size = chunk_data.len();
+                        
+                        // 最后一个分片可能小于CHUNK_SIZE，这是正常的
+                        let is_last_chunk = chunk_index == chunks_count - 1;
+                        if !is_last_chunk && actual_size != expected_size {
+                            println!("警告: 分片 {} 大小异常，期望 {} 字节，实际 {} 字节", 
+                                chunk_index, expected_size, actual_size);
+                            // 继续处理，不中断下载
+                        }
+                        
+                        // 写入文件
+                        if let Err(e) = self.write_chunk(start, &chunk_data).await {
+                            println!("写入分片 {} 失败: {}, 重试 {}/3", chunk_index, e, retry_count + 1);
+                            last_error = Some(e);
+                            continue; // 写入失败也重试
+                        }
+                        
+                        // 更新进度
+                        let mut downloaded = self.downloaded_size.lock().await;
+                        *downloaded += actual_size as u64;
+                        
+                        println!("分片 {}/{} 下载完成 ({}/{} 字节)，当前进度: {}/{} 字节", 
+                            chunk_index + 1, 
+                            chunks_count,
+                            actual_size,
+                            expected_size,
+                            *downloaded,
+                            self.total_size
+                        );
+                        
+                        last_error = None;
+                        break; // 成功，跳出重试循环
+                    }
+                    Err(e) => {
+                        println!("下载分片 {} 失败: {}, 重试 {}/3", chunk_index, e, retry_count + 1);
+                        last_error = Some(e);
+                        // 等待一下再重试
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                    }
                 }
-                Err(e) => {
-                    // 下载失败，更新状态
-                    *self.status.lock().await = DownloadStatus::Error(e.to_string());
-                    return Err(e);
-                }
+            }
+            
+            // 检查重试后是否还有错误
+            if let Some(e) = last_error {
+                *self.status.lock().await = DownloadStatus::Error(format!("分片 {} 下载失败: {}", chunk_index, e));
+                return Err(anyhow::anyhow!("分片 {} 下载失败: {}", chunk_index, e));
             }
         }
         
-        // 下载完成
+        // 下载完成，验证文件完整性
+        println!("文件下载完成: {}，开始验证完整性...", self.file_name);
+        
+        // 检查文件大小是否正确
+        let file_size = fs::metadata(&self.save_path).await
+            .context("获取文件元数据失败")?
+            .len();
+        
+        if file_size != self.total_size {
+            let error_msg = format!("文件大小不匹配: 期望 {} 字节，实际 {} 字节", self.total_size, file_size);
+            println!("错误: {}", error_msg);
+            *self.status.lock().await = DownloadStatus::Error(error_msg.clone());
+            return Err(anyhow::anyhow!(error_msg));
+        }
+        
+        println!("文件大小验证通过: {} 字节", file_size);
+        
+        // 尝试计算文件哈希进行基本校验
+        // 注意：这个校验只是本地校验，无法验证与服务器端是否一致
+        match calculate_file_hash(&self.save_path).await {
+            Ok(hash) => {
+                println!("文件SHA256哈希: {}", hash);
+                // 这里可以记录哈希值，将来可以与服务器端对比
+            }
+            Err(e) => {
+                println!("警告: 无法计算文件哈希: {}", e);
+                // 不中断下载，只是记录警告
+            }
+        }
+        
+        // 更新状态为完成
         *self.status.lock().await = DownloadStatus::Completed;
-        println!("文件下载完成: {}", self.file_name);
+        println!("文件下载和验证完成: {}", self.file_name);
         
         Ok(())
     }
     
-    // 写入分片到文件
+    // 写入分片到文件 - 改进版，支持断点续传
     async fn write_chunk(&self, offset: u64, data: &[u8]) -> Result<()> {
+        // 用append模式打开文件：create(true)确保文件存在，append(true)确保在文件末尾写入
+        // 但我们需要精确offset写入，所以用write(true) + seek
         let mut file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .read(true)
+            .create(true)    // 如果文件不存在就创建
+            .write(true)     // 允许写入
+            .read(true)      // 允许读取（为了metadata和seek）
             .open(&self.save_path)
             .await
             .context("打开文件失败")?;
-            
-        // 移动到正确位置
+        
+        // 获取当前文件大小
+        let file_size = file.metadata().await
+            .context("获取文件元数据失败")?
+            .len();
+        
+        // 检查offset是否合理
+        // offset应该 <= file_size，否则说明有分片间隙
+        // 但这种情况在断点续传中可能发生（比如之前下载中断了）
+        if offset > file_size {
+            println!("警告: offset {} > 文件大小 {}，可能存在分片间隙，扩展文件", offset, file_size);
+            // 这里不处理，seek会扩展文件
+        }
+        
+        // 移动到指定位置
         file.seek(std::io::SeekFrom::Start(offset)).await
             .context("移动文件指针失败")?;
-            
+        
+        // 验证当前位置是否正确
+        let actual_pos = file.stream_position().await
+            .context("获取当前位置失败")?;
+        if actual_pos != offset {
+            return Err(anyhow::anyhow!(
+                "文件位置不匹配: 期望 {}，实际 {}", 
+                offset, 
+                actual_pos
+            ));
+        }
+        
         // 写入数据
         file.write_all(data).await
             .context("写入文件失败")?;
-            
+        
+        // 确保数据写入磁盘
+        file.flush().await
+            .context("刷新文件失败")?;
+        
+        // 验证写入后的文件大小
+        let new_file_size = file.metadata().await
+            .context("获取更新后的文件元数据失败")?
+            .len();
+        
+        let expected_new_size = std::cmp::max(offset + data.len() as u64, file_size);
+        if new_file_size < expected_new_size {
+            println!("警告: 写入后文件大小 {} < 期望大小 {}", new_file_size, expected_new_size);
+        }
+        
         Ok(())
     }
     
@@ -313,6 +468,37 @@ impl DownloadTask {
     pub async fn pause(&self) {
         *self.status.lock().await = DownloadStatus::Paused;
         println!("下载已暂停");
+    }
+    
+    // 验证文件完整性 - 公开方法，可以在下载后调用
+    pub async fn verify_file_integrity(&self) -> Result<bool> {
+        println!("开始验证文件完整性: {}", self.file_name);
+        
+        // 检查文件是否存在
+        if !self.save_path.exists() {
+            return Err(anyhow::anyhow!("文件不存在: {:?}", self.save_path));
+        }
+        
+        // 检查文件大小
+        let file_size = fs::metadata(&self.save_path).await
+            .context("获取文件元数据失败")?
+            .len();
+        
+        if file_size != self.total_size {
+            println!("文件大小不匹配: 期望 {} 字节，实际 {} 字节", self.total_size, file_size);
+            return Ok(false);
+        }
+        
+        println!("文件大小验证通过: {} 字节", file_size);
+        
+        // 计算文件哈希
+        let hash = calculate_file_hash(&self.save_path).await?;
+        println!("文件SHA256哈希: {}", hash);
+        
+        // TODO: 这里应该与服务器端的哈希对比
+        // 暂时只返回大小校验结果
+        
+        Ok(true)
     }
     
     // 获取下载进度

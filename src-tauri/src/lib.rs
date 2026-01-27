@@ -12,6 +12,11 @@ use download::{DownloadTask, AuthInfo, get_app_data_dir};
 // 原来用tokio::sync::Mutex，继续用这个，适合异步环境
 use tokio::sync::Mutex;
 use std::sync::OnceLock;
+use std::collections::HashMap;
+use std::sync::Arc;
+
+// 下载任务管理器
+static DOWNLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<download::DownloadTask>>>> = OnceLock::new();
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -213,11 +218,13 @@ async fn cleanup() -> Result<(), String> {
 /// 前端调用这个命令下载文件到应用内目录
 /// 会自动从蓝牙设备获取认证信息，支持分片下载和断点续传
 /// 
-/// 思考：这里有个问题，需要实时获取TOTP，但get_totp()可能正在被其他线程使用
-/// 暂时先简单实现，后续再优化并发访问
+/// 注意：file_id参数应该是完整的云盘路径，例如"ds/下载.png"而不是"下载.png"
+/// 因为后端API需要完整的路径信息：http://localhost:8005/download/ds/下载.png
+/// 
+/// 这个版本支持真正的分片下载和断点续传
 #[tauri::command]
 async fn download_file(file_id: String) -> Result<String, String> {
-    println!("前端调用download_file命令，文件ID: {}", file_id);
+    println!("前端调用download_file命令，文件路径: {}", file_id);
     
     // 先获取设备ID和TOTP
     let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
@@ -234,53 +241,138 @@ async fn download_file(file_id: String) -> Result<String, String> {
         .await
         .map_err(|e| format!("获取下载目录失败: {}", e))?;
     
-    // 创建保存路径
+    // 创建保存路径 - 从文件路径中提取文件名
     let timestamp = chrono::Utc::now().timestamp();
-    let save_path = download_dir.join(format!("{}_{}.bin", file_id, timestamp));
+    let file_name = std::path::Path::new(&file_id)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or(&file_id);
+    let save_path = download_dir.join(format!("{}_{}", file_name, timestamp));
+    
+    println!("创建下载任务: {} -> {:?}", file_id, save_path);
     
     // 创建下载任务
     let task = DownloadTask::new(file_id.clone(), save_path.clone(), auth_info)
         .await
         .map_err(|e| format!("创建下载任务失败: {}", e))?;
     
-    // 开始下载（异步执行，不阻塞返回）
-    // TODO: 这里应该用tokio::spawn后台执行，并保存任务引用
-    // 先简单实现，直接开始下载
-    match task.start().await {
-        Ok(_) => {
-            let result = format!("文件下载完成，保存到: {:?}", save_path);
-            println!("{}", result);
-            Ok(result)
+    // 将任务保存到全局管理器中
+    let task_arc = Arc::new(task);
+    
+    // 初始化下载任务管理器
+    let download_tasks = DOWNLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut tasks_map = download_tasks.lock().await;
+    tasks_map.insert(file_id.clone(), task_arc.clone());
+    
+    println!("下载任务已添加到管理器，开始后台下载...");
+    
+    // 在后台异步执行下载，不阻塞前端响应
+    let task_for_spawn = task_arc.clone();
+    let file_id_for_spawn = file_id.clone();
+    let save_path_for_spawn = save_path.clone();
+    
+    tokio::spawn(async move {
+        println!("后台下载任务开始: {}", file_id_for_spawn);
+        
+        match task_for_spawn.start().await {
+            Ok(_) => {
+                println!("后台下载完成: {}，保存到: {:?}", file_id_for_spawn, save_path_for_spawn);
+                
+                // 下载完成后更新状态为完成
+                // 状态已经在start()方法中更新了
+            }
+            Err(e) => {
+                println!("后台下载失败: {}，错误: {}", file_id_for_spawn, e);
+            }
         }
-        Err(e) => {
-            let error = format!("下载失败: {}", e);
-            println!("{}", error);
-            Err(error)
-        }
-    }
+    });
+    
+    // 立即返回，不等待下载完成
+    let result = format!("下载已开始，文件将保存到: {:?}，可使用get_download_progress查询进度", save_path);
+    println!("{}", result);
+    Ok(result)
 }
 
 /// 获取下载进度
 /// 
-/// TODO: 这个需要下载任务管理器来追踪多个下载任务
-/// 先简单返回一个占位信息
+/// 从下载任务管理器中获取真实的下载进度信息
+/// 如果任务不存在，返回一个默认的进度信息
 #[tauri::command]
 async fn get_download_progress(file_id: String) -> Result<serde_json::Value, String> {
     println!("前端调用get_download_progress命令，文件ID: {}", file_id);
     
-    // 暂时返回一个模拟的进度信息
-    let progress = serde_json::json!({
-        "file_id": file_id,
-        "file_name": "示例文件.bin",
-        "total_size": 10485760, // 10MB
-        "downloaded": 5242880,  // 5MB
-        "status": "Downloading",
-        "chunks_total": 3,
-        "chunks_completed": 1,
-        "speed_kbps": 1024.5,
-    });
+    // 尝试从下载任务管理器中获取任务
+    let download_tasks = DOWNLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
+    let tasks_map = download_tasks.lock().await;
     
-    Ok(progress)
+    if let Some(task) = tasks_map.get(&file_id) {
+        // 获取真实的进度信息
+        let progress = task.get_progress().await;
+        
+        // 将进度信息转换为JSON
+        let status_str = match &progress.status {
+            download::DownloadStatus::Pending => "Pending",
+            download::DownloadStatus::Downloading => "Downloading",
+            download::DownloadStatus::Paused => "Paused",
+            download::DownloadStatus::Completed => "Completed",
+            download::DownloadStatus::Error(err_msg) => {
+                // 错误信息包含在状态字符串中
+                return Ok(serde_json::json!({
+                    "file_id": progress.file_id,
+                    "file_name": progress.file_name,
+                    "total_size": progress.total_size,
+                    "downloaded": progress.downloaded,
+                    "status": format!("Error: {}", err_msg),
+                    "chunks_total": progress.chunks_total,
+                    "chunks_completed": progress.chunks_completed,
+                    "speed_kbps": progress.speed_kbps,
+                    "progress_percentage": if progress.total_size > 0 {
+                        (progress.downloaded as f64 / progress.total_size as f64 * 100.0).round() as u32
+                    } else {
+                        0
+                    },
+                }));
+            }
+        };
+        
+        println!("获取到真实下载进度: {} - {}%", file_id, 
+            if progress.total_size > 0 {
+                (progress.downloaded as f64 / progress.total_size as f64 * 100.0).round() as u32
+            } else {
+                0
+            });
+        
+        return Ok(serde_json::json!({
+            "file_id": progress.file_id,
+            "file_name": progress.file_name,
+            "total_size": progress.total_size,
+            "downloaded": progress.downloaded,
+            "status": status_str,
+            "chunks_total": progress.chunks_total,
+            "chunks_completed": progress.chunks_completed,
+            "speed_kbps": progress.speed_kbps,
+            "progress_percentage": if progress.total_size > 0 {
+                (progress.downloaded as f64 / progress.total_size as f64 * 100.0).round() as u32
+            } else {
+                0
+            },
+        }));
+    }
+    
+    // 如果任务不存在，返回一个默认的进度信息
+    println!("下载任务 {} 不存在，返回默认进度信息", file_id);
+    
+    Ok(serde_json::json!({
+        "file_id": file_id,
+        "file_name": "未知文件",
+        "total_size": 0,
+        "downloaded": 0,
+        "status": "Pending",
+        "chunks_total": 0,
+        "chunks_completed": 0,
+        "speed_kbps": 0.0,
+        "progress_percentage": 0,
+    }))
 }
 
 /// 暂停下载

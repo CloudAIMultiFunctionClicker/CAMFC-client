@@ -20,7 +20,7 @@ type CpenError = String;
 
 // 缓存时间常量
 const TOTP_CACHE_DURATION_SECONDS: u64 = 30;
-const SCAN_DURATION_MS: u64 = 3000; // 扫描3秒
+const SCAN_DURATION_MS: u64 = 5000; // 扫描3秒
 
 /// Cpen设备管理器
 /// 
@@ -217,7 +217,7 @@ impl CpenDeviceManager {
     /// 获取缓存的TOTP（如果30秒内获取过）
     /// 
     /// 原来JavaScript端有这个缓存逻辑，现在移到Rust端。
-    /// 思考：缓存时间30秒是计划的吗？原代码是30000ms，应该是吧。
+    /// 思考：缓存时间30秒是计划的吗？原代码是50000ms，应该是吧。
     /// 
     /// 修改：现在这个方法只是检查，真正的刷新逻辑在get_totp中实现
     fn get_cached_totp(&self) -> Option<String> {

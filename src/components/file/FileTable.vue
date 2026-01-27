@@ -82,8 +82,7 @@ const handleDownloadClick = async () => {
   
   console.log('选中的文件信息:', selectedFileInfos)
   
-  // 提取文件ID（这里需要根据实际后端数据结构调整）
-  // 先尝试从文件信息中提取file_id，如果没有就用name作为临时方案
+  // 提取文件ID - 使用完整的文件路径，因为文件可能在子目录中
   const fileIds = selectedFileInfos.map(file => {
     // 如果是文件夹，不能下载
     if (file.is_dir) {
@@ -91,8 +90,17 @@ const handleDownloadClick = async () => {
       return null
     }
     
-    // 这里需要根据实际的后端API调整
-    // 假设file_id字段存在，如果没有就用name或其他唯一标识
+    // 使用完整的文件路径，而不仅仅是文件名
+    // 文件路径相对于用户存储目录，例如 "ds/下载.png"
+    // 注意：path字段已经包含完整路径，不需要再拼接当前路径
+    if (file.path) {
+      console.log(`下载文件完整路径: ${file.path}`)
+      return file.path
+    }
+    
+    // 如果没有path字段，尝试使用file_id或name
+    // 但这种情况应该很少见，因为API应该总是返回path
+    console.warn(`文件缺少path字段，使用name作为备用: ${file.name}`)
     return file.file_id || file.name
   }).filter(id => id !== null)
   

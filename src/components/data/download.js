@@ -55,7 +55,7 @@ export async function downloadFile(fileId) {
  * 调用Rust端的get_download_progress命令
  * 获取指定文件的下载进度信息
  * 
- * 注意：这个功能目前是模拟的，后续需要实现真正的进度追踪
+ * 注意：现在支持真实的分片下载进度追踪
  * 
  * @param {string} fileId - 文件ID
  * @returns {Promise<object>} 下载进度信息
@@ -63,7 +63,26 @@ export async function downloadFile(fileId) {
 export async function getDownloadProgress(fileId) {
   try {
     const progress = await invoke('get_download_progress', { fileId })
-    return progress
+    
+    // 添加格式化后的进度信息
+    const formattedProgress = {
+      ...progress,
+      // 确保有进度百分比字段
+      progress_percentage: progress.progress_percentage || 
+        (progress.total_size > 0 ? 
+          Math.round((progress.downloaded / progress.total_size) * 100) : 0),
+      // 格式化文件大小显示
+      formatted_total_size: progress.total_size > 0 ? 
+        formatFileSize(progress.total_size) : '未知大小',
+      formatted_downloaded: progress.downloaded > 0 ? 
+        formatFileSize(progress.downloaded) : '0 B',
+      // 分片信息
+      chunks_info: progress.chunks_total > 0 ? 
+        `分片 ${progress.chunks_completed}/${progress.chunks_total}` : '分片信息未知'
+    }
+    
+    console.debug(`获取到下载进度: ${fileId} - ${formattedProgress.progress_percentage}%`)
+    return formattedProgress
   } catch (error) {
     console.error(`获取下载进度失败: ${error}`)
     // 失败时返回一个默认的进度信息
@@ -75,7 +94,11 @@ export async function getDownloadProgress(fileId) {
       status: 'Error',
       chunks_total: 0,
       chunks_completed: 0,
-      speed_kbps: 0
+      speed_kbps: 0,
+      progress_percentage: 0,
+      formatted_total_size: '未知大小',
+      formatted_downloaded: '0 B',
+      chunks_info: '分片信息未知'
     }
   }
 }
@@ -104,7 +127,7 @@ export async function pauseDownload(fileId) {
  * 恢复下载
  * 
  * 调用Rust端的resume_download命令
- * 恢复指定文件的下载
+ * 恢复指定文件的下载d
  * 
  * @param {string} fileId - 文件ID
  * @returns {Promise<void>}
@@ -181,11 +204,30 @@ export function extractFileId(fileInfo) {
   return fileInfo.file_id || fileInfo.path || fileInfo.name
 }
 
+/**
+ * 格式化文件大小
+ * 将字节数转换为可读的格式 (B, KB, MB, GB)
+ * 
+ * @param {number} bytes - 字节数
+ * @returns {string} 格式化后的文件大小
+ */
+export function formatFileSize(bytes) {
+  if (bytes === 0) return '0 B'
+  
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  
+  // 最多保留2位小数
+  const size = (bytes / Math.pow(1024, i)).toFixed(2)
+  return `${size} ${units[i]}`
+}
+
 export default {
   downloadFile,
   getDownloadProgress,
   pauseDownload,
   resumeDownload,
   batchDownloadFiles,
-  extractFileId
+  extractFileId,
+  formatFileSize
 }
