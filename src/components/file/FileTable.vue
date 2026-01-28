@@ -48,7 +48,6 @@ const error = ref(null)
 
 // 上传弹窗相关状态
 const showUploadModal = ref(false)
-const uploadInputValue = ref('')
 const dragActive = ref(false)
 const droppedFiles = ref([])
 const fileInputRef = ref(null)
@@ -75,7 +74,7 @@ const handleListClick = () => {
 
 const handleUploadClick = () => {
   showUploadModal.value = true
-  uploadInputValue.value = ''
+  droppedFiles.value = []
   console.log('打开上传弹窗')
 }
 
@@ -104,20 +103,34 @@ const handleDrop = (e) => {
   dragActive.value = false
   
   if (e.dataTransfer.files.length) {
-    droppedFiles.value = Array.from(e.dataTransfer.files)
+    const newFiles = Array.from(e.dataTransfer.files)
+    // 追加到现有文件列表，避免重复文件
+    newFiles.forEach(newFile => {
+      const exists = droppedFiles.value.some(existingFile => 
+        existingFile.name === newFile.name && existingFile.size === newFile.size
+      )
+      if (!exists) {
+        droppedFiles.value.push(newFile)
+      }
+    })
     console.log('拖放的文件:', droppedFiles.value)
-    // 这里可以直接处理文件上传
-    confirmUpload()
   }
 }
 
 // 文件选择处理
 const handleFileSelect = (e) => {
   if (e.target.files.length) {
-    droppedFiles.value = Array.from(e.target.files)
+    const newFiles = Array.from(e.target.files)
+    // 追加到现有文件列表，避免重复文件
+    newFiles.forEach(newFile => {
+      const exists = droppedFiles.value.some(existingFile => 
+        existingFile.name === newFile.name && existingFile.size === newFile.size
+      )
+      if (!exists) {
+        droppedFiles.value.push(newFile)
+      }
+    })
     console.log('选择的文件:', droppedFiles.value)
-    // 这里可以直接处理文件上传
-    confirmUpload()
   }
 }
 
@@ -126,23 +139,35 @@ const triggerFileSelect = () => {
   fileInputRef.value.click()
 }
 
+// 移除单个文件
+const removeFile = (index) => {
+  droppedFiles.value.splice(index, 1)
+}
+
+// 清空所有文件
+const clearFiles = () => {
+  droppedFiles.value = []
+}
+
+// 计算文件大小显示
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
 const confirmUpload = () => {
-  if (uploadInputValue.value.trim()) {
-    console.log('上传文件路径或URL:', uploadInputValue.value)
-  }
-  
   if (droppedFiles.value.length) {
-    console.log('上传拖放/选择的文件:', droppedFiles.value)
+    console.log('准备上传文件:', droppedFiles.value)
   }
-  
   showUploadModal.value = false
-  uploadInputValue.value = ''
   droppedFiles.value = []
 }
 
 const cancelUpload = () => {
   showUploadModal.value = false
-  uploadInputValue.value = ''
   droppedFiles.value = []
   dragActive.value = false
 }
@@ -574,10 +599,9 @@ const isFileSelected = (itemPath) => {
             @dragleave="handleDragLeave"
             @dragover="handleDragOver"
             @drop="handleDrop"
-            @click="triggerFileSelect"
           >
             <i class="ri-upload-cloud-2-fill"></i>
-            <p>拖放文件到此处，或 <span class="upload-link">点击选择文件</span></p>
+            <p>拖放文件到此处，或 <span class="upload-link" @click.stop="triggerFileSelect">点击选择文件</span></p>
             <p class="upload-hint">支持多个文件同时上传</p>
           </div>
           
@@ -590,15 +614,23 @@ const isFileSelected = (itemPath) => {
             @change="handleFileSelect"
           />
           
-          <!-- 路径/URL输入框 -->
-          <input 
-            v-model="uploadInputValue" 
-            @keyup.enter="confirmUpload"
-            @keyup.esc="cancelUpload"
-            class="upload-input"
-            placeholder="输入文件路径或URL"
-            autofocus
-          />
+          <!-- 文件列表 -->
+          <div v-if="droppedFiles.length > 0" class="file-list-container">
+            <div class="file-list-header">
+              <span class="file-list-title">已选择 {{ droppedFiles.length }} 个文件</span>
+              <span class="file-clear-all" @click="clearFiles">清空</span>
+            </div>
+            <div class="file-list">
+              <div v-for="(file, index) in droppedFiles" :key="index" class="file-item">
+                <i class="ri-file-line file-icon"></i>
+                <div class="file-info">
+                  <span class="file-name">{{ file.name }}</span>
+                  <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                </div>
+                <i class="ri-close-line file-remove" @click="removeFile(index)"></i>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button class="btn-cancel" @click="cancelUpload">取消</button>
@@ -1266,23 +1298,6 @@ const isFileSelected = (itemPath) => {
   .loading-overlay-content i {
     font-size: 18px;
   }
-  
-  /* 上传弹窗响应式调整 */
-  .upload-drop-area {
-    padding: 30px 15px;
-  }
-  
-  .upload-drop-area i {
-    font-size: 36px;
-  }
-  
-  .upload-drop-area p {
-    font-size: 14px;
-  }
-  
-  .upload-drop-area .upload-hint {
-    font-size: 12px;
-  }
 }
 
 /* 上传弹窗样式 - 模糊背景 */
@@ -1355,29 +1370,7 @@ const isFileSelected = (itemPath) => {
 }
 
 .modal-body {
-  padding: 24px;
-}
-
-.upload-input {
-  width: 100%;
-  padding: 14px 16px;
-  background: var(--bg-primary, #0f172a);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 10px;
-  color: var(--text-primary, #f8fafc);
-  font-size: 15px;
-  outline: none;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-}
-
-.upload-input::placeholder {
-  color: var(--text-muted, #64748b);
-}
-
-.upload-input:focus {
-  border-color: var(--accent-blue, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  padding: 20px;
 }
 
 /* 拖放区域样式 */
@@ -1389,8 +1382,9 @@ const isFileSelected = (itemPath) => {
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  margin-bottom: 16px;
   background: var(--bg-primary, #0f172a);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .upload-drop-area:hover {
@@ -1442,6 +1436,96 @@ const isFileSelected = (itemPath) => {
 /* 隐藏的文件输入 */
 .hidden-file-input {
   display: none;
+}
+
+/* 文件列表样式 */
+.file-list-container {
+  margin-top: 16px;
+  background: var(--bg-primary, #0f172a);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.file-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: rgba(59, 130, 246, 0.1);
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.file-list-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #f8fafc);
+}
+
+.file-clear-all {
+  font-size: 13px;
+  color: var(--accent-blue, #3b82f6);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.file-clear-all:hover {
+  color: #60a5fa;
+}
+
+.file-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.file-icon {
+  font-size: 24px;
+  color: var(--text-muted, #94a3b8);
+  flex-shrink: 0;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-name {
+  font-size: 14px;
+  color: var(--text-primary, #f8fafc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-size {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+}
+
+.file-remove {
+  font-size: 18px;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.file-remove:hover {
+  color: #ef4444;
 }
 
 .modal-footer {
