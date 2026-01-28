@@ -46,6 +46,17 @@ const fileList = ref([])
 const loading = ref(false)
 const error = ref(null)
 
+// 上传弹窗相关状态
+const showUploadModal = ref(false)
+const uploadInputValue = ref('')
+const dragActive = ref(false)
+const droppedFiles = ref([])
+const fileInputRef = ref(null)
+
+// 新建文件夹弹窗相关状态
+const showNewFolderModal = ref(false)
+const newFolderName = ref('')
+
 // 文件选择相关状态
 const selectedFiles = ref(new Set()) // 用Set存储选中的文件路径，因为Set查询更快
 const lastSelectedIndex = ref(-1) // 记录上一次选中的文件索引，用于Shift连续选择
@@ -63,7 +74,77 @@ const handleListClick = () => {
 }
 
 const handleUploadClick = () => {
-  console.log('上传点击，后面再实现')
+  showUploadModal.value = true
+  uploadInputValue.value = ''
+  console.log('打开上传弹窗')
+}
+
+// 拖放相关方法
+const handleDragEnter = (e) => {
+  e.preventDefault()
+  e.stopPropagation()
+  dragActive.value = true
+}
+
+const handleDragLeave = (e) => {
+  e.preventDefault()
+  e.stopPropagation()
+  dragActive.value = false
+}
+
+const handleDragOver = (e) => {
+  e.preventDefault()
+  e.stopPropagation()
+  dragActive.value = true
+}
+
+const handleDrop = (e) => {
+  e.preventDefault()
+  e.stopPropagation()
+  dragActive.value = false
+  
+  if (e.dataTransfer.files.length) {
+    droppedFiles.value = Array.from(e.dataTransfer.files)
+    console.log('拖放的文件:', droppedFiles.value)
+    // 这里可以直接处理文件上传
+    confirmUpload()
+  }
+}
+
+// 文件选择处理
+const handleFileSelect = (e) => {
+  if (e.target.files.length) {
+    droppedFiles.value = Array.from(e.target.files)
+    console.log('选择的文件:', droppedFiles.value)
+    // 这里可以直接处理文件上传
+    confirmUpload()
+  }
+}
+
+// 点击选择文件按钮
+const triggerFileSelect = () => {
+  fileInputRef.value.click()
+}
+
+const confirmUpload = () => {
+  if (uploadInputValue.value.trim()) {
+    console.log('上传文件路径或URL:', uploadInputValue.value)
+  }
+  
+  if (droppedFiles.value.length) {
+    console.log('上传拖放/选择的文件:', droppedFiles.value)
+  }
+  
+  showUploadModal.value = false
+  uploadInputValue.value = ''
+  droppedFiles.value = []
+}
+
+const cancelUpload = () => {
+  showUploadModal.value = false
+  uploadInputValue.value = ''
+  droppedFiles.value = []
+  dragActive.value = false
 }
 
 const handleDownloadClick = async () => {
@@ -136,34 +217,35 @@ const handleDownloadClick = async () => {
   }
 }
 
-const handleNewFolderClick = async () => {
-  console.log('新建文件夹点击')
-  // 用prompt输入框，虽然不太好看但简单
-  const folderName = prompt('请输入新文件夹名称', '新建文件夹')
-  if (folderName && folderName.trim()) {
-    console.log('创建文件夹:', folderName, '在当前路径:', props.currentPath)
+const handleNewFolderClick = () => {
+  showNewFolderModal.value = true
+  newFolderName.value = ''
+}
+
+const confirmNewFolder = async () => {
+  if (newFolderName.value.trim()) {
+    console.log('创建文件夹:', newFolderName.value, '在当前路径:', props.currentPath)
     
     try {
-      // 调用API创建文件夹，创建成功后刷新列表
-      // 注意：props.currentPath是字符串，不是ref
-      const result = await mkdir(props.currentPath, folderName)
+      const result = await mkdir(props.currentPath, newFolderName.value)
       if (result !== null) {
-        showToast(`文件夹 "${folderName}" 创建成功`)
-        // 创建成功后刷新文件列表
+        showToast(`文件夹 "${newFolderName.value}" 创建成功`)
         await fetchFiles(props.currentPath)
       } else {
-        // mkdir返回null表示超时
         showToast('请求超时，请稍后重试', '#f59e0b')
       }
     } catch (error) {
       console.error('创建文件夹失败:', error)
-      // TODO: 这里可以根据错误类型显示不同提示
       showToast(`创建失败: ${error.message}`, '#ef4444')
     }
-  } else {
-    // 用户取消了输入或输入为空
-    console.log('用户取消了创建文件夹')
   }
+  showNewFolderModal.value = false
+  newFolderName.value = ''
+}
+
+const cancelNewFolder = () => {
+  showNewFolderModal.value = false
+  newFolderName.value = ''
 }
 
 const handleDeleteClick = async () => {
@@ -474,6 +556,83 @@ const isFileSelected = (itemPath) => {
 
 <template>
   <div class="file-table-container">
+    <!-- 上传弹窗 - 中间显示，带模糊背景 -->
+    <div v-if="showUploadModal" class="upload-modal-overlay" @click.self="cancelUpload">
+      <div class="upload-modal">
+        <div class="modal-header">
+          <h3><i class="ri-upload-cloud-line"></i> 上传文件</h3>
+          <button class="modal-close" @click="cancelUpload">
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <!-- 拖放区域 -->
+          <div 
+            class="upload-drop-area" 
+            :class="{ 'drag-active': dragActive }"
+            @dragenter="handleDragEnter"
+            @dragleave="handleDragLeave"
+            @dragover="handleDragOver"
+            @drop="handleDrop"
+            @click="triggerFileSelect"
+          >
+            <i class="ri-upload-cloud-2-fill"></i>
+            <p>拖放文件到此处，或 <span class="upload-link">点击选择文件</span></p>
+            <p class="upload-hint">支持多个文件同时上传</p>
+          </div>
+          
+          <!-- 隐藏的文件输入 -->
+          <input 
+            ref="fileInputRef"
+            type="file" 
+            multiple
+            class="hidden-file-input"
+            @change="handleFileSelect"
+          />
+          
+          <!-- 路径/URL输入框 -->
+          <input 
+            v-model="uploadInputValue" 
+            @keyup.enter="confirmUpload"
+            @keyup.esc="cancelUpload"
+            class="upload-input"
+            placeholder="输入文件路径或URL"
+            autofocus
+          />
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="cancelUpload">取消</button>
+          <button class="btn-confirm" @click="confirmUpload">确认上传</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 新建文件夹弹窗 - 中间显示，带模糊背景 -->
+    <div v-if="showNewFolderModal" class="upload-modal-overlay" @click.self="cancelNewFolder">
+      <div class="upload-modal">
+        <div class="modal-header">
+          <h3><i class="ri-folder-add-line"></i> 新建文件夹</h3>
+          <button class="modal-close" @click="cancelNewFolder">
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <input 
+            v-model="newFolderName" 
+            @keyup.enter="confirmNewFolder"
+            @keyup.esc="cancelNewFolder"
+            class="upload-input"
+            placeholder="输入文件夹名称"
+            autofocus
+          />
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="cancelNewFolder">取消</button>
+          <button class="btn-confirm" @click="confirmNewFolder">创建</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 路径导航栏 -->
     <div class="path-nav">
       <button @click="goUp" :disabled="!currentPath" class="nav-btn">
@@ -1106,6 +1265,241 @@ const isFileSelected = (itemPath) => {
   
   .loading-overlay-content i {
     font-size: 18px;
+  }
+  
+  /* 上传弹窗响应式调整 */
+  .upload-drop-area {
+    padding: 30px 15px;
+  }
+  
+  .upload-drop-area i {
+    font-size: 36px;
+  }
+  
+  .upload-drop-area p {
+    font-size: 14px;
+  }
+  
+  .upload-drop-area .upload-hint {
+    font-size: 12px;
+  }
+}
+
+/* 上传弹窗样式 - 模糊背景 */
+.upload-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.upload-modal {
+  background: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 16px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #f8fafc);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-header h3 i {
+  color: var(--accent-blue, #3b82f6);
+  font-size: 22px;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #f8fafc);
+}
+
+.modal-close i {
+  font-size: 20px;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.upload-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-primary, #0f172a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  color: var(--text-primary, #f8fafc);
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.upload-input::placeholder {
+  color: var(--text-muted, #64748b);
+}
+
+.upload-input:focus {
+  border-color: var(--accent-blue, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* 拖放区域样式 */
+.upload-drop-area {
+  width: 100%;
+  padding: 24px 16px;
+  border: 2px dashed var(--border-color, rgba(255, 255, 255, 0.2));
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 16px;
+  background: var(--bg-primary, #0f172a);
+}
+
+.upload-drop-area:hover {
+  border-color: var(--accent-blue, #3b82f6);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.upload-drop-area.drag-active {
+  border-color: var(--accent-blue, #3b82f6);
+  background: rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.upload-drop-area i {
+  font-size: 32px;
+  color: var(--accent-blue, #3b82f6);
+  margin-bottom: 12px;
+  transition: transform 0.3s ease;
+}
+
+.upload-drop-area.drag-active i {
+  transform: scale(1.1);
+}
+
+.upload-drop-area p {
+  margin: 0 0 6px 0;
+  color: var(--text-primary, #f8fafc);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.upload-drop-area .upload-link {
+  color: var(--accent-blue, #3b82f6);
+  text-decoration: underline;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.upload-drop-area .upload-link:hover {
+  color: #60a5fa;
+}
+
+.upload-drop-area .upload-hint {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+  margin: 0;
+}
+
+/* 隐藏的文件输入 */
+.hidden-file-input {
+  display: none;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px 24px;
+}
+
+.btn-cancel,
+.btn-confirm {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  color: var(--text-secondary, #cbd5e1);
+}
+
+.btn-cancel:hover {
+  background: var(--hover-bg, rgba(255, 255, 255, 0.15));
+  color: var(--text-primary, #f8fafc);
+}
+
+.btn-confirm {
+  background: linear-gradient(135deg, var(--accent-blue, #3b82f6) 0%, #1d4ed8 100%);
+  border: none;
+  color: white;
+}
+
+.btn-confirm:hover {
+  background: linear-gradient(135deg, #4a94ff 0%, #2563eb 100%);
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
 }
 </style>

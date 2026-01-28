@@ -88,8 +88,8 @@ const toggleCollapse = () => {
         <nav class="main-menu">
             <!-- 导航标题 -->
             <h3 class="menu-title">
-                <i class="ri-navigation-line"></i>
-                导航
+                <i class="ri-cloud-line"></i>
+                云盘
             </h3>
 
             <!-- 导航链接列表 -->
@@ -102,19 +102,43 @@ const toggleCollapse = () => {
                     </router-link>
                 </li>
 
-                <!-- 关于页面链接 -->
+                <!-- 我的云盘 -->
                 <li class="menu-item">
-                    <router-link to="/about" class="menu-link">
-                        <i class="ri-information-line"></i>
-                        <span>关于</span>
+                    <router-link to="/cloud" class="menu-link">
+                        <i class="ri-cloud-line"></i>
+                        <span>我的云盘</span>
                     </router-link>
                 </li>
 
-                <!-- 联系页面链接 -->
+                <!-- 共享文件 -->
                 <li class="menu-item">
-                    <router-link to="/contact" class="menu-link">
-                        <i class="ri-contacts-line"></i>
-                        <span>联系</span>
+                    <router-link to="/shared" class="menu-link">
+                        <i class="ri-share-line"></i>
+                        <span>共享文件</span>
+                    </router-link>
+                </li>
+
+                <!-- 最近文件 -->
+                <li class="menu-item">
+                    <router-link to="/recent" class="menu-link">
+                        <i class="ri-time-line"></i>
+                        <span>最近文件</span>
+                    </router-link>
+                </li>
+
+                <!-- 收藏夹 -->
+                <li class="menu-item">
+                    <router-link to="/starred" class="menu-link">
+                        <i class="ri-star-line"></i>
+                        <span>收藏夹</span>
+                    </router-link>
+                </li>
+
+                <!-- 回收站 -->
+                <li class="menu-item">
+                    <router-link to="/trash" class="menu-link">
+                        <i class="ri-delete-bin-line"></i>
+                        <span>回收站</span>
                     </router-link>
                 </li>
             </ul>
