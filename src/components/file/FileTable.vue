@@ -27,6 +27,7 @@ import { ls,mkdir,rm } from '../data/fileSystem.js'
 import { showToast} from '../layout/showToast.js'
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { batchDownloadFiles, extractFileId } from '../data/download.js'
+import { selectAndUploadFile } from '../data/upload.js'
 
 
 // TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
@@ -62,8 +63,22 @@ const handleListClick = () => {
   // 列表视图不就是当前视图吗？有点重复，先留着吧
 }
 
-const handleUploadClick = () => {
-  console.log('上传点击，后面再实现')
+const handleUploadClick = async () => {
+  console.log('上传点击，调用上传功能')
+  
+  try {
+    // 调用上传模块的选择文件并上传功能
+    const result = await selectAndUploadFile()
+    console.log('上传结果:', result)
+    
+    // 上传成功后刷新文件列表
+    if (result && result.success) {
+      await fetchFiles(props.currentPath)
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    // 错误处理已经在selectAndUploadFile内部完成了
+  }
 }
 
 const handleDownloadClick = async () => {

@@ -3,10 +3,13 @@ mod bluetooth;
 mod cpen_device_manager;
 // 下载模块导入
 mod download;
+// 上传模块导入
+mod upload;
 
 // 使用新的Cpen设备管理器作为业务逻辑层
 use cpen_device_manager::CpenDeviceManager;
 use download::{DownloadTask, AuthInfo, get_app_data_dir};
+use upload::{UploadTask, UploadProgress};
 
 // 导入同步原语
 // 原来用tokio::sync::Mutex，继续用这个，适合异步环境
@@ -17,6 +20,8 @@ use std::sync::Arc;
 
 // 下载任务管理器
 static DOWNLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<download::DownloadTask>>>> = OnceLock::new();
+// 上传任务管理器
+static UPLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<upload::UploadTask>>>> = OnceLock::new();
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -401,6 +406,189 @@ async fn resume_download(file_id: String) -> Result<(), String> {
     Ok(())
 }
 
+// 上传相关命令
+
+/// 上传文件
+/// 
+/// 前端调用这个命令上传文件到云盘
+/// 支持分片上传和断点续传，分片大小为4MB
+/// 文件路径应该是本地文件系统的路径
+/// 
+/// 注意：上传过程可能需要较长时间，特别是大文件
+/// 会在后台异步执行上传，不阻塞前端响应
+#[tauri::command]
+async fn upload_file(file_path: String) -> Result<String, String> {
+    println!("前端调用upload_file命令，文件路径: {}", file_path);
+    
+    // 先获取设备ID和TOTP
+    let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
+    let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
+    
+    // 创建认证信息
+    let auth_info = AuthInfo {
+        device_id,
+        totp,
+    };
+    
+    // 创建上传任务
+    let task = UploadTask::new(std::path::PathBuf::from(&file_path), auth_info)
+        .await
+        .map_err(|e| format!("创建上传任务失败: {}", e))?;
+    
+    // 将任务保存到全局管理器中
+    let task_arc = Arc::new(task);
+    let upload_id = {
+        let progress = task_arc.get_progress().await;
+        progress.upload_id.clone()
+    };
+    
+    // 初始化上传任务管理器
+    let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut tasks_map = upload_tasks.lock().await;
+    tasks_map.insert(upload_id.clone(), task_arc.clone());
+    
+    println!("上传任务已添加到管理器，upload_id: {}，开始后台上传...", upload_id);
+    
+    // 在后台异步执行上传，不阻塞前端响应
+    let task_for_spawn = task_arc.clone();
+    let upload_id_for_spawn = upload_id.clone();
+    
+    tokio::spawn(async move {
+        println!("后台上传任务开始: {}", upload_id_for_spawn);
+        
+        match task_for_spawn.start().await {
+            Ok(_) => {
+                println!("后台上传完成: {}", upload_id_for_spawn);
+            }
+            Err(e) => {
+                println!("后台上传失败: {}，错误: {}", upload_id_for_spawn, e);
+            }
+        }
+    });
+    
+    // 立即返回，不等待上传完成
+    let result = format!("上传已开始，upload_id: {}，可使用get_upload_progress查询进度", upload_id);
+    println!("{}", result);
+    Ok(result)
+}
+
+/// 获取上传进度
+/// 
+/// 从上传任务管理器中获取真实的上传进度信息
+/// 如果任务不存在，返回一个默认的进度信息
+#[tauri::command]
+async fn get_upload_progress(upload_id: String) -> Result<serde_json::Value, String> {
+    println!("前端调用get_upload_progress命令，upload_id: {}", upload_id);
+    
+    // 尝试从上转任务管理器中获取任务
+    let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
+    let tasks_map = upload_tasks.lock().await;
+    
+    if let Some(task) = tasks_map.get(&upload_id) {
+        // 获取真实的进度信息
+        let progress = task.get_progress().await;
+        
+        // 将进度信息转换为JSON
+        let status_str = match &progress.status {
+            upload::UploadStatus::Pending => "Pending",
+            upload::UploadStatus::Uploading => "Uploading",
+            upload::UploadStatus::Paused => "Paused",
+            upload::UploadStatus::Completed => "Completed",
+            upload::UploadStatus::Error(err_msg) => {
+                // 错误信息包含在状态字符串中
+                return Ok(serde_json::json!({
+                    "upload_id": progress.upload_id,
+                    "filename": progress.filename,
+                    "total_size": progress.total_size,
+                    "uploaded": progress.uploaded,
+                    "status": format!("Error: {}", err_msg),
+                    "chunks_total": progress.chunks_total,
+                    "chunks_completed": progress.chunks_completed,
+                    "speed_kbps": progress.speed_kbps,
+                    "progress_percentage": if progress.total_size > 0 {
+                        (progress.uploaded as f64 / progress.total_size as f64 * 100.0).round() as u32
+                    } else {
+                        0
+                    },
+                }));
+            }
+        };
+        
+        println!("获取到真实上传进度: {} - {}%", upload_id, 
+            if progress.total_size > 0 {
+                (progress.uploaded as f64 / progress.total_size as f64 * 100.0).round() as u32
+            } else {
+                0
+            });
+        
+        return Ok(serde_json::json!({
+            "upload_id": progress.upload_id,
+            "filename": progress.filename,
+            "total_size": progress.total_size,
+            "uploaded": progress.uploaded,
+            "status": status_str,
+            "chunks_total": progress.chunks_total,
+            "chunks_completed": progress.chunks_completed,
+            "speed_kbps": progress.speed_kbps,
+            "progress_percentage": if progress.total_size > 0 {
+                (progress.uploaded as f64 / progress.total_size as f64 * 100.0).round() as u32
+            } else {
+                0
+            },
+        }));
+    }
+    
+    // 如果任务不存在，返回一个默认的进度信息
+    println!("上传任务 {} 不存在，返回默认进度信息", upload_id);
+    
+    Ok(serde_json::json!({
+        "upload_id": upload_id,
+        "filename": "未知文件",
+        "total_size": 0,
+        "uploaded": 0,
+        "status": "Pending",
+        "chunks_total": 0,
+        "chunks_completed": 0,
+        "speed_kbps": 0.0,
+        "progress_percentage": 0,
+    }))
+}
+
+/// 暂停上传
+/// 
+/// TODO: 需要上传任务管理器来实现真正的暂停功能
+/// 先简单返回成功
+#[tauri::command]
+async fn pause_upload(upload_id: String) -> Result<(), String> {
+    println!("前端调用pause_upload命令，upload_id: {}", upload_id);
+    
+    // 尝试从上传任务管理器中获取任务
+    let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
+    let tasks_map = upload_tasks.lock().await;
+    
+    if let Some(task) = tasks_map.get(&upload_id) {
+        task.pause().await;
+        println!("上传已暂停: {}", upload_id);
+        Ok(())
+    } else {
+        println!("上传任务 {} 不存在", upload_id);
+        Ok(())
+    }
+}
+
+/// 恢复上传
+/// 
+/// TODO: 需要上传任务管理器来实现真正的恢复功能
+/// 先简单返回成功
+#[tauri::command]
+async fn resume_upload(upload_id: String) -> Result<(), String> {
+    println!("前端调用resume_upload命令，upload_id: {}", upload_id);
+    
+    // 暂时简单实现，实际应该重新开始上传任务
+    println!("上传恢复功能待实现，目前只能重新开始上传");
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -418,6 +606,11 @@ pub fn run() {
             get_download_progress,
             pause_download,
             resume_download,
+            // 上传相关命令
+            upload_file,
+            get_upload_progress,
+            pause_upload,
+            resume_upload,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
