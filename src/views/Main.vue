@@ -1,40 +1,32 @@
 <template>
   <div class="dashboard-container">
     <!-- 主标题 -->
-    <h1 class="dashboard-title">CAMFC 主仪表板</h1>
+    <h1 class="dashboard-title">CAMFC</h1>
     
     <!-- 导航按钮网格 -->
     <div class="nav-grid">
-      <!-- 文件管理按钮 -->
+      <!-- 云盘按钮 -->
       <button class="nav-card file-manager" @click="goToFileView">
-        <div class="card-icon">📁</div>
-        <h3 class="card-title">文件管理</h3>
-        <p class="card-desc">浏览和管理Cpen设备文件</p>
+        <div class="card-icon">☁️</div>
+        <h3 class="card-title">云盘</h3>
+        <p class="card-desc">浏览和管理云盘文件</p>
         <div class="card-hint">点击进入</div>
       </button>
       
-      <!-- 硬件设置按钮 -->
-      <button class="nav-card hardware-settings" @click="goToHardwareSettings">
+      <!-- 笔记按钮 -->
+      <button class="nav-card notes" @click="goToNotes">
+        <div class="card-icon">📝</div>
+        <h3 class="card-title">笔记</h3>
+        <p class="card-desc">创建和管理笔记</p>
+        <div class="card-hint">占位功能</div>
+      </button>
+      
+      <!-- 设置按钮 -->
+      <button class="nav-card settings" @click="goToSettings">
         <div class="card-icon">⚙️</div>
-        <h3 class="card-title">硬件设置</h3>
-        <p class="card-desc">配置设备硬件参数</p>
-        <div class="card-hint">占位功能</div>
-      </button>
-      
-      <!-- 软件设置按钮 -->
-      <button class="nav-card software-settings" @click="goToSoftwareSettings">
-        <div class="card-icon">🖥️</div>
-        <h3 class="card-title">软件设置</h3>
-        <p class="card-desc">调整软件偏好和选项</p>
-        <div class="card-hint">占位功能</div>
-      </button>
-      
-      <!-- 更多信息按钮 -->
-      <button class="nav-card more-info" @click="goToMoreInfo">
-        <div class="card-icon">ℹ️</div>
-        <h3 class="card-title">更多信息</h3>
-        <p class="card-desc">查看关于和帮助信息</p>
-        <div class="card-hint">占位功能</div>
+        <h3 class="card-title">设置</h3>
+        <p class="card-desc">硬件设置、软件设置和更多信息</p>
+        <div class="card-hint">点击进入</div>
       </button>
     </div>
     
@@ -62,25 +54,16 @@ function goToFileView() {
   router.push('/fileView')
 }
 
-// 跳转到硬件设置（占位页面）
-// TODO: 硬件设置页面还没做，先跳转到占位页
-// 思考：要不要直接跳转到现有的设置页面？还是新建专门的硬件设置？
-// 先新建占位页吧，保持功能分离
-function goToHardwareSettings() {
-  console.log('跳转到硬件设置（占位）')
-  router.push('/hardware-settings')
+// 跳转到设置页面
+function goToSettings() {
+  console.log('跳转到设置页面')
+  router.push('/settings')
 }
 
-// 跳转到软件设置（占位页面）
-function goToSoftwareSettings() {
-  console.log('跳转到软件设置（占位）')
-  router.push('/software-settings')
-}
-
-// 跳转到更多信息（占位页面）
-function goToMoreInfo() {
-  console.log('跳转到更多信息（占位）')
-  router.push('/more-info')
+// 跳转到笔记页面（占位页面）
+function goToNotes() {
+  console.log('跳转到笔记页面（占位）')
+  router.push('/notes')
 }
 
 // 注：这里没有onMounted之类的生命周期，因为就是个静态导航页
@@ -151,6 +134,24 @@ function goToMoreInfo() {
   
   &:hover {
     box-shadow: 0 8px 20px rgba(var(--accent-blue-rgb), 0.2);
+  }
+}
+
+/* 设置卡片特殊样式 */
+.settings {
+  border-color: var(--accent-green);
+  
+  &:hover {
+    box-shadow: 0 8px 20px rgba(var(--accent-green-rgb), 0.2);
+  }
+}
+
+/* 笔记卡片特殊样式 */
+.notes {
+  border-color: var(--accent-purple);
+  
+  &:hover {
+    box-shadow: 0 8px 20px rgba(var(--accent-purple-rgb), 0.2);
   }
 }
 
