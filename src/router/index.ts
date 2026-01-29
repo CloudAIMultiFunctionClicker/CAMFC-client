@@ -63,6 +63,12 @@ const router = createRouter({
       name: 'moreInfo',
       // 更多信息占位页面
       component: () => import('../views/MoreInfo.vue')
+    },
+    {
+      path: '/notes',
+      name: 'notes',
+      // 笔记页面
+      component: () => import('../views/Notes.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]

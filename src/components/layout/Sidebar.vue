@@ -69,10 +69,18 @@ const toggleCollapse = () => {
             <h2>
                 <i class="ri-folder-line"></i>
                 <!-- 文件夹图标，跟云存储主题相关 -->
-                <span>文件管理</span>
+                <span>云盘</span>
             </h2>
-            <!-- 小提示文字 -->
-            <p class="subtitle">CAMFC Cloud侧边导航</p>
+            <!-- 用量进度条 -->
+            <div class="storage-usage">
+                <div class="usage-label">
+                    <span>云空间用量</span>
+                    <span class="usage-text">不限容量</span>
+                </div>
+                <div class="usage-bar">
+                    <div class="usage-progress unlimited"></div>
+                </div>
+            </div>
 
             <!-- 折叠按钮 - 放在logo区域右上角 -->
             <button
@@ -88,8 +96,8 @@ const toggleCollapse = () => {
         <nav class="main-menu">
             <!-- 导航标题 -->
             <h3 class="menu-title">
-                <i class="ri-navigation-line"></i>
-                导航
+                <i class="ri-cloud-line"></i>
+                云盘
             </h3>
 
             <!-- 导航链接列表 -->
@@ -102,67 +110,44 @@ const toggleCollapse = () => {
                     </router-link>
                 </li>
 
-                <!-- 关于页面链接 -->
+                <!-- 我的云盘 -->
                 <li class="menu-item">
-                    <router-link to="/about" class="menu-link">
-                        <i class="ri-information-line"></i>
-                        <span>关于</span>
+                    <router-link to="/cloud" class="menu-link">
+                        <i class="ri-cloud-line"></i>
+                        <span>我的云盘</span>
                     </router-link>
                 </li>
 
-                <!-- 联系页面链接 -->
+                <!-- 共享文件 -->
                 <li class="menu-item">
-                    <router-link to="/contact" class="menu-link">
-                        <i class="ri-contacts-line"></i>
-                        <span>联系</span>
+                    <router-link to="/shared" class="menu-link">
+                        <i class="ri-share-line"></i>
+                        <span>共享文件</span>
                     </router-link>
                 </li>
-            </ul>
-        </nav>
 
-        <!-- 文件分类菜单 -->
-        <nav class="category-menu">
-            <h3 class="menu-title">
-                <i class="ri-folder-open-line"></i>
-                文件分类
-            </h3>
-
-            <ul class="menu-list">
-                <!-- 几个主要的文件分类 -->
+                <!-- 最近文件 -->
                 <li class="menu-item">
-                    <a href="#" class="menu-link">
-                        <i class="ri-file-text-line"></i>
-                        <span>文档</span>
-                        <!-- TODO: 以后这里可以加个文件数量提示 -->
-                    </a>
+                    <router-link to="/recent" class="menu-link">
+                        <i class="ri-time-line"></i>
+                        <span>最近文件</span>
+                    </router-link>
                 </li>
 
+                <!-- 收藏夹 -->
                 <li class="menu-item">
-                    <a href="#" class="menu-link">
-                        <i class="ri-image-line"></i>
-                        <span>图片</span>
-                    </a>
+                    <router-link to="/starred" class="menu-link">
+                        <i class="ri-star-line"></i>
+                        <span>收藏夹</span>
+                    </router-link>
                 </li>
 
+                <!-- 回收站 -->
                 <li class="menu-item">
-                    <a href="#" class="menu-link">
-                        <i class="ri-music-line"></i>
-                        <span>音乐</span>
-                    </a>
-                </li>
-
-                <li class="menu-item">
-                    <a href="#" class="menu-link">
-                        <i class="ri-video-line"></i>
-                        <span>视频</span>
-                    </a>
-                </li>
-
-                <li class="menu-item">
-                    <a href="#" class="menu-link">
-                        <i class="ri-archive-line"></i>
-                        <span>压缩包</span>
-                    </a>
+                    <router-link to="/trash" class="menu-link">
+                        <i class="ri-delete-bin-line"></i>
+                        <span>回收站</span>
+                    </router-link>
                 </li>
             </ul>
         </nav>
@@ -211,6 +196,26 @@ const toggleCollapse = () => {
     /* 在头部下面 */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     /* 使用贝塞尔曲线让动画更自然，包含所有属性的过渡 */
+    overflow-y: auto;
+    /* 内容超出时可滚动 */
+}
+
+/* 自定义滚动条样式 */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--border-color, rgba(255, 255, 255, 0.2));
+    border-radius: 3px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted, #64748b);
 }
 
 /* 折叠状态 - 侧边栏向左滑出屏幕 */
@@ -352,9 +357,49 @@ const toggleCollapse = () => {
     line-height: 1.4;
 }
 
+/* 用量进度条样式 */
+.storage-usage {
+    padding: 8px 0;
+}
+
+.usage-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--text-muted, #94a3b8);
+}
+
+.usage-text {
+    color: var(--accent-blue, #3b82f6);
+    font-weight: 500;
+}
+
+.usage-bar {
+    height: 6px;
+    background: var(--bg-primary, #0f172a);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.usage-progress {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.usage-progress.unlimited {
+    width: 100%;
+    background: linear-gradient(90deg, 
+        var(--accent-blue, #3b82f6) 0%, 
+        #10b981 50%, 
+        var(--accent-green, #22c55e) 100%
+    );
+}
+
 /* 菜单通用样式 */
-.main-menu,
-.category-menu {
+.main-menu {
     padding: 0 20px;
     margin-bottom: 24px;
     /* 菜单之间的间距 */
