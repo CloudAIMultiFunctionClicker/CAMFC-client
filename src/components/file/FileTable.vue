@@ -582,88 +582,92 @@ const isFileSelected = (itemPath) => {
 <template>
   <div class="file-table-container">
     <!-- 上传弹窗 - 中间显示，带模糊背景 -->
-    <div v-if="showUploadModal" class="upload-modal-overlay" @click.self="cancelUpload">
-      <div class="upload-modal">
-        <div class="modal-header">
-          <h3><i class="ri-upload-cloud-line"></i> 上传文件</h3>
-          <button class="modal-close" @click="cancelUpload">
-            <i class="ri-close-line"></i>
-          </button>
-        </div>
-        <div class="modal-body">
-          <!-- 拖放区域 -->
-          <div 
-            class="upload-drop-area" 
-            :class="{ 'drag-active': dragActive }"
-            @dragenter="handleDragEnter"
-            @dragleave="handleDragLeave"
-            @dragover="handleDragOver"
-            @drop="handleDrop"
-          >
-            <i class="ri-upload-cloud-2-fill"></i>
-            <p>拖放文件到此处，或 <span class="upload-link" @click.stop="triggerFileSelect">点击选择文件</span></p>
-            <p class="upload-hint">支持多个文件同时上传</p>
+    <Transition name="upload-modal">
+      <div v-if="showUploadModal" class="upload-modal-overlay" @click.self="cancelUpload">
+        <div class="upload-modal">
+          <div class="modal-header">
+            <h3><i class="ri-upload-cloud-line"></i> 上传文件</h3>
+            <button class="modal-close" @click="cancelUpload">
+              <i class="ri-close-line"></i>
+            </button>
           </div>
-          
-          <!-- 隐藏的文件输入 -->
-          <input 
-            ref="fileInputRef"
-            type="file" 
-            multiple
-            class="hidden-file-input"
-            @change="handleFileSelect"
-          />
-          
-          <!-- 文件列表 -->
-          <div v-if="droppedFiles.length > 0" class="file-list-container">
-            <div class="file-list-header">
-              <span class="file-list-title">已选择 {{ droppedFiles.length }} 个文件</span>
-              <span class="file-clear-all" @click="clearFiles">清空</span>
+          <div class="modal-body">
+            <!-- 拖放区域 -->
+            <div 
+              class="upload-drop-area" 
+              :class="{ 'drag-active': dragActive }"
+              @dragenter="handleDragEnter"
+              @dragleave="handleDragLeave"
+              @dragover="handleDragOver"
+              @drop="handleDrop"
+            >
+              <i class="ri-upload-cloud-2-fill"></i>
+              <p>拖放文件到此处，或 <span class="upload-link" @click.stop="triggerFileSelect">点击选择文件</span></p>
+              <p class="upload-hint">支持多个文件同时上传</p>
             </div>
-            <div class="file-list">
-              <div v-for="(file, index) in droppedFiles" :key="index" class="file-item">
-                <i class="ri-file-line file-icon"></i>
-                <div class="file-info">
-                  <span class="file-name">{{ file.name }}</span>
-                  <span class="file-size">{{ formatFileSize(file.size) }}</span>
+            
+            <!-- 隐藏的文件输入 -->
+            <input 
+              ref="fileInputRef"
+              type="file" 
+              multiple
+              class="hidden-file-input"
+              @change="handleFileSelect"
+            />
+            
+            <!-- 文件列表 -->
+            <div v-if="droppedFiles.length > 0" class="file-list-container">
+              <div class="file-list-header">
+                <span class="file-list-title">已选择 {{ droppedFiles.length }} 个文件</span>
+                <span class="file-clear-all" @click="clearFiles">清空</span>
+              </div>
+              <div class="file-list">
+                <div v-for="(file, index) in droppedFiles" :key="index" class="file-item">
+                  <i class="ri-file-line file-icon"></i>
+                  <div class="file-info">
+                    <span class="file-name">{{ file.name }}</span>
+                    <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                  </div>
+                  <i class="ri-close-line file-remove" @click="removeFile(index)"></i>
                 </div>
-                <i class="ri-close-line file-remove" @click="removeFile(index)"></i>
               </div>
             </div>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-cancel" @click="cancelUpload">取消</button>
-          <button class="btn-confirm" @click="confirmUpload">确认上传</button>
+          <div class="modal-footer">
+            <button class="btn-cancel" @click="cancelUpload">取消</button>
+            <button class="btn-confirm" @click="confirmUpload">确认上传</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- 新建文件夹弹窗 - 中间显示，带模糊背景 -->
-    <div v-if="showNewFolderModal" class="upload-modal-overlay" @click.self="cancelNewFolder">
-      <div class="upload-modal">
-        <div class="modal-header">
-          <h3><i class="ri-folder-add-line"></i> 新建文件夹</h3>
-          <button class="modal-close" @click="cancelNewFolder">
-            <i class="ri-close-line"></i>
-          </button>
-        </div>
-        <div class="modal-body">
-          <input 
-            v-model="newFolderName" 
-            @keyup.enter="confirmNewFolder"
-            @keyup.esc="cancelNewFolder"
-            class="upload-input"
-            placeholder="输入文件夹名称"
-            autofocus
-          />
-        </div>
-        <div class="modal-footer">
-          <button class="btn-cancel" @click="cancelNewFolder">取消</button>
-          <button class="btn-confirm" @click="confirmNewFolder">创建</button>
+    <Transition name="upload-modal">
+      <div v-if="showNewFolderModal" class="upload-modal-overlay" @click.self="cancelNewFolder">
+        <div class="upload-modal">
+          <div class="modal-header">
+            <h3><i class="ri-folder-add-line"></i> 新建文件夹</h3>
+            <button class="modal-close" @click="cancelNewFolder">
+              <i class="ri-close-line"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <input 
+              v-model="newFolderName" 
+              @keyup.enter="confirmNewFolder"
+              @keyup.esc="cancelNewFolder"
+              class="upload-input"
+              placeholder="输入文件夹名称"
+              autofocus
+            />
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" @click="cancelNewFolder">取消</button>
+            <button class="btn-confirm" @click="confirmNewFolder">创建</button>
+          </div>
         </div>
       </div>
-    </div>
+    </Transition>
 
     <!-- 路径导航栏 -->
     <div class="path-nav">
@@ -1585,5 +1589,26 @@ const isFileSelected = (itemPath) => {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
+}
+
+.upload-modal-enter-active,
+.upload-modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.upload-modal-enter-from,
+.upload-modal-leave-to {
+  opacity: 0;
+}
+
+.upload-modal-enter-active .upload-modal,
+.upload-modal-leave-active .upload-modal {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.upload-modal-enter-from .upload-modal,
+.upload-modal-leave-to .upload-modal {
+  transform: scale(0.9);
+  opacity: 0;
 }
 </style>

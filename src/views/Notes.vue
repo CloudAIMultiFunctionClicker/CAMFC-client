@@ -399,11 +399,24 @@ function formatDate(dateStr) {
 
 .input-wrapper .title-input {
   width: 100%;
-  padding: 12px;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  padding: 14px 16px;
+  background: var(--bg-primary, #0f172a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  color: var(--text-primary, #f8fafc);
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s ease;
   box-sizing: border-box;
+}
+
+.input-wrapper .title-input::placeholder {
+  color: var(--text-muted, #64748b);
+}
+
+.input-wrapper .title-input:focus {
+  border-color: var(--accent-blue, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
 }
 
 .modal-footer {
