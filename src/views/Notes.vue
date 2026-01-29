@@ -38,22 +38,36 @@
     </div>
 
     <Transition name="modal">
-      <div v-if="selectedNote" class="note-modal-overlay" @click.self="selectedNote = null">
+      <div v-if="selectedNote" class="note-modal-overlay" @click.self="selectedNote = null; isEditing = false">
         <div class="note-modal-content" @click.stop>
           <div class="note-modal-header">
             <span class="note-title-display">{{ selectedNote.title }}</span>
             <div class="note-modal-actions">
-              <button class="edit-btn" @click="editNote(selectedNote.id)">
+              <button v-if="!isEditing" class="edit-btn" @click="isEditing = true">
                 <i class="ri-edit-line"></i>
               </button>
-              <button class="close-btn" @click="selectedNote = null">
+              <template v-else>
+                <button class="save-btn" @click="isEditing = false">
+                  <i class="ri-check-line"></i>
+                </button>
+              </template>
+              <button class="close-btn" @click="selectedNote = null; isEditing = false">
                 <i class="ri-close-line"></i>
               </button>
             </div>
           </div>
           <div class="note-modal-body">
-            <div v-if="selectedNote.content" class="preview-text" v-html="renderMarkdown(selectedNote.content)"></div>
-            <div v-else class="preview-text empty">暂无内容</div>
+            <div v-if="!isEditing">
+              <div v-if="selectedNote.content" class="preview-text" v-html="renderMarkdown(selectedNote.content)"></div>
+              <div v-else class="preview-text empty">暂无内容</div>
+            </div>
+            <textarea
+              v-else
+              v-model="selectedNote.content"
+              class="note-editor-textarea"
+              placeholder="使用 Markdown 格式书写..."
+              @input="saveNote"
+            ></textarea>
           </div>
         </div>
       </div>
@@ -172,6 +186,7 @@ const moreMenuNote = ref(null)
 const showRenameModal = ref(false)
 const renameNote = ref(null)
 const newNoteName = ref('')
+const isEditing = ref(false)
 
 onMounted(() => {
   loadNotes()
@@ -210,10 +225,6 @@ function selectNote(note) {
   selectedNote.value = note
 }
 
-function editNote(id) {
-  router.push(`/note/${id}`)
-}
-
 function deleteNote(id) {
   noteToDelete.value = id
   showDeleteModal.value = true
@@ -248,6 +259,7 @@ function closeMoreMenu() {
 
 function openRenameModal() {
   if (moreMenuNote.value) {
+    renameNote.value = moreMenuNote.value
     newNoteName.value = moreMenuNote.value.title
     showRenameModal.value = true
     closeMoreMenu()
@@ -470,6 +482,42 @@ function formatDate(dateStr) {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
+.note-modal-overlay,
+.note-modal-overlay .note-modal-content {
+  animation-duration: 0.3s;
+  animation-timing-function: ease;
+}
+
+.note-modal-overlay.modal-enter-active .note-modal-content {
+  animation-name: modalScaleIn;
+}
+
+.note-modal-overlay.modal-leave-active .note-modal-content {
+  animation-name: modalScaleOut;
+}
+
+@keyframes modalScaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes modalScaleOut {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+
 .note-modal-header {
   display: flex;
   justify-content: space-between;
@@ -550,6 +598,21 @@ function formatDate(dateStr) {
   background-color: rgba(59, 130, 246, 0.1);
 }
 
+.save-btn {
+  background: none;
+  border: none;
+  color: #22c55e;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.save-btn:hover {
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
 .preview-text {
   font-size: 15px;
   color: var(--text-primary);
@@ -588,6 +651,24 @@ function formatDate(dateStr) {
   max-width: 100%;
   border-radius: 8px;
   margin: 12px 0;
+}
+
+.note-editor-textarea {
+  width: 100%;
+  height: 100%;
+  min-height: 300px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.7;
+  resize: none;
+  outline: none;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.note-editor-textarea::placeholder {
+  color: var(--text-muted);
 }
 
 .content-input {
