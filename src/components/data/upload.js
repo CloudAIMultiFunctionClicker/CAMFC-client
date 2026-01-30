@@ -4,7 +4,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { showToast } from '../layout/showToast.js'
 import { formatFileSize } from './download.js'
-import { open } from '@tauri-apps/plugin-dialog'
 
 /**
  * 上传文件
@@ -149,55 +148,97 @@ export async function resumeUpload(uploadId) {
 /**
  * 选择文件并上传
  * 
- * 打开文件选择对话框，选择文件后自动上传
- * 这是一个方便的前端封装函数
+ * 调用Rust端的select_and_upload_file命令
+ * Rust端会使用系统原生文件对话框选择文件，然后开始上传
  * 
  * @returns {Promise<object>} 上传结果信息
  */
 export async function selectAndUploadFile() {
   try {
-    // 使用Tauri的文件对话框API选择文件
-    const selected = await open({
-      multiple: false, // 暂时只支持单个文件
-      directory: false,
-      filters: [{
-        name: '所有文件',
-        extensions: ['*'] // 支持所有文件类型
-      }]
-    })
+    console.info('调用Rust端select_and_upload_file命令')
     
-    if (!selected) {
-      // 用户取消了选择
-      console.info('用户取消了文件选择')
-      throw new Error('未选择文件')
+    // 调用Rust端的文件选择和上传命令
+    const result = await invoke('select_and_upload_file')
+    
+    if (!result.success) {
+      if (result.cancelled) {
+        console.info('用户取消了文件选择')
+        return {
+          success: false,
+          cancelled: true
+        }
+      }
+      throw new Error('文件选择失败')
     }
     
-    // 获取选择的文件路径
-    const filePath = Array.isArray(selected) ? selected[0] : selected
-    
-    console.info(`选择文件: ${filePath}`)
-    showToast(`准备上传: ${extractFileName(filePath)}`, '#3b82f6')
-    
-    // 调用上传函数
-    const result = await uploadFile(filePath)
+    console.info(`文件选择成功，upload_id: ${result.upload_id}`)
+    showToast(`开始上传: ${extractFileName(result.file_path)}`, '#3b82f6')
     
     return {
       success: true,
-      filePath,
-      result
+      uploadId: result.upload_id,
+      filePath: result.file_path
     }
   } catch (error) {
-    if (error.message === '未选择文件') {
-      // 用户取消了选择，不显示错误
-      console.info('用户取消了文件上传')
+    console.error('选择并上传文件失败:', error)
+    throw error
+  }
+}
+
+/**
+ * 批量上传文件（从文件路径列表）
+ * 
+ * 调用Rust端的upload_files_from_paths命令
+ * 前端提供文件路径列表，后端依次上传每个文件
+ * 
+ * @param {Array<string>} filePaths - 文件路径数组
+ * @returns {Promise<object>} 上传结果信息
+ */
+export async function uploadFilesFromPaths(filePaths) {
+  try {
+    console.info(`批量上传 ${filePaths.length} 个文件`)
+    
+    if (!filePaths || filePaths.length === 0) {
+      showToast('请先选择要上传的文件', '#f59e0b')
       return {
         success: false,
-        cancelled: true
+        message: '没有提供文件路径'
       }
     }
     
-    console.error('选择并上传文件失败:', error)
-    throw error
+    // 调用Rust端的批量上传命令
+    const result = await invoke('upload_files_from_paths', { filePaths })
+    
+    if (!result.success) {
+      throw new Error(result.message || '批量上传失败')
+    }
+    
+    console.info(`批量上传任务已创建，共 ${result.count} 个文件`)
+    showToast(`开始上传 ${result.count} 个文件...`, '#3b82f6')
+    
+    return {
+      success: true,
+      uploadIds: result.upload_ids,
+      filePaths: result.file_paths,
+      count: result.count
+    }
+  } catch (error) {
+    console.error('批量上传文件失败:', error)
+    
+    // 更详细的错误处理
+    let errorMessage = '上传失败'
+    if (error.includes('获取设备ID失败')) {
+      errorMessage = '蓝牙设备连接失败，请检查设备连接'
+    } else if (error.includes('获取TOTP失败')) {
+      errorMessage = 'TOTP验证失败，请重试'
+    } else if (error.includes('网络错误')) {
+      errorMessage = '网络连接失败，请检查网络'
+    } else if (error.includes('创建上传任务失败')) {
+      errorMessage = '创建上传任务失败，请重试'
+    }
+    
+    showToast(`${errorMessage}: ${error}`, '#ef4444')
+    throw new Error(`批量上传失败: ${error}`)
   }
 }
 
@@ -269,45 +310,39 @@ export function extractFileName(filePath) {
 /**
  * 选择多个文件并上传
  * 
- * 打开文件选择对话框，可以选择多个文件
+ * 调用Rust端的select_and_upload_multiple_files命令
+ * Rust端会使用系统原生文件对话框选择多个文件，然后开始批量上传
  * 
  * @returns {Promise<Array<object>>} 上传结果信息数组
  */
 export async function selectMultipleAndUploadFiles() {
   try {
-    // 使用Tauri的文件对话框API选择多个文件
-    const selected = await open({
-      multiple: true, // 支持多个文件
-      directory: false,
-      filters: [{
-        name: '所有文件',
-        extensions: ['*'] // 支持所有文件类型
-      }]
-    })
+    console.info('调用Rust端select_and_upload_multiple_files命令')
     
-    if (!selected || selected.length === 0) {
-      // 用户取消了选择
-      console.info('用户取消了文件选择')
-      throw new Error('未选择文件')
-    }
+    // 调用Rust端的多文件选择和上传命令
+    const result = await invoke('select_and_upload_multiple_files')
     
-    console.info(`选择了 ${selected.length} 个文件`)
-    showToast(`准备上传 ${selected.length} 个文件...`, '#3b82f6')
-    
-    // 批量上传文件
-    const results = await batchUploadFiles(selected)
-    
-    return results
-  } catch (error) {
-    if (error.message === '未选择文件') {
-      // 用户取消了选择，不显示错误
-      console.info('用户取消了文件上传')
-      return {
-        success: false,
-        cancelled: true
+    if (!result.success) {
+      if (result.cancelled) {
+        console.info('用户取消了文件选择')
+        return {
+          success: false,
+          cancelled: true
+        }
       }
+      throw new Error('文件选择失败')
     }
     
+    console.info(`选择了 ${result.count} 个文件，开始批量上传`)
+    showToast(`准备上传 ${result.count} 个文件...`, '#3b82f6')
+    
+    return {
+      success: true,
+      uploadIds: result.upload_ids,
+      filePaths: result.file_paths,
+      count: result.count
+    }
+  } catch (error) {
     console.error('选择并上传多个文件失败:', error)
     throw error
   }
@@ -321,5 +356,6 @@ export default {
   selectAndUploadFile,
   selectMultipleAndUploadFiles,
   batchUploadFiles,
+  uploadFilesFromPaths,
   extractFileName
 }

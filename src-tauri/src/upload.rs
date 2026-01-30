@@ -7,8 +7,9 @@
 // 3. 支持断点续传，可以查询已上传分片
 // 4. 提供上传进度信息
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::fs::{self, File};
@@ -80,15 +81,14 @@ impl ChunkUploader {
     }
     
     // 初始化上传 - 调用 /upload/init
-    pub async fn init_upload(&self, filename: &str, total_size: u64) -> Result<String> {
-        // 根据API文档，调用 /upload/init 获取 upload_id
+    // 后端不需要任何参数，只需要认证头
+    pub async fn init_upload(&self, _filename: &str, _total_size: u64) -> Result<String> {
         let url = format!("{}/upload/init", BASE_URL);
         
         // 获取认证头
         let headers = self.auth_info.get_auth_header()?;
         
-        // 发送POST请求，根据API可能需要传递文件信息
-        // 这里先简单发送，后续根据实际API调整
+        // 发送POST请求，不需要body
         let response = self.client
             .post(&url)
             .headers(headers)
@@ -126,17 +126,20 @@ impl ChunkUploader {
         let url = format!("{}/upload/chunk", BASE_URL);
         
         // 获取认证头
-        let mut headers = self.auth_info.get_auth_header()?;
+        let headers = self.auth_info.get_auth_header()?;
         
-        // 构建multipart表单
+        // 构建multipart表单，只包含文件数据
+        // upload_id 和 index 作为查询参数传递
         let form = multipart::Form::new()
-            .text("upload_id", upload_id.to_string())
-            .text("index", chunk_index.to_string())
             .part("file", multipart::Part::bytes(chunk_data.to_vec()).file_name(format!("chunk_{:04}", chunk_index)));
         
-        // 发送请求
+        // 发送请求，使用查询参数传递 upload_id 和 index
         let response = self.client
             .post(&url)
+            .query(&[
+                ("upload_id", upload_id),
+                ("index", &chunk_index.to_string()),
+            ])
             .headers(headers)
             .multipart(form)
             .send()
@@ -164,18 +167,32 @@ impl ChunkUploader {
         upload_id: &str,
         filename: &str,
         total_chunks: u32,
+        target_path: Option<&str>,
     ) -> Result<String> {
+        eprintln!("[finish_upload] 开始处理，upload_id={}, filename={}, total_chunks={}, target_path={:?}", 
+                 upload_id, filename, total_chunks, target_path);
+        
         let url = format!("{}/upload/finish", BASE_URL);
         
         // 获取认证头
         let headers = self.auth_info.get_auth_header()?;
         
         // 构建查询参数
-        let params = [
+        let total_chunks_str = total_chunks.to_string();
+        let mut params = vec![
             ("upload_id", upload_id),
             ("filename", filename),
-            ("total_chunks", &total_chunks.to_string()),
+            ("total_chunks", &total_chunks_str),
         ];
+        
+        // 如果提供了目标路径，添加到参数中
+        if let Some(path) = target_path {
+            eprintln!("[finish_upload] 添加目标路径: {}", path);
+            params.push(("target_path", path));
+        }
+        
+        eprintln!("[finish_upload] 发送请求到: {}", url);
+        eprintln!("[finish_upload] 参数: {:?}", params);
         
         // 发送POST请求
         let response = self.client
@@ -186,6 +203,8 @@ impl ChunkUploader {
             .await
             .context("完成上传失败")?;
             
+        eprintln!("[finish_upload] 收到响应状态: {:?}", response.status());
+        
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
@@ -197,11 +216,9 @@ impl ChunkUploader {
         }
         
         // 解析响应，获取文件ID等信息
-        // 这里假设返回JSON包含文件ID
         let response_text = response.text().await.context("读取完成响应失败")?;
-        println!("上传完成响应: {}", response_text);
+        eprintln!("[finish_upload] 上传完成响应: {}", response_text);
         
-        // 暂时直接返回成功消息，后续根据实际API调整
         Ok(format!("上传完成: {}", filename))
     }
     
@@ -246,10 +263,11 @@ pub struct UploadTask {
     filename: String,
     file_path: PathBuf,
     total_size: u64,
-    uploaded_size: Arc<Mutex<u64>>,
+    uploaded_size: Arc<AtomicU64>,
     status: Arc<Mutex<UploadStatus>>,
     uploader: ChunkUploader,
     chunks_total: u32,
+    target_path: Option<String>,
 }
 
 impl UploadTask {
@@ -257,6 +275,7 @@ impl UploadTask {
     pub async fn new(
         file_path: PathBuf,
         auth_info: AuthInfo,
+        target_path: Option<&str>,
     ) -> Result<Self> {
         // 获取文件名
         let filename = file_path
@@ -290,10 +309,11 @@ impl UploadTask {
             filename,
             file_path,
             total_size,
-            uploaded_size: Arc::new(Mutex::new(0)),
+            uploaded_size: Arc::new(AtomicU64::new(0)),
             status: Arc::new(Mutex::new(UploadStatus::Pending)),
             uploader,
             chunks_total,
+            target_path: target_path.map(|s| s.to_string()),
         })
     }
     
@@ -327,8 +347,7 @@ impl UploadTask {
         }
         
         // 更新已上传大小
-        let mut uploaded = self.uploaded_size.lock().await;
-        *uploaded = already_uploaded;
+        self.uploaded_size.store(already_uploaded, Ordering::SeqCst);
         
         println!("已上传大小: {} 字节", already_uploaded);
         
@@ -392,15 +411,17 @@ impl UploadTask {
                 ).await {
                     Ok(_) => {
                         // 更新进度
-                        let mut uploaded = self.uploaded_size.lock().await;
-                        *uploaded += chunk_size as u64;
+                        eprintln!("[start] 分片 {} 上传成功，准备更新进度", chunk_index);
+                        self.uploaded_size.fetch_add(chunk_size as u64, Ordering::SeqCst);
+                        eprintln!("[start] 获得锁，更新进度");
                         
-                        println!("分片 {}/{} 上传成功 ({}/{} 字节)，当前进度: {}/{} 字节", 
+                        let current_uploaded = self.uploaded_size.load(Ordering::SeqCst);
+                        eprintln!("[start] 分片 {}/{} 上传成功 ({}/{} 字节)，当前进度: {}/{} 字节", 
                             chunk_index + 1, 
                             self.chunks_total,
                             chunk_size,
                             chunk_size,
-                            *uploaded,
+                            current_uploaded,
                             self.total_size
                         );
                         
@@ -424,17 +445,17 @@ impl UploadTask {
         }
         
         // 所有分片上传完成，调用完成接口
-        println!("所有分片上传完成，调用完成接口...");
+        eprintln!("[start] 所有分片上传完成，共 {} 个分片，准备调用 finish_upload", self.chunks_total);
         
-        match self.uploader.finish_upload(&self.upload_id, &self.filename, self.chunks_total).await {
+        match self.uploader.finish_upload(&self.upload_id, &self.filename, self.chunks_total, self.target_path.as_deref()).await {
             Ok(result) => {
-                println!("上传完成: {}", result);
+                eprintln!("[start] 上传完成: {}", result);
                 *self.status.lock().await = UploadStatus::Completed;
                 Ok(())
             }
             Err(e) => {
-                let error_msg = format!("完成上传失败: {}", e);
-                println!("错误: {}", error_msg);
+                let error_msg = format!("[start] 完成上传失败: {}", e);
+                eprintln!("错误: {}", error_msg);
                 *self.status.lock().await = UploadStatus::Error(error_msg.clone());
                 Err(anyhow::anyhow!(error_msg))
             }
@@ -449,7 +470,7 @@ impl UploadTask {
     
     // 获取上传进度
     pub async fn get_progress(&self) -> UploadProgress {
-        let uploaded = *self.uploaded_size.lock().await;
+        let uploaded = self.uploaded_size.load(Ordering::SeqCst);
         let status = self.status.lock().await.clone();
         
         // 简单计算速度（暂时用0，后续可以添加时间计算）
