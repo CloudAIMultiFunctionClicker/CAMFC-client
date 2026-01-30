@@ -19,17 +19,57 @@
     <main class="settings-content">
       <div v-if="activeNav === 'cpen'" class="settings-panel">
         <h3>Cpen 设置</h3>
-        <p class="placeholder-text">Cpen 相关设置项占位...</p>
+        <div class="setting-item">
+          <span>自动连接 Cpen 设备</span>
+          <button class="toggle-btn active">
+            <span class="toggle-slider"></span>
+          </button>
+        </div>
+        <div class="setting-item">
+          <span>同步数据到云端</span>
+          <button class="toggle-btn active">
+            <span class="toggle-slider"></span>
+          </button>
+        </div>
+        <div class="setting-item">
+          <span>设备名称</span>
+          <span class="setting-value">Cpen-001</span>
+        </div>
       </div>
 
       <div v-else-if="activeNav === 'account'" class="settings-panel">
         <h3>账户</h3>
-        <p class="placeholder-text">账户管理相关设置占位...</p>
+        <div class="setting-item">
+          <span>登录状态</span>
+          <span class="setting-value status-online">已登录</span>
+        </div>
+        <div class="setting-item">
+          <span>用户名</span>
+          <span class="setting-value">User123</span>
+        </div>
+        <div class="setting-item">
+          <span>邮箱</span>
+          <span class="setting-value">user@example.com</span>
+        </div>
+        <button class="action-btn danger">退出登录</button>
       </div>
 
       <div v-else-if="activeNav === 'ui'" class="settings-panel">
         <h3>界面缩放和布局</h3>
-        <p class="placeholder-text">界面缩放、布局调整设置占位...</p>
+        <div class="setting-item">
+          <span>界面缩放</span>
+          <input type="range" min="80" max="120" value="100" class="slider">
+        </div>
+        <div class="setting-item">
+          <span>侧边栏宽度</span>
+          <span class="setting-value">260px</span>
+        </div>
+        <div class="setting-item">
+          <span>紧凑模式</span>
+          <button class="toggle-btn">
+            <span class="toggle-slider"></span>
+          </button>
+        </div>
       </div>
 
       <div v-else-if="activeNav === 'theme'" class="settings-panel">
@@ -40,11 +80,29 @@
             <span class="toggle-slider"></span>
           </button>
         </div>
+        <div class="setting-item">
+          <span>跟随系统主题</span>
+          <button class="toggle-btn active">
+            <span class="toggle-slider"></span>
+          </button>
+        </div>
       </div>
 
       <div v-else-if="activeNav === 'storage'" class="settings-panel">
         <h3>储存空间管理</h3>
-        <p class="placeholder-text">储存空间管理设置占位...</p>
+        <div class="storage-info">
+          <div class="storage-bar">
+            <div class="storage-used" style="width: 35%"></div>
+          </div>
+          <p class="storage-text">已使用 350 MB / 1 GB</p>
+        </div>
+        <button class="action-btn">清理缓存</button>
+        <div class="setting-item">
+          <span>自动清理缓存</span>
+          <button class="toggle-btn">
+            <span class="toggle-slider"></span>
+          </button>
+        </div>
       </div>
 
       <div v-else-if="activeNav === 'help'" class="settings-panel help-panel">
@@ -56,7 +114,17 @@
 
       <div v-else-if="activeNav === 'about'" class="settings-panel">
         <h3>关于</h3>
-        <p class="placeholder-text">关于页面内容占位...</p>
+        <div class="about-info">
+          <div class="app-icon">☁️</div>
+          <h4>CAMFC Cloud</h4>
+          <p class="version">版本 1.0.0</p>
+          <p class="desc">云端多功能点击器客户端</p>
+        </div>
+        <div class="setting-item">
+          <span>检查更新</span>
+          <span class="setting-value">已是最新</span>
+        </div>
+        <button class="action-btn">查看更新日志</button>
       </div>
     </main>
   </div>
@@ -203,6 +271,117 @@ const navItems = [
 
 .toggle-btn.active .toggle-slider {
   transform: translateX(22px);
+}
+
+.setting-value {
+  color: var(--text-muted, #64748b);
+  font-size: 14px;
+}
+
+.setting-value.status-online {
+  color: #22c55e;
+}
+
+.action-btn {
+  margin-top: 16px;
+  padding: 12px 24px;
+  background-color: var(--accent-blue, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background-color: #2563eb;
+}
+
+.action-btn.danger {
+  background-color: rgba(220, 53, 69, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.action-btn.danger:hover {
+  background-color: rgba(220, 53, 69, 0.3);
+}
+
+.slider {
+  width: 120px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border-color, rgba(255, 255, 255, 0.2));
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent-blue, #3b82f6);
+  cursor: pointer;
+}
+
+.storage-info {
+  margin-bottom: 20px;
+}
+
+.storage-bar {
+  height: 8px;
+  background-color: var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.storage-used {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue, #3b82f6), #60a5fa);
+  border-radius: 4px;
+}
+
+.storage-text {
+  color: var(--text-muted, #64748b);
+  font-size: 13px;
+  margin: 0;
+}
+
+.about-info {
+  text-align: center;
+  padding: 32px;
+  background-color: var(--bg-secondary, #1e293b);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.app-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.about-info h4 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0 0 8px 0;
+}
+
+.about-info .version {
+  color: var(--accent-blue, #3b82f6);
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+}
+
+.about-info .desc {
+  color: var(--text-muted, #64748b);
+  font-size: 14px;
+  margin: 0;
 }
 
 .help-panel {
