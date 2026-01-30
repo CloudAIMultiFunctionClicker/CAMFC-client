@@ -2,10 +2,20 @@
   <div class="notes-container">
     <div class="notes-header">
       <h1 class="page-title">笔记</h1>
-      <button class="add-btn" @click="showAddModal = true">
-        <i class="ri-add-line"></i>
-        新建笔记
-      </button>
+      <div class="header-actions">
+        <button class="add-btn" @click="showAddModal = true">
+          <i class="ri-add-line"></i>
+          新建笔记
+        </button>
+        <button class="action-btn" @click="importNotes">
+          <i class="ri-upload-line"></i>
+          导入
+        </button>
+        <button class="action-btn" @click="exportNotes">
+          <i class="ri-download-line"></i>
+          导出
+        </button>
+      </div>
     </div>
 
     <div class="notes-content">
@@ -405,6 +415,42 @@ function formatDate(dateStr) {
   const date = new Date(dateStr)
   return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
+
+async function exportNotes() {
+  const data = JSON.stringify(notes.value, null, 2)
+  const blob = new Blob([data], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `camfc-notes-${new Date().toISOString().slice(0, 10)}.json`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+async function importNotes() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      const importedNotes = JSON.parse(text)
+      if (Array.isArray(importedNotes)) {
+        notes.value = importedNotes
+        saveNotes()
+      }
+    } catch (err) {
+      console.error('导入失败:', err)
+      alert('导入失败，请检查文件格式')
+    }
+  }
+  input.click()
+}
 </script>
 
 <style scoped>
@@ -449,6 +495,34 @@ function formatDate(dateStr) {
 
 .add-btn i {
   font-size: 18px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
+.action-btn i {
+  font-size: 16px;
 }
 
 .empty-state {
