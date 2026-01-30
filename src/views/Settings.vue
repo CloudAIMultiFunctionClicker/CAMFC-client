@@ -36,7 +36,7 @@
         <h3>深色模式</h3>
         <div class="setting-item">
           <span>启用深色模式</span>
-          <button class="toggle-btn" :class="{ active: darkMode }" @click="darkMode = !darkMode">
+          <button class="toggle-btn" :class="{ active: !theme?.isLightMode.value }" @click="theme?.toggleTheme()">
             <span class="toggle-slider"></span>
           </button>
         </div>
@@ -63,10 +63,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { inject, ref } from 'vue'
 
+const theme = inject('theme')
 const activeNav = ref('cpen')
-const darkMode = ref(false)
 
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
