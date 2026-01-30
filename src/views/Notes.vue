@@ -61,13 +61,45 @@
               <div v-if="selectedNote.content" class="preview-text" v-html="renderMarkdown(selectedNote.content)"></div>
               <div v-else class="preview-text empty">暂无内容</div>
             </div>
-            <textarea
-              v-else
-              v-model="selectedNote.content"
-              class="note-editor-textarea"
-              placeholder="使用 Markdown 格式书写..."
-              @input="saveNote"
-            ></textarea>
+            <div v-else class="editor-container">
+              <textarea
+                ref="editorTextarea"
+                v-model="selectedNote.content"
+                class="note-editor-textarea"
+                placeholder="使用 Markdown 格式书写..."
+                @input="saveNote"
+              ></textarea>
+            </div>
+          </div>
+          <div v-if="isEditing" class="editor-toolbar">
+            <button class="toolbar-btn" @click="insertMarkdown('h1')" title="一级标题&#10;语法: # 标题">
+              <i class="ri-h-1"></i>
+            </button>
+            <button class="toolbar-btn" @click="insertMarkdown('h2')" title="二级标题&#10;语法: ## 标题">
+              <i class="ri-h-2"></i>
+            </button>
+            <button class="toolbar-btn" @click="insertMarkdown('h3')" title="三级标题&#10;语法: ### 标题">
+              <i class="ri-h-3"></i>
+            </button>
+            <div class="toolbar-divider"></div>
+            <button class="toolbar-btn" @click="insertMarkdown('bold')" title="加粗&#10;语法: **文本**">
+              <i class="ri-bold"></i>
+            </button>
+            <button class="toolbar-btn" @click="insertMarkdown('italic')" title="斜体&#10;语法: *文本*">
+              <i class="ri-italic"></i>
+            </button>
+            <button class="toolbar-btn" @click="insertMarkdown('strike')" title="删除线&#10;语法: ~~文本~~">
+              <i class="ri-strikethrough"></i>
+            </button>
+            <button class="toolbar-btn" @click="insertMarkdown('code')" title="行内代码&#10;语法: `代码`">
+              <i class="ri-code-line"></i>
+            </button>
+            <button class="toolbar-btn" @click="insertMarkdown('list')" title="列表&#10;语法: - 项目">
+              <i class="ri-list-unordered"></i>
+            </button>
+            <button class="toolbar-btn" @click="insertMarkdown('image')" title="图片&#10;语法: ![描述](地址)">
+              <i class="ri-image-line"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -316,6 +348,59 @@ function saveNote() {
   }
 }
 
+const editorTextarea = ref(null)
+
+function insertMarkdown(type) {
+  if (!editorTextarea.value) return
+  
+  const textarea = editorTextarea.value
+  const start = textarea.selectionStart
+  const end = textarea.selectionEnd
+  const text = selectedNote.value.content || ''
+  const before = text.substring(0, start)
+  const selected = text.substring(start, end)
+  const after = text.substring(end)
+  
+  let insert = ''
+  switch (type) {
+    case 'h1':
+      insert = selected ? `# ${selected}` : '# 标题'
+      break
+    case 'h2':
+      insert = selected ? `## ${selected}` : '## 标题'
+      break
+    case 'h3':
+      insert = selected ? `### ${selected}` : '### 标题'
+      break
+    case 'bold':
+      insert = selected ? `**${selected}**` : '**加粗文本**'
+      break
+    case 'italic':
+      insert = selected ? `*${selected}*` : '*斜体文本*'
+      break
+    case 'strike':
+      insert = selected ? `~~${selected}~~` : '~~删除线~~'
+      break
+    case 'code':
+      insert = selected ? `\`${selected}\`` : '`代码`'
+      break
+    case 'list':
+      insert = selected ? `- ${selected}` : '- 列表项'
+      break
+    case 'image':
+      insert = '![图片描述](图片地址)'
+      break
+  }
+  
+  selectedNote.value.content = before + insert + after
+  saveNote()
+  
+  setTimeout(() => {
+    const newCursor = start + insert.length
+    textarea.setSelectionRange(newCursor, newCursor)
+  }, 0)
+}
+
 function formatDate(dateStr) {
   const date = new Date(dateStr)
   return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
@@ -474,8 +559,9 @@ function formatDate(dateStr) {
   background-color: var(--bg-secondary);
   border-radius: 16px;
   width: 90%;
-  max-width: 700px;
-  max-height: 80vh;
+  max-width: 900px;
+  max-height: 85vh;
+  min-height: 500px;
   border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
@@ -535,6 +621,7 @@ function formatDate(dateStr) {
   flex: 1;
   padding: 24px;
   overflow-y: auto;
+  min-height: 400px;
 }
 
 .title-input {
@@ -656,7 +743,7 @@ function formatDate(dateStr) {
 .note-editor-textarea {
   width: 100%;
   height: 100%;
-  min-height: 300px;
+  min-height: 400px;
   background: none;
   border: none;
   color: var(--text-primary);
@@ -669,6 +756,67 @@ function formatDate(dateStr) {
 
 .note-editor-textarea::placeholder {
   color: var(--text-muted);
+}
+
+.editor-container {
+  width: 100%;
+  min-height: 400px;
+}
+
+.note-editor-textarea {
+  width: 100%;
+  height: 100%;
+  min-height: 400px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.7;
+  resize: none;
+  outline: none;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+.editor-toolbar {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: var(--bg-secondary, #1e293b);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary, #94a3b8);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
+  color: var(--text-primary, #f1f5f9);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-color, rgba(255, 255, 255, 0.2));
+  margin: 0 4px;
 }
 
 .content-input {
