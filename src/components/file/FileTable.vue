@@ -27,7 +27,7 @@ import { ls,mkdir,rm } from '../data/fileSystem.js'
 import { showToast} from '../layout/showToast.js'
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { batchDownloadFiles, extractFileId } from '../data/download.js'
-import { selectAndUploadFile } from '../data/upload.js'
+import { selectAndUploadFile, uploadFilesFromPaths } from '../data/upload.js'
 
 
 // TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
@@ -71,6 +71,12 @@ const editingPathValue = ref('')
 const handleListClick = () => {
   console.log('列表视图点击，还没想好要干嘛')
   // 列表视图不就是当前视图吗？有点重复，先留着吧
+}
+
+const handleRefreshClick = async () => {
+  console.log('刷新文件列表')
+  await fetchFiles(props.currentPath)
+  showToast('刷新成功', '#10b981')
 }
 
 const handleUploadClick = () => {
@@ -159,11 +165,35 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-const confirmUpload = () => {
-  if (droppedFiles.value.length) {
-    console.log('准备上传文件:', droppedFiles.value)
-  }
+const confirmUpload = async () => {
+  // 关闭弹窗
   showUploadModal.value = false
+  
+  try {
+    if (droppedFiles.value.length > 0) {
+      // 用户已经通过拖放或点击选择了文件
+      // 但由于 Tauri 的限制，我们无法从 File 对象获取文件路径
+      // 所以需要提示用户重新选择文件
+      console.log('检测到用户已选择文件，但需要重新选择以获取文件路径')
+      showToast('请重新选择文件以开始上传', '#f59e0b')
+      
+      // 清空已选择的文件
+      droppedFiles.value = []
+    }
+    
+    // 直接打开文件选择对话框
+    console.log('打开文件选择对话框')
+    const result = await selectAndUploadFile()
+    
+    if (result.success) {
+      console.log('上传已开始，uploadId:', result.uploadId)
+    }
+  } catch (error) {
+    console.error('上传失败:', error)
+    showToast(`上传失败: ${error.message}`, '#ef4444')
+  }
+  
+  // 清空文件列表
   droppedFiles.value = []
 }
 
@@ -235,6 +265,21 @@ const handleDownloadClick = async () => {
         const errorFiles = results.filter(r => !r.success)
         console.error('下载失败的文件:', errorFiles)
       }
+      
+      // 延迟检查下载状态，因为下载是异步的
+      setTimeout(async () => {
+        for (const fileId of fileIds) {
+          try {
+            const progress = await getDownloadProgress(fileId)
+            if (progress.status === 'Error') {
+              console.error(`下载失败: ${fileId}, 状态: ${progress.status}`)
+              showToast(`文件下载失败: ${fileId}`, '#ef4444')
+            }
+          } catch (error) {
+            console.error(`检查下载状态失败: ${fileId}`, error)
+          }
+        }
+      }, 2000) // 2秒后检查状态
       
     } catch (error) {
       console.error('下载过程中出错:', error)
@@ -703,6 +748,10 @@ const isFileSelected = (itemPath) => {
           <i class="ri-list-view"></i>
           <span class="btn-text">列表视图</span>
         </button>
+        <button class="btn-refresh" @click="handleRefreshClick">
+          <i class="ri-refresh-line"></i>
+          <span class="btn-text">刷新</span>
+        </button>
         <button class="btn-upload" @click="handleUploadClick">
           <i class="ri-upload-cloud-line"></i>
           <span class="btn-text">上传</span>
@@ -932,10 +981,7 @@ const isFileSelected = (itemPath) => {
   justify-content: center;
   gap: 12px;
   padding: 40px;
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  margin-bottom: 16px;
-  color: var(--accent-red);
+  color: var(--accent-blue);
   flex-direction: column;
   gap: 16px;
 }
@@ -1117,6 +1163,7 @@ const isFileSelected = (itemPath) => {
 
 /* 按钮基础样式 - 参考AppHeader的样式 */
 .btn-dropdown,
+.btn-refresh,
 .btn-upload,
 .btn-download,
 .btn-new-folder,
@@ -1138,6 +1185,13 @@ const isFileSelected = (itemPath) => {
 
 /* 下拉按钮 - 中性色 */
 .btn-dropdown {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--text-secondary, #cbd5e1);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+/* 刷新按钮 - 中性色 */
+.btn-refresh {
   background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
   color: var(--text-secondary, #cbd5e1);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
@@ -1174,6 +1228,12 @@ const isFileSelected = (itemPath) => {
 
 /* 按钮hover效果 */
 .btn-dropdown:hover {
+  background-color: var(--accent-blue, #3b82f6);
+  color: white;
+  border-color: var(--accent-blue, #3b82f6);
+}
+
+.btn-refresh:hover {
   background-color: var(--accent-blue, #3b82f6);
   color: white;
   border-color: var(--accent-blue, #3b82f6);
@@ -1248,6 +1308,7 @@ const isFileSelected = (itemPath) => {
   }
   
   .btn-dropdown,
+  .btn-refresh,
   .btn-upload,
   .btn-download,
   .btn-new-folder,

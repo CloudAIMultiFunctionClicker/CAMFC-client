@@ -403,17 +403,29 @@ impl DownloadTask {
         Ok(())
     }
     
-    // 写入分片到文件 - 改进版，支持断点续传
+    // 写入分片到文件
     async fn write_chunk(&self, offset: u64, data: &[u8]) -> Result<()> {
-        // 用append模式打开文件：create(true)确保文件存在，append(true)确保在文件末尾写入
-        // 但我们需要精确offset写入，所以用write(true) + seek
+        // 确保父目录存在
+        if let Some(parent) = self.save_path.parent() {
+            if !parent.exists() {
+                fs::create_dir_all(parent).await
+                    .context(format!("创建父目录失败: {:?}", parent))?;
+            }
+        }
+        
+        // 如果文件不存在，创建新文件
+        if !self.save_path.exists() {
+            File::create(&self.save_path).await
+                .context(format!("创建文件失败: {:?}", self.save_path))?;
+        }
+        
+        // 以读写模式打开文件，允许追加
         let mut file = OpenOptions::new()
-            .create(true)    // 如果文件不存在就创建
-            .write(true)     // 允许写入
-            .read(true)      // 允许读取（为了metadata和seek）
+            .write(true)
+            .read(true)
             .open(&self.save_path)
             .await
-            .context("打开文件失败")?;
+            .context(format!("打开文件失败: {:?}, offset: {}", self.save_path, offset))?;
         
         // 获取当前文件大小
         let file_size = file.metadata().await

@@ -9,7 +9,7 @@ mod upload;
 // 使用新的Cpen设备管理器作为业务逻辑层
 use cpen_device_manager::CpenDeviceManager;
 use download::{DownloadTask, AuthInfo, get_app_data_dir};
-use upload::{UploadTask, UploadProgress};
+use upload::UploadTask;
 
 // 导入同步原语
 // 原来用tokio::sync::Mutex，继续用这个，适合异步环境
@@ -246,13 +246,13 @@ async fn download_file(file_id: String) -> Result<String, String> {
         .await
         .map_err(|e| format!("获取下载目录失败: {}", e))?;
     
-    // 创建保存路径 - 从文件路径中提取文件名
+    // 创建保存路径 - 直接使用完整的 file_id 作为文件名（可能包含目录）
+    // 例如 "新建文件夹\python.zip" 会保存为 "新建文件夹_python.zip_<timestamp>"
+    // 这样可以保留原始的目录结构信息
     let timestamp = chrono::Utc::now().timestamp();
-    let file_name = std::path::Path::new(&file_id)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or(&file_id);
-    let save_path = download_dir.join(format!("{}_{}", file_name, timestamp));
+    // 替换路径分隔符为下划线，避免文件系统问题
+    let safe_file_name = file_id.replace('\\', "_").replace('/', "_");
+    let save_path = download_dir.join(format!("{}_{}", safe_file_name, timestamp));
     
     println!("创建下载任务: {} -> {:?}", file_id, save_path);
     
@@ -431,7 +431,7 @@ async fn upload_file(file_path: String) -> Result<String, String> {
     };
     
     // 创建上传任务
-    let task = UploadTask::new(std::path::PathBuf::from(&file_path), auth_info)
+    let task = UploadTask::new(std::path::PathBuf::from(&file_path), auth_info, None)
         .await
         .map_err(|e| format!("创建上传任务失败: {}", e))?;
     
@@ -589,6 +589,263 @@ async fn resume_upload(upload_id: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 批量上传文件（从文件路径列表）
+/// 
+/// 前端提供文件路径列表，后端依次上传每个文件
+/// 支持分片上传和断点续传，分片大小为4MB
+/// 
+/// 注意：上传过程可能需要较长时间，特别是大文件
+/// 会在后台异步执行上传，不阻塞前端响应
+#[tauri::command]
+async fn upload_files_from_paths(file_paths: Vec<String>) -> Result<serde_json::Value, String> {
+    println!("前端调用upload_files_from_paths命令，文件数量: {}", file_paths.len());
+    
+    if file_paths.is_empty() {
+        return Ok(serde_json::json!({
+            "success": false,
+            "message": "没有提供文件路径"
+        }));
+    }
+    
+    // 先获取设备ID和TOTP（只需要获取一次）
+    let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
+    let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
+    
+    // 创建认证信息
+    let auth_info = AuthInfo {
+        device_id,
+        totp,
+    };
+    
+    let mut upload_ids = Vec::new();
+    let mut file_paths_str = Vec::new();
+    
+    // 初始化上传任务管理器
+    let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
+    
+    // 为每个文件创建上传任务
+    for file_path in file_paths {
+        let file_path_str = file_path.clone();
+        file_paths_str.push(file_path_str.clone());
+        
+        // 创建上传任务
+        let task = UploadTask::new(std::path::PathBuf::from(&file_path), auth_info.clone(), None)
+            .await
+            .map_err(|e| format!("创建上传任务失败: {}", e))?;
+        
+        // 将任务保存到全局管理器中
+        let task_arc = Arc::new(task);
+        let upload_id = {
+            let progress = task_arc.get_progress().await;
+            progress.upload_id.clone()
+        };
+        
+        upload_ids.push(upload_id.clone());
+        
+        let mut tasks_map = upload_tasks.lock().await;
+        tasks_map.insert(upload_id.clone(), task_arc.clone());
+        
+        // 在后台异步执行上传，不阻塞前端响应
+        let task_for_spawn = task_arc.clone();
+        let upload_id_for_spawn = upload_id.clone();
+        
+        tokio::spawn(async move {
+            println!("后台上传任务开始: {}", upload_id_for_spawn);
+            
+            match task_for_spawn.start().await {
+                Ok(_) => {
+                    println!("后台上传完成: {}", upload_id_for_spawn);
+                }
+                Err(e) => {
+                    println!("后台上传失败: {}，错误: {}", upload_id_for_spawn, e);
+                }
+            }
+        });
+    }
+    
+    println!("批量上传任务已添加到管理器，共 {} 个文件", upload_ids.len());
+    
+    // 返回上传ID列表
+    Ok(serde_json::json!({
+        "success": true,
+        "upload_ids": upload_ids,
+        "file_paths": file_paths_str,
+        "count": upload_ids.len()
+    }))
+}
+
+/// 选择文件并上传
+/// 
+/// 使用系统原生文件对话框选择文件，然后开始上传
+/// 支持单个文件选择
+#[tauri::command]
+async fn select_and_upload_file() -> Result<serde_json::Value, String> {
+    println!("前端调用select_and_upload_file命令，打开文件选择对话框");
+    
+    // 使用 rfd 库打开系统原生文件选择对话框
+    let file = rfd::FileDialog::new()
+        .pick_file();
+    
+    match file {
+        Some(file_path) => {
+            println!("用户选择了文件: {:?}", file_path);
+            
+            // 转换为字符串
+            let file_path_str = file_path.to_string_lossy().to_string();
+            
+            // 先获取设备ID和TOTP
+            let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
+            let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
+            
+            // 创建认证信息
+            let auth_info = AuthInfo {
+                device_id,
+                totp,
+            };
+            
+            // 创建上传任务
+            println!("[DEBUG] 开始创建上传任务");
+            let task = UploadTask::new(file_path.clone(), auth_info, None)
+                .await
+                .map_err(|e| format!("创建上传任务失败: {}", e))?;
+            println!("[DEBUG] 上传任务创建成功");
+            
+            // 将任务保存到全局管理器中
+            let task_arc = Arc::new(task);
+            let upload_id = {
+                let progress = task_arc.get_progress().await;
+                progress.upload_id.clone()
+            };
+            
+            // 初始化上传任务管理器
+            let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
+            let mut tasks_map = upload_tasks.lock().await;
+            tasks_map.insert(upload_id.clone(), task_arc.clone());
+            
+            println!("上传任务已添加到管理器，upload_id: {}", upload_id);
+            
+            // 同步执行上传，等待完成
+            println!("开始同步上传...");
+            
+            match task_arc.start().await {
+                Ok(_) => {
+                    println!("上传完成: {}", upload_id);
+                }
+                Err(e) => {
+                    println!("上传失败: {}，错误: {}", upload_id, e);
+                    return Err(format!("上传失败: {}", e));
+                }
+            }
+            
+            // 返回上传ID和结果
+            Ok(serde_json::json!({
+                "success": true,
+                "upload_id": upload_id,
+                "file_path": file_path_str
+            }))
+        }
+        None => {
+            println!("用户取消了文件选择");
+            Ok(serde_json::json!({
+                "success": false,
+                "cancelled": true
+            }))
+        }
+    }
+}
+
+/// 选择多个文件并上传
+/// 
+/// 使用系统原生文件对话框选择多个文件，然后开始批量上传
+#[tauri::command]
+async fn select_and_upload_multiple_files() -> Result<serde_json::Value, String> {
+    println!("前端调用select_and_upload_multiple_files命令，打开多文件选择对话框");
+    
+    // 使用 rfd 库打开系统原生多文件选择对话框
+    let files = rfd::FileDialog::new()
+        .pick_files();
+    
+    match files {
+        Some(file_paths) => {
+            println!("用户选择了 {} 个文件", file_paths.len());
+            
+            if file_paths.is_empty() {
+                return Ok(serde_json::json!({
+                    "success": false,
+                    "cancelled": true
+                }));
+            }
+            
+            // 先获取设备ID和TOTP（只需要获取一次）
+            let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
+            let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
+            
+            let auth_info = AuthInfo {
+                device_id,
+                totp,
+            };
+            
+            let mut upload_ids = Vec::new();
+            let mut file_paths_str = Vec::new();
+            
+            // 为每个文件创建上传任务
+            for file_path in file_paths {
+                let file_path_str = file_path.to_string_lossy().to_string();
+                file_paths_str.push(file_path_str.clone());
+                
+                // 创建上传任务
+                let task = UploadTask::new(file_path.clone(), auth_info.clone(), None)
+                    .await
+                    .map_err(|e| format!("创建上传任务失败: {}", e))?;
+                
+                // 将任务保存到全局管理器中
+                let task_arc = Arc::new(task);
+                let upload_id = {
+                    let progress = task_arc.get_progress().await;
+                    progress.upload_id.clone()
+                };
+                
+                upload_ids.push(upload_id.clone());
+                
+                // 初始化上传任务管理器
+                let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
+                let mut tasks_map = upload_tasks.lock().await;
+                tasks_map.insert(upload_id.clone(), task_arc.clone());
+                
+                // 同步执行上传，等待完成
+                println!("开始上传: {}", file_path_str);
+                
+                match task_arc.start().await {
+                    Ok(_) => {
+                        println!("上传完成: {}", upload_id);
+                    }
+                    Err(e) => {
+                        println!("上传失败: {}，错误: {}", upload_id, e);
+                        return Err(format!("上传失败: {}", e));
+                    }
+                }
+            }
+            
+            println!("批量上传完成，共 {} 个文件", upload_ids.len());
+            
+            // 返回上传ID列表
+            Ok(serde_json::json!({
+                "success": true,
+                "upload_ids": upload_ids,
+                "file_paths": file_paths_str,
+                "count": upload_ids.len()
+            }))
+        }
+        None => {
+            println!("用户取消了文件选择");
+            Ok(serde_json::json!({
+                "success": false,
+                "cancelled": true
+            }))
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -608,9 +865,13 @@ pub fn run() {
             resume_download,
             // 上传相关命令
             upload_file,
+            upload_files_from_paths,
             get_upload_progress,
             pause_upload,
             resume_upload,
+            // 文件选择和上传命令
+            select_and_upload_file,
+            select_and_upload_multiple_files,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

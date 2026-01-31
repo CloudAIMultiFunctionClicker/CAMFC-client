@@ -23,9 +23,27 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <script setup>
-// 头部组件
+import { inject } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
+
+// 头部组件 - 现在加了主题切换功能
+// 之前试过加点击事件，但好像会跟路由冲突？先放着不管
 // FIXME: 云按钮点了没反应，得找时间加上去
 // TODO: 按钮的状态管理还没做，比如上传中的loading状态
+
+// 从App.vue注入的主题功能
+const theme = inject('theme')
+
+// 测试上传按钮
+async function testUpload() {
+    console.log('测试上传按钮点击')
+    try {
+        const result = await invoke('select_and_upload_file')
+        console.log('上传结果:', result)
+    } catch (e) {
+        console.error('上传失败:', e)
+    }
+}
 </script>
 
 
@@ -46,6 +64,21 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
             <!-- 右侧：操作按钮区域 -->
             <div class="operation">
+                <!-- 测试上传按钮 -->
+                <button class="btn-test" @click="testUpload">
+                    <i class="ri-upload-2-line"></i>
+                    <span class="btn-text">测试上传</span>
+                </button>
+                
+                <!-- 主题切换按钮 -->
+                <button class="btn-theme" @click="theme?.toggleTheme">
+                    <!-- 亮色模式时显示月亮图标（切换到暗色），暗色模式时显示太阳图标（切换到亮色） -->
+                    <i class="ri-moon-line" v-if="theme?.isLightMode.value"></i>
+                    <i class="ri-sun-line" v-else></i>
+                    <!-- 小屏幕时隐藏文字 -->
+                    <span class="btn-text">{{ theme?.isLightMode.value ? '切换到暗色' : '切换到亮色' }}</span>
+                </button>
+                
                 <!-- 用户头像按钮 -->
                 <!--现在的跳转 测试用-->
                 <router-link to="/fileView">
@@ -127,7 +160,8 @@ h1 {
 .btn-upload,
 .btn-share,
 .btn-delete,
-.btn-avatar {
+.btn-avatar,
+.btn-test {
     border: none;
     border-radius: 8px;
     /* 圆角大一点现代感强 */
@@ -254,13 +288,27 @@ a:hover {
     /* 亮一点的蓝 */
 }
 
+/* 测试上传按钮 - 绿色 */
+.btn-test {
+    background-color: var(--accent-green, #22c55e);
+    color: white;
+    border: 1px solid var(--accent-green, #22c55e);
+}
+
+.btn-test:hover {
+    background-color: #16a34a;
+    border-color: #16a34a;
+}
+
 /* 图标统一样式 */
 .btn-cloud i,
 .btn-dropdown i,
 .btn-upload i,
 .btn-share i,
 .btn-delete i,
-.btn-avatar i {
+.btn-avatar i,
+.btn-theme i,
+.btn-test i {
     font-size: 16px;
     display: flex;
     align-items: center;
