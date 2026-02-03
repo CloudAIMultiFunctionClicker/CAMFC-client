@@ -107,7 +107,9 @@
 
       <div v-else-if="activeNav === 'help'" class="settings-panel help-panel">
         <h3>帮助与反馈</h3>
-        <p class="placeholder-text">帮助与反馈内容占位...</p>
+        <div class="iframe-container">
+          <iframe src="https://www.bilibili.com/" title="帮助与反馈"></iframe>
+        </div>
       </div>
 
       <div v-else-if="activeNav === 'about'" class="settings-panel">
