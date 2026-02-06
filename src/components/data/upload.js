@@ -146,19 +146,23 @@ export async function resumeUpload(uploadId) {
 }
 
 /**
- * 选择文件并上传
+ * 选择文件并上传（支持指定目标路径）
  * 
  * 调用Rust端的select_and_upload_file命令
- * Rust端会使用系统原生文件对话框选择文件，然后开始上传
+ * Rust端会使用系统原生文件对话框选择文件，然后开始上传到指定目录
  * 
+ * @param {string} targetPath - 目标路径（相对于用户存储目录），可选
  * @returns {Promise<object>} 上传结果信息
  */
-export async function selectAndUploadFile() {
+export async function selectAndUploadFile(targetPath = '') {
   try {
-    console.info('调用Rust端select_and_upload_file命令')
+    // 处理空路径
+    const targetPathArg = targetPath && targetPath.trim() !== '' ? targetPath : null
     
-    // 调用Rust端的文件选择和上传命令
-    const result = await invoke('select_and_upload_file')
+    console.info(`调用Rust端select_and_upload_file命令，目标路径: ${targetPathArg || '根目录'}`)
+    
+    // 调用Rust端的文件选择和上传命令，传递目标路径
+    const result = await invoke('select_and_upload_file', { targetPath: targetPathArg })
     
     if (!result.success) {
       if (result.cancelled) {
@@ -171,13 +175,14 @@ export async function selectAndUploadFile() {
       throw new Error('文件选择失败')
     }
     
-    console.info(`文件选择成功，upload_id: ${result.upload_id}`)
-    showToast(`开始上传: ${extractFileName(result.file_path)}`, '#3b82f6')
+    console.info(`文件选择成功，upload_id: ${result.upload_id}，目标路径: ${result.target_path || '根目录'}`)
+    showToast(`开始上传到 ${targetPath || '根目录'}: ${extractFileName(result.file_path)}`, '#3b82f6')
     
     return {
       success: true,
       uploadId: result.upload_id,
-      filePath: result.file_path
+      filePath: result.file_path,
+      targetPath: result.target_path || ''
     }
   } catch (error) {
     console.error('选择并上传文件失败:', error)
@@ -186,17 +191,18 @@ export async function selectAndUploadFile() {
 }
 
 /**
- * 批量上传文件（从文件路径列表）
+ * 批量上传文件（从文件路径列表，上传到指定目录）
  * 
  * 调用Rust端的upload_files_from_paths命令
- * 前端提供文件路径列表，后端依次上传每个文件
+ * 前端提供文件路径列表和目标路径，后端依次上传每个文件到指定目录
  * 
  * @param {Array<string>} filePaths - 文件路径数组
+ * @param {string} targetPath - 目标路径（相对于用户存储目录）
  * @returns {Promise<object>} 上传结果信息
  */
-export async function uploadFilesFromPaths(filePaths) {
+export async function uploadFilesFromPaths(filePaths, targetPath = '') {
   try {
-    console.info(`批量上传 ${filePaths.length} 个文件`)
+    console.info(`批量上传 ${filePaths.length} 个文件到目录: ${targetPath || '/'}`)
     
     if (!filePaths || filePaths.length === 0) {
       showToast('请先选择要上传的文件', '#f59e0b')
@@ -206,21 +212,30 @@ export async function uploadFilesFromPaths(filePaths) {
       }
     }
     
-    // 调用Rust端的批量上传命令
-    const result = await invoke('upload_files_from_paths', { filePaths })
+    // 处理空路径，Rust端需要None而不是空字符串
+    const targetPathArg = targetPath && targetPath.trim() !== '' ? targetPath : null
+    
+    console.info(`调用Rust端upload_files_from_paths，参数: filePaths.length=${filePaths.length}, targetPath=${targetPathArg}`)
+    
+    // 调用Rust端的批量上传命令，传递目标路径
+    const result = await invoke('upload_files_from_paths', { 
+      filePaths,
+      targetPath: targetPathArg
+    })
     
     if (!result.success) {
       throw new Error(result.message || '批量上传失败')
     }
     
-    console.info(`批量上传任务已创建，共 ${result.count} 个文件`)
-    showToast(`开始上传 ${result.count} 个文件...`, '#3b82f6')
+    console.info(`批量上传任务已创建，共 ${result.count} 个文件，目标路径: ${targetPath || '/'}`)
+    showToast(`开始上传 ${result.count} 个文件到 ${targetPath || '根目录'}...`, '#3b82f6')
     
     return {
       success: true,
       uploadIds: result.upload_ids,
       filePaths: result.file_paths,
-      count: result.count
+      count: result.count,
+      targetPath: targetPath
     }
   } catch (error) {
     console.error('批量上传文件失败:', error)

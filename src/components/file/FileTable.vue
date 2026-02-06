@@ -172,21 +172,32 @@ const confirmUpload = async () => {
   try {
     if (droppedFiles.value.length > 0) {
       // 用户已经通过拖放或点击选择了文件
-      // 但由于 Tauri 的限制，我们无法从 File 对象获取文件路径
-      // 所以需要提示用户重新选择文件
-      console.log('检测到用户已选择文件，但需要重新选择以获取文件路径')
-      showToast('请重新选择文件以开始上传', '#f59e0b')
+      // 浏览器 File 对象没有路径，需要用原生对话框重新选择
+      console.log('检测到用户已选择文件，将打开文件选择对话框获取路径')
+      showToast('请在弹出的对话框中确认选择文件', '#3b82f6')
       
-      // 清空已选择的文件
+      // 清空已选择的文件列表，因为无法直接用
+      // TODO: 后续可以优化，把用户选的记住，原生对话框打开时默认选中
       droppedFiles.value = []
     }
     
-    // 直接打开文件选择对话框
-    console.log('打开文件选择对话框')
-    const result = await selectAndUploadFile()
+    // 获取当前目标路径 - 空字符串表示根目录
+    const targetPath = props.currentPath || ''
+    console.log(`准备上传文件到目录: ${targetPath || '/'}`)
+    
+    // 打开文件选择对话框，让用户选择要上传的文件
+    const result = await selectAndUploadFile(targetPath)
     
     if (result.success) {
-      console.log('上传已开始，uploadId:', result.uploadId)
+      console.log('文件选择成功，开始上传到:', targetPath || '根目录')
+      // 文件选择成功后，Rust 端会创建上传任务
+      // 等待一段时间后刷新文件列表
+      setTimeout(async () => {
+        await fetchFiles(props.currentPath)
+        showToast('上传完成，文件列表已刷新', '#10b981')
+      }, 2000)
+    } else if (result.cancelled) {
+      console.log('用户取消了文件选择')
     }
   } catch (error) {
     console.error('上传失败:', error)

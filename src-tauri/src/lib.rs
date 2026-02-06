@@ -597,8 +597,8 @@ async fn resume_upload(upload_id: String) -> Result<(), String> {
 /// 注意：上传过程可能需要较长时间，特别是大文件
 /// 会在后台异步执行上传，不阻塞前端响应
 #[tauri::command]
-async fn upload_files_from_paths(file_paths: Vec<String>) -> Result<serde_json::Value, String> {
-    println!("前端调用upload_files_from_paths命令，文件数量: {}", file_paths.len());
+async fn upload_files_from_paths(file_paths: Vec<String>, target_path: Option<String>) -> Result<serde_json::Value, String> {
+    println!("前端调用upload_files_from_paths命令，文件数量: {}, 目标路径: {:?}", file_paths.len(), target_path);
     
     if file_paths.is_empty() {
         return Ok(serde_json::json!({
@@ -628,8 +628,12 @@ async fn upload_files_from_paths(file_paths: Vec<String>) -> Result<serde_json::
         let file_path_str = file_path.clone();
         file_paths_str.push(file_path_str.clone());
         
-        // 创建上传任务
-        let task = UploadTask::new(std::path::PathBuf::from(&file_path), auth_info.clone(), None)
+        // 创建上传任务，传递目标路径
+        let task = UploadTask::new(
+            std::path::PathBuf::from(&file_path), 
+            auth_info.clone(), 
+            target_path.as_deref()
+        )
             .await
             .map_err(|e| format!("创建上传任务失败: {}", e))?;
         
@@ -663,24 +667,25 @@ async fn upload_files_from_paths(file_paths: Vec<String>) -> Result<serde_json::
         });
     }
     
-    println!("批量上传任务已添加到管理器，共 {} 个文件", upload_ids.len());
+    println!("批量上传任务已添加到管理器，共 {} 个文件，目标路径: {:?}", upload_ids.len(), target_path);
     
     // 返回上传ID列表
     Ok(serde_json::json!({
         "success": true,
         "upload_ids": upload_ids,
         "file_paths": file_paths_str,
-        "count": upload_ids.len()
+        "count": upload_ids.len(),
+        "target_path": target_path.unwrap_or_default()
     }))
 }
 
-/// 选择文件并上传
+/// 选择文件并上传（支持指定目标路径）
 /// 
 /// 使用系统原生文件对话框选择文件，然后开始上传
-/// 支持单个文件选择
+/// 支持单个文件选择和指定上传目标路径
 #[tauri::command]
-async fn select_and_upload_file() -> Result<serde_json::Value, String> {
-    println!("前端调用select_and_upload_file命令，打开文件选择对话框");
+async fn select_and_upload_file(target_path: Option<String>) -> Result<serde_json::Value, String> {
+    println!("前端调用select_and_upload_file命令，目标路径: {:?}", target_path);
     
     // 使用 rfd 库打开系统原生文件选择对话框
     let file = rfd::FileDialog::new()
@@ -703,9 +708,13 @@ async fn select_and_upload_file() -> Result<serde_json::Value, String> {
                 totp,
             };
             
-            // 创建上传任务
-            println!("[DEBUG] 开始创建上传任务");
-            let task = UploadTask::new(file_path.clone(), auth_info, None)
+            // 创建上传任务，传递目标路径
+            println!("[DEBUG] 开始创建上传任务，目标路径: {:?}", target_path);
+            let task = UploadTask::new(
+                file_path.clone(), 
+                auth_info, 
+                target_path.as_deref()
+            )
                 .await
                 .map_err(|e| format!("创建上传任务失败: {}", e))?;
             println!("[DEBUG] 上传任务创建成功");
@@ -722,7 +731,7 @@ async fn select_and_upload_file() -> Result<serde_json::Value, String> {
             let mut tasks_map = upload_tasks.lock().await;
             tasks_map.insert(upload_id.clone(), task_arc.clone());
             
-            println!("上传任务已添加到管理器，upload_id: {}", upload_id);
+            println!("上传任务已添加到管理器，upload_id: {}，目标路径: {:?}", upload_id, target_path);
             
             // 同步执行上传，等待完成
             println!("开始同步上传...");
@@ -741,7 +750,8 @@ async fn select_and_upload_file() -> Result<serde_json::Value, String> {
             Ok(serde_json::json!({
                 "success": true,
                 "upload_id": upload_id,
-                "file_path": file_path_str
+                "file_path": file_path_str,
+                "target_path": target_path.unwrap_or_default()
             }))
         }
         None => {
