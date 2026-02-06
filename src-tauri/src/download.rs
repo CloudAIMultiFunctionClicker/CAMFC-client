@@ -24,8 +24,6 @@ use crate::config;
 
 // 默认分片大小 4MB - 和后端保持一致
 const CHUNK_SIZE: u64 = 4 * 1024 * 1024; // 4MB
-// 下载目录名称
-const DOWNLOAD_DIR: &str = "C:\\Users\\user";
 
 // 获取基础URL的辅助函数
 fn get_base_url() -> Result<String> {
@@ -606,12 +604,26 @@ impl DownloadTask {
 
 // 工具函数：获取应用数据目录
 pub async fn get_app_data_dir() -> Result<PathBuf> {
-    // 使用Tauri的路径API获取数据目录
-    // 这里先用一个简单的临时方案
-    let current_dir = std::env::current_dir()
-        .context("获取当前目录失败")?;
+    // 使用系统默认的下载目录
+    // Windows: C:\Users\{username}\Downloads
+    let download_dir = if cfg!(target_os = "windows") {
+        let user_profile = std::env::var("USERPROFILE")
+            .context("获取用户目录失败")?;
+        PathBuf::from(user_profile).join("Downloads")
+    } else {
+        // 其他系统用当前目录的downloads文件夹
+        std::env::current_dir()
+            .context("获取当前目录失败")?
+            .join("downloads")
+    };
     
-    Ok(current_dir.join("data").join(DOWNLOAD_DIR))
+    // 确保目录存在
+    if !download_dir.exists() {
+        fs::create_dir_all(&download_dir).await
+            .context(format!("创建下载目录失败: {:?}", download_dir))?;
+    }
+    
+    Ok(download_dir)
 }
 
 // 工具函数：计算文件SHA256哈希
