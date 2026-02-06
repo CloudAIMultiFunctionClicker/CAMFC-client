@@ -156,6 +156,7 @@ h1 {
 
 /* 按钮基础样式 - 统一一下 */
 .btn-cloud,
+.btn-theme,
 .btn-dropdown,
 .btn-upload,
 .btn-share,
@@ -178,6 +179,19 @@ h1 {
     /* 过渡效果，hover用 */
     height: 40px;
     /* 统一高度 */
+}
+
+/* 主题切换按钮 - 放在第一个 */
+.btn-theme {
+    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08)); 
+    color: var(--text-secondary, #cbd5e1);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.btn-theme:hover {
+    background-color: var(--accent-blue, #3b82f6);
+    color: white;
+    border-color: var(--accent-blue, #3b82f6);
 }
 
 /* 云按钮 - 就是个装饰性的 */
@@ -338,6 +352,7 @@ a:hover {
         display: none;
     }
 
+    .btn-theme,
     .btn-dropdown,
     .btn-upload,
     .btn-share,
