@@ -34,16 +34,7 @@ import { invoke } from '@tauri-apps/api/core'
 // 从App.vue注入的主题功能
 const theme = inject('theme')
 
-// 测试上传按钮
-async function testUpload() {
-    console.log('测试上传按钮点击')
-    try {
-        const result = await invoke('select_and_upload_file')
-        console.log('上传结果:', result)
-    } catch (e) {
-        console.error('上传失败:', e)
-    }
-}
+
 </script>
 
 
@@ -64,11 +55,7 @@ async function testUpload() {
 
             <!-- 右侧：操作按钮区域 -->
             <div class="operation">
-                <!-- 测试上传按钮 -->
-                <button class="btn-test" @click="testUpload">
-                    <i class="ri-upload-2-line"></i>
-                    <span class="btn-text">测试上传</span>
-                </button>
+
                 
                 <!-- 主题切换按钮 -->
                 <button class="btn-theme" @click="theme?.toggleTheme">
@@ -302,12 +289,7 @@ a:hover {
     /* 亮一点的蓝 */
 }
 
-/* 测试上传按钮 - 绿色 */
-.btn-test {
-    background-color: var(--accent-green, #22c55e);
-    color: white;
-    border: 1px solid var(--accent-green, #22c55e);
-}
+
 
 .btn-test:hover {
     background-color: #16a34a;

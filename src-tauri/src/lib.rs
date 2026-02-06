@@ -246,13 +246,10 @@ async fn download_file(file_id: String) -> Result<String, String> {
         .await
         .map_err(|e| format!("获取下载目录失败: {}", e))?;
     
-    // 创建保存路径 - 直接使用完整的 file_id 作为文件名（可能包含目录）
-    // 例如 "新建文件夹\python.zip" 会保存为 "新建文件夹_python.zip_<timestamp>"
-    // 这样可以保留原始的目录结构信息
-    let timestamp = chrono::Utc::now().timestamp();
-    // 替换路径分隔符为下划线，避免文件系统问题
-    let safe_file_name = file_id.replace('\\', "_").replace('/', "_");
-    let save_path = download_dir.join(format!("{}_{}", safe_file_name, timestamp));
+    // 保持用户原始的目录结构
+    // file_id 格式可能是 "ds/下载.png" 或 "新建文件夹/python.zip"
+    // 直接使用 file_id 作为相对路径，保持原始目录结构
+    let save_path = download_dir.join(&file_id);
     
     println!("创建下载任务: {} -> {:?}", file_id, save_path);
     
@@ -856,10 +853,59 @@ async fn select_and_upload_multiple_files() -> Result<serde_json::Value, String>
     }
 }
 
+/// 选择多个文件（只选择，不上传）
+/// 
+/// 使用系统原生文件对话框选择多个文件，返回文件路径列表
+/// 这个命令只负责选择文件，不执行上传操作
+#[tauri::command]
+async fn select_files() -> Result<serde_json::Value, String> {
+    println!("前端调用select_files命令，打开多文件选择对话框");
+    
+    // 使用 rfd 库打开系统原生多文件选择对话框
+    let files = rfd::FileDialog::new()
+        .pick_files();
+    
+    match files {
+        Some(file_paths) => {
+            println!("用户选择了 {} 个文件", file_paths.len());
+            
+            if file_paths.is_empty() {
+                return Ok(serde_json::json!({
+                    "success": false,
+                    "cancelled": true
+                }));
+            }
+            
+            // 转换为字符串数组
+            let file_paths_str: Vec<String> = file_paths
+                .iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect();
+            
+            println!("文件路径列表: {:?}", file_paths_str);
+            
+            // 返回文件路径列表
+            Ok(serde_json::json!({
+                "success": true,
+                "file_paths": file_paths_str,
+                "count": file_paths_str.len()
+            }))
+        }
+        None => {
+            println!("用户取消了文件选择");
+            Ok(serde_json::json!({
+                "success": false,
+                "cancelled": true
+            }))
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,  // 保留测试用的greet命令
             get_totp,           // 主要功能：获取TOTP
@@ -882,6 +928,7 @@ pub fn run() {
             // 文件选择和上传命令
             select_and_upload_file,
             select_and_upload_multiple_files,
+            select_files,        // 只选择文件，不上传
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

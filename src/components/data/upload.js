@@ -363,6 +363,45 @@ export async function selectMultipleAndUploadFiles() {
   }
 }
 
+/**
+ * 选择多个文件（只选择，不上传）
+ * 
+ * 调用Rust端的select_files命令
+ * Rust端会使用系统原生文件对话框选择多个文件，返回文件路径列表
+ * 这个命令只负责选择文件，不执行上传操作
+ * 
+ * @returns {Promise<object>} 文件选择结果
+ */
+export async function selectFiles() {
+  try {
+    console.info('调用Rust端select_files命令')
+    
+    // 调用Rust端的文件选择命令
+    const result = await invoke('select_files')
+    
+    if (!result.success) {
+      if (result.cancelled) {
+        console.info('用户取消了文件选择')
+        return {
+          success: false,
+          cancelled: true
+        }
+      }
+      throw new Error('文件选择失败')
+    }
+    
+    console.info(`选择了 ${result.count} 个文件`)
+    return {
+      success: true,
+      filePaths: result.file_paths,
+      count: result.count
+    }
+  } catch (error) {
+    console.error('选择文件失败:', error)
+    throw error
+  }
+}
+
 export default {
   uploadFile,
   getUploadProgress,
@@ -372,5 +411,6 @@ export default {
   selectMultipleAndUploadFiles,
   batchUploadFiles,
   uploadFilesFromPaths,
+  selectFiles,
   extractFileName
 }

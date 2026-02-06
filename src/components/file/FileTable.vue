@@ -27,7 +27,8 @@ import { ls,mkdir,rm } from '../data/fileSystem.js'
 import { showToast} from '../layout/showToast.js'
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { batchDownloadFiles, extractFileId } from '../data/download.js'
-import { selectAndUploadFile, uploadFilesFromPaths } from '../data/upload.js'
+import { selectAndUploadFile, uploadFilesFromPaths, selectFiles, extractFileName } from '../data/upload.js'
+import { getFileIcon } from '../../utils/fileIcon.js'
 
 
 // TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
@@ -49,9 +50,7 @@ const error = ref(null)
 
 // 上传弹窗相关状态
 const showUploadModal = ref(false)
-const dragActive = ref(false)
 const droppedFiles = ref([])
-const fileInputRef = ref(null)
 
 // 新建文件夹弹窗相关状态
 const showNewFolderModal = ref(false)
@@ -68,11 +67,6 @@ const isEditingPath = ref(false)
 const editingPathValue = ref('')
 
 // 操作按钮点击处理 - 暂时先定义空函数，功能后面再加
-const handleListClick = () => {
-  console.log('列表视图点击，还没想好要干嘛')
-  // 列表视图不就是当前视图吗？有点重复，先留着吧
-}
-
 const handleRefreshClick = async () => {
   console.log('刷新文件列表')
   await fetchFiles(props.currentPath)
@@ -83,45 +77,6 @@ const handleUploadClick = () => {
   showUploadModal.value = true
   droppedFiles.value = []
   console.log('打开上传弹窗')
-}
-
-// 拖放相关方法
-const handleDragEnter = (e) => {
-  e.preventDefault()
-  e.stopPropagation()
-  dragActive.value = true
-}
-
-const handleDragLeave = (e) => {
-  e.preventDefault()
-  e.stopPropagation()
-  dragActive.value = false
-}
-
-const handleDragOver = (e) => {
-  e.preventDefault()
-  e.stopPropagation()
-  dragActive.value = true
-}
-
-const handleDrop = (e) => {
-  e.preventDefault()
-  e.stopPropagation()
-  dragActive.value = false
-  
-  if (e.dataTransfer.files.length) {
-    const newFiles = Array.from(e.dataTransfer.files)
-    // 追加到现有文件列表，避免重复文件
-    newFiles.forEach(newFile => {
-      const exists = droppedFiles.value.some(existingFile => 
-        existingFile.name === newFile.name && existingFile.size === newFile.size
-      )
-      if (!exists) {
-        droppedFiles.value.push(newFile)
-      }
-    })
-    console.log('拖放的文件:', droppedFiles.value)
-  }
 }
 
 // 文件选择处理
@@ -142,8 +97,37 @@ const handleFileSelect = (e) => {
 }
 
 // 点击选择文件按钮
-const triggerFileSelect = () => {
-  fileInputRef.value.click()
+const triggerFileSelect = async () => {
+  try {
+    // 调用 Rust 端的文件选择命令，获取文件路径
+    const result = await selectFiles()
+    
+    if (result.success && result.filePaths && result.filePaths.length > 0) {
+      // 将文件路径转换为文件对象格式，用于展示
+      result.filePaths.forEach(filePath => {
+        const fileName = extractFileName(filePath)
+        
+        // 检查是否已经存在
+        const exists = droppedFiles.value.some(existingFile => 
+          existingFile.name === fileName
+        )
+        
+        if (!exists) {
+          // 创建一个简单的文件对象，用于展示
+          droppedFiles.value.push({
+            name: fileName,
+            path: filePath,
+            size: 0, // 暂时无法获取文件大小，先设为0
+          })
+        }
+      })
+      
+      console.log('选择的文件:', droppedFiles.value)
+    }
+  } catch (error) {
+    console.error('选择文件失败:', error)
+    showToast('选择文件失败', '#ef4444')
+  }
 }
 
 // 移除单个文件
@@ -166,38 +150,37 @@ const formatFileSize = (bytes) => {
 }
 
 const confirmUpload = async () => {
+  // 检查是否有文件
+  if (droppedFiles.value.length === 0) {
+    showToast('请先选择要上传的文件', '#f59e0b')
+    return
+  }
+  
   // 关闭弹窗
   showUploadModal.value = false
   
   try {
-    if (droppedFiles.value.length > 0) {
-      // 用户已经通过拖放或点击选择了文件
-      // 浏览器 File 对象没有路径，需要用原生对话框重新选择
-      console.log('检测到用户已选择文件，将打开文件选择对话框获取路径')
-      showToast('请在弹出的对话框中确认选择文件', '#3b82f6')
-      
-      // 清空已选择的文件列表，因为无法直接用
-      // TODO: 后续可以优化，把用户选的记住，原生对话框打开时默认选中
-      droppedFiles.value = []
-    }
-    
     // 获取当前目标路径 - 空字符串表示根目录
     const targetPath = props.currentPath || ''
     console.log(`准备上传文件到目录: ${targetPath || '/'}`)
     
-    // 打开文件选择对话框，让用户选择要上传的文件
-    const result = await selectAndUploadFile(targetPath)
+    // 提取文件路径列表
+    const filePaths = droppedFiles.value.map(file => file.path)
+    console.log('要上传的文件路径:', filePaths)
+    
+    // 调用批量上传函数，逐一上传文件
+    const result = await uploadFilesFromPaths(filePaths, targetPath)
     
     if (result.success) {
-      console.log('文件选择成功，开始上传到:', targetPath || '根目录')
-      // 文件选择成功后，Rust 端会创建上传任务
+      console.log('上传任务已创建，共', result.count, '个文件')
+      showToast(`开始上传 ${result.count} 个文件到 ${targetPath || '根目录'}...`, '#3b82f6')
+      
       // 等待一段时间后刷新文件列表
+      // 这里等待3秒，让上传有时间开始
       setTimeout(async () => {
         await fetchFiles(props.currentPath)
         showToast('上传完成，文件列表已刷新', '#10b981')
-      }, 2000)
-    } else if (result.cancelled) {
-      console.log('用户取消了文件选择')
+      }, 3000)
     }
   } catch (error) {
     console.error('上传失败:', error)
@@ -259,43 +242,41 @@ const handleDownloadClick = async () => {
   
   console.log('要下载的文件ID:', fileIds)
   
-  // 确认下载
-  if (confirm(`确定要下载选中的 ${fileIds.length} 个文件吗？`)) {
-    try {
-      // 调用批量下载函数
-      const results = await batchDownloadFiles(fileIds)
-      
-      // 显示下载结果
-      const successCount = results.filter(r => r.success).length
-      const errorCount = results.filter(r => !r.success).length
-      
-      console.log(`下载完成：${successCount} 成功，${errorCount} 失败`)
-      
-      if (errorCount > 0) {
-        // 如果有失败的文件，显示详细信息
-        const errorFiles = results.filter(r => !r.success)
-        console.error('下载失败的文件:', errorFiles)
-      }
-      
-      // 延迟检查下载状态，因为下载是异步的
-      setTimeout(async () => {
-        for (const fileId of fileIds) {
-          try {
-            const progress = await getDownloadProgress(fileId)
-            if (progress.status === 'Error') {
-              console.error(`下载失败: ${fileId}, 状态: ${progress.status}`)
-              showToast(`文件下载失败: ${fileId}`, '#ef4444')
-            }
-          } catch (error) {
-            console.error(`检查下载状态失败: ${fileId}`, error)
-          }
-        }
-      }, 2000) // 2秒后检查状态
-      
-    } catch (error) {
-      console.error('下载过程中出错:', error)
-      showToast(`下载出错: ${error.message}`, '#ef4444')
+  // 直接下载，不需要二次确认
+  try {
+    // 调用批量下载函数
+    const results = await batchDownloadFiles(fileIds)
+    
+    // 显示下载结果
+    const successCount = results.filter(r => r.success).length
+    const errorCount = results.filter(r => !r.success).length
+    
+    console.log(`下载完成：${successCount} 成功，${errorCount} 失败`)
+    
+    if (errorCount > 0) {
+      // 如果有失败的文件，显示详细信息
+      const errorFiles = results.filter(r => !r.success)
+      console.error('下载失败的文件:', errorFiles)
     }
+    
+    // 延迟检查下载状态，因为下载是异步的
+    setTimeout(async () => {
+      for (const fileId of fileIds) {
+        try {
+          const progress = await getDownloadProgress(fileId)
+          if (progress.status === 'Error') {
+            console.error(`下载失败: ${fileId}, 状态: ${progress.status}`)
+            showToast(`文件下载失败: ${fileId}`, '#ef4444')
+          }
+        } catch (error) {
+          console.error(`检查下载状态失败: ${fileId}`, error)
+        }
+      }
+    }, 2000) // 2秒后检查状态
+    
+  } catch (error) {
+    console.error('下载过程中出错:', error)
+    showToast(`下载出错: ${error.message}`, '#ef4444')
   }
 }
 
@@ -516,6 +497,31 @@ onMounted(() => {
       ctrlPressed.value = true
     } else if (e.key === 'Shift') {
       shiftPressed.value = true
+    } else if (e.key === 'Enter') {
+      // Enter键：进入选中的文件夹
+      if (selectedFiles.value.size === 1) {
+        const selectedPath = Array.from(selectedFiles.value)[0]
+        const selectedItem = fileList.value.find(item => item.path === selectedPath)
+        if (selectedItem && selectedItem.is_dir) {
+          enterFolder(selectedPath)
+        }
+      } else if (selectedFiles.value.size > 1) {
+        // 多选时，找第一个文件夹进入
+        for (const path of selectedFiles.value) {
+          const item = fileList.value.find(f => f.path === path)
+          if (item && item.is_dir) {
+            enterFolder(path)
+            break
+          }
+        }
+      }
+    } else if (e.key === 'Backspace') {
+      // Backspace键：返回上一级目录
+      // 如果正在编辑路径，就别触发返回，让用户正常删除文字
+      if (!isEditingPath.value) {
+        e.preventDefault() // 防止浏览器后退
+        goUp()
+      }
     }
   }
   
@@ -581,7 +587,6 @@ const handleFileClick = (item, index, event) => {
   if (event) event.stopPropagation() // 阻止事件冒泡
   
   const itemPath = item.path
-  /*
   
   // 处理Shift+点击（连续选择）
   if (shiftPressed.value && lastSelectedIndex.value !== -1) {
@@ -623,7 +628,7 @@ const handleFileClick = (item, index, event) => {
     }
     return
   }
-  */
+  
   // 普通点击（单选）
   selectedFiles.value.clear()
   selectedFiles.value.add(itemPath)
@@ -648,28 +653,14 @@ const isFileSelected = (itemPath) => {
           </button>
         </div>
         <div class="modal-body">
-          <!-- 拖放区域 -->
+          <!-- 文件选择区域 -->
           <div 
-            class="upload-drop-area" 
-            :class="{ 'drag-active': dragActive }"
-            @dragenter="handleDragEnter"
-            @dragleave="handleDragLeave"
-            @dragover="handleDragOver"
-            @drop="handleDrop"
+            class="upload-select-area"
           >
-            <i class="ri-upload-cloud-2-fill"></i>
-            <p>拖放文件到此处，或 <span class="upload-link" @click.stop="triggerFileSelect">点击选择文件</span></p>
+            <i class="ri-folder-add-line"></i>
+            <p>点击 <span class="upload-link" @click.stop="triggerFileSelect">选择文件</span></p>
             <p class="upload-hint">支持多个文件同时上传</p>
           </div>
-          
-          <!-- 隐藏的文件输入 -->
-          <input 
-            ref="fileInputRef"
-            type="file" 
-            multiple
-            class="hidden-file-input"
-            @change="handleFileSelect"
-          />
           
           <!-- 文件列表 -->
           <div v-if="droppedFiles.length > 0" class="file-list-container">
@@ -755,10 +746,6 @@ const isFileSelected = (itemPath) => {
       
       <!-- 操作按钮区域 - 路径编辑模式下隐藏 -->
       <div v-if="!isEditingPath" class="operation-buttons">
-        <button class="btn-dropdown" @click="handleListClick">
-          <i class="ri-list-view"></i>
-          <span class="btn-text">列表视图</span>
-        </button>
         <button class="btn-refresh" @click="handleRefreshClick">
           <i class="ri-refresh-line"></i>
           <span class="btn-text">刷新</span>
@@ -822,7 +809,7 @@ const isFileSelected = (itemPath) => {
           }"
         >
           <div class="cell name">
-            <i :class="item.is_dir ? 'ri-folder-line' : 'ri-file-line'"></i>
+            <i :class="item.is_dir ? 'ri-folder-line' : getFileIcon(item.name)"></i>
             <span class="file-name">{{ item.name }}</span>
             <!-- 如果是文件夹，可以点击 -->
             <button 
@@ -1173,7 +1160,6 @@ const isFileSelected = (itemPath) => {
 }
 
 /* 按钮基础样式 - 参考AppHeader的样式 */
-.btn-dropdown,
 .btn-refresh,
 .btn-upload,
 .btn-download,
@@ -1192,13 +1178,6 @@ const isFileSelected = (itemPath) => {
   transition: all 0.2s ease;
   height: 40px;
   white-space: nowrap; /* 防止文字换行 */
-}
-
-/* 下拉按钮 - 中性色 */
-.btn-dropdown {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
-  color: var(--text-secondary, #cbd5e1);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
 }
 
 /* 刷新按钮 - 中性色 */
@@ -1238,12 +1217,6 @@ const isFileSelected = (itemPath) => {
 }
 
 /* 按钮hover效果 */
-.btn-dropdown:hover {
-  background-color: var(--accent-blue, #3b82f6);
-  color: white;
-  border-color: var(--accent-blue, #3b82f6);
-}
-
 .btn-refresh:hover {
   background-color: var(--accent-blue, #3b82f6);
   color: white;
@@ -1318,7 +1291,6 @@ const isFileSelected = (itemPath) => {
     display: none;
   }
   
-  .btn-dropdown,
   .btn-refresh,
   .btn-upload,
   .btn-download,
@@ -1446,8 +1418,8 @@ const isFileSelected = (itemPath) => {
   padding: 20px;
 }
 
-/* 拖放区域样式 */
-.upload-drop-area {
+/* 文件选择区域样式 */
+.upload-select-area {
   width: 100%;
   padding: 24px 16px;
   border: 2px dashed var(--border-color, rgba(255, 255, 255, 0.2));
@@ -1460,47 +1432,41 @@ const isFileSelected = (itemPath) => {
   overflow: hidden;
 }
 
-.upload-drop-area:hover {
+.upload-select-area:hover {
   border-color: var(--accent-blue, #3b82f6);
   background: rgba(59, 130, 246, 0.05);
 }
 
-.upload-drop-area.drag-active {
-  border-color: var(--accent-blue, #3b82f6);
-  background: rgba(59, 130, 246, 0.1);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
-
-.upload-drop-area i {
+.upload-select-area i {
   font-size: 32px;
   color: var(--accent-blue, #3b82f6);
   margin-bottom: 12px;
   transition: transform 0.3s ease;
 }
 
-.upload-drop-area.drag-active i {
+.upload-select-area:hover i {
   transform: scale(1.1);
 }
 
-.upload-drop-area p {
+.upload-select-area p {
   margin: 0 0 6px 0;
   color: var(--text-primary, #f8fafc);
   font-size: 14px;
   font-weight: 500;
 }
 
-.upload-drop-area .upload-link {
+.upload-select-area .upload-link {
   color: var(--accent-blue, #3b82f6);
   text-decoration: underline;
   font-weight: 600;
   cursor: pointer;
 }
 
-.upload-drop-area .upload-link:hover {
+.upload-select-area .upload-link:hover {
   color: #60a5fa;
 }
 
-.upload-drop-area .upload-hint {
+.upload-select-area .upload-hint {
   font-size: 12px;
   color: var(--text-muted, #94a3b8);
   margin: 0;
