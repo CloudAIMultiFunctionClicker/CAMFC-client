@@ -20,11 +20,16 @@ use reqwest::{Client, multipart};
 
 // 导入下载模块中的AuthInfo
 use crate::download::AuthInfo;
+// 导入配置模块
+use crate::config;
 
-// 基础URL - 和下载模块保持一致
-const BASE_URL: &str = "http://localhost:8005";
 // 默认分片大小 4MB - 和后端API保持一致
 const CHUNK_SIZE: u64 = 4 * 1024 * 1024; // 4MB
+
+// 获取基础URL的辅助函数
+fn get_base_url() -> Result<String> {
+    config::get_backend_url()
+}
 
 // 上传状态枚举
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -83,7 +88,8 @@ impl ChunkUploader {
     // 初始化上传 - 调用 /upload/init
     // 后端不需要任何参数，只需要认证头
     pub async fn init_upload(&self, _filename: &str, _total_size: u64) -> Result<String> {
-        let url = format!("{}/upload/init", BASE_URL);
+        let base_url = get_base_url()?;
+        let url = format!("{}/upload/init", base_url);
         
         // 获取认证头
         let headers = self.auth_info.get_auth_header()?;
@@ -123,7 +129,8 @@ impl ChunkUploader {
         chunk_index: u32,
         chunk_data: &[u8],
     ) -> Result<()> {
-        let url = format!("{}/upload/chunk", BASE_URL);
+        let base_url = get_base_url()?;
+        let url = format!("{}/upload/chunk", base_url);
         
         // 获取认证头
         let headers = self.auth_info.get_auth_header()?;
@@ -172,7 +179,8 @@ impl ChunkUploader {
         eprintln!("[finish_upload] 开始处理，upload_id={}, filename={}, total_chunks={}, target_path={:?}", 
                  upload_id, filename, total_chunks, target_path);
         
-        let url = format!("{}/upload/finish", BASE_URL);
+        let base_url = get_base_url()?;
+        let url = format!("{}/upload/finish", base_url);
         
         // 获取认证头
         let headers = self.auth_info.get_auth_header()?;
@@ -224,7 +232,8 @@ impl ChunkUploader {
     
     // 查询上传状态 - 调用 /upload/status/{upload_id}
     pub async fn get_upload_status(&self, upload_id: &str) -> Result<Vec<u32>> {
-        let url = format!("{}/upload/status/{}", BASE_URL, upload_id);
+        let base_url = get_base_url()?;
+        let url = format!("{}/upload/status/{}", base_url, upload_id);
         
         // 获取认证头
         let headers = self.auth_info.get_auth_header()?;

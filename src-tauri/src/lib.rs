@@ -5,6 +5,8 @@ mod cpen_device_manager;
 mod download;
 // 上传模块导入
 mod upload;
+// 配置模块导入
+mod config;
 
 // 使用新的Cpen设备管理器作为业务逻辑层
 use cpen_device_manager::CpenDeviceManager;
@@ -901,13 +903,49 @@ async fn select_files() -> Result<serde_json::Value, String> {
     }
 }
 
+/// 获取当前使用的后端配置
+/// 
+/// 前端可以调用这个命令获取当前使用的后端地址和端口
+/// 返回格式：{"base_url": "xxx", "port": 8005, "full_url": "xxx:8005"}
+#[tauri::command]
+async fn get_backend_config() -> Result<serde_json::Value, String> {
+    println!("前端调用get_backend_config命令...");
+    
+    match config::get_backend_config() {
+        Ok(config) => {
+            let full_url = config.get_full_url();
+            println!("当前后端配置: {}", full_url);
+            
+            Ok(serde_json::json!({
+                "base_url": config.base_url,
+                "port": config.port,
+                "full_url": full_url
+            }))
+        }
+        Err(e) => {
+            println!("获取后端配置失败: {}", e);
+            Err(format!("获取后端配置失败: {}", e))
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 初始化后端配置（必须在其他模块使用之前）
+    let rt = tokio::runtime::Runtime::new().expect("创建运行时失败");
+    rt.block_on(async {
+        if let Err(e) = config::init_config().await {
+            eprintln!("配置初始化失败: {}", e);
+        }
+    });
+    drop(rt);
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,  // 保留测试用的greet命令
+            get_backend_config,  // 获取后端配置
             get_totp,           // 主要功能：获取TOTP
             get_device_id,      // 获取设备ID
             get_connection_status, // 获取连接状态

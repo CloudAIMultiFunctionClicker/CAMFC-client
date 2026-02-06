@@ -25,8 +25,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import axios from "axios";
 import { ref, reactive } from "vue";
+import { getBackendUrl } from "../../config/backend.js";
 
-const basicUrl = "http://localhost:8005";
 const timeOut = 3000;
 
 // 获取当前认证头信息
@@ -71,7 +71,7 @@ async function ls(path) {
         const authHeader = await getAuthHeader();
         
         // 使用Promise.race来竞争请求和超时
-        const requestPromise = axios.get(basicUrl + "/files/?path=" + path, {
+        const requestPromise = axios.get(getBackendUrl() + "/files/?path=" + path, {
             headers: authHeader,
         });
 
@@ -119,7 +119,7 @@ async function mkdir(path, directoryName) {
 
         // 发起 POST 请求（axios 默认会将 params 附加到 URL 上）
         const requestPromise = axios.post(
-            basicUrl + "/files/directories",
+            getBackendUrl() + "/files/directories",
             null, // 没有请求体，使用 null
             {
                 params: params,
@@ -167,7 +167,7 @@ async function rm(path, permanent = false) {
 
         // 发起 DELETE 请求
         const requestPromise = axios.delete(
-            `${basicUrl}/files/${encodeURIComponent(path)}`,
+            `${getBackendUrl()}/files/${encodeURIComponent(path)}`,
             {
                 params: params,
                 headers: authHeader,

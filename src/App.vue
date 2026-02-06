@@ -32,6 +32,9 @@ import {showToast} from './components/layout/showToast.js'
 // 导入应用头部组件
 import AppHeader from './components/layout/AppHeader.vue'
 
+// 导入后端配置初始化函数
+import { initBackendConfig } from './config/backend.js'
+
 // 注意：现在不直接导入蓝牙函数了
 // 根据计划，除了bluetooth.js中，其他地方不要调用TOTP有关函数
 // 通过Pinia store获取数据
@@ -134,9 +137,12 @@ provide('theme', {
 })
 
 // 在组件挂载时设置初始主题
-onMounted(() => {
+onMounted(async () => {
   // 初始时确保body有正确的类
   updateBodyClass()
+  
+  // 初始化后端配置（只会在应用启动时调用一次）
+  await initBackendConfig()
   
   // 监听系统主题变化，如果用户没有手动设置过，就跟着系统变
   // 这里监听亮色主题的变化，因为我们的逻辑是基于亮色/暗色来判断的

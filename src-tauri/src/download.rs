@@ -19,12 +19,18 @@ use reqwest::{Client, header};
 use sha2::{Sha256, Digest};
 use hex::encode as hex_encode;
 
-// 基础URL - 和前端保持一致
-const BASE_URL: &str = "http://localhost:8005";
+// 导入配置模块
+use crate::config;
+
 // 默认分片大小 4MB - 和后端保持一致
 const CHUNK_SIZE: u64 = 4 * 1024 * 1024; // 4MB
 // 下载目录名称
 const DOWNLOAD_DIR: &str = "C:\\Users\\user";
+
+// 获取基础URL的辅助函数
+fn get_base_url() -> Result<String> {
+    config::get_backend_url()
+}
 
 // 文件类型分类
 #[derive(Debug, Clone, PartialEq)]
@@ -155,10 +161,10 @@ impl ChunkDownloader {
         range_start: u64,
         range_end: u64,
     ) -> Result<Vec<u8>> {
-        // 构建URL：file_id应该包含完整路径
-        // 例如：file_id = "ds/下载.png" -> URL = "http://localhost:8005/download/ds/下载.png"
+        let base_url = get_base_url()?;
+        
         let encoded_file_id = urlencoding::encode(file_id);
-        let url = format!("{}/download/{}", BASE_URL, encoded_file_id);
+        let url = format!("{}/download/{}", base_url, encoded_file_id);
         
         println!("下载请求URL: {}", url);
         println!("原始文件路径: {}", file_id);
@@ -203,10 +209,10 @@ impl ChunkDownloader {
     
     // 获取文件元数据（大小等信息）
     pub async fn get_file_metadata(&self, file_id: &str) -> Result<(u64, String)> {
-        // 根据API文档，应该使用HEAD /download/{file_path} 获取文件元数据
-        // 例如：file_id = "ds/下载.png" -> URL = "http://localhost:8005/download/ds/下载.png"
+        let base_url = get_base_url()?;
+        
         let encoded_file_id = urlencoding::encode(file_id);
-        let url = format!("{}/download/{}", BASE_URL, encoded_file_id);
+        let url = format!("{}/download/{}", base_url, encoded_file_id);
         
         println!("获取文件元数据URL (HEAD): {}", url);
         println!("原始文件路径: {}", file_id);
