@@ -318,22 +318,20 @@ impl DownloadTask {
         // 检查哪些分片已经下载（断点续传）
         // 如果文件已存在，检查已下载的大小，跳过已下载的分片
         let mut starting_chunk = 0;
-        let mut already_downloaded = 0;
         
         if self.save_path.exists() {
             let file_size = fs::metadata(&self.save_path).await
                 .context("检查已下载文件失败")?
                 .len();
             
-            already_downloaded = file_size;
             starting_chunk = (file_size / CHUNK_SIZE) as u32;
             
             println!("发现已下载文件: {} 字节，从分片 {} 开始继续下载", 
-                already_downloaded, starting_chunk);
+                file_size, starting_chunk);
             
             // 更新已下载大小
             let mut downloaded = self.downloaded_size.lock().await;
-            *downloaded = already_downloaded;
+            *downloaded = file_size;
         } else {
             println!("开始新下载，文件不存在");
         }

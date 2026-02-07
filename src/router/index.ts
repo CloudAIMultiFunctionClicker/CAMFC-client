@@ -69,6 +69,12 @@ const router = createRouter({
       name: 'notes',
       // 笔记页面
       component: () => import('../views/Notes.vue')
+    },
+    {
+      path: '/transfer',
+      name: 'transfer',
+      // 传输页面
+      component: () => import('../views/TransferView.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]

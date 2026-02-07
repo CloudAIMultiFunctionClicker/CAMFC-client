@@ -61,6 +61,7 @@ const selectedFiles = ref(new Set()) // 用Set存储选中的文件路径，因�
 const lastSelectedIndex = ref(-1) // 记录上一次选中的文件索引，用于Shift连续选择
 const ctrlPressed = ref(false) // 是否按下了Ctrl键
 const shiftPressed = ref(false) // 是否按下了Shift键
+const focusedIndex = ref(-1) // 当前焦点的文件索引，用于键盘上下键切换
 
 // 路径编辑相关状态 - 支持点击当前路径手动输入
 const isEditingPath = ref(false)
@@ -481,9 +482,10 @@ const goUp = () => {
 // 监听路径变化，重新获取数据
 watch(() => props.currentPath, (newPath) => {
   console.log('路径变化了，重新获取:', newPath)
-  // 路径变化时清空选择状态
+  // 路径变化时清空选择状态和焦点
   selectedFiles.value.clear()
   lastSelectedIndex.value = -1
+  focusedIndex.value = -1
   fetchFiles(newPath)
 })
 
@@ -497,6 +499,49 @@ onMounted(() => {
       ctrlPressed.value = true
     } else if (e.key === 'Shift') {
       shiftPressed.value = true
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      // 上下键：切换文件焦点
+      e.preventDefault()
+      if (fileList.value.length === 0) return
+      
+      // 如果没有焦点，先选中第一个
+      if (focusedIndex.value === -1) {
+        focusedIndex.value = 0
+        lastSelectedIndex.value = 0
+        selectedFiles.value.clear()
+        selectedFiles.value.add(fileList.value[0].path)
+      } else {
+        // 根据方向键调整焦点
+        if (e.key === 'ArrowUp' && focusedIndex.value > 0) {
+          focusedIndex.value--
+        } else if (e.key === 'ArrowDown' && focusedIndex.value < fileList.value.length - 1) {
+          focusedIndex.value++
+        }
+        
+        // 处理Shift+上下键（连续选择）
+        if (shiftPressed.value && lastSelectedIndex.value !== -1) {
+          const start = Math.min(lastSelectedIndex.value, focusedIndex.value)
+          const end = Math.max(lastSelectedIndex.value, focusedIndex.value)
+          
+          selectedFiles.value.clear()
+          for (let i = start; i <= end; i++) {
+            if (i < fileList.value.length) {
+              selectedFiles.value.add(fileList.value[i].path)
+            }
+          }
+        } else {
+          // 普通上下键，只选中当前焦点
+          lastSelectedIndex.value = focusedIndex.value
+          selectedFiles.value.clear()
+          selectedFiles.value.add(fileList.value[focusedIndex.value].path)
+        }
+      }
+      
+      // 滚动到焦点位置
+      const focusedRow = document.querySelector(`.table-row:nth-child(${focusedIndex.value + 1})`)
+      if (focusedRow) {
+        focusedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }
     } else if (e.key === 'Enter') {
       // Enter键：进入选中的文件夹
       if (selectedFiles.value.size === 1) {

@@ -102,51 +102,19 @@ const toggleCollapse = () => {
 
             <!-- 导航链接列表 -->
             <ul class="menu-list">
-                <!-- 首页链接 -->
+                <!-- 文件 -->
                 <li class="menu-item">
-                    <router-link to="/" class="menu-link">
-                        <i class="ri-home-line"></i>
-                        <span>首页</span>
+                    <router-link to="/fileView" class="menu-link">
+                        <i class="ri-folder-line"></i>
+                        <span>文件</span>
                     </router-link>
                 </li>
-
-                <!-- 我的云盘 -->
+                
+                <!-- 传输 -->
                 <li class="menu-item">
-                    <router-link to="/cloud" class="menu-link">
-                        <i class="ri-cloud-line"></i>
-                        <span>我的云盘</span>
-                    </router-link>
-                </li>
-
-                <!-- 共享文件 -->
-                <li class="menu-item">
-                    <router-link to="/shared" class="menu-link">
-                        <i class="ri-share-line"></i>
-                        <span>共享文件</span>
-                    </router-link>
-                </li>
-
-                <!-- 最近文件 -->
-                <li class="menu-item">
-                    <router-link to="/recent" class="menu-link">
-                        <i class="ri-time-line"></i>
-                        <span>最近文件</span>
-                    </router-link>
-                </li>
-
-                <!-- 收藏夹 -->
-                <li class="menu-item">
-                    <router-link to="/starred" class="menu-link">
-                        <i class="ri-star-line"></i>
-                        <span>收藏夹</span>
-                    </router-link>
-                </li>
-
-                <!-- 回收站 -->
-                <li class="menu-item">
-                    <router-link to="/trash" class="menu-link">
-                        <i class="ri-delete-bin-line"></i>
-                        <span>回收站</span>
+                    <router-link to="/transfer" class="menu-link">
+                        <i class="ri-exchange-line"></i>
+                        <span>传输</span>
                     </router-link>
                 </li>
             </ul>
