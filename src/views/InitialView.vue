@@ -26,11 +26,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   <div class="initial-container">
     <!-- 动态标题 -->
     <h1 class="title" :class="{ 'error-title': showConnectionFailed }">
-      {{ showConnectionFailed ? '无法连接' : '等待蓝牙连接Cpen设备' }}
+      {{ showConnectionFailed ? '无法连接' : (hasStarted ? '等待蓝牙连接Cpen设备' : '欢迎使用CAMFC客户端') }}
     </h1>
     
+    <!-- 开始连接按钮（初始状态显示） -->
+    <div class="start-container" v-if="!hasStarted">
+      <button class="start-btn" @click="handleStartConnection">
+        开始连接
+      </button>
+      <p class="start-hint">点击按钮开始连接蓝牙设备</p>
+    </div>
+    
     <!-- 弹跳进度条（连接中显示） -->
-    <div class="progress-container" v-if="isConnecting">
+    <div class="progress-container" v-if="isConnecting && hasStarted">
       <div class="bouncing-progress"></div>
     </div>
     
@@ -52,7 +60,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     
     <!-- 状态显示 -->
     <div class="status-info">
-      <p v-if="isConnecting">正在扫描并连接蓝牙设备...</p>
+      <p v-if="isConnecting && hasStarted">正在扫描并连接蓝牙设备...</p>
       <p v-if="showConnectionFailed" class="error">无法连接到Cpen设备</p>
       <p v-if="isConnected && !showCountdown" class="success">
         设备连接成功！
@@ -63,7 +71,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     <div class="action-buttons">
       <!-- 连接失败或超时时显示"再次尝试"按钮 -->
       <button 
-        v-if="showConnectionFailed && !isConnecting" 
+        v-if="showConnectionFailed && !isConnecting && hasStarted" 
         class="retry-btn"
         @click="retryConnection"
         :disabled="isConnecting"
@@ -73,7 +81,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       
       <!-- 连接成功时显示"进入主页面"按钮 -->
       <button 
-        v-if="isConnected && !showCountdown" 
+        v-if="isConnected && !showCountdown && hasStarted" 
         class="enter-btn"
         @click="jumpToFileView"
       >
@@ -100,6 +108,9 @@ console.info('InitialView - 蓝牙连接界面（简化版，业务逻辑在Rust
 
 const router = useRouter()
 const bluetoothStore = useBluetoothStore()
+
+// 是否已经开始连接（点击了开始按钮）
+const hasStarted = ref(false)
 
 // 倒计时相关状态
 const showCountdown = ref(false)
@@ -212,6 +223,16 @@ function jumpToFileView() {
   console.log('跳转到主页面')
   showCountdown.value = false  // 先隐藏倒计时UI
   router.push('/main')
+}
+
+/**
+ * 处理开始连接按钮点击
+ * 用户点击"开始连接"按钮后才初始化蓝牙连接
+ */
+function handleStartConnection() {
+  console.log('用户点击开始连接')
+  hasStarted.value = true
+  startConnection()
 }
 
 /**
@@ -342,17 +363,15 @@ async function retryConnection() {
 
 // 组件挂载时设置
 onMounted(() => {
-  console.log('InitialView mounted，开始连接设备')
+  console.log('InitialView mounted，等待用户点击开始连接')
   
   // 重置状态，确保从干净状态开始
   bluetoothStore.reset()
   connectionTimedOut.value = false
   retryCount.value = 0
+  hasStarted.value = false
   
-  // 延迟一下，确保UI渲染完成
-  setTimeout(() => {
-    startConnection()
-  }, 500)
+  // 不再自动开始连接，等待用户点击按钮
 })
 </script>
 
@@ -376,6 +395,44 @@ onMounted(() => {
 
 .error-title {
   color: var(--accent-red);
+}
+
+/* 开始连接容器 */
+.start-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin: 40px 0;
+}
+
+.start-btn {
+  padding: 15px 50px;
+  background-color: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.start-btn:hover {
+  background-color: #4a8bd6;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+.start-btn:active {
+  transform: translateY(0);
+}
+
+.start-hint {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin: 0;
 }
 
 .progress-container {
