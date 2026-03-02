@@ -282,6 +282,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { getNotes, setNotes } from '../components/data/storage.js'
 
 const router = useRouter()
 const notes = ref([])
@@ -304,15 +305,19 @@ onMounted(() => {
   loadNotes()
 })
 
-function loadNotes() {
-  const savedNotes = localStorage.getItem('camfc-notes')
+async function loadNotes() {
+  const savedNotes = await getNotes()
   if (savedNotes) {
-    notes.value = JSON.parse(savedNotes)
+    try {
+      notes.value = JSON.parse(savedNotes)
+    } catch {
+      notes.value = []
+    }
   }
 }
 
-function saveNotes() {
-  localStorage.setItem('camfc-notes', JSON.stringify(notes.value))
+async function saveNotes() {
+  await setNotes(JSON.stringify(notes.value))
 }
 
 function addNote() {

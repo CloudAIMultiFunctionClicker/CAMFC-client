@@ -144,6 +144,17 @@ onMounted(async () => {
   // 初始化后端配置（只会在应用启动时调用一次）
   await initBackendConfig()
   
+  // 监听蓝牙按键事件
+  const { listen } = await import('@tauri-apps/api/event')
+  listen('button-event', (event) => {
+    const eventType = event.payload.event_type
+    if (eventType === 'button_press') {
+      showToast('🔘 按键按下', '#3b82f6')
+    } else if (eventType === 'button_release') {
+      showToast('🔘 按键释放', '#10b981')
+    }
+  })
+  
   // 监听系统主题变化，如果用户没有手动设置过，就跟着系统变
   // 这里监听亮色主题的变化，因为我们的逻辑是基于亮色/暗色来判断的
   const lightMediaQuery = window.matchMedia('(prefers-color-scheme: light)')

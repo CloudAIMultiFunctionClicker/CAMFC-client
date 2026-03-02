@@ -3,6 +3,7 @@ import Sidebar from '../components/layout/Sidebar.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getUploadProgress, pauseUpload, resumeUpload } from '../components/data/upload.js'
 import { getDownloadProgress, pauseDownload, resumeDownload } from '../components/data/download.js'
+import { getActiveUploads, setActiveUploads, getActiveDownloads, setActiveDownloads } from '../components/data/storage.js'
 
 const isSidebarCollapsed = ref(false)
 
@@ -24,17 +25,19 @@ const formatSize = (bytes) => {
 }
 
 const refreshUploads = async () => {
-  const storedUploads = localStorage.getItem('active_uploads')
-  if (!storedUploads) return
+  const uploadIds = await getActiveUploads()
+  if (!uploadIds || uploadIds.length === 0) {
+    uploadList.value = []
+    return
+  }
 
   try {
-    const uploadIds = JSON.parse(storedUploads)
     const newList = []
 
     for (const id of uploadIds) {
       try {
         const progress = await getUploadProgress(id)
-        if (progress && progress.status !== 'Completed' && progress.status !== 'Error') {
+        if (progress) {
           newList.push({
             id: progress.upload_id,
             name: progress.filename || '未知文件',
@@ -59,17 +62,19 @@ const refreshUploads = async () => {
 }
 
 const refreshDownloads = async () => {
-  const storedDownloads = localStorage.getItem('active_downloads')
-  if (!storedDownloads) return
+  const fileIds = await getActiveDownloads()
+  if (!fileIds || fileIds.length === 0) {
+    downloadList.value = []
+    return
+  }
 
   try {
-    const fileIds = JSON.parse(storedDownloads)
     const newList = []
 
     for (const id of fileIds) {
       try {
         const progress = await getDownloadProgress(id)
-        if (progress && progress.status !== 'Completed' && progress.status !== 'Error') {
+        if (progress) {
           newList.push({
             id: progress.file_id,
             name: progress.file_name || '未知文件',
@@ -133,16 +138,16 @@ const handlePause = async (item, type) => {
   }
 }
 
-const handleCancel = (item, type) => {
+const handleCancel = async (item, type) => {
   if (type === 'upload') {
-    const stored = JSON.parse(localStorage.getItem('active_uploads') || '[]')
+    const stored = await getActiveUploads()
     const newList = stored.filter(id => id !== item.id)
-    localStorage.setItem('active_uploads', JSON.stringify(newList))
+    await setActiveUploads(newList)
     uploadList.value = uploadList.value.filter(i => i.id !== item.id)
   } else {
-    const stored = JSON.parse(localStorage.getItem('active_downloads') || '[]')
+    const stored = await getActiveDownloads()
     const newList = stored.filter(id => id !== item.id)
-    localStorage.setItem('active_downloads', JSON.stringify(newList))
+    await setActiveDownloads(newList)
     downloadList.value = downloadList.value.filter(i => i.id !== item.id)
   }
 }

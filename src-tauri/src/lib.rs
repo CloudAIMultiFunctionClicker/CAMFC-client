@@ -7,11 +7,17 @@ mod download;
 mod upload;
 // 配置模块导入
 mod config;
+// 存储模块导入
+mod storage;
+// 事件发射模块导入
+mod event_emitter;
 
 // 使用新的Cpen设备管理器作为业务逻辑层
 use cpen_device_manager::CpenDeviceManager;
 use download::{DownloadTask, AuthInfo, get_app_data_dir};
 use upload::UploadTask;
+use storage::{load_app_data, save_app_data};
+use event_emitter::set_app_handle;
 
 // 导入同步原语
 // 原来用tokio::sync::Mutex，继续用这个，适合异步环境
@@ -941,6 +947,10 @@ pub fn run() {
     drop(rt);
 
     tauri::Builder::default()
+        .setup(|app| {
+            set_app_handle(app.handle().clone());
+            Ok(())
+        })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
@@ -967,6 +977,9 @@ pub fn run() {
             select_and_upload_file,
             select_and_upload_multiple_files,
             select_files,        // 只选择文件，不上传
+            // 数据存储命令
+            load_app_data,
+            save_app_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

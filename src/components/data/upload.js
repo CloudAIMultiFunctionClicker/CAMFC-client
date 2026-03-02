@@ -4,6 +4,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { showToast } from '../layout/showToast.js'
 import { formatFileSize } from './download.js'
+import { getActiveUploads, setActiveUploads } from './storage.js'
 
 /**
  * 上传文件
@@ -178,9 +179,9 @@ export async function selectAndUploadFile(targetPath = '') {
     console.info(`文件选择成功，upload_id: ${result.upload_id}，目标路径: ${result.target_path || '根目录'}`)
     showToast(`开始上传到 ${targetPath || '根目录'}: ${extractFileName(result.file_path)}`, '#3b82f6')
 
-    const stored = JSON.parse(localStorage.getItem('active_uploads') || '[]')
+    const stored = await getActiveUploads()
     stored.push(result.upload_id)
-    localStorage.setItem('active_uploads', JSON.stringify(stored))
+    await setActiveUploads(stored)
 
     return {
       success: true,
@@ -233,6 +234,15 @@ export async function uploadFilesFromPaths(filePaths, targetPath = '') {
     
     console.info(`批量上传任务已创建，共 ${result.count} 个文件，目标路径: ${targetPath || '/'}`)
     showToast(`开始上传 ${result.count} 个文件到 ${targetPath || '根目录'}...`, '#3b82f6')
+    
+    // 保存上传ID到本地存储，供传输页面显示进度
+    const stored = await getActiveUploads()
+    for (const uploadId of result.upload_ids) {
+      if (!stored.includes(uploadId)) {
+        stored.push(uploadId)
+      }
+    }
+    await setActiveUploads(stored)
     
     return {
       success: true,

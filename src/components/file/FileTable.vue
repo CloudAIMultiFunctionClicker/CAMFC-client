@@ -176,12 +176,8 @@ const confirmUpload = async () => {
       console.log('上传任务已创建，共', result.count, '个文件')
       showToast(`开始上传 ${result.count} 个文件到 ${targetPath || '根目录'}...`, '#3b82f6')
       
-      // 等待一段时间后刷新文件列表
-      // 这里等待3秒，让上传有时间开始
-      setTimeout(async () => {
-        await fetchFiles(props.currentPath)
-        showToast('上传完成，文件列表已刷新', '#10b981')
-      }, 3000)
+      // 上传任务已在后端执行，传输页面会显示进度
+      // 这里不等待上传完成，让用户在传输页面查看进度
     }
   } catch (error) {
     console.error('上传失败:', error)
