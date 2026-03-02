@@ -25,6 +25,10 @@ export async function downloadFile(fileId) {
     // 调用Rust下载命令
     const result = await invoke('download_file', { fileId })
     
+    const stored = JSON.parse(localStorage.getItem('active_downloads') || '[]')
+    stored.push(fileId)
+    localStorage.setItem('active_downloads', JSON.stringify(stored))
+    
     console.info(`文件下载成功: ${result}`)
     showToast(`文件下载完成`, '#10b981')
     
