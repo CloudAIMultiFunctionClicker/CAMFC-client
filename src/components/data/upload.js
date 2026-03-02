@@ -9,7 +9,7 @@ import { formatFileSize } from './download.js'
  * 上传文件
  * 
  * 调用Rust端的upload_file命令
- * 支持分片上传和断点续传，分片大小为4MB
+ * 支持分片上传和断点续传，分片大小为256KB
  * 
  * 注意：上传过程可能需要较长时间，特别是大文件
  * 
@@ -177,7 +177,11 @@ export async function selectAndUploadFile(targetPath = '') {
     
     console.info(`文件选择成功，upload_id: ${result.upload_id}，目标路径: ${result.target_path || '根目录'}`)
     showToast(`开始上传到 ${targetPath || '根目录'}: ${extractFileName(result.file_path)}`, '#3b82f6')
-    
+
+    const stored = JSON.parse(localStorage.getItem('active_uploads') || '[]')
+    stored.push(result.upload_id)
+    localStorage.setItem('active_uploads', JSON.stringify(stored))
+
     return {
       success: true,
       uploadId: result.upload_id,

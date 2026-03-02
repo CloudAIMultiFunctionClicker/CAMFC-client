@@ -22,8 +22,8 @@ use hex::encode as hex_encode;
 // 导入配置模块
 use crate::config;
 
-// 默认分片大小 4MB - 和后端保持一致
-const CHUNK_SIZE: u64 = 4 * 1024 * 1024; // 4MB
+// 默认分片大小 256KB
+const CHUNK_SIZE: u64 = 256 * 1024; // 256KB
 
 // 获取基础URL的辅助函数
 fn get_base_url() -> Result<String> {

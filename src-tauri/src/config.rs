@@ -71,6 +71,9 @@ pub async fn init_config() -> Result<()> {
 
 // 尝试从环境变量加载配置
 fn try_load_from_env() -> Option<BackendConfig> {
+    // 尝试从 .env 文件加载环境变量
+    dotenv::dotenv().ok();
+    
     let base_url = std::env::var("CAMFC_BASE").ok()?;
     let port_str = std::env::var("CAMFC_PORT").ok()?;
     
