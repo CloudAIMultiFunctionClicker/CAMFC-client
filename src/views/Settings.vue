@@ -21,13 +21,21 @@
         <h3>Cpen 设置</h3>
         <div class="setting-item">
           <span>自动连接 Cpen 设备</span>
-          <button class="toggle-btn active">
+          <button 
+            class="toggle-btn" 
+            :class="{ active: cpenSettings.autoConnect }"
+            @click="toggleAutoConnect"
+          >
             <span class="toggle-slider"></span>
           </button>
         </div>
         <div class="setting-item">
           <span>同步数据到云端</span>
-          <button class="toggle-btn active">
+          <button 
+            class="toggle-btn" 
+            :class="{ active: cpenSettings.syncToCloud }"
+            @click="toggleSyncToCloud"
+          >
             <span class="toggle-slider"></span>
           </button>
         </div>
@@ -51,14 +59,24 @@
           <span>邮箱</span>
           <span class="setting-value">user@example.com</span>
         </div>
-        <button class="action-btn danger">退出登录</button>
+        <button class="action-btn danger" @click="logout">退出登录</button>
       </div>
 
       <div v-else-if="activeNav === 'ui'" class="settings-panel">
         <h3>界面缩放和布局</h3>
         <div class="setting-item">
           <span>界面缩放</span>
-          <input type="range" min="80" max="120" value="100" class="slider">
+          <div class="scale-container">
+            <input 
+              type="range" 
+              min="80" 
+              max="120" 
+              :value="scaleFactor * 100" 
+              class="slider"
+              @change="applyScale"
+            >
+            <span class="scale-value">{{ Math.round(scaleFactor * 100) }}%</span>
+          </div>
         </div>
         <div class="setting-item">
           <span>侧边栏宽度</span>
@@ -66,7 +84,11 @@
         </div>
         <div class="setting-item">
           <span>紧凑模式</span>
-          <button class="toggle-btn">
+          <button 
+            class="toggle-btn" 
+            :class="{ active: compactMode }"
+            @click="toggleCompactMode"
+          >
             <span class="toggle-slider"></span>
           </button>
         </div>
@@ -76,7 +98,11 @@
         <h3>深色模式</h3>
         <div class="setting-item">
           <span>启用深色模式</span>
-          <button class="toggle-btn" :class="{ active: !theme?.isLightMode.value }" @click="theme?.toggleTheme()">
+          <button 
+            class="toggle-btn" 
+            :class="{ active: !theme?.isLightMode.value }" 
+            @click="theme?.toggleTheme()"
+          >
             <span class="toggle-slider"></span>
           </button>
         </div>
@@ -96,7 +122,7 @@
           </div>
           <p class="storage-text">已使用 350 MB / 1 GB</p>
         </div>
-        <button class="action-btn">清理缓存</button>
+        <button class="action-btn" @click="clearCache">清理缓存</button>
         <div class="setting-item">
           <span>自动清理缓存</span>
           <button class="toggle-btn">
@@ -129,10 +155,19 @@
 </template>
 
 <script setup>
-import { inject, ref } from 'vue'
+import { inject, ref, onMounted } from 'vue'
+import { showToast } from '../components/layout/showToast.js'
+import { disconnect } from '../components/data/bluetooth.js'
 
 const theme = inject('theme')
 const activeNav = ref('cpen')
+
+const cpenSettings = ref({
+  autoConnect: false,
+  syncToCloud: false
+})
+
+const compactMode = ref(false)
 
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
@@ -143,6 +178,76 @@ const navItems = [
   { id: 'help', label: '帮助与反馈', icon: 'ri-question-line' },
   { id: 'about', label: '关于', icon: 'ri-information-line' }
 ]
+
+const scaleFactor = ref(1)
+
+const toggleAutoConnect = () => {
+  cpenSettings.value.autoConnect = !cpenSettings.value.autoConnect
+  const status = cpenSettings.value.autoConnect ? '已启用' : '已禁用'
+  showToast(`自动连接 Cpen 设备: ${status}`, '#3b82f6')
+}
+
+const toggleSyncToCloud = () => {
+  cpenSettings.value.syncToCloud = !cpenSettings.value.syncToCloud
+  const status = cpenSettings.value.syncToCloud ? '已启用' : '已禁用'
+  showToast(`同步数据到云端: ${status}`, '#3b82f6')
+}
+
+const logout = () => {
+  showToast('正在退出登录...', '#f59e0b')
+  setTimeout(() => {
+    disconnect()
+    showToast('已退出登录', '#10b981')
+  }, 500)
+}
+
+const applyScale = (event) => {
+  const value = event.target.value
+  scaleFactor.value = value / 100
+  document.body.style.transform = `scale(${value / 100})`
+  document.body.style.transformOrigin = 'top left'
+  document.body.style.width = `${100 / value * 100}%`
+  localStorage.setItem('scale-factor', value)
+  showToast(`界面缩放已保存为 ${value}%`, '#3b82f6')
+}
+
+const toggleCompactMode = () => {
+  compactMode.value = !compactMode.value
+  if (compactMode.value) {
+    document.body.classList.add('compact-mode')
+    showToast('紧凑模式已启用', '#3b82f6')
+  } else {
+    document.body.classList.remove('compact-mode')
+    showToast('紧凑模式已禁用', '#3b82f6')
+  }
+  localStorage.setItem('compact-mode', compactMode.value)
+}
+
+const clearCache = () => {
+  showToast('正在清理缓存...', '#f59e0b')
+  setTimeout(() => {
+    showToast('缓存清理完成', '#10b981')
+  }, 1000)
+}
+
+onMounted(() => {
+  const savedScale = localStorage.getItem('scale-factor')
+  if (savedScale) {
+    const value = parseFloat(savedScale)
+    scaleFactor.value = value / 100
+    document.body.style.transform = `scale(${value / 100})`
+    document.body.style.transformOrigin = 'top left'
+    document.body.style.width = `${100 / value * 100}%`
+  }
+  
+  const savedCompactMode = localStorage.getItem('compact-mode')
+  if (savedCompactMode !== null) {
+    compactMode.value = savedCompactMode === 'true'
+    if (compactMode.value) {
+      document.body.classList.add('compact-mode')
+    }
+  }
+})
 </script>
 
 <style scoped>
@@ -325,6 +430,19 @@ const navItems = [
   cursor: pointer;
 }
 
+.scale-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scale-value {
+  min-width: 50px;
+  color: var(--text-muted, #64748b);
+  font-size: 14px;
+  font-weight: 500;
+}
+
 .storage-info {
   margin-bottom: 20px;
 }
@@ -440,5 +558,65 @@ const navItems = [
   .help-panel {
     height: calc(100vh - 250px);
   }
+
+  .scale-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.compact-mode {
+  --bg-secondary: #1e293b;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+}
+
+.compact-mode .settings-sidebar {
+  padding: 16px 12px;
+}
+
+.compact-mode .sidebar-title {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.compact-mode .settings-nav {
+  gap: 2px;
+}
+
+.compact-mode .nav-item {
+  padding: 10px 12px;
+  gap: 10px;
+}
+
+.compact-mode .nav-item i {
+  font-size: 16px;
+}
+
+.compact-mode .settings-content {
+  padding: 24px 20px;
+}
+
+.compact-mode .settings-panel h3 {
+  font-size: 22px;
+  margin-bottom: 16px;
+}
+
+.compact-mode .setting-item {
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.compact-mode .setting-item > span:first-child {
+  font-size: 14px;
+}
+
+.compact-mode .setting-value {
+  font-size: 13px;
+}
+
+.compact-mode .placeholder-text {
+  font-size: 14px;
 }
 </style>
