@@ -103,6 +103,7 @@ import {
   cleanup
 } from '../components/data/bluetooth.js'
 import { showToast } from '../components/layout/showToast.js'
+import { setCurrentUserId } from '../components/data/storage.js'
 
 console.info('InitialView - 蓝牙连接界面（简化版，业务逻辑在Rust端）')
 
@@ -289,10 +290,9 @@ async function startConnection() {
       try {
         const deviceId = await getDeviceId()
         console.log('设备ID获取成功:', deviceId)
-        // 注意：deviceId也不再存入store，直接使用返回值
+        setCurrentUserId(deviceId)
       } catch (idError) {
         console.warn('获取设备ID失败，但不影响连接:', idError)
-        // 设备ID获取失败不影响整体连接状态
       }
       
       // 4. 获取连接状态信息（包含设备名）

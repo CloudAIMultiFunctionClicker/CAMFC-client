@@ -862,16 +862,11 @@ async fn select_and_upload_multiple_files() -> Result<serde_json::Value, String>
 }
 
 /// 选择多个文件（只选择，不上传）
-/// 
-/// 使用系统原生文件对话框选择多个文件，返回文件路径列表
-/// 这个命令只负责选择文件，不执行上传操作
 #[tauri::command]
-async fn select_files() -> Result<serde_json::Value, String> {
+fn select_files() -> Result<serde_json::Value, String> {
     println!("前端调用select_files命令，打开多文件选择对话框");
     
-    // 使用 rfd 库打开系统原生多文件选择对话框
-    let files = rfd::FileDialog::new()
-        .pick_files();
+    let files = rfd::FileDialog::new().pick_files();
     
     match files {
         Some(file_paths) => {
@@ -884,19 +879,26 @@ async fn select_files() -> Result<serde_json::Value, String> {
                 }));
             }
             
-            // 转换为字符串数组
-            let file_paths_str: Vec<String> = file_paths
+            let files_info: Vec<serde_json::Value> = file_paths
                 .iter()
-                .map(|p| p.to_string_lossy().to_string())
+                .map(|p| {
+                    let path_str = p.to_string_lossy().to_string();
+                    let file_name = p.file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| path_str.clone());
+                    serde_json::json!({
+                        "path": path_str,
+                        "name": file_name
+                    })
+                })
                 .collect();
             
-            println!("文件路径列表: {:?}", file_paths_str);
+            println!("文件选择完成");
             
-            // 返回文件路径列表
             Ok(serde_json::json!({
                 "success": true,
-                "file_paths": file_paths_str,
-                "count": file_paths_str.len()
+                "files": files_info,
+                "count": files_info.len()
             }))
         }
         None => {

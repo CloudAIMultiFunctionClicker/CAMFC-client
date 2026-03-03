@@ -31,13 +31,15 @@ const refreshUploads = async () => {
     return
   }
 
+  const validIds = []
   try {
     const newList = []
 
     for (const id of uploadIds) {
       try {
         const progress = await getUploadProgress(id)
-        if (progress) {
+        if (progress && progress.status !== 'Error') {
+          validIds.push(id)
           newList.push({
             id: progress.upload_id,
             name: progress.filename || '未知文件',
@@ -56,6 +58,9 @@ const refreshUploads = async () => {
     }
 
     uploadList.value = newList
+    if (validIds.length !== uploadIds.length) {
+      await setActiveUploads(validIds)
+    }
   } catch (e) {
     console.error('刷新上传列表失败:', e)
   }
@@ -68,13 +73,15 @@ const refreshDownloads = async () => {
     return
   }
 
+  const validIds = []
   try {
     const newList = []
 
     for (const id of fileIds) {
       try {
         const progress = await getDownloadProgress(id)
-        if (progress) {
+        if (progress && progress.status !== 'Error') {
+          validIds.push(id)
           newList.push({
             id: progress.file_id,
             name: progress.file_name || '未知文件',
@@ -93,6 +100,9 @@ const refreshDownloads = async () => {
     }
 
     downloadList.value = newList
+    if (validIds.length !== fileIds.length) {
+      await setActiveDownloads(validIds)
+    }
   } catch (e) {
     console.error('刷新下载列表失败:', e)
   }
@@ -157,10 +167,26 @@ const handleRetry = (item, type) => {
   item.progress = 0
 }
 
-const clearCompleted = (type) => {
+const clearCompleted = async (type) => {
   if (type === 'upload') {
+    const completedIds = uploadList.value
+      .filter(i => i.status === 'completed' || i.status === 'failed')
+      .map(i => i.id)
+    if (completedIds.length > 0) {
+      const stored = await getActiveUploads()
+      const newList = stored.filter(id => !completedIds.includes(id))
+      await setActiveUploads(newList)
+    }
     uploadList.value = uploadList.value.filter(i => i.status !== 'completed' && i.status !== 'failed')
   } else {
+    const completedIds = downloadList.value
+      .filter(i => i.status === 'completed' || i.status === 'failed')
+      .map(i => i.id)
+    if (completedIds.length > 0) {
+      const stored = await getActiveDownloads()
+      const newList = stored.filter(id => !completedIds.includes(id))
+      await setActiveDownloads(newList)
+    }
     downloadList.value = downloadList.value.filter(i => i.status !== 'completed' && i.status !== 'failed')
   }
 }

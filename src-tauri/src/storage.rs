@@ -1,14 +1,13 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tokio::fs;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AppStorage {
-    pub active_uploads: Vec<String>,
-    pub active_downloads: Vec<String>,
-    pub notes: String,
-    pub theme: String,
+    #[serde(flatten)]
+    pub data: HashMap<String, String>,
 }
 
 impl AppStorage {
@@ -63,15 +62,7 @@ pub async fn load_app_data(key: String) -> Result<String, String> {
     let storage = load_storage().await
         .map_err(|e| format!("加载数据失败: {}", e))?;
     
-    let value = match key.as_str() {
-        "active_uploads" => serde_json::to_string(&storage.active_uploads)
-            .unwrap_or_else(|_| "[]".to_string()),
-        "active_downloads" => serde_json::to_string(&storage.active_downloads)
-            .unwrap_or_else(|_| "[]".to_string()),
-        "notes" => storage.notes,
-        "theme" => storage.theme,
-        _ => "".to_string(),
-    };
+    let value = storage.data.get(&key).cloned().unwrap_or_default();
     
     Ok(value)
 }
@@ -81,23 +72,7 @@ pub async fn save_app_data(key: String, value: String) -> Result<(), String> {
     let mut storage = load_storage().await
         .map_err(|e| format!("加载数据失败: {}", e))?;
     
-    match key.as_str() {
-        "active_uploads" => {
-            storage.active_uploads = serde_json::from_str(&value)
-                .unwrap_or_default();
-        }
-        "active_downloads" => {
-            storage.active_downloads = serde_json::from_str(&value)
-                .unwrap_or_default();
-        }
-        "notes" => {
-            storage.notes = value;
-        }
-        "theme" => {
-            storage.theme = value;
-        }
-        _ => {}
-    }
+    storage.data.insert(key, value);
     
     save_storage(&storage).await
         .map_err(|e| format!("保存数据失败: {}", e))?;

@@ -390,7 +390,6 @@ export async function selectFiles() {
   try {
     console.info('调用Rust端select_files命令')
     
-    // 调用Rust端的文件选择命令
     const result = await invoke('select_files')
     
     if (!result.success) {
@@ -407,7 +406,7 @@ export async function selectFiles() {
     console.info(`选择了 ${result.count} 个文件`)
     return {
       success: true,
-      filePaths: result.file_paths,
+      files: result.files,
       count: result.count
     }
   } catch (error) {

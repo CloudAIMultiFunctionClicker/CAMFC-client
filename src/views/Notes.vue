@@ -54,7 +54,7 @@
           @click="selectNote(note)"
         >
           <div class="note-title">{{ note.title }}</div>
-          <div class="note-preview">{{ note.content.substring(0, 50) }}...</div>
+          <div class="note-preview">{{ (note.content || '').substring(0, 50) }}...</div>
           <div class="note-meta">
             <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
             <div class="more-wrapper">
@@ -307,12 +307,14 @@ onMounted(() => {
 
 async function loadNotes() {
   const savedNotes = await getNotes()
-  if (savedNotes) {
+  if (savedNotes && savedNotes.trim()) {
     try {
       notes.value = JSON.parse(savedNotes)
     } catch {
       notes.value = []
     }
+  } else {
+    notes.value = []
   }
 }
 

@@ -423,16 +423,19 @@ impl BluetoothManager {
         if let Some(rx) = &mut self.listening_rx {
             match timeout(Duration::from_secs(10), rx.recv()).await {
                 Ok(Some(data)) => {
+                    // 日志输出收到的数据包
+                    let data_hex = data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
+                    let data_str = String::from_utf8_lossy(&data);
+                    println!("📥 收到蓝牙数据包: {} | hex: {}", data_str.trim(), data_hex);
+                    
                     // 检测按键事件
-                    if let Ok(data_str) = String::from_utf8(data.clone()) {
-                        let data_str_lower = data_str.to_lowercase();
-                        if data_str_lower.contains("button_press") {
-                            println!("🔘 收到按键按下事件");
-                            emit_button_event("button_press");
-                        } else if data_str_lower.contains("button_release") {
-                            println!("🔘 收到按键释放事件");
-                            emit_button_event("button_release");
-                        }
+                    let data_str_lower = data_str.to_lowercase();
+                    if data_str_lower.contains("button_press") {
+                        println!("🔘 收到按键按下事件");
+                        emit_button_event("button_press");
+                    } else if data_str_lower.contains("button_release") {
+                        println!("🔘 收到按键释放事件");
+                        emit_button_event("button_release");
                     }
                     Ok(data)
                 }

@@ -1,8 +1,26 @@
 import { invoke } from '@tauri-apps/api/core'
 
+let currentUserId = null
+
+export async function setCurrentUserId(userId) {
+  currentUserId = userId
+}
+
+export async function getCurrentUserId() {
+  return currentUserId
+}
+
+function getUserKey(key) {
+  if (!currentUserId) {
+    console.warn('当前用户ID未设置，使用默认存储')
+    return key
+  }
+  return `${currentUserId}:${key}`
+}
+
 export async function loadAppData(key) {
   try {
-    const value = await invoke('load_app_data', { key })
+    const value = await invoke('load_app_data', { key: getUserKey(key) })
     return value
   } catch (error) {
     console.error(`加载数据失败 (${key}):`, error)
@@ -12,7 +30,7 @@ export async function loadAppData(key) {
 
 export async function saveAppData(key, value) {
   try {
-    await invoke('save_app_data', { key, value })
+    await invoke('save_app_data', { key: getUserKey(key), value })
     return true
   } catch (error) {
     console.error(`保存数据失败 (${key}):`, error)
