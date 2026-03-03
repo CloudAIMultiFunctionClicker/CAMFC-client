@@ -50,6 +50,61 @@ export async function getTotp() {
 }
 
 /**
+ * 扫描并获取所有Cpen设备列表
+ * 
+ * 调用Rust端的scan_cpen_devices命令：
+ * 1. 确保蓝牙已开启
+ * 2. 扫描蓝牙设备
+ * 3. 过滤出所有Cpen设备（不连接）
+ * 
+ * 注意：这个函数不会自动连接设备，只返回设备列表供用户选择
+ * 
+ * @returns {Promise<Array<{name: string, address: string}>>} Cpen设备列表
+ */
+export async function scanCpenDevices() {
+  try {
+    console.info('开始扫描Cpen设备...')
+    
+    const devices = await invoke('scan_cpen_devices')
+    
+    console.info(`扫描完成，找到 ${devices.length} 个Cpen设备`)
+    
+    return devices
+  } catch (error) {
+    console.error(`扫描Cpen设备失败: ${error}`)
+    throw new Error(`扫描失败: ${error}`)
+  }
+}
+
+/**
+ * 连接到指定的Cpen设备
+ * 
+ * 调用Rust端的connect_cpen_device命令：
+ * 1. 断开当前连接（如果有）
+ * 2. 连接到指定地址的设备
+ * 3. 记录连接状态
+ * 
+ * 参数：设备地址（address）
+ * 
+ * @param {string} address 设备蓝牙地址
+ * @returns {Promise<{name: string, address: string}>} 设备信息
+ */
+export async function connectCpenDevice(address) {
+  try {
+    console.info(`开始连接Cpen设备: ${address}`)
+    
+    const deviceInfo = await invoke('connect_cpen_device', { address })
+    
+    console.info(`连接成功: ${deviceInfo.name} (${deviceInfo.address})`)
+    
+    return deviceInfo
+  } catch (error) {
+    console.error(`连接Cpen设备失败: ${error}`)
+    throw new Error(`连接失败: ${error}`)
+  }
+}
+
+/**
  * 获取设备ID（设备UUID）
  * 
  * 调用Rust端的get_device_id命令，内部会：
@@ -215,6 +270,8 @@ export async function testBluetooth() {
 // 导出所有函数（简化版）
 export default {
   getTotp,
+  scanCpenDevices,
+  connectCpenDevice,
   getDeviceId,
   getConnectionStatus,
   isConnected,
