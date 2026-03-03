@@ -16,7 +16,7 @@ mod event_emitter;
 use cpen_device_manager::CpenDeviceManager;
 use download::{DownloadTask, AuthInfo, get_app_data_dir};
 use upload::UploadTask;
-use storage::{load_app_data, save_app_data};
+use storage::{load_app_data, save_app_data, read_notes_content, write_notes_content, get_notes_temp_path, get_download_file_path, export_notes_to_file, import_notes_from_file};
 use event_emitter::set_app_handle;
 
 // 导入同步原语
@@ -982,6 +982,14 @@ pub fn run() {
             // 数据存储命令
             load_app_data,
             save_app_data,
+            // 笔记云盘同步命令
+            read_notes_content,
+            write_notes_content,
+            get_notes_temp_path,
+            get_download_file_path,
+            // 笔记导入导出命令
+            export_notes_to_file,
+            import_notes_from_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
