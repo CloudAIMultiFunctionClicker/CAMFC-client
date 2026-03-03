@@ -46,3 +46,4 @@ urlencoding = "2.1"
 rfd = "0.14"
 dotenv = "0.15"
 dirs = "5"
+totp-rs = { version = "5", features = ["gen_secret", "otpauth"] }
