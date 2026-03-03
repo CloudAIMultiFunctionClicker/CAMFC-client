@@ -29,40 +29,65 @@
             </div>
           </Transition>
         </div>
-        <div class="sync-placeholder">
-          <button class="action-btn">
-            <i class="ri-refresh-line"></i>
-            同步
-          </button>
-        </div>
       </div>
     </div>
 
     <div class="notes-content">
-      <div v-if="notes.length === 0" class="empty-state">
+      <div v-if="isLoading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>正在加载笔记...</p>
+      </div>
+      
+      <div v-else-if="notes.length === 0" class="empty-state">
         <div class="empty-icon">📝</div>
         <p class="empty-message">还没有笔记</p>
         <p class="empty-desc">点击上方按钮创建您的第一个笔记</p>
       </div>
 
-      <div v-else class="notes-grid">
-        <div
-          v-for="note in notes"
-          :key="note.id"
-          class="note-card"
-          :class="{ active: selectedNote?.id === note.id }"
-          @click="selectNote(note)"
-        >
-          <div class="note-title">{{ note.title }}</div>
-          <div class="note-preview">{{ (note.content || '').substring(0, 50) }}...</div>
-          <div class="note-meta">
-            <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
-            <div class="more-wrapper">
-              <button class="more-btn" @click.stop="openMoreMenu(note, $event)">
-                <i class="ri-more-fill"></i>
-              </button>
+      <div v-else>
+        <div v-if="pageLoading" class="loading-overlay">
+          <div class="loading-spinner"></div>
+          <p>正在加载...</p>
+        </div>
+        <div v-else class="notes-grid">
+          <div
+            v-for="note in currentPageNotes"
+            :key="note.id"
+            class="note-card"
+            :class="{ active: selectedNote?.id === note.id }"
+            @click="selectNote(note)"
+          >
+            <div class="note-title">{{ note.title }}</div>
+            <div class="note-preview">{{ (note.content || '').substring(0, 50) }}...</div>
+            <div class="note-meta">
+              <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
+              <div class="more-wrapper">
+                <button class="more-btn" @click.stop="openMoreMenu(note, $event)">
+                  <i class="ri-more-fill"></i>
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+        
+        <div v-if="totalPages > 1" class="pagination">
+          <button class="page-btn" :disabled="currentPage === 1" @click="prevPage">
+            <i class="ri-arrow-left-s-line"></i>
+          </button>
+          <div class="page-numbers">
+            <button
+              v-for="page in totalPages"
+              :key="page"
+              class="page-num"
+              :class="{ active: page === currentPage }"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </button>
+          </div>
+          <button class="page-btn" :disabled="currentPage === totalPages" @click="nextPage">
+            <i class="ri-arrow-right-s-line"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -280,9 +305,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { invoke } from '@tauri-apps/api/core'
 import { getNotes, setNotes } from '../components/data/storage.js'
+import { showToast } from '../components/layout/showToast.js'
 
 const router = useRouter()
 const notes = ref([])
@@ -301,11 +328,27 @@ const showSaveConfirmModal = ref(false)
 const showImportExportMenu = ref(false)
 let originalContent = ''
 
+const pageSize = 9
+const currentPage = ref(1)
+const isLoading = ref(false)
+const pageLoading = ref(false)
+
+const totalPages = computed(() => Math.ceil(notes.value.length / pageSize) || 1)
+
+const currentPageNotes = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return notes.value.slice(start, end)
+})
+
+const loadedNotes = ref({})
+
 onMounted(() => {
   loadNotes()
 })
 
 async function loadNotes() {
+  isLoading.value = true
   const savedNotes = await getNotes()
   if (savedNotes && savedNotes.trim()) {
     try {
@@ -316,6 +359,33 @@ async function loadNotes() {
   } else {
     notes.value = []
   }
+  isLoading.value = false
+  loadCurrentPageNotes()
+}
+
+async function loadCurrentPageNotes() {
+  pageLoading.value = true
+  loadedNotes.value = {}
+  const pageNotes = currentPageNotes.value
+  for (let i = 0; i < pageNotes.length; i++) {
+    loadedNotes.value[pageNotes[i].id] = true
+    await new Promise(r => setTimeout(r, 30))
+  }
+  pageLoading.value = false
+}
+
+function goToPage(page) {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+  loadCurrentPageNotes()
+}
+
+function prevPage() {
+  goToPage(currentPage.value - 1)
+}
+
+function nextPage() {
+  goToPage(currentPage.value + 1)
 }
 
 async function saveNotes() {
@@ -535,39 +605,42 @@ function formatDate(dateStr) {
 }
 
 async function exportNotes() {
-  const data = JSON.stringify(notes.value, null, 2)
-  const blob = new Blob([data], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `camfc-notes-${new Date().toISOString().slice(0, 10)}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  showImportExportMenu.value = false
+  try {
+    const data = JSON.stringify(notes.value, null, 2)
+    const result = await invoke('export_notes_to_file', { notesJson: data })
+    if (result) {
+      showToast('笔记导出成功', '#10b981')
+    }
+  } catch (err) {
+    if (err !== '用户取消操作') {
+      console.error('导出失败:', err)
+      showToast('导出失败', '#ef4444')
+    }
+  }
 }
 
 async function importNotes() {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.json'
-  input.onchange = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    try {
-      const text = await file.text()
-      const importedNotes = JSON.parse(text)
-      if (Array.isArray(importedNotes)) {
-        notes.value = importedNotes
-        saveNotes()
-      }
-    } catch (err) {
+  showImportExportMenu.value = false
+  try {
+    const text = await invoke('import_notes_from_file')
+    const importedNotes = JSON.parse(text)
+    
+    if (Array.isArray(importedNotes)) {
+      notes.value = importedNotes
+      await saveNotes()
+      currentPage.value = 1
+      loadCurrentPageNotes()
+      showToast(`成功导入 ${importedNotes.length} 条笔记`, '#10b981')
+    } else {
+      showToast('文件格式不正确', '#ef4444')
+    }
+  } catch (err) {
+    if (err !== '用户取消操作') {
       console.error('导入失败:', err)
-      alert('导入失败，请检查文件格式')
+      showToast('导入失败，请检查文件格式', '#ef4444')
     }
   }
-  input.click()
 }
 </script>
 
@@ -725,6 +798,110 @@ async function importNotes() {
 
 .empty-desc {
   color: var(--text-muted);
+}
+
+.loading-state {
+  text-align: center;
+  padding: 80px 20px;
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.loading-state p {
+  color: var(--text-secondary);
+  margin-top: 16px;
+}
+
+.loading-overlay {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.loading-overlay p {
+  color: var(--text-secondary);
+  margin-top: 12px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-blue, #3b82f6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 30px;
+  padding: 20px 0;
+}
+
+.page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background-color: var(--hover-bg);
+  border-color: var(--accent-blue, #3b82f6);
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-btn i {
+  font-size: 20px;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 6px;
+}
+
+.page-num {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-num:hover {
+  background-color: var(--hover-bg);
+}
+
+.page-num.active {
+  background-color: var(--accent-blue, #3b82f6);
+  border-color: var(--accent-blue, #3b82f6);
+  color: white;
 }
 
 .notes-grid {

@@ -3,7 +3,8 @@ import Sidebar from '../components/layout/Sidebar.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getUploadProgress, pauseUpload, resumeUpload } from '../components/data/upload.js'
 import { getDownloadProgress, pauseDownload, resumeDownload } from '../components/data/download.js'
-import { getActiveUploads, setActiveUploads, getActiveDownloads, setActiveDownloads } from '../components/data/storage.js'
+import { getActiveUploads, setActiveUploads, getActiveDownloads, setActiveDownloads, openFile, openFolder } from '../components/data/storage.js'
+import { invoke } from '@tauri-apps/api/core'
 
 const isSidebarCollapsed = ref(false)
 
@@ -165,6 +166,24 @@ const handleCancel = async (item, type) => {
 const handleRetry = (item, type) => {
   item.status = type === 'upload' ? 'uploading' : 'downloading'
   item.progress = 0
+}
+
+const handleOpenFile = async (item) => {
+  try {
+    const filePath = await invoke('get_download_file_path', { fileId: item.fileId })
+    await openFile(filePath)
+  } catch (error) {
+    console.error('打开文件失败:', error)
+  }
+}
+
+const handleOpenFolder = async (item) => {
+  try {
+    const filePath = await invoke('get_download_file_path', { fileId: item.fileId })
+    await openFolder(filePath)
+  } catch (error) {
+    console.error('打开文件夹失败:', error)
+  }
 }
 
 const clearCompleted = async (type) => {
@@ -367,6 +386,22 @@ onUnmounted(() => {
               <div class="item-action">
                 <button
                   class="action-btn"
+                  @click="handleOpenFolder(item)"
+                  v-if="item.status === 'completed'"
+                  title="打开文件夹"
+                >
+                  📁
+                </button>
+                <button
+                  class="action-btn"
+                  @click="handleOpenFile(item)"
+                  v-if="item.status === 'completed'"
+                  title="打开文件"
+                >
+                  📄
+                </button>
+                <button
+                  class="action-btn"
                   @click="handlePause(item, 'download')"
                   v-if="item.status !== 'completed' && item.status !== 'failed'"
                   :title="item.status === 'paused' ? '继续' : '暂停'"
@@ -494,7 +529,7 @@ onUnmounted(() => {
 
 .list-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 2fr 1fr 100px;
+  grid-template-columns: 2fr 1fr 2fr 1fr 150px;
   gap: 16px;
   padding: 14px 20px;
   background: rgba(0,0,0,0.2);
@@ -510,7 +545,7 @@ onUnmounted(() => {
 
 .transfer-item {
   display: grid;
-  grid-template-columns: 2fr 1fr 2fr 1fr 100px;
+  grid-template-columns: 2fr 1fr 2fr 1fr 150px;
   gap: 16px;
   padding: 16px 20px;
   align-items: center;
