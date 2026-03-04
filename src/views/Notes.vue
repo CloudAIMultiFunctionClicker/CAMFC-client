@@ -386,6 +386,24 @@ async function loadNotes() {
   } else {
     notes.value = []
   }
+  
+  // 如果没有任何笔记，创建默认笔记
+  if (notes.value.length === 0) {
+    console.log('没有笔记，创建默认笔记')
+    const defaultNotes = [{
+      id: Date.now(),
+      title: 'Hello',
+      content: '你好！这是你的第一个笔记。\n\n开始记录你的想法吧！',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      tags: [],
+      isPinned: false
+    }]
+    notes.value = defaultNotes
+    // 保存到云端（异步）
+    await saveNotes()
+  }
+  
   isLoading.value = false
   loadCurrentPageNotes()
 }

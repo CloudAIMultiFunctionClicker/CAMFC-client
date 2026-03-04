@@ -259,3 +259,14 @@ export async function clearCachedNotes() {
     return false
   }
 }
+
+export async function clearLocalNotes() {
+  try {
+    const result = await invoke('clear_local_notes')
+    console.log('本地笔记文件清理结果:', result ? '成功' : '失败')
+    return result
+  } catch (error) {
+    console.error('清理本地笔记文件失败:', error)
+    return false
+  }
+}

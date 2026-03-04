@@ -170,3 +170,25 @@ pub async fn import_notes_from_file() -> Result<String, String> {
         None => Err("用户取消操作".to_string())
     }
 }
+
+#[tauri::command]
+pub async fn clear_local_notes() -> Result<bool, String> {
+    let data_dir = get_app_data_dir()?;
+    let note_dir = data_dir.join(".note");
+    
+    if !note_dir.exists() {
+        return Ok(true); // 目录不存在，认为清理成功
+    }
+    
+    // 删除整个.note目录及其内容
+    match fs::remove_dir_all(&note_dir).await {
+        Ok(_) => {
+            println!("本地笔记文件已清理: {:?}", note_dir);
+            Ok(true)
+        }
+        Err(e) => {
+            println!("清理本地笔记文件失败: {:?}", e);
+            Err(format!("清理本地笔记文件失败: {}", e))
+        }
+    }
+}

@@ -32,7 +32,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useBluetoothStore } from './stores/bluetooth.js'
 
 import {showToast} from './components/layout/showToast.js'
-import { clearCachedNotes } from './components/data/storage.js'
+import { clearCachedNotes, clearLocalNotes } from './components/data/storage.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -208,6 +208,10 @@ onMounted(async () => {
     appWindow.onCloseRequested(async (event) => {
       console.log('应用即将关闭，清理缓存...')
       await clearCachedNotes()
+      
+      console.log('清理本地笔记文件...')
+      await clearLocalNotes()
+      
       // 允许窗口关闭
       event.preventDefault()
       await appWindow.close()
