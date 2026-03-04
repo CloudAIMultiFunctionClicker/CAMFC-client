@@ -308,7 +308,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { invoke } from '@tauri-apps/api/core'
-import { getNotes, setNotes } from '../components/data/storage.js'
+import { getNotes, setNotes, getCachedNotes, setCachedNotes } from '../components/data/storage.js'
 import { showToast } from '../components/layout/showToast.js'
 
 const router = useRouter()
@@ -344,7 +344,7 @@ const currentPageNotes = computed(() => {
 const loadedNotes = ref({})
 
 onMounted(() => {
-  loadNotes()
+  loadNotesWithCache()
 })
 
 async function loadNotes() {
@@ -361,6 +361,43 @@ async function loadNotes() {
   }
   isLoading.value = false
   loadCurrentPageNotes()
+}
+
+async function loadNotesWithCache() {
+  isLoading.value = true
+  
+  // 先尝试从缓存加载前9个笔记
+  const cachedNotes = await getCachedNotes()
+  if (cachedNotes && cachedNotes.length > 0) {
+    notes.value = cachedNotes
+    isLoading.value = false
+    loadCurrentPageNotes()
+    
+    // 后台异步加载完整数据
+    loadFullNotes()
+  } else {
+    // 没有缓存，正常加载
+    await loadNotes()
+    // 加载完成后更新缓存
+    if (notes.value.length > 0) {
+      await setCachedNotes(notes.value)
+    }
+  }
+}
+
+async function loadFullNotes() {
+  const savedNotes = await getNotes()
+  if (savedNotes && savedNotes.trim()) {
+    try {
+      const fullNotes = JSON.parse(savedNotes)
+      // 更新缓存
+      await setCachedNotes(fullNotes)
+      // 更新显示（保持当前页）
+      notes.value = fullNotes
+    } catch (error) {
+      console.log('加载完整笔记失败:', error)
+    }
+  }
 }
 
 async function loadCurrentPageNotes() {
@@ -390,6 +427,8 @@ function nextPage() {
 
 async function saveNotes() {
   await setNotes(JSON.stringify(notes.value))
+  // 保存时同时更新缓存
+  await setCachedNotes(notes.value)
 }
 
 function addNote() {

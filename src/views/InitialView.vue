@@ -37,8 +37,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       <p class="start-hint">点击按钮开始连接蓝牙设备</p>
     </div>
     
-    <!-- 弹跳进度条（连接中显示） -->
-    <div class="progress-container" v-if="isConnecting && hasStarted">
+    <!-- 弹跳进度条（连接中或扫描中显示） -->
+    <div class="progress-container" v-if="(isConnecting && hasStarted) || isScanning">
       <div class="bouncing-progress"></div>
     </div>
     

@@ -195,3 +195,38 @@ export async function getTheme() {
 export async function setTheme(theme) {
   return saveAppData('theme', theme)
 }
+
+// Note缓存相关函数
+export async function getCachedNotes() {
+  try {
+    const cachedData = await loadAppData('cached_notes')
+    if (cachedData) {
+      return JSON.parse(cachedData)
+    }
+  } catch (error) {
+    console.log('读取缓存笔记失败:', error)
+  }
+  return null
+}
+
+export async function setCachedNotes(notes) {
+  try {
+    // 只缓存前9个笔记
+    const notesToCache = notes.slice(0, 9)
+    await saveAppData('cached_notes', JSON.stringify(notesToCache))
+    return true
+  } catch (error) {
+    console.log('保存缓存笔记失败:', error)
+    return false
+  }
+}
+
+export async function clearCachedNotes() {
+  try {
+    await saveAppData('cached_notes', '')
+    return true
+  } catch (error) {
+    console.log('清理缓存笔记失败:', error)
+    return false
+  }
+}

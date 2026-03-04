@@ -31,6 +31,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useBluetoothStore } from './stores/bluetooth.js'
 
 import {showToast} from './components/layout/showToast.js'
+import { clearCachedNotes } from './components/data/storage.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -194,7 +195,25 @@ onMounted(async () => {
   // 在组件卸载时清理监听器
   onUnmounted(() => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
+    // 应用退出时清理缓存的笔记
+    clearCachedNotes()
   })
+  
+  // 监听窗口关闭事件
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const appWindow = getCurrentWindow()
+    
+    appWindow.onCloseRequested(async (event) => {
+      console.log('应用即将关闭，清理缓存...')
+      await clearCachedNotes()
+      // 允许窗口关闭
+      event.preventDefault()
+      await appWindow.close()
+    })
+  } catch (e) {
+    console.log('窗口关闭监听失败（非Tauri环境）:', e)
+  }
   
 // 窗口启动后，不再自动连接Cpen设备
 // 因为InitialView.vue现在是专门的连接界面，它会处理连接

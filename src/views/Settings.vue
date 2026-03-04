@@ -54,18 +54,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
           </button>
         </div>
         <div class="setting-item">
-          <span>同步数据到云端</span>
-          <button 
-            class="toggle-btn" 
-            :class="{ active: cpenSettings.syncToCloud }"
-            @click="toggleSyncToCloud"
-          >
-            <span class="toggle-slider"></span>
-          </button>
-        </div>
-        <div class="setting-item">
           <span>设备名称</span>
-          <span class="setting-value">Cpen-001</span>
+          <span class="setting-value">{{ deviceId || '未连接' }}</span>
         </div>
       </div>
 
@@ -73,15 +63,13 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <h3>账户</h3>
         <div class="setting-item">
           <span>登录状态</span>
-          <span class="setting-value status-online">已登录</span>
+          <span class="setting-value" :class="isFilesystemLoggedIn ? 'status-online' : 'status-offline'">
+            {{ isFilesystemLoggedIn ? '已登录' : '未登录' }}
+          </span>
         </div>
         <div class="setting-item">
           <span>用户名</span>
-          <span class="setting-value">User123</span>
-        </div>
-        <div class="setting-item">
-          <span>邮箱</span>
-          <span class="setting-value">user@example.com</span>
+          <span class="setting-value">{{ deviceId || '未连接' }}</span>
         </div>
         <button class="action-btn danger" @click="logout">退出登录</button>
       </div>
@@ -181,17 +169,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 <script setup>
 import { inject, ref, onMounted } from 'vue'
 import { showToast } from '../components/layout/showToast.js'
-import { disconnect } from '../components/data/bluetooth.js'
+import { disconnect, getDeviceId } from '../components/data/bluetooth.js'
+import { ls } from '../components/data/fileSystem.js'
 
 const theme = inject('theme')
 const activeNav = ref('cpen')
 
 const cpenSettings = ref({
-  autoConnect: false,
-  syncToCloud: false
+  autoConnect: false
 })
 
 const compactMode = ref(false)
+
+const deviceId = ref(null)
+const isFilesystemLoggedIn = ref(false)
 
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
@@ -208,20 +199,45 @@ const scaleFactor = ref(1)
 const toggleAutoConnect = () => {
   cpenSettings.value.autoConnect = !cpenSettings.value.autoConnect
   const status = cpenSettings.value.autoConnect ? '已启用' : '已禁用'
-  showToast(`自动连接 Cpen 设备: ${status}`, '#3b82f6')
+  showToast(`自动连接 Cpen 设备：${status}`, '#3b82f6')
 }
 
-const toggleSyncToCloud = () => {
-  cpenSettings.value.syncToCloud = !cpenSettings.value.syncToCloud
-  const status = cpenSettings.value.syncToCloud ? '已启用' : '已禁用'
-  showToast(`同步数据到云端: ${status}`, '#3b82f6')
+const checkFilesystemLogin = async () => {
+  try {
+    let id = null
+    let cloudAccessible = false
+    
+    try {
+      id = await getDeviceId()
+      deviceId.value = id
+    } catch (idError) {
+      console.warn('获取设备ID失败:', idError)
+    }
+    
+    if (id) {
+      try {
+        const result = await ls('/')
+        cloudAccessible = result !== null
+      } catch (lsError) {
+        console.warn('访问云盘失败:', lsError)
+        cloudAccessible = false
+      }
+    }
+    
+    isFilesystemLoggedIn.value = cloudAccessible || (id !== null)
+  } catch (error) {
+    console.warn('检查登录状态失败:', error)
+    isFilesystemLoggedIn.value = false
+    deviceId.value = null
+  }
 }
 
-const logout = () => {
+const logout = async () => {
   showToast('正在退出登录...', '#f59e0b')
+  await disconnect()
+  showToast('已退出登录', '#10b981')
   setTimeout(() => {
-    disconnect()
-    showToast('已退出登录', '#10b981')
+    window.location.href = '/'
   }, 500)
 }
 
@@ -271,6 +287,8 @@ onMounted(() => {
       document.body.classList.add('compact-mode')
     }
   }
+  
+  checkFilesystemLogin()
 })
 </script>
 
@@ -407,6 +425,10 @@ onMounted(() => {
 
 .setting-value.status-online {
   color: #22c55e;
+}
+
+.setting-value.status-offline {
+  color: #ef4444;
 }
 
 .action-btn {
