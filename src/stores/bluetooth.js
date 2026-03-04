@@ -10,6 +10,7 @@
 
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { emit } from '@tauri-apps/api/event'
 
 export const useBluetoothStore = defineStore('bluetooth', () => {
   // 蓝牙状态：连接中、已连接、断开
@@ -26,10 +27,19 @@ export const useBluetoothStore = defineStore('bluetooth', () => {
   const isConnecting = () => bluetoothStatus.value === 'connecting'
   
   // 更新状态
-  const setStatus = (status) => {
+  const setStatus = async (status) => {
     bluetoothStatus.value = status
     if (status !== 'error') {
       error.value = null // 状态正常就清掉错误
+    }
+    
+    // 通知悬浮窗连接状态变化
+    try {
+      const isConnectedStatus = status === 'connected'
+      await emit('connection-status', isConnectedStatus)
+      console.log('已发送连接状态事件到悬浮窗:', isConnectedStatus)
+    } catch (e) {
+      console.log('发送连接状态事件失败（非Tauri环境）:', e)
     }
   }
   
@@ -40,6 +50,13 @@ export const useBluetoothStore = defineStore('bluetooth', () => {
   const setError = (err) => {
     error.value = err
     bluetoothStatus.value = 'error'
+    
+    // 通知悬浮窗连接状态变化
+    try {
+      emit('connection-status', false)
+    } catch (e) {
+      console.log('发送连接状态事件失败（非Tauri环境）:', e)
+    }
   }
   
   // 重置状态（断开连接时用）
@@ -48,6 +65,13 @@ export const useBluetoothStore = defineStore('bluetooth', () => {
     deviceInfo.value = null
     error.value = null
     console.log('蓝牙状态已重置：断开连接')
+    
+    // 通知悬浮窗连接状态变化
+    try {
+      emit('connection-status', false)
+    } catch (e) {
+      console.log('发送连接状态事件失败（非Tauri环境）:', e)
+    }
   }
   
   return {

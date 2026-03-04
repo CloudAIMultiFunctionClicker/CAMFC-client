@@ -12,14 +12,15 @@
   "app": {
     "windows": [
       {
-        "title": "camfc-client",
+        "label": "main",
+        "title": "CAMFC Cloud",
         "width": 1152,
-        "height": 648
+        "height": 648,
+        "url": "/"
       },
       {
         "label": "float",
-        "title": "云盘",
-        "width": 100,
+        "width": 240,
         "height": 40,
         "x": 100,
         "y": 100,
