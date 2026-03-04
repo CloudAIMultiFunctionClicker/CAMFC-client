@@ -76,6 +76,12 @@ const router = createRouter({
       name: 'transfer',
       // 传输页面
       component: () => import('../views/TransferView.vue')
+    },
+    {
+      path: '/float',
+      name: 'float',
+      // 悬浮窗页面
+      component: () => import('../views/FloatView.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]

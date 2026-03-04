@@ -5,6 +5,7 @@ use std::time::Duration;
 use tokio::time::{sleep, timeout};
 use std::error::Error;
 use uuid::Uuid;
+use serde::{Serialize, Deserialize};
 use crate::event_emitter::emit_button_event;
 
 // Windows蓝牙API - 用来检测和开启蓝牙无线电
@@ -16,7 +17,7 @@ use windows::Devices::Radios::RadioKind;
 type BtError = String;
 
 /// 设备信息
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub name: String,
     pub address: String,
