@@ -1,8 +1,37 @@
+<!--
+Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+
+Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+Email: abc.cxh2009@foxmail.com
+
+Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+Email: 1220594170@qq.com
+
+Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+Email: admin@mc666.top
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <script setup>
 import Sidebar from '../components/layout/Sidebar.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getUploadProgress, pauseUpload, resumeUpload } from '../components/data/upload.js'
 import { getDownloadProgress, pauseDownload, resumeDownload } from '../components/data/download.js'
+import { getActiveUploads, setActiveUploads, getActiveDownloads, setActiveDownloads, openFile, openFolder } from '../components/data/storage.js'
+import { invoke } from '@tauri-apps/api/core'
 
 const isSidebarCollapsed = ref(false)
 
@@ -24,17 +53,21 @@ const formatSize = (bytes) => {
 }
 
 const refreshUploads = async () => {
-  const storedUploads = localStorage.getItem('active_uploads')
-  if (!storedUploads) return
+  const uploadIds = await getActiveUploads()
+  if (!uploadIds || uploadIds.length === 0) {
+    uploadList.value = []
+    return
+  }
 
+  const validIds = []
   try {
-    const uploadIds = JSON.parse(storedUploads)
     const newList = []
 
     for (const id of uploadIds) {
       try {
         const progress = await getUploadProgress(id)
-        if (progress && progress.status !== 'Completed' && progress.status !== 'Error') {
+        if (progress && progress.status !== 'Error') {
+          validIds.push(id)
           newList.push({
             id: progress.upload_id,
             name: progress.filename || '未知文件',
@@ -53,23 +86,30 @@ const refreshUploads = async () => {
     }
 
     uploadList.value = newList
+    if (validIds.length !== uploadIds.length) {
+      await setActiveUploads(validIds)
+    }
   } catch (e) {
     console.error('刷新上传列表失败:', e)
   }
 }
 
 const refreshDownloads = async () => {
-  const storedDownloads = localStorage.getItem('active_downloads')
-  if (!storedDownloads) return
+  const fileIds = await getActiveDownloads()
+  if (!fileIds || fileIds.length === 0) {
+    downloadList.value = []
+    return
+  }
 
+  const validIds = []
   try {
-    const fileIds = JSON.parse(storedDownloads)
     const newList = []
 
     for (const id of fileIds) {
       try {
         const progress = await getDownloadProgress(id)
-        if (progress && progress.status !== 'Completed' && progress.status !== 'Error') {
+        if (progress && progress.status !== 'Error') {
+          validIds.push(id)
           newList.push({
             id: progress.file_id,
             name: progress.file_name || '未知文件',
@@ -88,6 +128,9 @@ const refreshDownloads = async () => {
     }
 
     downloadList.value = newList
+    if (validIds.length !== fileIds.length) {
+      await setActiveDownloads(validIds)
+    }
   } catch (e) {
     console.error('刷新下载列表失败:', e)
   }
@@ -133,16 +176,16 @@ const handlePause = async (item, type) => {
   }
 }
 
-const handleCancel = (item, type) => {
+const handleCancel = async (item, type) => {
   if (type === 'upload') {
-    const stored = JSON.parse(localStorage.getItem('active_uploads') || '[]')
+    const stored = await getActiveUploads()
     const newList = stored.filter(id => id !== item.id)
-    localStorage.setItem('active_uploads', JSON.stringify(newList))
+    await setActiveUploads(newList)
     uploadList.value = uploadList.value.filter(i => i.id !== item.id)
   } else {
-    const stored = JSON.parse(localStorage.getItem('active_downloads') || '[]')
+    const stored = await getActiveDownloads()
     const newList = stored.filter(id => id !== item.id)
-    localStorage.setItem('active_downloads', JSON.stringify(newList))
+    await setActiveDownloads(newList)
     downloadList.value = downloadList.value.filter(i => i.id !== item.id)
   }
 }
@@ -152,10 +195,44 @@ const handleRetry = (item, type) => {
   item.progress = 0
 }
 
-const clearCompleted = (type) => {
+const handleOpenFile = async (item) => {
+  try {
+    const filePath = await invoke('get_download_file_path', { fileId: item.fileId })
+    await openFile(filePath)
+  } catch (error) {
+    console.error('打开文件失败:', error)
+  }
+}
+
+const handleOpenFolder = async (item) => {
+  try {
+    const filePath = await invoke('get_download_file_path', { fileId: item.fileId })
+    await openFolder(filePath)
+  } catch (error) {
+    console.error('打开文件夹失败:', error)
+  }
+}
+
+const clearCompleted = async (type) => {
   if (type === 'upload') {
+    const completedIds = uploadList.value
+      .filter(i => i.status === 'completed' || i.status === 'failed')
+      .map(i => i.id)
+    if (completedIds.length > 0) {
+      const stored = await getActiveUploads()
+      const newList = stored.filter(id => !completedIds.includes(id))
+      await setActiveUploads(newList)
+    }
     uploadList.value = uploadList.value.filter(i => i.status !== 'completed' && i.status !== 'failed')
   } else {
+    const completedIds = downloadList.value
+      .filter(i => i.status === 'completed' || i.status === 'failed')
+      .map(i => i.id)
+    if (completedIds.length > 0) {
+      const stored = await getActiveDownloads()
+      const newList = stored.filter(id => !completedIds.includes(id))
+      await setActiveDownloads(newList)
+    }
     downloadList.value = downloadList.value.filter(i => i.status !== 'completed' && i.status !== 'failed')
   }
 }
@@ -336,6 +413,22 @@ onUnmounted(() => {
               <div class="item-action">
                 <button
                   class="action-btn"
+                  @click="handleOpenFolder(item)"
+                  v-if="item.status === 'completed'"
+                  title="打开文件夹"
+                >
+                  📁
+                </button>
+                <button
+                  class="action-btn"
+                  @click="handleOpenFile(item)"
+                  v-if="item.status === 'completed'"
+                  title="打开文件"
+                >
+                  📄
+                </button>
+                <button
+                  class="action-btn"
                   @click="handlePause(item, 'download')"
                   v-if="item.status !== 'completed' && item.status !== 'failed'"
                   :title="item.status === 'paused' ? '继续' : '暂停'"
@@ -463,7 +556,7 @@ onUnmounted(() => {
 
 .list-header {
   display: grid;
-  grid-template-columns: 2fr 1fr 2fr 1fr 100px;
+  grid-template-columns: 2fr 1fr 2fr 1fr 150px;
   gap: 16px;
   padding: 14px 20px;
   background: rgba(0,0,0,0.2);
@@ -479,7 +572,7 @@ onUnmounted(() => {
 
 .transfer-item {
   display: grid;
-  grid-template-columns: 2fr 1fr 2fr 1fr 100px;
+  grid-template-columns: 2fr 1fr 2fr 1fr 150px;
   gap: 16px;
   padding: 16px 20px;
   align-items: center;

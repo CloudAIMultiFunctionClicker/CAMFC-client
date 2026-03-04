@@ -1,8 +1,39 @@
+/**
+ * CAMFC Client - 文件下载模块
+ * 通过Tauri调用Rust端的下载功能
+ * 
+ * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+ * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+ *
+ * Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+ * Email: abc.cxh2009@foxmail.com
+ *
+ * Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+ * Email: 1220594170@qq.com
+ *
+ * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+ * Email: admin@mc666.top
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 // 文件下载模块
 // 通过Tauri调用Rust端的下载功能
 
 import { invoke } from '@tauri-apps/api/core'
 import { showToast } from '../layout/showToast.js'
+import { getActiveDownloads, setActiveDownloads } from './storage.js'
 
 /**
  * 下载文件
@@ -25,9 +56,9 @@ export async function downloadFile(fileId) {
     // 调用Rust下载命令
     const result = await invoke('download_file', { fileId })
     
-    const stored = JSON.parse(localStorage.getItem('active_downloads') || '[]')
+    const stored = await getActiveDownloads()
     stored.push(fileId)
-    localStorage.setItem('active_downloads', JSON.stringify(stored))
+    await setActiveDownloads(stored)
     
     console.info(`文件下载成功: ${result}`)
     showToast(`文件下载完成`, '#10b981')

@@ -8,6 +8,9 @@ Email: abc.cxh2009@foxmail.com
 Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
 Email: 1220594170@qq.com
 
+Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+Email: admin@mc666.top
+
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -23,11 +26,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <script setup>
-import { ref, provide, onMounted, onUnmounted } from 'vue'
+import { ref, provide, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 // 导入Pinia store来获取蓝牙状态
 import { useBluetoothStore } from './stores/bluetooth.js'
 
 import {showToast} from './components/layout/showToast.js'
+import { clearCachedNotes, clearLocalNotes } from './components/data/storage.js'
+
+const route = useRoute()
+const router = useRouter()
+
+const isFloatPage = computed(() => route.path === '/float')
 
 // 导入应用头部组件
 import AppHeader from './components/layout/AppHeader.vue'
@@ -144,32 +154,71 @@ onMounted(async () => {
   // 初始化后端配置（只会在应用启动时调用一次）
   await initBackendConfig()
   
+  // 监听蓝牙按键事件
+  const { listen } = await import('@tauri-apps/api/event')
+  listen('button-event', (event) => {
+    const eventType = event.payload.event_type
+    if (eventType === 'button_press') {
+      showToast('🔘 按键按下', '#3b82f6')
+    } else if (eventType === 'button_release') {
+      showToast('🔘 按键释放', '#10b981')
+    }
+  })
+  
   // 监听系统主题变化，如果用户没有手动设置过，就跟着系统变
-  // 这里监听亮色主题的变化，因为我们的逻辑是基于亮色/暗色来判断的
   const lightMediaQuery = window.matchMedia('(prefers-color-scheme: light)')
   
   const handleSystemThemeChange = (e) => {
-    // 只有当用户没有保存过偏好时才跟随系统变化
-    // 检查localStorage里有没有保存过主题偏好
     const hasUserPreference = localStorage.getItem('theme-preference') !== null
     if (!hasUserPreference) {
-      // e.matches为true表示现在系统是亮色主题
       isLightMode.value = e.matches
       updateBodyClass()
-      
-      // 这里有个问题：如果系统从light变成dark，e.matches就是false
-      // 但如果系统从dark变成light，e.matches就是true
-      // 我们的逻辑应该没问题，因为getInitialTheme里也是用light匹配来判断
     }
   }
   
-  // 添加监听
   lightMediaQuery.addEventListener('change', handleSystemThemeChange)
+  
+  // 监听悬浮窗发来的导航事件
+  try {
+    const { listen } = await import('@tauri-apps/api/event')
+    await listen('navigate', (event) => {
+      console.log('收到导航事件:', event.payload)
+      const path = event.payload
+      // 只在非悬浮窗页面时跳转
+      if (path && router && route.path !== '/float') {
+        router.push(path)
+      }
+    })
+  } catch (e) {
+    console.log('监听导航事件失败（非Tauri环境）:', e)
+  }
   
   // 在组件卸载时清理监听器
   onUnmounted(() => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
+    // 应用退出时清理缓存的笔记
+    clearCachedNotes()
   })
+  
+  // 监听窗口关闭事件
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const appWindow = getCurrentWindow()
+    
+    appWindow.onCloseRequested(async (event) => {
+      console.log('应用即将关闭，清理缓存...')
+      await clearCachedNotes()
+      
+      console.log('清理本地笔记文件...')
+      await clearLocalNotes()
+      
+      // 允许窗口关闭
+      event.preventDefault()
+      await appWindow.close()
+    })
+  } catch (e) {
+    console.log('窗口关闭监听失败（非Tauri环境）:', e)
+  }
   
 // 窗口启动后，不再自动连接Cpen设备
 // 因为InitialView.vue现在是专门的连接界面，它会处理连接
@@ -185,7 +234,7 @@ setTimeout(() => {
 <template>
   <!-- router-view用来显示路由组件 -->
   <!-- 整个应用的主题通过body类名控制 -->
-  <AppHeader/>
+  <AppHeader v-if="!isFloatPage"/>
 
     <router-view></router-view>
 

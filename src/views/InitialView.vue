@@ -8,6 +8,9 @@ Email: abc.cxh2009@foxmail.com
 Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
 Email: 1220594170@qq.com
 
+Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+Email: admin@mc666.top
+
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -26,7 +29,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
   <div class="initial-container">
     <!-- 动态标题 -->
     <h1 class="title" :class="{ 'error-title': showConnectionFailed }">
-      {{ showConnectionFailed ? '无法连接' : (hasStarted ? '等待蓝牙连接Cpen设备' : '欢迎使用CAMFC客户端') }}
+      {{ showConnectionFailed ? '无法连接' : (showDeviceSelection ? '选择要连接的设备' : (hasStarted ? '等待蓝牙连接Cpen设备' : '欢迎使用CAMFC客户端')) }}
     </h1>
     
     <!-- 开始连接按钮（初始状态显示） -->
@@ -37,9 +40,28 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       <p class="start-hint">点击按钮开始连接蓝牙设备</p>
     </div>
     
-    <!-- 弹跳进度条（连接中显示） -->
-    <div class="progress-container" v-if="isConnecting && hasStarted">
+    <!-- 弹跳进度条（连接中或扫描中显示） -->
+    <div class="progress-container" v-if="(isConnecting && hasStarted) || isScanning">
       <div class="bouncing-progress"></div>
+    </div>
+    
+    <!-- 设备选择界面 -->
+    <div class="device-selection" v-if="showDeviceSelection">
+      <p class="device-selection-tip">请选择要连接的Cpen设备：</p>
+      <div class="device-list">
+        <div 
+          v-for="device in deviceList" 
+          :key="device.address"
+          class="device-item"
+          @click="selectDevice(device)"
+        >
+          <span class="device-name">{{ device.name }}</span>
+          <span class="device-address">{{ device.address }}</span>
+        </div>
+      </div>
+      <button class="rescan-btn" @click="rescanDevices" :disabled="isScanning">
+        {{ isScanning ? '扫描中...' : '重新扫描' }}
+      </button>
     </div>
     
     <!-- 5秒倒计时进度条（连接成功后显示） -->
@@ -60,7 +82,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     
     <!-- 状态显示 -->
     <div class="status-info">
-      <p v-if="isConnecting && hasStarted">正在扫描并连接蓝牙设备...</p>
+      <p v-if="isConnecting && hasStarted && !showDeviceSelection">正在扫描并连接蓝牙设备...</p>
       <p v-if="showConnectionFailed" class="error">无法连接到Cpen设备</p>
       <p v-if="isConnected && !showCountdown" class="success">
         设备连接成功！
@@ -88,6 +110,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         进入主界面
       </button>
     </div>
+
   </div>
 </template>
 
@@ -97,12 +120,15 @@ import { useRouter } from 'vue-router'
 import { useBluetoothStore } from '../stores/bluetooth.js'
 import { 
   getTotp,
+  scanCpenDevices,
+  connectCpenDevice,
   getDeviceId,
   getConnectionStatus,
   disconnect,
   cleanup
 } from '../components/data/bluetooth.js'
 import { showToast } from '../components/layout/showToast.js'
+import { setCurrentUserId } from '../components/data/storage.js'
 
 console.info('InitialView - 蓝牙连接界面（简化版，业务逻辑在Rust端）')
 
@@ -117,6 +143,11 @@ const showCountdown = ref(false)
 const countdownSeconds = ref(5)
 const countdownProgress = ref(100)
 let countdownTimer = null
+
+// 设备选择相关状态
+const showDeviceSelection = ref(false)
+const deviceList = ref([])
+const isScanning = ref(false)
 
 // 状态计算（直接从store获取连接状态和错误信息）
 // 注意：TOTP和deviceId不再从store读取，改为直接调用Rust命令
@@ -146,6 +177,94 @@ watch(isConnected, (newVal) => {
     connectionTimedOut.value = false
   }
 })
+
+/**
+ * 扫描设备列表
+ */
+async function scanDevices() {
+  try {
+    isScanning.value = true
+    showDeviceSelection.value = true
+    console.log('开始扫描Cpen设备...')
+    
+    const devices = await scanCpenDevices()
+    deviceList.value = devices
+    
+    console.log(`扫描完成，找到 ${devices.length} 个设备`)
+    
+    if (devices.length === 0) {
+      showToast('未找到Cpen设备')
+    }
+  } catch (error) {
+    console.error('扫描设备失败:', error)
+    showToast('扫描设备失败: ' + error.message)
+  } finally {
+    isScanning.value = false
+  }
+}
+
+/**
+ * 重新扫描设备
+ */
+async function rescanDevices() {
+  await scanDevices()
+}
+
+/**
+ * 选择设备并连接
+ */
+async function selectDevice(device) {
+  try {
+    console.log(`用户选择设备: ${device.name} (${device.address})`)
+    
+    bluetoothStore.setStatus('connecting')
+    
+    await connectCpenDevice(device.address)
+    
+    bluetoothStore.setStatus('connected')
+    showToast('设备连接成功！')
+    
+    showDeviceSelection.value = false
+    
+    // 连接成功后开始获取TOTP
+    await afterDeviceConnected()
+  } catch (error) {
+    console.error('连接设备失败:', error)
+    bluetoothStore.setError('连接失败')
+    showToast('连接失败: ' + error.message)
+  }
+}
+
+/**
+ * 设备连接成功后的处理
+ */
+async function afterDeviceConnected() {
+  try {
+    const totp = await getTotp()
+    console.log('TOTP获取成功:', totp)
+    
+    try {
+      const deviceId = await getDeviceId()
+      console.log('设备ID获取成功:', deviceId)
+    } catch (idError) {
+      console.warn('获取设备ID失败，但不影响连接:', idError)
+    }
+    
+    try {
+      const status = await getConnectionStatus()
+      console.log('连接状态:', status)
+      bluetoothStore.setDeviceInfo(status)
+    } catch (statusError) {
+      console.warn('获取连接状态失败:', statusError)
+    }
+    
+    startCountdown()
+  } catch (error) {
+    console.error('获取TOTP失败:', error)
+    showToast('获取TOTP失败: ' + error.message)
+    bluetoothStore.setError('获取TOTP失败')
+  }
+}
 
 /**
  * 更新Pinia状态（简化版）
@@ -216,6 +335,20 @@ function skipCountdown() {
 }
 
 /**
+ * 直接跳过连接进入主页
+ * 用户不想连接蓝牙时使用
+ */
+function skipToMain() {
+  console.log('用户跳过蓝牙连接，直接进入主页')
+  
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
+  
+  jumpToFileView()
+}
+
+/**
  * 跳转到文件管理路由
  * 直接用router.push跳转
  */
@@ -232,7 +365,7 @@ function jumpToFileView() {
 function handleStartConnection() {
   console.log('用户点击开始连接')
   hasStarted.value = true
-  startConnection()
+  scanDevices()
 }
 
 /**
@@ -289,10 +422,9 @@ async function startConnection() {
       try {
         const deviceId = await getDeviceId()
         console.log('设备ID获取成功:', deviceId)
-        // 注意：deviceId也不再存入store，直接使用返回值
+        setCurrentUserId(deviceId)
       } catch (idError) {
         console.warn('获取设备ID失败，但不影响连接:', idError)
-        // 设备ID获取失败不影响整体连接状态
       }
       
       // 4. 获取连接状态信息（包含设备名）
@@ -371,7 +503,7 @@ onMounted(() => {
   retryCount.value = 0
   hasStarted.value = false
   
-  // 不再自动开始连接，等待用户点击按钮
+  // 不再自动开始连接，等待用户点击按钮后扫描设备
 })
 </script>
 
@@ -594,5 +726,77 @@ onMounted(() => {
   background-color: #4a994a;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(85, 170, 85, 0.3);
+}
+
+/* 设备选择界面 */
+.device-selection {
+  margin: 30px 0;
+  padding: 20px;
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-width: 400px;
+  width: 100%;
+}
+
+.device-selection-tip {
+  font-size: 16px;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+}
+
+.device-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.device-item {
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  margin-bottom: 10px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.device-item:hover {
+  border-color: var(--accent-blue);
+  background-color: var(--bg-secondary);
+}
+
+.device-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--text-primary);
+  margin-bottom: 5px;
+}
+
+.device-address {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.rescan-btn {
+  padding: 10px 24px;
+  background-color: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.rescan-btn:hover:not(:disabled) {
+  background-color: #4a8bd6;
+}
+
+.rescan-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }
 </style>

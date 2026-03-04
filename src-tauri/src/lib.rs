@@ -7,11 +7,18 @@ mod download;
 mod upload;
 // 配置模块导入
 mod config;
+// 存储模块导入
+mod storage;
+// 事件发射模块导入
+mod event_emitter;
 
 // 使用新的Cpen设备管理器作为业务逻辑层
 use cpen_device_manager::CpenDeviceManager;
+use bluetooth::DeviceInfo;
 use download::{DownloadTask, AuthInfo, get_app_data_dir};
 use upload::UploadTask;
+use storage::{load_app_data, save_app_data, read_notes_content, write_notes_content, get_notes_temp_path, get_download_file_path, export_notes_to_file, import_notes_from_file, clear_local_notes};
+use event_emitter::set_app_handle;
 
 // 导入同步原语
 // 原来用tokio::sync::Mutex，继续用这个，适合异步环境
@@ -159,6 +166,55 @@ async fn is_connected() -> Result<bool, String> {
             println!("检查连接状态失败: {}", e);
             // 检查失败时，保守返回false，表示连接不可用
             Err(format!("检查连接状态失败: {}", e))
+        }
+    }
+}
+
+/// 扫描并返回所有Cpen设备列表
+/// 
+/// 前端调用这个命令获取所有可连接的Cpen设备。
+/// 不会自动连接，只返回设备列表供用户选择。
+/// 
+/// 返回值：设备列表（包含name和address）
+#[tauri::command]
+async fn scan_cpen_devices() -> Result<Vec<DeviceInfo>, String> {
+    println!("前端调用scan_cpen_devices命令...");
+    
+    let mut manager = get_cpen_device_manager()?.lock().await;
+    
+    match manager.scan_cpen_devices().await {
+        Ok(devices) => {
+            println!("扫描成功，找到 {} 个Cpen设备", devices.len());
+            Ok(devices)
+        }
+        Err(e) => {
+            println!("扫描失败: {}", e);
+            Err(format!("扫描失败: {}", e))
+        }
+    }
+}
+
+/// 连接到指定的Cpen设备
+/// 
+/// 前端调用这个命令连接用户选择的设备。
+/// 参数为设备的Bluetooth地址。
+/// 
+/// 参数：设备地址（address）
+/// 返回值：设备信息
+#[tauri::command]
+async fn connect_cpen_device(address: String) -> Result<DeviceInfo, String> {
+    println!("前端调用connect_cpen_device命令，地址: {}", address);
+    
+    let mut manager = get_cpen_device_manager()?.lock().await;
+    
+    match manager.connect_to_device(&address).await {
+        Ok(device_info) => {
+            println!("连接成功: {}", device_info.name);
+            Ok(device_info)
+        }
+        Err(e) => {
+            println!("连接失败: {}", e);
+            Err(format!("连接失败: {}", e))
         }
     }
 }
@@ -856,16 +912,11 @@ async fn select_and_upload_multiple_files() -> Result<serde_json::Value, String>
 }
 
 /// 选择多个文件（只选择，不上传）
-/// 
-/// 使用系统原生文件对话框选择多个文件，返回文件路径列表
-/// 这个命令只负责选择文件，不执行上传操作
 #[tauri::command]
-async fn select_files() -> Result<serde_json::Value, String> {
+fn select_files() -> Result<serde_json::Value, String> {
     println!("前端调用select_files命令，打开多文件选择对话框");
     
-    // 使用 rfd 库打开系统原生多文件选择对话框
-    let files = rfd::FileDialog::new()
-        .pick_files();
+    let files = rfd::FileDialog::new().pick_files();
     
     match files {
         Some(file_paths) => {
@@ -878,19 +929,26 @@ async fn select_files() -> Result<serde_json::Value, String> {
                 }));
             }
             
-            // 转换为字符串数组
-            let file_paths_str: Vec<String> = file_paths
+            let files_info: Vec<serde_json::Value> = file_paths
                 .iter()
-                .map(|p| p.to_string_lossy().to_string())
+                .map(|p| {
+                    let path_str = p.to_string_lossy().to_string();
+                    let file_name = p.file_name()
+                        .map(|n| n.to_string_lossy().to_string())
+                        .unwrap_or_else(|| path_str.clone());
+                    serde_json::json!({
+                        "path": path_str,
+                        "name": file_name
+                    })
+                })
                 .collect();
             
-            println!("文件路径列表: {:?}", file_paths_str);
+            println!("文件选择完成");
             
-            // 返回文件路径列表
             Ok(serde_json::json!({
                 "success": true,
-                "file_paths": file_paths_str,
-                "count": file_paths_str.len()
+                "files": files_info,
+                "count": files_info.len()
             }))
         }
         None => {
@@ -941,12 +999,18 @@ pub fn run() {
     drop(rt);
 
     tauri::Builder::default()
+        .setup(|app| {
+            set_app_handle(app.handle().clone());
+            Ok(())
+        })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,  // 保留测试用的greet命令
             get_backend_config,  // 获取后端配置
             get_totp,           // 主要功能：获取TOTP
+            scan_cpen_devices,  // 扫描Cpen设备列表
+            connect_cpen_device, // 连接指定的Cpen设备
             get_device_id,      // 获取设备ID
             get_connection_status, // 获取连接状态
             is_connected,       // 检查是否已建立稳定连接
@@ -967,6 +1031,19 @@ pub fn run() {
             select_and_upload_file,
             select_and_upload_multiple_files,
             select_files,        // 只选择文件，不上传
+            // 数据存储命令
+            load_app_data,
+            save_app_data,
+            // 笔记云盘同步命令
+            read_notes_content,
+            write_notes_content,
+            get_notes_temp_path,
+            get_download_file_path,
+            // 笔记导入导出命令
+            export_notes_to_file,
+            import_notes_from_file,
+            // 本地笔记清理命令
+            clear_local_notes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

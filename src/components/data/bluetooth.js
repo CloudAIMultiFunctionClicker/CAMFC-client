@@ -1,4 +1,31 @@
 /**
+ * CAMFC Client - 蓝牙设备接口模块（简化版）
+ * 
+ * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+ * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+ *
+ * Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+ * Email: abc.cxh2009@foxmail.com
+ *
+ * Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+ * Email: 1220594170@qq.com
+ *
+ * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+ * Email: admin@mc666.top
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
  * 蓝牙设备接口模块（简化版）
  * 
  * 重构说明：
@@ -46,6 +73,61 @@ export async function getTotp() {
     console.error(`获取TOTP失败: ${error}`)
     // 直接抛出错误，让调用者处理
     throw new Error(`获取TOTP失败: ${error}`)
+  }
+}
+
+/**
+ * 扫描并获取所有Cpen设备列表
+ * 
+ * 调用Rust端的scan_cpen_devices命令：
+ * 1. 确保蓝牙已开启
+ * 2. 扫描蓝牙设备
+ * 3. 过滤出所有Cpen设备（不连接）
+ * 
+ * 注意：这个函数不会自动连接设备，只返回设备列表供用户选择
+ * 
+ * @returns {Promise<Array<{name: string, address: string}>>} Cpen设备列表
+ */
+export async function scanCpenDevices() {
+  try {
+    console.info('开始扫描Cpen设备...')
+    
+    const devices = await invoke('scan_cpen_devices')
+    
+    console.info(`扫描完成，找到 ${devices.length} 个Cpen设备`)
+    
+    return devices
+  } catch (error) {
+    console.error(`扫描Cpen设备失败: ${error}`)
+    throw new Error(`扫描失败: ${error}`)
+  }
+}
+
+/**
+ * 连接到指定的Cpen设备
+ * 
+ * 调用Rust端的connect_cpen_device命令：
+ * 1. 断开当前连接（如果有）
+ * 2. 连接到指定地址的设备
+ * 3. 记录连接状态
+ * 
+ * 参数：设备地址（address）
+ * 
+ * @param {string} address 设备蓝牙地址
+ * @returns {Promise<{name: string, address: string}>} 设备信息
+ */
+export async function connectCpenDevice(address) {
+  try {
+    console.info(`开始连接Cpen设备: ${address}`)
+    
+    const deviceInfo = await invoke('connect_cpen_device', { address })
+    
+    console.info(`连接成功: ${deviceInfo.name} (${deviceInfo.address})`)
+    
+    return deviceInfo
+  } catch (error) {
+    console.error(`连接Cpen设备失败: ${error}`)
+    throw new Error(`连接失败: ${error}`)
   }
 }
 
@@ -215,6 +297,8 @@ export async function testBluetooth() {
 // 导出所有函数（简化版）
 export default {
   getTotp,
+  scanCpenDevices,
+  connectCpenDevice,
   getDeviceId,
   getConnectionStatus,
   isConnected,

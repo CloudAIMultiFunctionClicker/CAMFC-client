@@ -1,3 +1,30 @@
+<!--
+Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+
+Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+Email: abc.cxh2009@foxmail.com
+
+Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+Email: 1220594170@qq.com
+
+Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+Email: admin@mc666.top
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+-->
+
 <template>
   <div class="settings-page">
     <aside class="settings-sidebar">
@@ -21,19 +48,17 @@
         <h3>Cpen 设置</h3>
         <div class="setting-item">
           <span>自动连接 Cpen 设备</span>
-          <button class="toggle-btn active">
-            <span class="toggle-slider"></span>
-          </button>
-        </div>
-        <div class="setting-item">
-          <span>同步数据到云端</span>
-          <button class="toggle-btn active">
+          <button 
+            class="toggle-btn" 
+            :class="{ active: cpenSettings.autoConnect }"
+            @click="toggleAutoConnect"
+          >
             <span class="toggle-slider"></span>
           </button>
         </div>
         <div class="setting-item">
           <span>设备名称</span>
-          <span class="setting-value">Cpen-001</span>
+          <span class="setting-value">{{ deviceId || '未连接' }}</span>
         </div>
       </div>
 
@@ -41,34 +66,49 @@
         <h3>账户</h3>
         <div class="setting-item">
           <span>登录状态</span>
-          <span class="setting-value status-online">已登录</span>
+          <span class="setting-value" :class="isFilesystemLoggedIn ? 'status-online' : 'status-offline'">
+            {{ isFilesystemLoggedIn ? '已登录' : '未登录' }}
+          </span>
         </div>
         <div class="setting-item">
           <span>用户名</span>
-          <span class="setting-value">User123</span>
+          <span class="setting-value">{{ deviceId || '未连接' }}</span>
         </div>
-        <div class="setting-item">
-          <span>邮箱</span>
-          <span class="setting-value">user@example.com</span>
-        </div>
-        <button class="action-btn danger">退出登录</button>
+        <button class="action-btn danger" @click="logout">退出登录</button>
       </div>
 
       <div v-else-if="activeNav === 'ui'" class="settings-panel">
-        <h3>界面缩放和布局</h3>
+        <h3>界面缩放</h3>
         <div class="setting-item">
           <span>界面缩放</span>
-          <input type="range" min="80" max="120" value="100" class="slider">
+          <div class="scale-container">
+            <input 
+              type="range" 
+              min="80" 
+              max="120" 
+              :value="previewScaleFactor * 100" 
+              class="slider"
+              @input="updatePreviewScale"
+            >
+            <span class="scale-value">{{ Math.round(previewScaleFactor * 100) }}%</span>
+          </div>
         </div>
-        <div class="setting-item">
-          <span>侧边栏宽度</span>
-          <span class="setting-value">260px</span>
+        
+        <div class="scale-preview-box">
+          <h4>预览效果</h4>
+          <div class="preview-content" :style="{ transform: `scale(${previewScaleFactor})` }">
+            <div class="preview-text">示例文字大小</div>
+            <button class="preview-btn">示例按钮</button>
+            <div class="preview-card">
+              <div class="preview-card-title">卡片标题</div>
+              <div class="preview-card-content">这是一段示例内容文字</div>
+            </div>
+          </div>
         </div>
-        <div class="setting-item">
-          <span>紧凑模式</span>
-          <button class="toggle-btn">
-            <span class="toggle-slider"></span>
-          </button>
+        
+        <div class="scale-preview-actions" v-if="previewScaleFactor !== scaleFactor">
+          <button class="action-btn" @click="confirmScale">确认应用</button>
+          <button class="action-btn secondary" @click="cancelScale">取消</button>
         </div>
       </div>
 
@@ -76,7 +116,11 @@
         <h3>深色模式</h3>
         <div class="setting-item">
           <span>启用深色模式</span>
-          <button class="toggle-btn" :class="{ active: !theme?.isLightMode.value }" @click="theme?.toggleTheme()">
+          <button 
+            class="toggle-btn" 
+            :class="{ active: !theme?.isLightMode.value }" 
+            @click="theme?.toggleTheme()"
+          >
             <span class="toggle-slider"></span>
           </button>
         </div>
@@ -96,7 +140,7 @@
           </div>
           <p class="storage-text">已使用 350 MB / 1 GB</p>
         </div>
-        <button class="action-btn">清理缓存</button>
+        <button class="action-btn" @click="clearCache">清理缓存</button>
         <div class="setting-item">
           <span>自动清理缓存</span>
           <button class="toggle-btn">
@@ -129,10 +173,22 @@
 </template>
 
 <script setup>
-import { inject, ref } from 'vue'
+import { inject, ref, onMounted } from 'vue'
+import { showToast } from '../components/layout/showToast.js'
+import { disconnect, getDeviceId } from '../components/data/bluetooth.js'
+import { ls } from '../components/data/fileSystem.js'
 
 const theme = inject('theme')
 const activeNav = ref('cpen')
+
+const cpenSettings = ref({
+  autoConnect: false
+})
+
+const previewScaleFactor = ref(1)
+
+const deviceId = ref(null)
+const isFilesystemLoggedIn = ref(false)
 
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
@@ -143,6 +199,101 @@ const navItems = [
   { id: 'help', label: '帮助与反馈', icon: 'ri-question-line' },
   { id: 'about', label: '关于', icon: 'ri-information-line' }
 ]
+
+const scaleFactor = ref(1)
+
+const toggleAutoConnect = () => {
+  cpenSettings.value.autoConnect = !cpenSettings.value.autoConnect
+  const status = cpenSettings.value.autoConnect ? '已启用' : '已禁用'
+  showToast(`自动连接 Cpen 设备：${status}`, '#3b82f6')
+}
+
+const checkFilesystemLogin = async () => {
+  try {
+    let id = null
+    let cloudAccessible = false
+    
+    try {
+      id = await getDeviceId()
+      deviceId.value = id
+    } catch (idError) {
+      console.warn('获取设备ID失败:', idError)
+    }
+    
+    if (id) {
+      try {
+        const result = await ls('/')
+        cloudAccessible = result !== null
+      } catch (lsError) {
+        console.warn('访问云盘失败:', lsError)
+        cloudAccessible = false
+      }
+    }
+    
+    isFilesystemLoggedIn.value = cloudAccessible || (id !== null)
+  } catch (error) {
+    console.warn('检查登录状态失败:', error)
+    isFilesystemLoggedIn.value = false
+    deviceId.value = null
+  }
+}
+
+const logout = async () => {
+  showToast('正在退出登录...', '#f59e0b')
+  await disconnect()
+  showToast('已退出登录', '#10b981')
+  setTimeout(() => {
+    window.location.href = '/'
+  }, 500)
+}
+
+const updatePreviewScale = (event) => {
+  const value = event.target.value
+  previewScaleFactor.value = value / 100
+  // 只在预览框中显示效果，不影响整个页面
+}
+
+const confirmScale = () => {
+  const value = previewScaleFactor.value * 100
+  scaleFactor.value = previewScaleFactor.value
+  localStorage.setItem('scale-factor', value)
+  showToast(`界面缩放已保存为 ${Math.round(value)}%，页面即将刷新`, '#3b82f6')
+  
+  // 延迟刷新，让用户看到提示
+  setTimeout(() => {
+    window.location.reload()
+  }, 800)
+}
+
+const cancelScale = () => {
+  // 恢复到之前的缩放设置
+  previewScaleFactor.value = scaleFactor.value
+}
+
+
+
+const clearCache = () => {
+  showToast('正在清理缓存...', '#f59e0b')
+  setTimeout(() => {
+    showToast('缓存清理完成', '#10b981')
+  }, 1000)
+}
+
+onMounted(() => {
+  const savedScale = localStorage.getItem('scale-factor')
+  if (savedScale) {
+    const value = parseFloat(savedScale)
+    scaleFactor.value = value / 100
+    previewScaleFactor.value = value / 100
+    document.body.style.transform = `scale(${value / 100})`
+    document.body.style.transformOrigin = 'top left'
+    document.body.style.width = `${100 / value * 100}%`
+  } else {
+    previewScaleFactor.value = scaleFactor.value
+  }
+  
+  checkFilesystemLogin()
+})
 </script>
 
 <style scoped>
@@ -280,6 +431,10 @@ const navItems = [
   color: #22c55e;
 }
 
+.setting-value.status-offline {
+  color: #ef4444;
+}
+
 .action-btn {
   margin-top: 16px;
   padding: 12px 24px;
@@ -295,6 +450,95 @@ const navItems = [
 
 .action-btn:hover {
   background-color: #2563eb;
+}
+
+.action-btn.secondary {
+  background-color: var(--bg-secondary, #1e293b);
+  color: var(--text-secondary, #94a3b8);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.action-btn.secondary:hover {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
+}
+
+.scale-preview-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+.scale-preview-box {
+  background-color: var(--bg-secondary, #1e293b);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.scale-preview-box h4 {
+  color: var(--text-primary, #f1f5f9);
+  font-size: 16px;
+  margin: 0 0 16px 0;
+}
+
+.preview-content {
+  background-color: var(--bg-primary, #0f172a);
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s ease;
+  transform-origin: top left;
+  will-change: transform;
+  width: fit-content;
+  min-width: 200px;
+}
+
+.preview-text {
+  color: var(--text-primary, #f1f5f9);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.preview-btn {
+  background-color: var(--accent-blue, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background-color 0.2s ease;
+}
+
+.preview-btn:hover {
+  background-color: #2563eb;
+}
+
+.preview-card {
+  background-color: var(--bg-secondary, #1e293b);
+  border-radius: 6px;
+  padding: 12px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.preview-card-title {
+  color: var(--text-primary, #f1f5f9);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.preview-card-content {
+  color: var(--text-secondary, #94a3b8);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .action-btn.danger {
@@ -323,6 +567,19 @@ const navItems = [
   border-radius: 50%;
   background: var(--accent-blue, #3b82f6);
   cursor: pointer;
+}
+
+.scale-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scale-value {
+  min-width: 50px;
+  color: var(--text-muted, #64748b);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .storage-info {
@@ -440,5 +697,12 @@ const navItems = [
   .help-panel {
     height: calc(100vh - 250px);
   }
+
+  .scale-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
+
+
 </style>

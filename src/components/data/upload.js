@@ -1,9 +1,40 @@
+/**
+ * CAMFC Client - 文件上传模块
+ * 通过Tauri调用Rust端的上传功能
+ * 
+ * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+ * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+ *
+ * Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+ * Email: abc.cxh2009@foxmail.com
+ *
+ * Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+ * Email: 1220594170@qq.com
+ *
+ * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+ * Email: admin@mc666.top
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 // 文件上传模块
 // 通过Tauri调用Rust端的上传功能
 
 import { invoke } from '@tauri-apps/api/core'
 import { showToast } from '../layout/showToast.js'
 import { formatFileSize } from './download.js'
+import { getActiveUploads, setActiveUploads } from './storage.js'
 
 /**
  * 上传文件
@@ -178,9 +209,9 @@ export async function selectAndUploadFile(targetPath = '') {
     console.info(`文件选择成功，upload_id: ${result.upload_id}，目标路径: ${result.target_path || '根目录'}`)
     showToast(`开始上传到 ${targetPath || '根目录'}: ${extractFileName(result.file_path)}`, '#3b82f6')
 
-    const stored = JSON.parse(localStorage.getItem('active_uploads') || '[]')
+    const stored = await getActiveUploads()
     stored.push(result.upload_id)
-    localStorage.setItem('active_uploads', JSON.stringify(stored))
+    await setActiveUploads(stored)
 
     return {
       success: true,
@@ -233,6 +264,15 @@ export async function uploadFilesFromPaths(filePaths, targetPath = '') {
     
     console.info(`批量上传任务已创建，共 ${result.count} 个文件，目标路径: ${targetPath || '/'}`)
     showToast(`开始上传 ${result.count} 个文件到 ${targetPath || '根目录'}...`, '#3b82f6')
+    
+    // 保存上传ID到本地存储，供传输页面显示进度
+    const stored = await getActiveUploads()
+    for (const uploadId of result.upload_ids) {
+      if (!stored.includes(uploadId)) {
+        stored.push(uploadId)
+      }
+    }
+    await setActiveUploads(stored)
     
     return {
       success: true,
@@ -380,7 +420,6 @@ export async function selectFiles() {
   try {
     console.info('调用Rust端select_files命令')
     
-    // 调用Rust端的文件选择命令
     const result = await invoke('select_files')
     
     if (!result.success) {
@@ -397,7 +436,7 @@ export async function selectFiles() {
     console.info(`选择了 ${result.count} 个文件`)
     return {
       success: true,
-      filePaths: result.file_paths,
+      files: result.files,
       count: result.count
     }
   } catch (error) {

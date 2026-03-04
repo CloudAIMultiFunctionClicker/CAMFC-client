@@ -1,4 +1,34 @@
+/**
+ * CAMFC Client - 路由配置
+ * 
+ * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+ * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+ *
+ * Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+ * Email: abc.cxh2009@foxmail.com
+ *
+ * Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+ * Email: 1220594170@qq.com
+ *
+ * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+ * Email: admin@mc666.top
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { createRouter, createWebHistory } from 'vue-router'
+// @ts-ignore
 import { useBluetoothStore } from '../stores/bluetooth.js'
 
 /**
@@ -76,6 +106,12 @@ const router = createRouter({
       name: 'transfer',
       // 传输页面
       component: () => import('../views/TransferView.vue')
+    },
+    {
+      path: '/float',
+      name: 'float',
+      // 悬浮窗页面
+      component: () => import('../views/FloatView.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]
@@ -83,16 +119,22 @@ const router = createRouter({
 
 // 路由守卫：蓝牙未连接时阻止跳转到其他路由
 // 简单粗暴：只要不是首页，就检查蓝牙连接状态
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   // 如果是首页，直接放行
   if (to.path === '/') {
     next()
     return
   }
-  
+
+  // 悬浮窗页面不需要蓝牙连接，直接放行
+  if (to.path === '/float') {
+    next()
+    return
+  }
+
   // 获取蓝牙store
   const bluetoothStore = useBluetoothStore()
-  
+
   // 检查蓝牙是否已连接
   if (bluetoothStore.isConnected()) {
     next()
