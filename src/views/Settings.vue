@@ -78,7 +78,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       </div>
 
       <div v-else-if="activeNav === 'ui'" class="settings-panel">
-        <h3>界面缩放和布局</h3>
+        <h3>界面缩放</h3>
         <div class="setting-item">
           <span>界面缩放</span>
           <div class="scale-container">
@@ -86,26 +86,29 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
               type="range" 
               min="80" 
               max="120" 
-              :value="scaleFactor * 100" 
+              :value="previewScaleFactor * 100" 
               class="slider"
-              @change="applyScale"
+              @input="updatePreviewScale"
             >
-            <span class="scale-value">{{ Math.round(scaleFactor * 100) }}%</span>
+            <span class="scale-value">{{ Math.round(previewScaleFactor * 100) }}%</span>
           </div>
         </div>
-        <div class="setting-item">
-          <span>侧边栏宽度</span>
-          <span class="setting-value">260px</span>
+        
+        <div class="scale-preview-box">
+          <h4>预览效果</h4>
+          <div class="preview-content" :style="{ transform: `scale(${previewScaleFactor})` }">
+            <div class="preview-text">示例文字大小</div>
+            <button class="preview-btn">示例按钮</button>
+            <div class="preview-card">
+              <div class="preview-card-title">卡片标题</div>
+              <div class="preview-card-content">这是一段示例内容文字</div>
+            </div>
+          </div>
         </div>
-        <div class="setting-item">
-          <span>紧凑模式</span>
-          <button 
-            class="toggle-btn" 
-            :class="{ active: compactMode }"
-            @click="toggleCompactMode"
-          >
-            <span class="toggle-slider"></span>
-          </button>
+        
+        <div class="scale-preview-actions" v-if="previewScaleFactor !== scaleFactor">
+          <button class="action-btn" @click="confirmScale">确认应用</button>
+          <button class="action-btn secondary" @click="cancelScale">取消</button>
         </div>
       </div>
 
@@ -182,7 +185,7 @@ const cpenSettings = ref({
   autoConnect: false
 })
 
-const compactMode = ref(false)
+const previewScaleFactor = ref(1)
 
 const deviceId = ref(null)
 const isFilesystemLoggedIn = ref(false)
@@ -244,27 +247,30 @@ const logout = async () => {
   }, 500)
 }
 
-const applyScale = (event) => {
+const updatePreviewScale = (event) => {
   const value = event.target.value
-  scaleFactor.value = value / 100
-  document.body.style.transform = `scale(${value / 100})`
-  document.body.style.transformOrigin = 'top left'
-  document.body.style.width = `${100 / value * 100}%`
-  localStorage.setItem('scale-factor', value)
-  showToast(`界面缩放已保存为 ${value}%`, '#3b82f6')
+  previewScaleFactor.value = value / 100
+  // 只在预览框中显示效果，不影响整个页面
 }
 
-const toggleCompactMode = () => {
-  compactMode.value = !compactMode.value
-  if (compactMode.value) {
-    document.body.classList.add('compact-mode')
-    showToast('紧凑模式已启用', '#3b82f6')
-  } else {
-    document.body.classList.remove('compact-mode')
-    showToast('紧凑模式已禁用', '#3b82f6')
-  }
-  localStorage.setItem('compact-mode', compactMode.value)
+const confirmScale = () => {
+  const value = previewScaleFactor.value * 100
+  scaleFactor.value = previewScaleFactor.value
+  localStorage.setItem('scale-factor', value)
+  showToast(`界面缩放已保存为 ${Math.round(value)}%，页面即将刷新`, '#3b82f6')
+  
+  // 延迟刷新，让用户看到提示
+  setTimeout(() => {
+    window.location.reload()
+  }, 800)
 }
+
+const cancelScale = () => {
+  // 恢复到之前的缩放设置
+  previewScaleFactor.value = scaleFactor.value
+}
+
+
 
 const clearCache = () => {
   showToast('正在清理缓存...', '#f59e0b')
@@ -278,17 +284,12 @@ onMounted(() => {
   if (savedScale) {
     const value = parseFloat(savedScale)
     scaleFactor.value = value / 100
+    previewScaleFactor.value = value / 100
     document.body.style.transform = `scale(${value / 100})`
     document.body.style.transformOrigin = 'top left'
     document.body.style.width = `${100 / value * 100}%`
-  }
-  
-  const savedCompactMode = localStorage.getItem('compact-mode')
-  if (savedCompactMode !== null) {
-    compactMode.value = savedCompactMode === 'true'
-    if (compactMode.value) {
-      document.body.classList.add('compact-mode')
-    }
+  } else {
+    previewScaleFactor.value = scaleFactor.value
   }
   
   checkFilesystemLogin()
@@ -449,6 +450,95 @@ onMounted(() => {
 
 .action-btn:hover {
   background-color: #2563eb;
+}
+
+.action-btn.secondary {
+  background-color: var(--bg-secondary, #1e293b);
+  color: var(--text-secondary, #94a3b8);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.action-btn.secondary:hover {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
+}
+
+.scale-preview-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  margin-bottom: 24px;
+}
+
+.scale-preview-box {
+  background-color: var(--bg-secondary, #1e293b);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.scale-preview-box h4 {
+  color: var(--text-primary, #f1f5f9);
+  font-size: 16px;
+  margin: 0 0 16px 0;
+}
+
+.preview-content {
+  background-color: var(--bg-primary, #0f172a);
+  border-radius: 8px;
+  padding: 16px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: transform 0.2s ease;
+  transform-origin: top left;
+  will-change: transform;
+  width: fit-content;
+  min-width: 200px;
+}
+
+.preview-text {
+  color: var(--text-primary, #f1f5f9);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.preview-btn {
+  background-color: var(--accent-blue, #3b82f6);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background-color 0.2s ease;
+}
+
+.preview-btn:hover {
+  background-color: #2563eb;
+}
+
+.preview-card {
+  background-color: var(--bg-secondary, #1e293b);
+  border-radius: 6px;
+  padding: 12px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.preview-card-title {
+  color: var(--text-primary, #f1f5f9);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.preview-card-content {
+  color: var(--text-secondary, #94a3b8);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .action-btn.danger {
@@ -614,58 +704,5 @@ onMounted(() => {
   }
 }
 
-.compact-mode {
-  --bg-secondary: #1e293b;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-}
 
-.compact-mode .settings-sidebar {
-  padding: 16px 12px;
-}
-
-.compact-mode .sidebar-title {
-  font-size: 18px;
-  margin-bottom: 16px;
-}
-
-.compact-mode .settings-nav {
-  gap: 2px;
-}
-
-.compact-mode .nav-item {
-  padding: 10px 12px;
-  gap: 10px;
-}
-
-.compact-mode .nav-item i {
-  font-size: 16px;
-}
-
-.compact-mode .settings-content {
-  padding: 24px 20px;
-}
-
-.compact-mode .settings-panel h3 {
-  font-size: 22px;
-  margin-bottom: 16px;
-}
-
-.compact-mode .setting-item {
-  padding: 14px 18px;
-  margin-bottom: 10px;
-  font-size: 14px;
-}
-
-.compact-mode .setting-item > span:first-child {
-  font-size: 14px;
-}
-
-.compact-mode .setting-value {
-  font-size: 13px;
-}
-
-.compact-mode .placeholder-text {
-  font-size: 14px;
-}
 </style>
