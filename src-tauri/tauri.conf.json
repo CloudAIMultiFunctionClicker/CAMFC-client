@@ -12,9 +12,24 @@
   "app": {
     "windows": [
       {
-        "title": "camfc-client",
+        "label": "main",
+        "title": "CAMFC Cloud",
         "width": 1152,
-        "height": 648
+        "height": 648,
+        "url": "/"
+      },
+      {
+        "label": "float",
+        "width": 240,
+        "height": 40,
+        "x": 100,
+        "y": 100,
+        "alwaysOnTop": true,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "skipTaskbar": true,
+        "url": "/float"
       }
     ],
     "security": {
