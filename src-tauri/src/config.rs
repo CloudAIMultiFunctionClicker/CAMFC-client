@@ -40,13 +40,21 @@ pub async fn init_config() -> Result<()> {
     // 1. 先尝试从环境变量读取
     if let Some(config) = try_load_from_env() {
         println!("从环境变量加载配置: {}", config.get_full_url());
-        BACKEND_CONFIG.set(config)
-            .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
-        return Ok(());
+        
+        // 检测环境变量指定的服务器是否可用
+        println!("检测环境变量指定的服务器是否可用...");
+        if check_env_backend_available(&config).await {
+            println!("环境变量指定的服务器可用");
+            BACKEND_CONFIG.set(config)
+                .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
+            return Ok(());
+        } else {
+            println!("环境变量指定的服务器不可用，继续尝试其他配置源...");
+        }
     }
     
-    // 2. 环境变量不存在，尝试从远程 API 获取
-    println!("环境变量未配置，尝试从远程 API 获取配置...");
+    // 2. 环境变量不存在或不可用，尝试从远程 API 获取
+    println!("尝试从远程 API 获取配置...");
     match try_load_from_remote().await {
         Ok(config) => {
             println!("从远程 API 加载配置: {}", config.get_full_url());
@@ -69,12 +77,67 @@ pub async fn init_config() -> Result<()> {
     }
 }
 
+// 检测环境变量指定的服务器是否可用
+async fn check_env_backend_available(config: &BackendConfig) -> bool {
+    let test_url = format!("{}:{}/test", config.base_url, config.port);
+    println!("检测后端可用性: {}", test_url);
+    
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            println!("创建HTTP客户端失败: {}", e);
+            return false;
+        }
+    };
+    
+    match client.get(&test_url).send().await {
+        Ok(response) => {
+            if response.status().is_success() {
+                match response.text().await {
+                    Ok(text) => {
+                        if serde_json::from_str::<serde_json::Value>(&text).is_ok() {
+                            println!("后端可用，返回合法 JSON: {}", text);
+                            true
+                        } else {
+                            println!("后端响应不是合法 JSON: {}", text);
+                            false
+                        }
+                    }
+                    Err(e) => {
+                        println!("读取响应失败: {}", e);
+                        false
+                    }
+                }
+            } else {
+                println!("后端返回错误状态: {}", response.status());
+                false
+            }
+        }
+        Err(e) => {
+            println!("检测后端失败: {}", e);
+            false
+        }
+    }
+}
+
 // 尝试从环境变量加载配置
 fn try_load_from_env() -> Option<BackendConfig> {
+    // 尝试从 .env 文件加载环境变量
+    dotenv::dotenv().ok();
+    
     let base_url = std::env::var("CAMFC_BASE").ok()?;
     let port_str = std::env::var("CAMFC_PORT").ok()?;
     
     let port = port_str.parse::<u16>().ok()?;
+    
+    let base_url = if base_url.starts_with("http://") || base_url.starts_with("https://") {
+        base_url
+    } else {
+        format!("http://{}", base_url)
+    };
     
     Some(BackendConfig {
         base_url,

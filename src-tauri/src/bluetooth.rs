@@ -6,6 +6,7 @@ use tokio::time::{sleep, timeout};
 use std::error::Error;
 use uuid::Uuid;
 use serde::{Serialize, Deserialize};
+use crate::event_emitter::emit_button_event;
 
 // Windows蓝牙API - 用来检测和开启蓝牙无线电
 // 注意：暂时只支持Windows平台，后面如果跨平台再考虑兼容
@@ -422,7 +423,23 @@ impl BluetoothManager {
         // 阻塞等待数据
         if let Some(rx) = &mut self.listening_rx {
             match timeout(Duration::from_secs(10), rx.recv()).await {
-                Ok(Some(data)) => Ok(data),
+                Ok(Some(data)) => {
+                    // 日志输出收到的数据包
+                    let data_hex = data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
+                    let data_str = String::from_utf8_lossy(&data);
+                    println!("📥 收到蓝牙数据包: {} | hex: {}", data_str.trim(), data_hex);
+                    
+                    // 检测按键事件
+                    let data_str_lower = data_str.to_lowercase();
+                    if data_str_lower.contains("button_press") {
+                        println!("🔘 收到按键按下事件");
+                        emit_button_event("button_press");
+                    } else if data_str_lower.contains("button_release") {
+                        println!("🔘 收到按键释放事件");
+                        emit_button_event("button_release");
+                    }
+                    Ok(data)
+                }
                 Ok(None) => Err("通道已关闭".to_string()),
                 Err(_) => Err("接收超时".to_string()),
             }

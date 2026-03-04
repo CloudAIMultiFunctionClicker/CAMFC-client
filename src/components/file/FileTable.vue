@@ -27,7 +27,7 @@ import { ls,mkdir,rm } from '../data/fileSystem.js'
 import { showToast} from '../layout/showToast.js'
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { batchDownloadFiles, extractFileId } from '../data/download.js'
-import { selectAndUploadFile, uploadFilesFromPaths, selectFiles, extractFileName } from '../data/upload.js'
+import { uploadFilesFromPaths, selectFiles } from '../data/upload.js'
 import { getFileIcon } from '../../utils/fileIcon.js'
 
 
@@ -55,6 +55,10 @@ const droppedFiles = ref([])
 // 新建文件夹弹窗相关状态
 const showNewFolderModal = ref(false)
 const newFolderName = ref('')
+
+// 删除确认弹窗相关状态
+const showDeleteModal = ref(false)
+const deleteCount = ref(0)
 
 // 文件选择相关状态
 const selectedFiles = ref(new Set()) // 用Set存储选中的文件路径，因为Set查询更快
@@ -100,25 +104,19 @@ const handleFileSelect = (e) => {
 // 点击选择文件按钮
 const triggerFileSelect = async () => {
   try {
-    // 调用 Rust 端的文件选择命令，获取文件路径
     const result = await selectFiles()
     
-    if (result.success && result.filePaths && result.filePaths.length > 0) {
-      // 将文件路径转换为文件对象格式，用于展示
-      result.filePaths.forEach(filePath => {
-        const fileName = extractFileName(filePath)
-        
-        // 检查是否已经存在
+    if (result.success && result.files && result.files.length > 0) {
+      result.files.forEach(fileInfo => {
         const exists = droppedFiles.value.some(existingFile => 
-          existingFile.name === fileName
+          existingFile.name === fileInfo.name
         )
         
         if (!exists) {
-          // 创建一个简单的文件对象，用于展示
           droppedFiles.value.push({
-            name: fileName,
-            path: filePath,
-            size: 0, // 暂时无法获取文件大小，先设为0
+            name: fileInfo.name,
+            path: fileInfo.path,
+            size: 0,
           })
         }
       })
@@ -176,12 +174,8 @@ const confirmUpload = async () => {
       console.log('上传任务已创建，共', result.count, '个文件')
       showToast(`开始上传 ${result.count} 个文件到 ${targetPath || '根目录'}...`, '#3b82f6')
       
-      // 等待一段时间后刷新文件列表
-      // 这里等待3秒，让上传有时间开始
-      setTimeout(async () => {
-        await fetchFiles(props.currentPath)
-        showToast('上传完成，文件列表已刷新', '#10b981')
-      }, 3000)
+      // 上传任务已在后端执行，传输页面会显示进度
+      // 这里不等待上传完成，让用户在传输页面查看进度
     }
   } catch (error) {
     console.error('上传失败:', error)
@@ -316,51 +310,53 @@ const handleDeleteClick = async () => {
   console.log('删除点击')
   const selectedCount = selectedFiles.value.size
   if (selectedCount === 0) {
-    // 这里改成showToast，比alert好看点
     showToast('请先选择要删除的文件', '#f59e0b')
     return
   }
   
-  // 确认对话框还是用原生的吧，简单
-  if (confirm(`确定要删除选中的 ${selectedCount} 个文件吗？`)) {
-    console.log('删除选中的文件:', Array.from(selectedFiles.value))
+  deleteCount.value = selectedCount
+  showDeleteModal.value = true
+}
+
+const confirmDelete = async () => {
+  showDeleteModal.value = false
+  console.log('删除选中的文件:', Array.from(selectedFiles.value))
+  
+  try {
+    let successCount = 0
+    let errorCount = 0
     
-    try {
-      // 依次删除选中的文件
-      let successCount = 0
-      let errorCount = 0
-      
-      for (const file of selectedFiles.value) {
-        try {
-          const result = await rm(file, true)
-          if (result !== null) {
-            successCount++
-            console.log('删除成功:', file)
-          } else {
-            // 超时
-            errorCount++
-            console.warn('删除超时:', file)
-          }
-        } catch (error) {
+    for (const file of selectedFiles.value) {
+      try {
+        const result = await rm(file, true)
+        if (result !== null) {
+          successCount++
+          console.log('删除成功:', file)
+        } else {
           errorCount++
-          console.error('删除失败:', file, error)
+          console.warn('删除超时:', file)
         }
+      } catch (error) {
+        errorCount++
+        console.error('删除失败:', file, error)
       }
-      
-      // 显示结果
-      if (successCount > 0) {
-        showToast(`成功删除 ${successCount} 个文件${errorCount > 0 ? `，${errorCount} 个失败` : ''}`)
-        // 删除成功后刷新文件列表，保持当前路径
-        await fetchFiles(props.currentPath)
-      } else {
-        showToast('删除失败，请重试', '#ef4444')
-      }
-      
-    } catch (error) {
-      console.error('删除过程中出错:', error)
-      showToast(`删除出错: ${error.message}`, '#ef4444')
     }
+    
+    if (successCount > 0) {
+      showToast(`成功删除 ${successCount} 个文件${errorCount > 0 ? `，${errorCount} 个失败` : ''}`)
+      await fetchFiles(props.currentPath)
+    } else {
+      showToast('删除失败，请重试', '#ef4444')
+    }
+    
+  } catch (error) {
+    console.error('删除过程中出错:', error)
+    showToast(`删除出错: ${error.message}`, '#ef4444')
   }
+}
+
+const cancelDelete = () => {
+  showDeleteModal.value = false
 }
 
 // 获取文件列表
@@ -746,7 +742,7 @@ const isFileSelected = (itemPath) => {
             v-model="newFolderName" 
             @keyup.enter="confirmNewFolder"
             @keyup.esc="cancelNewFolder"
-            class="upload-input"
+            class="folder-input"
             placeholder="输入文件夹名称"
             autofocus
           />
@@ -754,6 +750,26 @@ const isFileSelected = (itemPath) => {
         <div class="modal-footer">
           <button class="btn-cancel" @click="cancelNewFolder">取消</button>
           <button class="btn-confirm" @click="confirmNewFolder">创建</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 删除确认弹窗 -->
+    <div v-if="showDeleteModal" class="upload-modal-overlay" @click.self="cancelDelete">
+      <div class="upload-modal">
+        <div class="modal-header">
+          <h3><i class="ri-delete-bin-line"></i> 确认删除</h3>
+          <button class="modal-close" @click="cancelDelete">
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="delete-warning">确定要删除选中的 <strong>{{ deleteCount }}</strong> 个文件吗？</p>
+          <p class="delete-hint">此操作不可撤销</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="cancelDelete">取消</button>
+          <button class="btn-delete" @click="confirmDelete">删除</button>
         </div>
       </div>
     </div>
@@ -1461,6 +1477,61 @@ const isFileSelected = (itemPath) => {
 
 .modal-body {
   padding: 20px;
+}
+
+.folder-input {
+  width: 100%;
+  padding: 14px 16px;
+  background: var(--bg-primary, #0f172a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  color: var(--text-primary, #f8fafc);
+  font-size: 15px;
+  outline: none;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.folder-input::placeholder {
+  color: var(--text-muted, #64748b);
+}
+
+.folder-input:focus {
+  border-color: var(--accent-blue, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.delete-warning {
+  font-size: 15px;
+  color: var(--text-primary, #f8fafc);
+  margin: 0 0 8px 0;
+}
+
+.delete-warning strong {
+  color: #ef4444;
+}
+
+.delete-hint {
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+  margin: 0;
+}
+
+.btn-delete {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-delete:hover {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
 }
 
 /* 文件选择区域样式 */

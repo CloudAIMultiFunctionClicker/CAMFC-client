@@ -14,6 +14,7 @@
 use std::time::{SystemTime, Duration};
 use crate::bluetooth::{BluetoothManager, DeviceInfo};
 use tokio::time::sleep;
+use totp_rs::{TOTP, Secret};
 
 // 错误类型别名，简单点就用String
 type CpenError = String;
@@ -60,6 +61,54 @@ impl CpenDeviceManager {
             device_id_cache: None,
             connection_status: "disconnected".to_string(),
         }
+    }
+
+    /// 检查是否DEBUG模式
+    /// 当环境变量 CAMFC_DEBUG=1 时启用DEBUG模式
+    /// DEBUG模式下：
+    /// - ID从环境变量CAMFC_ID获取
+    /// - TOTP密钥从环境变量CAMFC_KEY获取
+    /// - 跳过蓝牙连接，直接本地生成TOTP
+    fn is_debug_mode() -> bool {
+        dotenv::dotenv().ok();
+        std::env::var("CAMFC_DEBUG")
+            .map(|v| v == "1")
+            .unwrap_or(false)
+    }
+
+    /// 从环境变量获取DEBUG模式配置
+    fn get_debug_config() -> Option<(String, String)> {
+        dotenv::dotenv().ok();
+        let id = std::env::var("CAMFC_ID").ok()?;
+        let key = std::env::var("CAMFC_KEY").ok()?;
+        if id.is_empty() || key.is_empty() {
+            return None;
+        }
+        Some((id, key))
+    }
+
+    /// 本地生成TOTP
+    fn generate_totp_locally(secret: &str) -> Result<String, CpenError> {
+        let secret_bytes = Secret::Encoded(secret.to_string())
+            .to_bytes()
+            .map_err(|e| format!("密钥格式错误: {}", e))?;
+        
+        let totp = TOTP::new(
+            totp_rs::Algorithm::SHA1,
+            6,
+            1,
+            30,
+            secret_bytes,
+            None,
+            "CAMFC".to_string(),
+        ).map_err(|e| format!("创建TOTP失败: {}", e))?;
+        
+        let timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(|e| format!("获取时间戳失败: {}", e))?
+            .as_secs();
+        
+        Ok(totp.generate(timestamp))
     }
     
     /// 确保连接到一个Cpen设备（单设备保证的核心！）
@@ -382,6 +431,26 @@ impl CpenDeviceManager {
     pub async fn get_totp(&mut self) -> Result<String, CpenError> {
         println!("===== TOTP获取开始 =====");
         
+        // DEBUG模式：直接从环境变量读取密钥，本地生成TOTP
+        if Self::is_debug_mode() {
+            println!("🔧 DEBUG模式：从环境变量获取TOTP");
+            if let Some((_, key)) = Self::get_debug_config() {
+                match Self::generate_totp_locally(&key) {
+                    Ok(totp) => {
+                        println!("✅ DEBUG模式TOTP生成成功: {}", totp);
+                        println!("===== TOTP获取结束（DEBUG模式） =====");
+                        return Ok(totp);
+                    }
+                    Err(e) => {
+                        println!("❌ DEBUG模式TOTP生成失败: {}", e);
+                        return Err(e);
+                    }
+                }
+            } else {
+                return Err("DEBUG模式需要设置CAMFC_KEY环境变量".to_string());
+            }
+        }
+        
         // 1. 检查是否需要刷新TOTP（提前5秒刷新策略）
         let need_refresh = self.should_refresh_totp();
         
@@ -506,6 +575,17 @@ impl CpenDeviceManager {
     /// 4. 接收并缓存设备ID
     pub async fn get_device_id(&mut self) -> Result<String, CpenError> {
         println!("开始获取设备ID...");
+        
+        // DEBUG模式：直接从环境变量读取ID
+        if Self::is_debug_mode() {
+            println!("🔧 DEBUG模式：从环境变量获取设备ID");
+            if let Some((id, _)) = Self::get_debug_config() {
+                println!("✅ DEBUG模式设备ID: {}", id);
+                return Ok(id);
+            } else {
+                return Err("DEBUG模式需要设置CAMFC_ID环境变量".to_string());
+            }
+        }
         
         // 1. 检查缓存
         if let Some(cached_id) = &self.device_id_cache {

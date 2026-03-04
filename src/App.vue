@@ -8,6 +8,8 @@ Email: abc.cxh2009@foxmail.com
 Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
 Email: 1220594170@qq.com
 
+
+
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -149,6 +151,17 @@ onMounted(async () => {
   
   // 初始化后端配置（只会在应用启动时调用一次）
   await initBackendConfig()
+  
+  // 监听蓝牙按键事件
+  const { listen } = await import('@tauri-apps/api/event')
+  listen('button-event', (event) => {
+    const eventType = event.payload.event_type
+    if (eventType === 'button_press') {
+      showToast('🔘 按键按下', '#3b82f6')
+    } else if (eventType === 'button_release') {
+      showToast('🔘 按键释放', '#10b981')
+    }
+  })
   
   // 监听系统主题变化，如果用户没有手动设置过，就跟着系统变
   const lightMediaQuery = window.matchMedia('(prefers-color-scheme: light)')

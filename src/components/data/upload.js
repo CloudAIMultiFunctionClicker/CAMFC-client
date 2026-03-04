@@ -4,12 +4,13 @@
 import { invoke } from '@tauri-apps/api/core'
 import { showToast } from '../layout/showToast.js'
 import { formatFileSize } from './download.js'
+import { getActiveUploads, setActiveUploads } from './storage.js'
 
 /**
  * 上传文件
  * 
  * 调用Rust端的upload_file命令
- * 支持分片上传和断点续传，分片大小为4MB
+ * 支持分片上传和断点续传，分片大小为256KB
  * 
  * 注意：上传过程可能需要较长时间，特别是大文件
  * 
@@ -177,7 +178,11 @@ export async function selectAndUploadFile(targetPath = '') {
     
     console.info(`文件选择成功，upload_id: ${result.upload_id}，目标路径: ${result.target_path || '根目录'}`)
     showToast(`开始上传到 ${targetPath || '根目录'}: ${extractFileName(result.file_path)}`, '#3b82f6')
-    
+
+    const stored = await getActiveUploads()
+    stored.push(result.upload_id)
+    await setActiveUploads(stored)
+
     return {
       success: true,
       uploadId: result.upload_id,
@@ -229,6 +234,15 @@ export async function uploadFilesFromPaths(filePaths, targetPath = '') {
     
     console.info(`批量上传任务已创建，共 ${result.count} 个文件，目标路径: ${targetPath || '/'}`)
     showToast(`开始上传 ${result.count} 个文件到 ${targetPath || '根目录'}...`, '#3b82f6')
+    
+    // 保存上传ID到本地存储，供传输页面显示进度
+    const stored = await getActiveUploads()
+    for (const uploadId of result.upload_ids) {
+      if (!stored.includes(uploadId)) {
+        stored.push(uploadId)
+      }
+    }
+    await setActiveUploads(stored)
     
     return {
       success: true,
@@ -376,7 +390,6 @@ export async function selectFiles() {
   try {
     console.info('调用Rust端select_files命令')
     
-    // 调用Rust端的文件选择命令
     const result = await invoke('select_files')
     
     if (!result.success) {
@@ -393,7 +406,7 @@ export async function selectFiles() {
     console.info(`选择了 ${result.count} 个文件`)
     return {
       success: true,
-      filePaths: result.file_paths,
+      files: result.files,
       count: result.count
     }
   } catch (error) {

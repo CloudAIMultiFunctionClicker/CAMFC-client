@@ -1,48 +1,93 @@
 <template>
   <div class="notes-container">
     <div class="notes-header">
-      <h1 class="page-title">笔记</h1>
+      <h1 class="page-title">
+        <i class="ri-sticky-note-line page-title-icon"></i>
+        笔记
+      </h1>
       <div class="header-actions">
         <button class="add-btn" @click="showAddModal = true">
           <i class="ri-add-line"></i>
           新建笔记
         </button>
-        <button class="action-btn" @click="importNotes">
-          <i class="ri-upload-line"></i>
-          导入
-        </button>
-        <button class="action-btn" @click="exportNotes">
-          <i class="ri-download-line"></i>
-          导出
-        </button>
+        <div class="dropdown-wrapper" @mouseenter="showImportExportMenu = true" @mouseleave="showImportExportMenu = false">
+          <button class="action-btn">
+            <i class="ri-upload-download-line"></i>
+            导入/导出
+            <i class="ri-arrow-down-s-line"></i>
+          </button>
+          <Transition name="dropdown">
+            <div v-show="showImportExportMenu" class="dropdown-menu">
+              <button class="dropdown-item" @click="importNotes">
+                <i class="ri-upload-line"></i>
+                导入笔记
+              </button>
+              <button class="dropdown-item" @click="exportNotes">
+                <i class="ri-download-line"></i>
+                导出笔记
+              </button>
+            </div>
+          </Transition>
+        </div>
       </div>
     </div>
 
     <div class="notes-content">
-      <div v-if="notes.length === 0" class="empty-state">
+      <div v-if="isLoading" class="loading-state">
+        <div class="loading-spinner"></div>
+        <p>正在加载笔记...</p>
+      </div>
+      
+      <div v-else-if="notes.length === 0" class="empty-state">
         <div class="empty-icon">📝</div>
         <p class="empty-message">还没有笔记</p>
         <p class="empty-desc">点击上方按钮创建您的第一个笔记</p>
       </div>
 
-      <div v-else class="notes-grid">
-        <div
-          v-for="note in notes"
-          :key="note.id"
-          class="note-card"
-          :class="{ active: selectedNote?.id === note.id }"
-          @click="selectNote(note)"
-        >
-          <div class="note-title">{{ note.title }}</div>
-          <div class="note-preview">{{ note.content.substring(0, 50) }}...</div>
-          <div class="note-meta">
-            <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
-            <div class="more-wrapper">
-              <button class="more-btn" @click.stop="openMoreMenu(note, $event)">
-                <i class="ri-more-fill"></i>
-              </button>
+      <div v-else>
+        <div v-if="pageLoading" class="loading-overlay">
+          <div class="loading-spinner"></div>
+          <p>正在加载...</p>
+        </div>
+        <div v-else class="notes-grid">
+          <div
+            v-for="note in currentPageNotes"
+            :key="note.id"
+            class="note-card"
+            :class="{ active: selectedNote?.id === note.id }"
+            @click="selectNote(note)"
+          >
+            <div class="note-title">{{ note.title }}</div>
+            <div class="note-preview">{{ (note.content || '').substring(0, 50) }}...</div>
+            <div class="note-meta">
+              <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
+              <div class="more-wrapper">
+                <button class="more-btn" @click.stop="openMoreMenu(note, $event)">
+                  <i class="ri-more-fill"></i>
+                </button>
+              </div>
             </div>
           </div>
+        </div>
+        
+        <div v-if="totalPages > 1" class="pagination">
+          <button class="page-btn" :disabled="currentPage === 1" @click="prevPage">
+            <i class="ri-arrow-left-s-line"></i>
+          </button>
+          <div class="page-numbers">
+            <button
+              v-for="page in totalPages"
+              :key="page"
+              class="page-num"
+              :class="{ active: page === currentPage }"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </button>
+          </div>
+          <button class="page-btn" :disabled="currentPage === totalPages" @click="nextPage">
+            <i class="ri-arrow-right-s-line"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -53,7 +98,7 @@
           <div class="note-modal-header">
             <span class="note-title-display">{{ selectedNote.title }}</span>
             <div class="note-modal-actions">
-              <button v-if="!isEditing" class="edit-btn" @click="isEditing = true">
+              <button v-if="!isEditing" class="edit-btn" @click="startEditing">
                 <i class="ri-edit-line"></i>
               </button>
               <template v-else>
@@ -61,7 +106,7 @@
                   <i class="ri-check-line"></i>
                 </button>
               </template>
-              <button class="close-btn" @click="selectedNote = null; isEditing = false">
+              <button class="close-btn" @click="handleCloseNote">
                 <i class="ri-close-line"></i>
               </button>
             </div>
@@ -82,34 +127,61 @@
             </div>
           </div>
           <div v-if="isEditing" class="editor-toolbar">
-            <button class="toolbar-btn" @click="insertMarkdown('h1')" title="一级标题&#10;语法: # 标题">
-              <i class="ri-h-1"></i>
-            </button>
-            <button class="toolbar-btn" @click="insertMarkdown('h2')" title="二级标题&#10;语法: ## 标题">
-              <i class="ri-h-2"></i>
-            </button>
-            <button class="toolbar-btn" @click="insertMarkdown('h3')" title="三级标题&#10;语法: ### 标题">
-              <i class="ri-h-3"></i>
-            </button>
+            <div class="toolbar-btn-wrapper">
+              <button class="toolbar-btn" @click="insertMarkdown('h1')">
+                <i class="ri-h-1"></i>
+              </button>
+              <span class="tooltip">一级标题<span class="tooltip-syntax">语法: # 标题</span></span>
+            </div>
+            <div class="toolbar-btn-wrapper">
+              <button class="toolbar-btn" @click="insertMarkdown('h2')">
+                <i class="ri-h-2"></i>
+              </button>
+              <span class="tooltip">二级标题<span class="tooltip-syntax">语法: ## 标题</span></span>
+            </div>
+            <div class="toolbar-btn-wrapper">
+              <button class="toolbar-btn" @click="insertMarkdown('h3')">
+                <i class="ri-h-3"></i>
+              </button>
+              <span class="tooltip">三级标题<span class="tooltip-syntax">语法: ### 标题</span></span>
+            </div>
             <div class="toolbar-divider"></div>
-            <button class="toolbar-btn" @click="insertMarkdown('bold')" title="加粗&#10;语法: **文本**">
-              <i class="ri-bold"></i>
-            </button>
-            <button class="toolbar-btn" @click="insertMarkdown('italic')" title="斜体&#10;语法: *文本*">
-              <i class="ri-italic"></i>
-            </button>
-            <button class="toolbar-btn" @click="insertMarkdown('strike')" title="删除线&#10;语法: ~~文本~~">
-              <i class="ri-strikethrough"></i>
-            </button>
-            <button class="toolbar-btn" @click="insertMarkdown('code')" title="行内代码&#10;语法: `代码`">
-              <i class="ri-code-line"></i>
-            </button>
-            <button class="toolbar-btn" @click="insertMarkdown('list')" title="列表&#10;语法: - 项目">
-              <i class="ri-list-unordered"></i>
-            </button>
-            <button class="toolbar-btn" @click="insertMarkdown('image')" title="图片&#10;语法: ![描述](地址)">
-              <i class="ri-image-line"></i>
-            </button>
+            <div class="toolbar-btn-wrapper">
+              <button class="toolbar-btn" @click="insertMarkdown('bold')">
+                <i class="ri-bold"></i>
+              </button>
+              <span class="tooltip">加粗<span class="tooltip-syntax">语法: **文本**</span></span>
+            </div>
+            <div class="toolbar-btn-wrapper">
+              <button class="toolbar-btn" @click="insertMarkdown('italic')">
+                <i class="ri-italic"></i>
+              </button>
+              <span class="tooltip">斜体<span class="tooltip-syntax">语法: *文本*</span></span>
+            </div>
+            <div class="toolbar-btn-wrapper">
+              <button class="toolbar-btn" @click="insertMarkdown('strike')">
+                <i class="ri-strikethrough"></i>
+              </button>
+              <span class="tooltip">删除线<span class="tooltip-syntax">语法: ~~文本~~</span></span>
+            </div>
+            <div class="toolbar-btn-wrapper">
+              <button class="toolbar-btn" @click="insertMarkdown('code')">
+                <i class="ri-code-line"></i>
+              </button>
+              <span class="tooltip">行内代码<span class="tooltip-syntax">语法: `代码`</span></span>
+            </div>
+            <div class="toolbar-btn-wrapper">
+              <button class="toolbar-btn" @click="insertMarkdown('list')">
+                <i class="ri-list-unordered"></i>
+              </button>
+              <span class="tooltip">列表<span class="tooltip-syntax">语法: - 项目</span></span>
+            </div>
+            <div class="toolbar-btn-wrapper">
+              <button class="toolbar-btn" @click="insertMarkdown('image')">
+                <i class="ri-image-line"></i>
+              </button>
+              <span class="tooltip">图片<span class="tooltip-syntax">语法: ![描述](地址)</span></span>
+            </div>
           </div>
         </div>
       </div>
@@ -209,12 +281,35 @@
         </div>
       </div>
     </Transition>
+
+    <Transition name="modal">
+      <div v-if="showSaveConfirmModal" class="modal-overlay" @click="cancelClose">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h3><i class="ri-save-line"></i> 保存更改</h3>
+            <button class="close-btn" @click="cancelClose">
+              <i class="ri-close-line"></i>
+            </button>
+          </div>
+          <div class="modal-body save-modal-body">
+            <p>您对笔记做了更改，是否保存？</p>
+          </div>
+          <div class="modal-footer">
+            <button class="cancel-btn" @click="discardChanges">不保存</button>
+            <button class="confirm-btn" @click="confirmSave">保存</button>
+          </div>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { invoke } from '@tauri-apps/api/core'
+import { getNotes, setNotes } from '../components/data/storage.js'
+import { showToast } from '../components/layout/showToast.js'
 
 const router = useRouter()
 const notes = ref([])
@@ -229,20 +324,72 @@ const showRenameModal = ref(false)
 const renameNote = ref(null)
 const newNoteName = ref('')
 const isEditing = ref(false)
+const showSaveConfirmModal = ref(false)
+const showImportExportMenu = ref(false)
+let originalContent = ''
+
+const pageSize = 9
+const currentPage = ref(1)
+const isLoading = ref(false)
+const pageLoading = ref(false)
+
+const totalPages = computed(() => Math.ceil(notes.value.length / pageSize) || 1)
+
+const currentPageNotes = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  const end = start + pageSize
+  return notes.value.slice(start, end)
+})
+
+const loadedNotes = ref({})
 
 onMounted(() => {
   loadNotes()
 })
 
-function loadNotes() {
-  const savedNotes = localStorage.getItem('camfc-notes')
-  if (savedNotes) {
-    notes.value = JSON.parse(savedNotes)
+async function loadNotes() {
+  isLoading.value = true
+  const savedNotes = await getNotes()
+  if (savedNotes && savedNotes.trim()) {
+    try {
+      notes.value = JSON.parse(savedNotes)
+    } catch {
+      notes.value = []
+    }
+  } else {
+    notes.value = []
   }
+  isLoading.value = false
+  loadCurrentPageNotes()
 }
 
-function saveNotes() {
-  localStorage.setItem('camfc-notes', JSON.stringify(notes.value))
+async function loadCurrentPageNotes() {
+  pageLoading.value = true
+  loadedNotes.value = {}
+  const pageNotes = currentPageNotes.value
+  for (let i = 0; i < pageNotes.length; i++) {
+    loadedNotes.value[pageNotes[i].id] = true
+    await new Promise(r => setTimeout(r, 30))
+  }
+  pageLoading.value = false
+}
+
+function goToPage(page) {
+  if (page < 1 || page > totalPages.value) return
+  currentPage.value = page
+  loadCurrentPageNotes()
+}
+
+function prevPage() {
+  goToPage(currentPage.value - 1)
+}
+
+function nextPage() {
+  goToPage(currentPage.value + 1)
+}
+
+async function saveNotes() {
+  await setNotes(JSON.stringify(notes.value))
 }
 
 function addNote() {
@@ -333,6 +480,47 @@ function openDeleteFromMenu() {
   }
 }
 
+function startEditing() {
+  if (selectedNote.value) {
+    originalContent = selectedNote.value.content
+  }
+  isEditing.value = true
+}
+
+function handleCloseNote() {
+  if (isEditing.value) {
+    if (selectedNote.value && selectedNote.value.content !== originalContent) {
+      showSaveConfirmModal.value = true
+    } else {
+      selectedNote.value = null
+      isEditing.value = false
+    }
+  } else {
+    selectedNote.value = null
+    isEditing.value = false
+  }
+}
+
+function confirmSave() {
+  saveNote()
+  showSaveConfirmModal.value = false
+  selectedNote.value = null
+  isEditing.value = false
+}
+
+function discardChanges() {
+  if (selectedNote.value) {
+    selectedNote.value.content = notes.value.find(n => n.id === selectedNote.value?.id)?.content || ''
+  }
+  showSaveConfirmModal.value = false
+  selectedNote.value = null
+  isEditing.value = false
+}
+
+function cancelClose() {
+  showSaveConfirmModal.value = false
+}
+
 function renderMarkdown(text) {
   if (!text) return ''
   
@@ -413,43 +601,46 @@ function insertMarkdown(type) {
 
 function formatDate(dateStr) {
   const date = new Date(dateStr)
-  return `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 async function exportNotes() {
-  const data = JSON.stringify(notes.value, null, 2)
-  const blob = new Blob([data], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `camfc-notes-${new Date().toISOString().slice(0, 10)}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  showImportExportMenu.value = false
+  try {
+    const data = JSON.stringify(notes.value, null, 2)
+    const result = await invoke('export_notes_to_file', { notesJson: data })
+    if (result) {
+      showToast('笔记导出成功', '#10b981')
+    }
+  } catch (err) {
+    if (err !== '用户取消操作') {
+      console.error('导出失败:', err)
+      showToast('导出失败', '#ef4444')
+    }
+  }
 }
 
 async function importNotes() {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.json'
-  input.onchange = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    try {
-      const text = await file.text()
-      const importedNotes = JSON.parse(text)
-      if (Array.isArray(importedNotes)) {
-        notes.value = importedNotes
-        saveNotes()
-      }
-    } catch (err) {
+  showImportExportMenu.value = false
+  try {
+    const text = await invoke('import_notes_from_file')
+    const importedNotes = JSON.parse(text)
+    
+    if (Array.isArray(importedNotes)) {
+      notes.value = importedNotes
+      await saveNotes()
+      currentPage.value = 1
+      loadCurrentPageNotes()
+      showToast(`成功导入 ${importedNotes.length} 条笔记`, '#10b981')
+    } else {
+      showToast('文件格式不正确', '#ef4444')
+    }
+  } catch (err) {
+    if (err !== '用户取消操作') {
       console.error('导入失败:', err)
-      alert('导入失败，请检查文件格式')
+      showToast('导入失败，请检查文件格式', '#ef4444')
     }
   }
-  input.click()
 }
 </script>
 
@@ -472,6 +663,14 @@ async function importNotes() {
   font-size: 28px;
   color: var(--text-primary);
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-title-icon {
+  font-size: 28px;
+  color: var(--accent-blue, #3b82f6);
 }
 
 .add-btn {
@@ -525,6 +724,59 @@ async function importNotes() {
   font-size: 16px;
 }
 
+.dropdown-wrapper {
+  position: relative;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  min-width: 150px;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.dropdown-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.dropdown-item:hover {
+  background-color: var(--hover-bg);
+}
+
+.dropdown-item i {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.dropdown-enter-active,
+.dropdown-leave-active {
+  transition: all 0.2s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
 .empty-state {
   text-align: center;
   padding: 80px 20px;
@@ -546,6 +798,110 @@ async function importNotes() {
 
 .empty-desc {
   color: var(--text-muted);
+}
+
+.loading-state {
+  text-align: center;
+  padding: 80px 20px;
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.loading-state p {
+  color: var(--text-secondary);
+  margin-top: 16px;
+}
+
+.loading-overlay {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.loading-overlay p {
+  color: var(--text-secondary);
+  margin-top: 12px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-blue, #3b82f6);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 30px;
+  padding: 20px 0;
+}
+
+.page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background-color: var(--hover-bg);
+  border-color: var(--accent-blue, #3b82f6);
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.page-btn i {
+  font-size: 20px;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 6px;
+}
+
+.page-num {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-num:hover {
+  background-color: var(--hover-bg);
+}
+
+.page-num.active {
+  background-color: var(--accent-blue, #3b82f6);
+  border-color: var(--accent-blue, #3b82f6);
+  color: white;
 }
 
 .notes-grid {
@@ -893,6 +1249,60 @@ async function importNotes() {
   margin: 0 4px;
 }
 
+.toolbar-btn-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar-btn-wrapper:hover .tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(5px);
+  padding: 8px 12px;
+  background-color: var(--bg-primary, #0f172a);
+  color: var(--text-primary, #f8fafc);
+  font-size: 12px;
+  white-space: nowrap;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  pointer-events: none;
+  margin-bottom: 8px;
+  z-index: 100;
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--bg-primary, #0f172a);
+}
+
+.tooltip-syntax {
+  display: block;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border-color, rgba(255, 255, 255, 0.2));
+  font-family: 'Monaco', 'Menlo', monospace;
+  color: var(--accent-blue, #3b82f6);
+  font-size: 11px;
+}
+
 .content-input {
   flex: 1;
   background: none;
@@ -947,6 +1357,10 @@ async function importNotes() {
 
 .modal-body {
   padding: 20px;
+}
+
+.save-modal-body {
+  padding-left: 24px;
 }
 
 .input-wrapper {
