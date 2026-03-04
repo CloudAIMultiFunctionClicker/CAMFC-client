@@ -1,3 +1,32 @@
+/**
+ * CAMFC Client - 存储管理模块
+ * 
+ * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+ * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+ *
+ * Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+ * Email: abc.cxh2009@foxmail.com
+ *
+ * Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+ * Email: 1220594170@qq.com
+ *
+ * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+ * Email: admin@mc666.top
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 import { invoke } from '@tauri-apps/api/core'
 import { openPath } from '@tauri-apps/plugin-opener'
 
@@ -194,4 +223,39 @@ export async function getTheme() {
 
 export async function setTheme(theme) {
   return saveAppData('theme', theme)
+}
+
+// Note缓存相关函数
+export async function getCachedNotes() {
+  try {
+    const cachedData = await loadAppData('cached_notes')
+    if (cachedData) {
+      return JSON.parse(cachedData)
+    }
+  } catch (error) {
+    console.log('读取缓存笔记失败:', error)
+  }
+  return null
+}
+
+export async function setCachedNotes(notes) {
+  try {
+    // 只缓存前9个笔记
+    const notesToCache = notes.slice(0, 9)
+    await saveAppData('cached_notes', JSON.stringify(notesToCache))
+    return true
+  } catch (error) {
+    console.log('保存缓存笔记失败:', error)
+    return false
+  }
+}
+
+export async function clearCachedNotes() {
+  try {
+    await saveAppData('cached_notes', '')
+    return true
+  } catch (error) {
+    console.log('清理缓存笔记失败:', error)
+    return false
+  }
 }

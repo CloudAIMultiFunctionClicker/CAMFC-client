@@ -8,6 +8,9 @@ Email: abc.cxh2009@foxmail.com
 Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
 Email: 1220594170@qq.com
 
+Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+Email: admin@mc666.top
+
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -37,8 +40,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       <p class="start-hint">点击按钮开始连接蓝牙设备</p>
     </div>
     
-    <!-- 弹跳进度条（连接中显示） -->
-    <div class="progress-container" v-if="isConnecting && hasStarted">
+    <!-- 弹跳进度条（连接中或扫描中显示） -->
+    <div class="progress-container" v-if="(isConnecting && hasStarted) || isScanning">
       <div class="bouncing-progress"></div>
     </div>
     
