@@ -1,21 +1,21 @@
 <template>
   <div class="float-container" @mousedown="startDrag">
     <span class="float-title">CAMFC Cloud</span>
-    <span 
-      class="connection-status" 
+    <span
+      class="connection-status"
       :class="{ connected: isConnected }"
       @click="handleConnectionClick"
     >
       {{ isConnected ? '已连接' : '未连接' }}
     </span>
     <div class="float-buttons">
-      <button class="float-btn" @click.stop="openMainPage('/main')">
-        <i class="ri-cloud-line"></i>
+      <button class="float-btn" @click.stop="openMainPage('/fileView')" title="云盘">
+        <i class="ri-hard-drive-2-line"></i>
       </button>
-      <button class="float-btn" @click.stop="openMainPage('/notes')">
+      <button class="float-btn" @click.stop="openMainPage('/notes')" title="笔记">
         <i class="ri-sticky-note-line"></i>
       </button>
-      <button class="float-btn" @click.stop="openMainPage('/settings')">
+      <button class="float-btn" @click.stop="openMainPage('/settings')" title="设置">
         <i class="ri-settings-3-line"></i>
       </button>
     </div>
@@ -145,62 +145,63 @@ html, body {
   height: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 10px;
+  padding: 0 12px;
   gap: 8px;
-  background-color: var(--bg-secondary, rgba(30, 41, 59, 0.95));
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background-color: #f5f5f5;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   cursor: move;
   user-select: none;
 }
 
 .float-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary, #f8fafc);
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
   white-space: nowrap;
   line-height: 1;
 }
 
 .connection-status {
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background-color: rgba(255, 107, 107, 0.9);
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: #ff6b6b;
   color: white;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
-  line-height: 1.2;
+  line-height: 1.4;
 }
 
 .connection-status:hover {
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .connection-status.connected {
-  background-color: rgba(85, 170, 85, 0.9);
+  background-color: #52c41a;
 }
 
 .connection-status.connected:hover {
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .float-buttons {
   display: flex;
   gap: 4px;
+  margin-left: auto;
 }
 
 .float-btn {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  font-size: 14px;
+  font-size: 13px;
   background-color: transparent;
-  color: var(--text-secondary, #94a3b8);
+  color: #666;
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -209,7 +210,7 @@ html, body {
 }
 
 .float-btn:hover {
-  background-color: rgba(59, 130, 246, 0.3);
-  color: #3b82f6;
+  background-color: rgba(0, 0, 0, 0.06);
+  color: #333;
 }
 </style>

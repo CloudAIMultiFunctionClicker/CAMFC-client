@@ -108,13 +108,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       </button>
     </div>
 
-    <!-- 右下角跳过按钮 -->
-    <button 
-      class="skip-to-main-btn"
-      @click="skipToMain"
-    >
-      跳过
-    </button>
   </div>
 </template>
 
@@ -730,27 +723,6 @@ onMounted(() => {
   background-color: #4a994a;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(85, 170, 85, 0.3);
-}
-
-/* 右下角跳过按钮 */
-.skip-to-main-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 10px 24px;
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.skip-to-main-btn:hover {
-  background-color: var(--accent-blue);
-  color: white;
-  border-color: var(--accent-blue);
 }
 
 /* 设备选择界面 */

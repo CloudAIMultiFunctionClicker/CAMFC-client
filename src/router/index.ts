@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+// @ts-ignore
 import { useBluetoothStore } from '../stores/bluetooth.js'
 
 /**
@@ -89,16 +90,22 @@ const router = createRouter({
 
 // 路由守卫：蓝牙未连接时阻止跳转到其他路由
 // 简单粗暴：只要不是首页，就检查蓝牙连接状态
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   // 如果是首页，直接放行
   if (to.path === '/') {
     next()
     return
   }
-  
+
+  // 悬浮窗页面不需要蓝牙连接，直接放行
+  if (to.path === '/float') {
+    next()
+    return
+  }
+
   // 获取蓝牙store
   const bluetoothStore = useBluetoothStore()
-  
+
   // 检查蓝牙是否已连接
   if (bluetoothStore.isConnected()) {
     next()
