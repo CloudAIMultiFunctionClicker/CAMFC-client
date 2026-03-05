@@ -57,6 +57,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
           v-for="device in deviceList" 
           :key="device.address"
           class="device-item"
+          :class="{ 'device-item-disabled': isConnectingDevice }"
           @click="selectDevice(device)"
         >
           <span class="device-name">{{ device.name }}</span>
@@ -156,6 +157,9 @@ const showDeviceSelection = ref(false)
 const deviceList = ref([])
 const isScanning = ref(false)
 
+// 设备连接防重复点击
+const isConnectingDevice = ref(false)
+
 // 状态计算（直接从store获取连接状态和错误信息）
 // 注意：TOTP和deviceId不再从store读取，改为直接调用Rust命令
 const isConnecting = computed(() => bluetoothStore.isConnecting())
@@ -221,6 +225,10 @@ async function rescanDevices() {
  * 选择设备并连接
  */
 async function selectDevice(device) {
+  if (isConnectingDevice.value) return
+  
+  isConnectingDevice.value = true
+  
   try {
     console.log(`用户选择设备: ${device.name} (${device.address})`)
     
@@ -233,12 +241,13 @@ async function selectDevice(device) {
     
     showDeviceSelection.value = false
     
-    // 连接成功后开始获取TOTP
     await afterDeviceConnected()
   } catch (error) {
     console.error('连接设备失败:', error)
     bluetoothStore.setError('连接失败')
     showToast('连接失败: ' + error.message)
+  } finally {
+    isConnectingDevice.value = false
   }
 }
 
@@ -801,6 +810,12 @@ onMounted(() => {
 .device-item:hover {
   border-color: var(--accent-blue);
   background-color: var(--bg-secondary);
+}
+
+.device-item-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .device-name {
