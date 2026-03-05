@@ -181,9 +181,9 @@ const showConnectionFailed = computed(() => {
 // 监听连接成功状态
 watch(isConnected, (newVal) => {
   if (newVal) {
-    // 设备连接成功，开始倒计时
-    console.log('设备已连接，开始5秒倒计时')
-    startCountdown()
+    // 设备连接成功，直接跳转到主页面
+    console.log('设备已连接，直接跳转到主页面')
+    jumpToFileView()
     // 连接成功，清除超时状态
     connectionTimedOut.value = false
   }

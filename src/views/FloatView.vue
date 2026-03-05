@@ -45,7 +45,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       <button class="float-btn" @click.stop="openMainPage('/settings')" title="设置">
         <i class="ri-settings-3-line"></i>
       </button>
-      <button class="float-btn open-main-btn" @click.stop="openMainWindow" title="打开主窗口">
+      <button v-if="!isMainWindowVisible" class="float-btn open-main-btn" @click.stop="openMainWindow" title="打开主窗口">
         <i class="ri-home-2-line"></i>
         <span class="btn-text">主窗口</span>
       </button>
@@ -72,10 +72,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 <script setup>
 import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
-import { getCurrentWindow } from '@tauri-apps/api/window'
+import { getCurrentWindow, Window } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
 
 const isConnected = ref(false)
+const isMainWindowVisible = ref(true)
 
 // 点击外部指令的处理函数
 let clickOutsideHandler = null
@@ -99,15 +100,40 @@ onBeforeUnmount(() => {
 const showNoteMenu = ref(false)
 
 let keepOnTopInterval = null
+let visibilityCheckInterval = null
 
 onMounted(async () => {
   console.log('FloatView mounted')
-  
+
   const unlisten = await listen('connection-status', (event) => {
     console.log('收到连接状态事件:', event.payload)
     isConnected.value = event.payload
   })
-  
+
+  // 检查主窗口可见性状态
+  const checkMainWindowVisibility = async () => {
+    try {
+      const mainWindow = await Window.getByLabel('main')
+      if (mainWindow) {
+        isMainWindowVisible.value = await mainWindow.isVisible()
+      } else {
+        isMainWindowVisible.value = false
+      }
+    } catch (e) {
+      console.error('检查主窗口可见性失败:', e)
+      isMainWindowVisible.value = false
+    }
+  }
+
+  // 初始检查
+  await checkMainWindowVisibility()
+
+  // 定期检查主窗口可见性（每500毫秒检查一次，响应更快）
+  visibilityCheckInterval = setInterval(async () => {
+    await checkMainWindowVisibility()
+  }, 500)
+
+  // 保持置顶（每5秒执行一次）
   keepOnTopInterval = setInterval(async () => {
     try {
       const floatWindow = await getCurrentWindow()
@@ -116,11 +142,14 @@ onMounted(async () => {
       console.error('保持置顶失败:', e)
     }
   }, 5000)
-  
+
   onUnmounted(() => {
     unlisten()
     if (keepOnTopInterval) {
       clearInterval(keepOnTopInterval)
+    }
+    if (visibilityCheckInterval) {
+      clearInterval(visibilityCheckInterval)
     }
   })
 })
@@ -151,7 +180,8 @@ async function openMainPage(path) {
   console.log('点击按钮，目标是:', path)
 
   try {
-    const mainWindow = await WebviewWindow.getByLabel('main')
+    // 使用 Window.getByLabel 获取主窗口
+    const mainWindow = await Window.getByLabel('main')
 
     // 检查主窗口是否存在且没有被关闭
     if (mainWindow) {
@@ -161,15 +191,30 @@ async function openMainPage(path) {
         
         if (isVisible) {
           console.log('主窗口可见，聚焦并导航')
+          // 取消最小化（如果窗口被最小化）
+          await mainWindow.unminimize()
+          // 将窗口提到前台并聚焦
+          await mainWindow.show()
+          await mainWindow.center()
           await mainWindow.setFocus()
-          await mainWindow.emit('navigate', path)
+          // 发送导航事件
+          const webview = await WebviewWindow.getByLabel('main')
+          if (webview) {
+            await webview.emit('navigate', path)
+          }
           console.log('发送导航事件:', path)
         } else {
           // 窗口存在但不可见（可能在托盘），显示窗口
           console.log('主窗口在托盘，显示并聚焦')
           await mainWindow.show()
+          await mainWindow.unminimize()
+          await mainWindow.center()
           await mainWindow.setFocus()
-          await mainWindow.emit('navigate', path)
+          // 发送导航事件
+          const webview = await WebviewWindow.getByLabel('main')
+          if (webview) {
+            await webview.emit('navigate', path)
+          }
           console.log('显示窗口并发送导航事件:', path)
         }
       } catch (windowError) {
@@ -260,34 +305,46 @@ function handleClickOutside(event) {
  */
 async function openMainWindow() {
   console.log('打开主窗口')
-  
+
   try {
-    const mainWindow = await WebviewWindow.getByLabel('main')
-    
+    // 使用 Window.getByLabel 获取主窗口
+    const mainWindow = await Window.getByLabel('main')
+
     if (mainWindow) {
       try {
         // 检查窗口是否可见
         const isVisible = await mainWindow.isVisible()
-        
+
         if (isVisible) {
           console.log('主窗口已可见，聚焦')
+          // 取消最小化（如果窗口被最小化）
+          await mainWindow.unminimize()
+          // 将窗口提到前台并聚焦
+          await mainWindow.show()
+          await mainWindow.center()
           await mainWindow.setFocus()
         } else {
           // 窗口存在但不可见（可能在托盘），显示窗口
           console.log('主窗口在托盘，显示并聚焦')
           await mainWindow.show()
+          await mainWindow.unminimize()
+          await mainWindow.center()
           await mainWindow.setFocus()
         }
+        // 更新状态为可见
+        isMainWindowVisible.value = true
       } catch (windowError) {
         // 窗口出错，重新创建
         console.log('主窗口出错，重新创建:', windowError)
         await createMainWindow('/')
+        isMainWindowVisible.value = true
       }
     } else {
       console.log('主窗口不存在，创建新窗口')
       await createMainWindow('/')
+      isMainWindowVisible.value = true
     }
-    
+
   } catch (e) {
     console.error('打开主窗口失败:', e)
     alert('打开主窗口失败: ' + e)
