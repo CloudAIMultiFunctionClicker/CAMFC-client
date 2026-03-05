@@ -32,7 +32,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useBluetoothStore } from './stores/bluetooth.js'
 
 import {showToast} from './components/layout/showToast.js'
-import { clearCachedNotes, clearLocalNotes } from './components/data/storage.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -196,8 +195,6 @@ onMounted(async () => {
   // 在组件卸载时清理监听器
   onUnmounted(() => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
-    // 应用退出时清理缓存的笔记
-    clearCachedNotes()
   })
   
 

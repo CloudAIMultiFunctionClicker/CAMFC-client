@@ -333,12 +333,26 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { invoke } from '@tauri-apps/api/core'
-import { getNotes, setNotes, getCachedNotes, setCachedNotes } from '../components/data/storage.js'
 import { showToast } from '../components/layout/showToast.js'
 
-const router = useRouter()
+const NOTES_KEY = 'camfc_notes'
+
+function loadNotesFromStorage() {
+  try {
+    const data = localStorage.getItem(NOTES_KEY)
+    return data ? JSON.parse(data) : []
+  } catch {
+    return []
+  }
+}
+
+function saveNotesToStorage(notesData) {
+  try {
+    localStorage.setItem(NOTES_KEY, JSON.stringify(notesData))
+  } catch (e) {
+    console.error('保存笔记失败:', e)
+  }
+}
 const notes = ref([])
 const selectedNote = ref(null)
 const showAddModal = ref(false)
@@ -371,23 +385,18 @@ const currentPageNotes = computed(() => {
 const loadedNotes = ref({})
 
 onMounted(() => {
-  loadNotesWithCache()
+  loadNotes()
 })
 
-async function loadNotes() {
+function loadNotes() {
   isLoading.value = true
-  const savedNotes = await getNotes()
-  if (savedNotes && savedNotes.trim()) {
-    try {
-      notes.value = JSON.parse(savedNotes)
-    } catch {
-      notes.value = []
-    }
+  const savedNotes = loadNotesFromStorage()
+  if (savedNotes && savedNotes.length > 0) {
+    notes.value = savedNotes
   } else {
     notes.value = []
   }
   
-  // 如果没有任何笔记，创建默认笔记
   if (notes.value.length === 0) {
     console.log('没有笔记，创建默认笔记')
     const defaultNotes = [{
@@ -400,60 +409,24 @@ async function loadNotes() {
       isPinned: false
     }]
     notes.value = defaultNotes
-    // 保存到云端（异步）
-    await saveNotes()
+    saveNotesToStorage(notes.value)
   }
   
   isLoading.value = false
   loadCurrentPageNotes()
 }
 
-async function loadNotesWithCache() {
-  isLoading.value = true
-  
-  // 先尝试从缓存加载前9个笔记
-  const cachedNotes = await getCachedNotes()
-  if (cachedNotes && cachedNotes.length > 0) {
-    notes.value = cachedNotes
-    isLoading.value = false
-    loadCurrentPageNotes()
-    
-    // 后台异步加载完整数据
-    loadFullNotes()
-  } else {
-    // 没有缓存，正常加载
-    await loadNotes()
-    // 加载完成后更新缓存
-    if (notes.value.length > 0) {
-      await setCachedNotes(notes.value)
-    }
-  }
-}
-
-async function loadFullNotes() {
-  const savedNotes = await getNotes()
-  if (savedNotes && savedNotes.trim()) {
-    try {
-      const fullNotes = JSON.parse(savedNotes)
-      // 更新缓存
-      await setCachedNotes(fullNotes)
-      // 更新显示（保持当前页）
-      notes.value = fullNotes
-    } catch (error) {
-      console.log('加载完整笔记失败:', error)
-    }
-  }
-}
-
-async function loadCurrentPageNotes() {
+function loadCurrentPageNotes() {
   pageLoading.value = true
   loadedNotes.value = {}
   const pageNotes = currentPageNotes.value
   for (let i = 0; i < pageNotes.length; i++) {
     loadedNotes.value[pageNotes[i].id] = true
-    await new Promise(r => setTimeout(r, 30))
   }
   pageLoading.value = false
+  setTimeout(() => {
+    pageLoading.value = false
+  }, 50)
 }
 
 function goToPage(page) {
@@ -470,10 +443,8 @@ function nextPage() {
   goToPage(currentPage.value + 1)
 }
 
-async function saveNotes() {
-  await setNotes(JSON.stringify(notes.value))
-  // 保存时同时更新缓存
-  await setCachedNotes(notes.value)
+function saveNotes() {
+  saveNotesToStorage(notes.value)
 }
 
 function addNote() {
@@ -688,43 +659,55 @@ function formatDate(dateStr) {
   return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-async function exportNotes() {
+function exportNotes() {
   showImportExportMenu.value = false
   try {
     const data = JSON.stringify(notes.value, null, 2)
-    const result = await invoke('export_notes_to_file', { notesJson: data })
-    if (result) {
-      showToast('笔记导出成功', '#10b981')
-    }
+    const blob = new Blob([data], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `camfc-notes-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    showToast('笔记导出成功', '#10b981')
   } catch (err) {
-    if (err !== '用户取消操作') {
-      console.error('导出失败:', err)
-      showToast('导出失败', '#ef4444')
-    }
+    console.error('导出失败:', err)
+    showToast('导出失败', '#ef4444')
   }
 }
 
-async function importNotes() {
+function importNotes() {
   showImportExportMenu.value = false
-  try {
-    const text = await invoke('import_notes_from_file')
-    const importedNotes = JSON.parse(text)
-    
-    if (Array.isArray(importedNotes)) {
-      notes.value = importedNotes
-      await saveNotes()
-      currentPage.value = 1
-      loadCurrentPageNotes()
-      showToast(`成功导入 ${importedNotes.length} 条笔记`, '#10b981')
-    } else {
-      showToast('文件格式不正确', '#ef4444')
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.onchange = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const importedNotes = JSON.parse(event.target.result)
+        if (Array.isArray(importedNotes)) {
+          notes.value = importedNotes
+          saveNotes()
+          currentPage.value = 1
+          loadCurrentPageNotes()
+          showToast(`成功导入 ${importedNotes.length} 条笔记`, '#10b981')
+        } else {
+          showToast('文件格式不正确', '#ef4444')
+        }
+      } catch (err) {
+        console.error('导入失败:', err)
+        showToast('导入失败，请检查文件格式', '#ef4444')
+      }
     }
-  } catch (err) {
-    if (err !== '用户取消操作') {
-      console.error('导入失败:', err)
-      showToast('导入失败，请检查文件格式', '#ef4444')
-    }
+    reader.readAsText(file)
   }
+  input.click()
 }
 </script>
 
