@@ -37,13 +37,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     </span>
     <div class="float-buttons">
       <button class="float-btn" @click.stop="openMainPage('/fileView')" title="云盘">
-        <i class="ri-hard-drive-2-line"></i>
+        <i class="ri-cloud-line"></i>
       </button>
       <button class="float-btn note-btn" @click.stop="toggleNoteMenu" title="笔记">
         <i class="ri-sticky-note-line"></i>
       </button>
       <button class="float-btn" @click.stop="openMainPage('/settings')" title="设置">
         <i class="ri-settings-3-line"></i>
+      </button>
+      <button class="float-btn open-main-btn" @click.stop="openMainWindow" title="打开主窗口">
+        <i class="ri-home-2-line"></i>
+        <span class="btn-text">主窗口</span>
       </button>
     </div>
 
@@ -152,16 +156,25 @@ async function openMainPage(path) {
     // 检查主窗口是否存在且没有被关闭
     if (mainWindow) {
       try {
-        // 尝试获取窗口状态，如果窗口已关闭会抛出错误
-        await mainWindow.isVisible()
-
-        console.log('主窗口存在，聚焦并导航')
-        await mainWindow.setFocus()
-        await mainWindow.emit('navigate', path)
-        console.log('发送导航事件:', path)
+        // 检查窗口是否可见（包括是否在托盘）
+        const isVisible = await mainWindow.isVisible()
+        
+        if (isVisible) {
+          console.log('主窗口可见，聚焦并导航')
+          await mainWindow.setFocus()
+          await mainWindow.emit('navigate', path)
+          console.log('发送导航事件:', path)
+        } else {
+          // 窗口存在但不可见（可能在托盘），显示窗口
+          console.log('主窗口在托盘，显示并聚焦')
+          await mainWindow.show()
+          await mainWindow.setFocus()
+          await mainWindow.emit('navigate', path)
+          console.log('显示窗口并发送导航事件:', path)
+        }
       } catch (windowError) {
-        // 窗口已关闭，需要重新创建
-        console.log('主窗口已关闭，重新创建')
+        // 窗口已关闭或出错，需要重新创建
+        console.log('主窗口出错，重新创建:', windowError)
         await createMainWindow(path)
       }
     } else {
@@ -238,6 +251,46 @@ function handleClickOutside(event) {
   // 如果菜单显示，且点击的不是笔记按钮，则关闭菜单
   if (showNoteMenu.value && !event.target.closest('.note-btn')) {
     closeNoteMenu()
+  }
+}
+
+/**
+ * 打开主窗口
+ * 专门用于显示主窗口，不指定具体页面路径
+ */
+async function openMainWindow() {
+  console.log('打开主窗口')
+  
+  try {
+    const mainWindow = await WebviewWindow.getByLabel('main')
+    
+    if (mainWindow) {
+      try {
+        // 检查窗口是否可见
+        const isVisible = await mainWindow.isVisible()
+        
+        if (isVisible) {
+          console.log('主窗口已可见，聚焦')
+          await mainWindow.setFocus()
+        } else {
+          // 窗口存在但不可见（可能在托盘），显示窗口
+          console.log('主窗口在托盘，显示并聚焦')
+          await mainWindow.show()
+          await mainWindow.setFocus()
+        }
+      } catch (windowError) {
+        // 窗口出错，重新创建
+        console.log('主窗口出错，重新创建:', windowError)
+        await createMainWindow('/')
+      }
+    } else {
+      console.log('主窗口不存在，创建新窗口')
+      await createMainWindow('/')
+    }
+    
+  } catch (e) {
+    console.error('打开主窗口失败:', e)
+    alert('打开主窗口失败: ' + e)
   }
 }
 </script>
@@ -322,12 +375,12 @@ html, body {
 }
 
 .float-btn {
-  width: 22px;
+  min-width: 22px;
   height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 0 6px;
   font-size: 13px;
   background-color: transparent;
   color: #666;
@@ -336,6 +389,7 @@ html, body {
   cursor: pointer;
   transition: all 0.2s;
   line-height: 1;
+  gap: 4px;
 }
 
 .float-btn:hover {
@@ -347,6 +401,24 @@ html, body {
 .note-btn.active {
   background-color: rgba(59, 130, 246, 0.15);
   color: #3b82f6;
+}
+
+/* 打开主窗口按钮 - 特殊样式 */
+.open-main-btn {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.open-main-btn:hover {
+  background-color: rgba(76, 175, 80, 0.2);
+  color: #2e7d32;
+}
+
+/* 按钮文字样式 */
+.btn-text {
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* 扩散动画遮罩 - 适配扁平悬浮窗 */
@@ -398,11 +470,11 @@ html, body {
   background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  padding: 8px 12px;
+  padding: 6px 8px;
   z-index: 1001;
   display: flex;
   flex-direction: row;
-  gap: 8px;
+  gap: 4px;
   animation: menu-slide-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
@@ -419,17 +491,17 @@ html, body {
 
 .menu-item {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 8px 12px;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
   color: #333;
   font-size: 11px;
-  min-width: 56px;
+  white-space: nowrap;
 }
 
 .menu-item:hover {
@@ -437,12 +509,18 @@ html, body {
 }
 
 .menu-item i {
-  font-size: 18px;
+  font-size: 16px;
   color: #666;
+  flex-shrink: 0;
 }
 
 .menu-item:hover i {
   color: #3b82f6;
+}
+
+.menu-item span {
+  font-size: 11px;
+  color: #333;
 }
 
 .menu-item.back:hover {
