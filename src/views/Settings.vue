@@ -78,38 +78,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       </div>
 
       <div v-else-if="activeNav === 'ui'" class="settings-panel">
-        <h3>界面缩放</h3>
-        <div class="setting-item">
-          <span>界面缩放</span>
-          <div class="scale-container">
-            <input 
-              type="range" 
-              min="80" 
-              max="120" 
-              :value="previewScaleFactor * 100" 
-              class="slider"
-              @input="updatePreviewScale"
-            >
-            <span class="scale-value">{{ Math.round(previewScaleFactor * 100) }}%</span>
-          </div>
-        </div>
-        
-        <div class="scale-preview-box">
-          <h4>预览效果</h4>
-          <div class="preview-content" :style="{ transform: `scale(${previewScaleFactor})` }">
-            <div class="preview-text">示例文字大小</div>
-            <button class="preview-btn">示例按钮</button>
-            <div class="preview-card">
-              <div class="preview-card-title">卡片标题</div>
-              <div class="preview-card-content">这是一段示例内容文字</div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="scale-preview-actions" v-if="previewScaleFactor !== scaleFactor">
-          <button class="action-btn" @click="confirmScale">确认应用</button>
-          <button class="action-btn secondary" @click="cancelScale">取消</button>
-        </div>
+        <h3>界面设置</h3>
+        <div class="placeholder-text">界面设置功能开发中...</div>
       </div>
 
       <div v-else-if="activeNav === 'theme'" class="settings-panel">
@@ -185,7 +155,7 @@ const cpenSettings = ref({
   autoConnect: false
 })
 
-const previewScaleFactor = ref(1)
+
 
 const deviceId = ref(null)
 const isFilesystemLoggedIn = ref(false)
@@ -193,14 +163,14 @@ const isFilesystemLoggedIn = ref(false)
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
   { id: 'account', label: '账户', icon: 'ri-user-line' },
-  { id: 'ui', label: '界面缩放和布局', icon: 'ri-layout-grid-line' },
+  { id: 'ui', label: '界面设置', icon: 'ri-layout-grid-line' },
   { id: 'theme', label: '深色模式', icon: 'ri-moon-line' },
   { id: 'storage', label: '储存空间管理', icon: 'ri-hard-drive-line' },
   { id: 'help', label: '帮助与反馈', icon: 'ri-question-line' },
   { id: 'about', label: '关于', icon: 'ri-information-line' }
 ]
 
-const scaleFactor = ref(1)
+
 
 const toggleAutoConnect = () => {
   cpenSettings.value.autoConnect = !cpenSettings.value.autoConnect
@@ -247,28 +217,7 @@ const logout = async () => {
   }, 500)
 }
 
-const updatePreviewScale = (event) => {
-  const value = event.target.value
-  previewScaleFactor.value = value / 100
-  // 只在预览框中显示效果，不影响整个页面
-}
 
-const confirmScale = () => {
-  const value = previewScaleFactor.value * 100
-  scaleFactor.value = previewScaleFactor.value
-  localStorage.setItem('scale-factor', value)
-  showToast(`界面缩放已保存为 ${Math.round(value)}%，页面即将刷新`, '#3b82f6')
-  
-  // 延迟刷新，让用户看到提示
-  setTimeout(() => {
-    window.location.reload()
-  }, 800)
-}
-
-const cancelScale = () => {
-  // 恢复到之前的缩放设置
-  previewScaleFactor.value = scaleFactor.value
-}
 
 
 
@@ -280,18 +229,6 @@ const clearCache = () => {
 }
 
 onMounted(() => {
-  const savedScale = localStorage.getItem('scale-factor')
-  if (savedScale) {
-    const value = parseFloat(savedScale)
-    scaleFactor.value = value / 100
-    previewScaleFactor.value = value / 100
-    document.body.style.transform = `scale(${value / 100})`
-    document.body.style.transformOrigin = 'top left'
-    document.body.style.width = `${100 / value * 100}%`
-  } else {
-    previewScaleFactor.value = scaleFactor.value
-  }
-  
   checkFilesystemLogin()
 })
 </script>
@@ -458,88 +395,7 @@ onMounted(() => {
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
 }
 
-.action-btn.secondary:hover {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-}
 
-.scale-preview-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 16px;
-  margin-bottom: 24px;
-}
-
-.scale-preview-box {
-  background-color: var(--bg-secondary, #1e293b);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 16px;
-  overflow: hidden;
-  position: relative;
-}
-
-.scale-preview-box h4 {
-  color: var(--text-primary, #f1f5f9);
-  font-size: 16px;
-  margin: 0 0 16px 0;
-}
-
-.preview-content {
-  background-color: var(--bg-primary, #0f172a);
-  border-radius: 8px;
-  padding: 16px;
-  min-height: 120px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  transition: transform 0.2s ease;
-  transform-origin: top left;
-  will-change: transform;
-  width: fit-content;
-  min-width: 200px;
-}
-
-.preview-text {
-  color: var(--text-primary, #f1f5f9);
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.preview-btn {
-  background-color: var(--accent-blue, #3b82f6);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
-  cursor: pointer;
-  align-self: flex-start;
-  transition: background-color 0.2s ease;
-}
-
-.preview-btn:hover {
-  background-color: #2563eb;
-}
-
-.preview-card {
-  background-color: var(--bg-secondary, #1e293b);
-  border-radius: 6px;
-  padding: 12px;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-}
-
-.preview-card-title {
-  color: var(--text-primary, #f1f5f9);
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-.preview-card-content {
-  color: var(--text-secondary, #94a3b8);
-  font-size: 13px;
-  line-height: 1.4;
-}
 
 .action-btn.danger {
   background-color: rgba(220, 53, 69, 0.2);
@@ -551,36 +407,7 @@ onMounted(() => {
   background-color: rgba(220, 53, 69, 0.3);
 }
 
-.slider {
-  width: 120px;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--border-color, rgba(255, 255, 255, 0.2));
-  cursor: pointer;
-  -webkit-appearance: none;
-}
 
-.slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--accent-blue, #3b82f6);
-  cursor: pointer;
-}
-
-.scale-container {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.scale-value {
-  min-width: 50px;
-  color: var(--text-muted, #64748b);
-  font-size: 14px;
-  font-weight: 500;
-}
 
 .storage-info {
   margin-bottom: 20px;

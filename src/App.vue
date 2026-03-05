@@ -200,25 +200,7 @@ onMounted(async () => {
     clearCachedNotes()
   })
   
-  // 监听窗口关闭事件
-  try {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    const appWindow = getCurrentWindow()
-    
-    appWindow.onCloseRequested(async (event) => {
-      console.log('应用即将关闭，清理缓存...')
-      await clearCachedNotes()
-      
-      console.log('清理本地笔记文件...')
-      await clearLocalNotes()
-      
-      // 允许窗口关闭
-      event.preventDefault()
-      await appWindow.close()
-    })
-  } catch (e) {
-    console.log('窗口关闭监听失败（非Tauri环境）:', e)
-  }
+
   
 // 窗口启动后，不再自动连接Cpen设备
 // 因为InitialView.vue现在是专门的连接界面，它会处理连接

@@ -34,10 +34,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     
     <!-- 开始连接按钮（初始状态显示） -->
     <div class="start-container" v-if="!hasStarted">
-      <button class="start-btn" @click="handleStartConnection">
-        开始连接
+      <button 
+        class="start-btn" 
+        @click="handleStartConnection"
+        :disabled="isStarting"
+      >
+        {{ isStarting ? '连接中...' : '开始连接' }}
       </button>
-      <p class="start-hint">点击按钮开始连接蓝牙设备</p>
+      <p class="start-hint">{{ isStarting ? '正在初始化蓝牙连接...' : '点击按钮开始连接蓝牙设备' }}</p>
     </div>
     
     <!-- 弹跳进度条（连接中或扫描中显示） -->
@@ -137,6 +141,9 @@ const bluetoothStore = useBluetoothStore()
 
 // 是否已经开始连接（点击了开始按钮）
 const hasStarted = ref(false)
+
+// 是否正在启动连接（防呆设计，防止重复点击）
+const isStarting = ref(false)
 
 // 倒计时相关状态
 const showCountdown = ref(false)
@@ -361,11 +368,31 @@ function jumpToFileView() {
 /**
  * 处理开始连接按钮点击
  * 用户点击"开始连接"按钮后才初始化蓝牙连接
+ * 添加防呆设计：防止重复点击导致多次连接
  */
-function handleStartConnection() {
+async function handleStartConnection() {
+  // 防呆检查：如果已经在连接中，直接返回
+  if (isStarting.value) {
+    console.log('连接已在进行中，忽略重复点击')
+    return
+  }
+
   console.log('用户点击开始连接')
-  hasStarted.value = true
-  scanDevices()
+
+  // 设置防呆标志，防止重复点击
+  isStarting.value = true
+
+  try {
+    hasStarted.value = true
+    await scanDevices()
+  } catch (error) {
+    console.error('开始连接失败:', error)
+    // 出错时重置状态，允许用户重试
+    isStarting.value = false
+    hasStarted.value = false
+  }
+  // 注意：成功开始扫描后，isStarting 保持 true 直到页面状态改变
+  // 扫描完成后由其他逻辑控制 hasStarted 状态
 }
 
 /**
@@ -559,6 +586,14 @@ onMounted(() => {
 
 .start-btn:active {
   transform: translateY(0);
+}
+
+.start-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
 }
 
 .start-hint {

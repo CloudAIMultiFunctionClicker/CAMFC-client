@@ -104,39 +104,54 @@ async function startDrag(e) {
 
 async function openMainPage(path) {
   console.log('点击按钮，目标是:', path)
-  
+
   try {
     const mainWindow = await WebviewWindow.getByLabel('main')
-    
+
+    // 检查主窗口是否存在且没有被关闭
     if (mainWindow) {
-      console.log('聚焦主窗口')
-      await mainWindow.setFocus()
-      
-      await mainWindow.emit('navigate', path)
-      console.log('发送导航事件:', path)
+      try {
+        // 尝试获取窗口状态，如果窗口已关闭会抛出错误
+        await mainWindow.isVisible()
+
+        console.log('主窗口存在，聚焦并导航')
+        await mainWindow.setFocus()
+        await mainWindow.emit('navigate', path)
+        console.log('发送导航事件:', path)
+      } catch (windowError) {
+        // 窗口已关闭，需要重新创建
+        console.log('主窗口已关闭，重新创建')
+        await createMainWindow(path)
+      }
     } else {
-      console.log('创建新主窗口，路径:', path)
-      const webview = new WebviewWindow('main', {
-        url: path,
-        title: 'CAMFC Cloud',
-        width: 1152,
-        height: 648,
-        center: true
-      })
-      
-      webview.once('tauri://created', () => {
-        console.log('主窗口创建成功')
-      })
-      
-      webview.once('tauri://error', (e) => {
-        console.error('主窗口创建失败:', e)
-      })
+      console.log('主窗口不存在，创建新窗口')
+      await createMainWindow(path)
     }
-    
+
   } catch (e) {
     console.error('打开主窗口失败:', e)
     alert('打开主窗口失败: ' + e)
   }
+}
+
+// 创建主窗口的辅助函数
+async function createMainWindow(path) {
+  console.log('创建新主窗口，路径:', path)
+  const webview = new WebviewWindow('main', {
+    url: path,
+    title: 'CAMFC Cloud',
+    width: 1152,
+    height: 648,
+    center: true
+  })
+
+  webview.once('tauri://created', () => {
+    console.log('主窗口创建成功')
+  })
+
+  webview.once('tauri://error', (e) => {
+    console.error('主窗口创建失败:', e)
+  })
 }
 </script>
 
