@@ -197,6 +197,8 @@ onMounted(async () => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
   })
   
+
+  
 // 窗口启动后，不再自动连接Cpen设备
 // 因为InitialView.vue现在是专门的连接界面，它会处理连接
 // 这里只显示启动提示
@@ -230,12 +232,22 @@ body {
   --text-muted: #94a3b8;
   --border-color: rgba(255, 255, 255, 0.1);
   --accent-blue: #3b82f6;
-  --accent-blue-rgb: 59, 130, 246; /* RGB值，用于rgba() */
+  --accent-blue-rgb: 59, 130, 246;
   --accent-red: #dc3545;
-  --accent-red-rgb: 220, 53, 69; /* RGB值，用于rgba() */
+  --accent-red-rgb: 220, 53, 69;
   --hover-bg: rgba(255, 255, 255, 0.08);
   transition: background-color 0.3s ease, color 0.3s ease;
-  /* 平滑过渡效果 */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
 }
 
 /* 亮色主题 */

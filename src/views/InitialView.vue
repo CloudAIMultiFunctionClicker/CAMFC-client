@@ -34,14 +34,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     
     <!-- 开始连接按钮（初始状态显示） -->
     <div class="start-container" v-if="!hasStarted">
-      <button class="start-btn" @click="handleStartConnection">
-        开始连接
+      <button 
+        class="start-btn" 
+        @click="handleStartConnection"
+        :disabled="isStarting"
+      >
+        {{ isStarting ? '连接中...' : '开始连接' }}
       </button>
-      <p class="start-hint">点击按钮开始连接蓝牙设备</p>
+      <p class="start-hint">{{ isStarting ? '正在初始化蓝牙连接...' : '点击按钮开始连接蓝牙设备' }}</p>
     </div>
     
-    <!-- 弹跳进度条（连接中显示） -->
-    <div class="progress-container" v-if="isConnecting && hasStarted">
+    <!-- 弹跳进度条（连接中或扫描中显示） -->
+    <div class="progress-container" v-if="(isConnecting && hasStarted) || isScanning">
       <div class="bouncing-progress"></div>
     </div>
     
@@ -53,6 +57,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
           v-for="device in deviceList" 
           :key="device.address"
           class="device-item"
+          :class="{ 'device-item-disabled': isConnectingDevice }"
           @click="selectDevice(device)"
         >
           <span class="device-name">{{ device.name }}</span>
@@ -111,13 +116,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       </button>
     </div>
 
-    <!-- 右下角跳过按钮 -->
-    <button 
-      class="skip-to-main-btn"
-      @click="skipToMain"
-    >
-      跳过
-    </button>
   </div>
 </template>
 
@@ -145,6 +143,9 @@ const bluetoothStore = useBluetoothStore()
 // 是否已经开始连接（点击了开始按钮）
 const hasStarted = ref(false)
 
+// 是否正在启动连接（防呆设计，防止重复点击）
+const isStarting = ref(false)
+
 // 倒计时相关状态
 const showCountdown = ref(false)
 const countdownSeconds = ref(5)
@@ -155,6 +156,9 @@ let countdownTimer = null
 const showDeviceSelection = ref(false)
 const deviceList = ref([])
 const isScanning = ref(false)
+
+// 设备连接防重复点击
+const isConnectingDevice = ref(false)
 
 // 状态计算（直接从store获取连接状态和错误信息）
 // 注意：TOTP和deviceId不再从store读取，改为直接调用Rust命令
@@ -221,6 +225,10 @@ async function rescanDevices() {
  * 选择设备并连接
  */
 async function selectDevice(device) {
+  if (isConnectingDevice.value) return
+  
+  isConnectingDevice.value = true
+  
   try {
     console.log(`用户选择设备: ${device.name} (${device.address})`)
     
@@ -233,12 +241,13 @@ async function selectDevice(device) {
     
     showDeviceSelection.value = false
     
-    // 连接成功后开始获取TOTP
     await afterDeviceConnected()
   } catch (error) {
     console.error('连接设备失败:', error)
     bluetoothStore.setError('连接失败')
     showToast('连接失败: ' + error.message)
+  } finally {
+    isConnectingDevice.value = false
   }
 }
 
@@ -368,11 +377,31 @@ function jumpToFileView() {
 /**
  * 处理开始连接按钮点击
  * 用户点击"开始连接"按钮后才初始化蓝牙连接
+ * 添加防呆设计：防止重复点击导致多次连接
  */
-function handleStartConnection() {
+async function handleStartConnection() {
+  // 防呆检查：如果已经在连接中，直接返回
+  if (isStarting.value) {
+    console.log('连接已在进行中，忽略重复点击')
+    return
+  }
+
   console.log('用户点击开始连接')
-  hasStarted.value = true
-  scanDevices()
+
+  // 设置防呆标志，防止重复点击
+  isStarting.value = true
+
+  try {
+    hasStarted.value = true
+    await scanDevices()
+  } catch (error) {
+    console.error('开始连接失败:', error)
+    // 出错时重置状态，允许用户重试
+    isStarting.value = false
+    hasStarted.value = false
+  }
+  // 注意：成功开始扫描后，isStarting 保持 true 直到页面状态改变
+  // 扫描完成后由其他逻辑控制 hasStarted 状态
 }
 
 /**
@@ -568,6 +597,14 @@ onMounted(() => {
   transform: translateY(0);
 }
 
+.start-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+  transform: none;
+  box-shadow: none;
+}
+
 .start-hint {
   color: var(--text-secondary);
   font-size: 14px;
@@ -735,27 +772,6 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(85, 170, 85, 0.3);
 }
 
-/* 右下角跳过按钮 */
-.skip-to-main-btn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 10px 24px;
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.skip-to-main-btn:hover {
-  background-color: var(--accent-blue);
-  color: white;
-  border-color: var(--accent-blue);
-}
-
 /* 设备选择界面 */
 .device-selection {
   margin: 30px 0;
@@ -794,6 +810,12 @@ onMounted(() => {
 .device-item:hover {
   border-color: var(--accent-blue);
   background-color: var(--bg-secondary);
+}
+
+.device-item-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .device-name {
