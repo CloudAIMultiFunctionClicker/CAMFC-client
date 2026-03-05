@@ -12,6 +12,12 @@ mod storage;
 // 事件发射模块导入
 mod event_emitter;
 
+// 托盘相关导入
+use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tauri::Manager;
+use tauri::WindowEvent;
+
 // 使用新的Cpen设备管理器作为业务逻辑层
 use cpen_device_manager::CpenDeviceManager;
 use bluetooth::DeviceInfo;
@@ -36,6 +42,16 @@ static UPLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<upload::UploadTask>>>> =
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+/// 退出应用程序
+///
+/// 前端调用这个命令来完全退出应用
+/// 会清理所有资源并关闭应用
+#[tauri::command]
+fn exit_app(app_handle: tauri::AppHandle) {
+    println!("前端请求退出应用...");
+    app_handle.exit(0);
 }
 
 // 全局Cpen设备管理器实例
@@ -1001,12 +1017,80 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             set_app_handle(app.handle().clone());
+
+            // 创建托盘右键菜单
+            // 提供"显示主窗口"和"退出"两个选项
+            let show_item = MenuItem::with_id(app, "show", "显示主窗口", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+            let separator = PredefinedMenuItem::separator(app)?;
+            let menu = Menu::with_items(app, &[&show_item, &separator, &quit_item])?;
+
+            // 创建托盘图标
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .tooltip("CAMFC Cloud")
+                .menu(&menu)
+                .on_menu_event(|app, event| {
+                    match event.id().as_ref() {
+                        "show" => {
+                            // 显示主窗口
+                            if let Some(window) = app.get_webview_window("main") {
+                                if let Err(e) = window.show() {
+                                    eprintln!("显示主窗口失败: {}", e);
+                                }
+                                if let Err(e) = window.set_focus() {
+                                    eprintln!("设置主窗口焦点失败: {}", e);
+                                }
+                            }
+                        }
+                        "quit" => {
+                            // 退出应用
+                            app.exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    match event {
+                        TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } => {
+                            // 左键点击托盘图标，显示主窗口
+                            if let Some(window) = tray.app_handle().get_webview_window("main") {
+                                if let Err(e) = window.show() {
+                                    eprintln!("显示主窗口失败: {}", e);
+                                }
+                                if let Err(e) = window.set_focus() {
+                                    eprintln!("设置主窗口焦点失败: {}", e);
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
+                })
+                .build(app)?;
+
+            // 获取主窗口并设置关闭事件处理
+            // 点击关闭按钮时隐藏窗口而不是退出应用
+            if let Some(window) = app.get_webview_window("main") {
+                let window_clone = window.clone();
+                window.on_window_event(move |event| {
+                    if let WindowEvent::CloseRequested { api, .. } = event {
+                        // 阻止默认的关闭行为
+                        api.prevent_close();
+                        // 隐藏窗口
+                        if let Err(e) = window_clone.hide() {
+                            eprintln!("隐藏窗口失败: {}", e);
+                        }
+                    }
+                });
+            }
+
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,  // 保留测试用的greet命令
+            exit_app,  // 退出应用
             get_backend_config,  // 获取后端配置
             get_totp,           // 主要功能：获取TOTP
             scan_cpen_devices,  // 扫描Cpen设备列表
