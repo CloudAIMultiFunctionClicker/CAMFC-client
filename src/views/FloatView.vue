@@ -39,23 +39,60 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       <button class="float-btn" @click.stop="openMainPage('/fileView')" title="云盘">
         <i class="ri-hard-drive-2-line"></i>
       </button>
-      <button class="float-btn" @click.stop="openMainPage('/notes')" title="笔记">
+      <button class="float-btn note-btn" @click.stop="toggleNoteMenu" title="笔记">
         <i class="ri-sticky-note-line"></i>
       </button>
       <button class="float-btn" @click.stop="openMainPage('/settings')" title="设置">
         <i class="ri-settings-3-line"></i>
       </button>
     </div>
+
+    <!-- 笔记功能菜单 - 水平排布 -->
+    <div v-if="showNoteMenu" class="note-menu" @click.stop>
+      <div class="menu-item" @click="handleScreenshot">
+        <i class="ri-screenshot-line"></i>
+        <span>屏幕截图</span>
+      </div>
+      <div class="menu-item" @click="handleNoteManager">
+        <i class="ri-folder-open-line"></i>
+        <span>笔记管理</span>
+      </div>
+      <div class="menu-item back" @click="closeNoteMenu">
+        <i class="ri-close-line"></i>
+        <span>关闭</span>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
 
 const isConnected = ref(false)
+
+// 点击外部指令的处理函数
+let clickOutsideHandler = null
+
+onMounted(() => {
+  // 添加全局点击监听，用于点击外部关闭菜单
+  clickOutsideHandler = (event) => {
+    handleClickOutside(event)
+  }
+  document.addEventListener('click', clickOutsideHandler)
+})
+
+onBeforeUnmount(() => {
+  // 移除全局点击监听
+  if (clickOutsideHandler) {
+    document.removeEventListener('click', clickOutsideHandler)
+  }
+})
+
+// 笔记菜单显示状态
+const showNoteMenu = ref(false)
 
 let keepOnTopInterval = null
 
@@ -91,7 +128,11 @@ function handleConnectionClick() {
 }
 
 async function startDrag(e) {
-  if (e.target.closest('.float-btn') || e.target.closest('.connection-status')) {
+  // 排除所有可点击元素，包括按钮、菜单项等
+  if (e.target.closest('.float-btn') || 
+      e.target.closest('.connection-status') ||
+      e.target.closest('.menu-item') ||
+      e.target.closest('.note-menu')) {
     return
   }
   try {
@@ -152,6 +193,52 @@ async function createMainWindow(path) {
   webview.once('tauri://error', (e) => {
     console.error('主窗口创建失败:', e)
   })
+}
+
+/**
+ * 切换笔记菜单显示
+ */
+function toggleNoteMenu() {
+  showNoteMenu.value = !showNoteMenu.value
+  console.log('笔记菜单状态:', showNoteMenu.value)
+}
+
+/**
+ * 关闭笔记菜单
+ */
+function closeNoteMenu() {
+  showNoteMenu.value = false
+}
+
+/**
+ * 处理屏幕截图
+ * 占位功能，后续实现
+ */
+function handleScreenshot() {
+  console.log('屏幕截图功能（占位）')
+  alert('屏幕截图功能开发中...')
+  closeNoteMenu()
+}
+
+/**
+ * 处理笔记管理
+ * 打开主窗口的笔记管理页面
+ */
+async function handleNoteManager() {
+  console.log('打开笔记管理')
+  closeNoteMenu()
+  await openMainPage('/notes')
+}
+
+/**
+ * 处理点击菜单外部区域
+ * 当菜单显示时，点击外部关闭菜单
+ */
+function handleClickOutside(event) {
+  // 如果菜单显示，且点击的不是笔记按钮，则关闭菜单
+  if (showNoteMenu.value && !event.target.closest('.note-btn')) {
+    closeNoteMenu()
+  }
 }
 </script>
 
@@ -254,5 +341,115 @@ html, body {
 .float-btn:hover {
   background-color: rgba(0, 0, 0, 0.06);
   color: #333;
+}
+
+/* 笔记按钮激活状态 */
+.note-btn.active {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+/* 扩散动画遮罩 - 适配扁平悬浮窗 */
+.ripple-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 扩散动画效果 - 扁平化设计 */
+.ripple-animation {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  background-color: rgba(59, 130, 246, 0.4);
+  border-radius: 50%;
+  animation: ripple-expand 0.4s ease-out forwards;
+  right: 45px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+@keyframes ripple-expand {
+  0% {
+    width: 30px;
+    height: 30px;
+    opacity: 1;
+  }
+  100% {
+    width: 120px;
+    height: 120px;
+    opacity: 0;
+  }
+}
+
+/* 笔记功能菜单 - 水平排布，从右到左滑入 */
+.note-menu {
+  position: fixed;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px 12px;
+  z-index: 1001;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  animation: menu-slide-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes menu-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) translateX(50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+.menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #333;
+  font-size: 11px;
+  min-width: 56px;
+}
+
+.menu-item:hover {
+  background-color: #f5f5f5;
+}
+
+.menu-item i {
+  font-size: 18px;
+  color: #666;
+}
+
+.menu-item:hover i {
+  color: #3b82f6;
+}
+
+.menu-item.back:hover {
+  background-color: #fff5f5;
+}
+
+.menu-item.back:hover i {
+  color: #ef4444;
 }
 </style>
