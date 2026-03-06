@@ -79,9 +79,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <div v-else class="notes-grid">
           <div
             v-for="note in currentPageNotes"
-            :key="note.id"
+            :key="note.uuid"
             class="note-card"
-            :class="{ active: selectedNote?.id === note.id }"
+            :class="{ active: selectedNote?.uuid === note.uuid }"
             @click="selectNote(note)"
           >
             <div class="note-title">{{ note.title }}</div>
@@ -129,7 +129,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
                 <i class="ri-edit-line"></i>
               </button>
               <template v-else>
-                <button class="save-btn" @click="isEditing = false">
+                <button class="save-btn" @click="saveAndClose">
                   <i class="ri-check-line"></i>
                 </button>
               </template>
@@ -333,25 +333,30 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import axios from 'axios'
 import { showToast } from '../components/layout/showToast.js'
+import { getBackendUrl } from '../config/backend.js'
 
-const NOTES_KEY = 'camfc_notes'
+const timeOut = 3000
 
-function loadNotesFromStorage() {
+async function getAuthHeader() {
   try {
-    const data = localStorage.getItem(NOTES_KEY)
-    return data ? JSON.parse(data) : []
+    const { getDeviceId, getTotp } = await import('../components/data/bluetooth.js')
+    const deviceId = await getDeviceId()
+    const currentTotp = await getTotp()
+    return { "Id": deviceId, "Totp": currentTotp }
   } catch {
-    return []
+    return {}
   }
 }
 
-function saveNotesToStorage(notesData) {
-  try {
-    localStorage.setItem(NOTES_KEY, JSON.stringify(notesData))
-  } catch (e) {
-    console.error('保存笔记失败:', e)
-  }
+async function apiRequest(url, data = {}) {
+  const authHeader = await getAuthHeader()
+  const response = await axios.post(getBackendUrl() + url, data, {
+    headers: { ...authHeader, 'Content-Type': 'application/json' },
+    timeout: timeOut
+  })
+  return response.data
 }
 const notes = ref([])
 const selectedNote = ref(null)
@@ -388,32 +393,41 @@ onMounted(() => {
   loadNotes()
 })
 
-function loadNotes() {
+async function loadNotes() {
   isLoading.value = true
-  const savedNotes = loadNotesFromStorage()
-  if (savedNotes && savedNotes.length > 0) {
-    notes.value = savedNotes
-  } else {
+  try {
+    const data = await apiRequest('/note/query', { num: 100 })
+    let notesList = data
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      notesList = data.data || data.notes || data.result || []
+    }
+    notes.value = Array.isArray(notesList) ? notesList : []
+    if (notes.value.length === 0) {
+      await createDefaultNote()
+    }
+  } catch (e) {
+    console.error('加载笔记失败:', e)
+    showToast('加载笔记失败: ' + (e.message || '网络错误'), '#ef4444')
     notes.value = []
   }
-  
-  if (notes.value.length === 0) {
-    console.log('没有笔记，创建默认笔记')
-    const defaultNotes = [{
-      id: Date.now(),
+  isLoading.value = false
+  loadCurrentPageNotes()
+}
+
+async function createDefaultNote() {
+  const uuid = crypto.randomUUID()
+  try {
+    await apiRequest('/note/add', { uuid, title: 'Hello' })
+    notes.value = [{
+      uuid,
       title: 'Hello',
       content: '你好！这是你的第一个笔记。\n\n开始记录你的想法吧！',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      tags: [],
-      isPinned: false
+      updatedAt: new Date().toISOString()
     }]
-    notes.value = defaultNotes
-    saveNotesToStorage(notes.value)
+  } catch (e) {
+    console.error('创建默认笔记失败:', e)
   }
-  
-  isLoading.value = false
-  loadCurrentPageNotes()
 }
 
 function loadCurrentPageNotes() {
@@ -421,7 +435,7 @@ function loadCurrentPageNotes() {
   loadedNotes.value = {}
   const pageNotes = currentPageNotes.value
   for (let i = 0; i < pageNotes.length; i++) {
-    loadedNotes.value[pageNotes[i].id] = true
+    loadedNotes.value[pageNotes[i].uuid] = true
   }
   pageLoading.value = false
   setTimeout(() => {
@@ -443,26 +457,25 @@ function nextPage() {
   goToPage(currentPage.value + 1)
 }
 
-function saveNotes() {
-  saveNotesToStorage(notes.value)
-}
-
-function addNote() {
+async function addNote() {
   if (!newNoteTitle.value.trim()) return
 
-  const note = {
-    id: Date.now(),
-    title: newNoteTitle.value,
-    content: '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+  const uuid = crypto.randomUUID()
+  try {
+    await apiRequest('/note/add', { uuid, title: newNoteTitle.value })
+    notes.value.unshift({
+      uuid,
+      title: newNoteTitle.value,
+      content: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    })
+    newNoteTitle.value = ''
+    showAddModal.value = false
+  } catch (e) {
+    console.error('添加笔记失败:', e)
+    showToast('添加笔记失败: ' + (e.message || '网络错误'), '#ef4444')
   }
-
-  notes.value.unshift(note)
-  saveNotes()
-
-  newNoteTitle.value = ''
-  showAddModal.value = false
 }
 
 function selectNote(note) {
@@ -476,14 +489,23 @@ function deleteNote(id) {
 
 function confirmDelete() {
   if (noteToDelete.value) {
-    notes.value = notes.value.filter(n => n.id !== noteToDelete.value)
-    if (selectedNote.value?.id === noteToDelete.value) {
-      selectedNote.value = null
-    }
-    saveNotes()
+    deleteNoteApi(noteToDelete.value)
   }
   showDeleteModal.value = false
   noteToDelete.value = null
+}
+
+async function deleteNoteApi(uuid) {
+  try {
+    await apiRequest('/note/delete', { uuid })
+    notes.value = notes.value.filter(n => n.uuid !== uuid)
+    if (selectedNote.value?.uuid === uuid) {
+      selectedNote.value = null
+    }
+  } catch (e) {
+    console.error('删除笔记失败:', e)
+    showToast('删除笔记失败: ' + (e.message || '网络错误'), '#ef4444')
+  }
 }
 
 function cancelDelete() {
@@ -510,11 +532,11 @@ function openRenameModal() {
   }
 }
 
-function confirmRename() {
+async function confirmRename() {
   if (renameNote.value && newNoteName.value.trim()) {
     renameNote.value.title = newNoteName.value.trim()
     renameNote.value.updatedAt = new Date().toISOString()
-    saveNotes()
+    await syncNoteToCloud(renameNote.value)
     showRenameModal.value = false
     renameNote.value = null
     newNoteName.value = ''
@@ -529,7 +551,7 @@ function cancelRename() {
 
 function openDeleteFromMenu() {
   if (moreMenuNote.value) {
-    noteToDelete.value = moreMenuNote.value.id
+    noteToDelete.value = moreMenuNote.value.uuid
     showDeleteModal.value = true
     closeMoreMenu()
   }
@@ -556,8 +578,14 @@ function handleCloseNote() {
   }
 }
 
-function confirmSave() {
-  saveNote()
+async function saveAndClose() {
+  await syncNoteToCloud(selectedNote.value)
+  selectedNote.value = null
+  isEditing.value = false
+}
+
+async function confirmSave() {
+  await syncNoteToCloud(selectedNote.value)
   showSaveConfirmModal.value = false
   selectedNote.value = null
   isEditing.value = false
@@ -565,7 +593,7 @@ function confirmSave() {
 
 function discardChanges() {
   if (selectedNote.value) {
-    selectedNote.value.content = notes.value.find(n => n.id === selectedNote.value?.id)?.content || ''
+    selectedNote.value.content = notes.value.find(n => n.uuid === selectedNote.value?.uuid)?.content || ''
   }
   showSaveConfirmModal.value = false
   selectedNote.value = null
@@ -597,7 +625,19 @@ function renderMarkdown(text) {
 function saveNote() {
   if (selectedNote.value) {
     selectedNote.value.updatedAt = new Date().toISOString()
-    saveNotes()
+  }
+}
+
+async function syncNoteToCloud(note) {
+  try {
+    await apiRequest('/note/update', { 
+      uuid: note.uuid, 
+      content: note.content || '',
+      title: note.title 
+    })
+  } catch (e) {
+    console.error('同步笔记失败:', e)
+    showToast('同步失败: ' + (e.message || '网络错误'), '#ef4444')
   }
 }
 
@@ -693,10 +733,9 @@ function importNotes() {
         const importedNotes = JSON.parse(event.target.result)
         if (Array.isArray(importedNotes)) {
           notes.value = importedNotes
-          saveNotes()
           currentPage.value = 1
           loadCurrentPageNotes()
-          showToast(`成功导入 ${importedNotes.length} 条笔记`, '#10b981')
+          showToast(`已导入 ${importedNotes.length} 条笔记（本地导入，云端未同步）`, '#f59e0b')
         } else {
           showToast('文件格式不正确', '#ef4444')
         }
