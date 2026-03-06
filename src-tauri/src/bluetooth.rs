@@ -436,23 +436,25 @@ impl BluetoothManager {
                             println!("  ASCII: {}", data_str.trim());
                             println!("========================================");
                             
-                            // 只在状态变化时发射按钮事件
-                            let data_str_lower = data_str.to_lowercase();
-                            if data_str_lower.contains("button_press") {
-                                if last_button_state.as_ref().map_or(true, |s| s != "press") {
-                                    println!("[BLUETOOTH] 按键按下（状态变化）");
-                                    last_button_state = Some("press".to_string());
-                                    tokio::spawn(async move {
-                                        emit_button_event("button_press");
-                                    });
-                                }
-                            } else if data_str_lower.contains("button_release") {
-                                if last_button_state.as_ref().map_or(true, |s| s != "release") {
-                                    println!("[BLUETOOTH] 按键释放（状态变化）");
-                                    last_button_state = Some("release".to_string());
-                                    tokio::spawn(async move {
-                                        emit_button_event("button_release");
-                                    });
+                            // 检测按钮事件：0xAA = 按下，0xAB = 松开
+                            if notif.value.len() >= 1 {
+                                let first_byte = notif.value[0];
+                                if first_byte == 0xAA {
+                                    if last_button_state.as_ref().map_or(true, |s| s != "press") {
+                                        println!("[BLUETOOTH] 按键按下（0xAA，状态变化）");
+                                        last_button_state = Some("press".to_string());
+                                        tokio::spawn(async move {
+                                            emit_button_event("button_press");
+                                        });
+                                    }
+                                } else if first_byte == 0xAB {
+                                    if last_button_state.as_ref().map_or(true, |s| s != "release") {
+                                        println!("[BLUETOOTH] 按键释放（0xAB，状态变化）");
+                                        last_button_state = Some("release".to_string());
+                                        tokio::spawn(async move {
+                                            emit_button_event("button_release");
+                                        });
+                                    }
                                 }
                             }
                             
@@ -478,12 +480,12 @@ impl BluetoothManager {
             loop {
                 match timeout(Duration::from_secs(10), rx.recv()).await {
                     Ok(Some(data)) => {
-                        // 检查是否是按钮事件包，如果是则跳过
-                        let data_str = String::from_utf8_lossy(&data);
-                        let data_str_lower = data_str.to_lowercase();
+                        // 检查是否是按钮事件包（0xAA = 按下，0xAB = 松开），如果是则跳过
+                        let is_button_event = data.len() >= 1 && (data[0] == 0xAA || data[0] == 0xAB);
                         
-                        if data_str_lower.contains("button_press") || data_str_lower.contains("button_release") {
-                            println!("[BLUETOOTH] 跳过按钮事件包：{}", data_str.trim());
+                        if is_button_event {
+                            let data_hex = data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
+                            println!("[BLUETOOTH] 跳过按钮事件包：0x{} (第一个字节)", data_hex);
                             continue;
                         }
                         
