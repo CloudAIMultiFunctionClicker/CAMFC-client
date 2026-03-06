@@ -294,6 +294,23 @@ export async function testBluetooth() {
   }
 }
 
+/**
+ * 模拟按下并松开Win键
+ * 
+ * 调用Rust端的press_win_key命令
+ * 会先按下Win键，然后松开
+ * 
+ * @returns {Promise<void>}
+ */
+export async function pressWinKey() {
+  try {
+    await invoke('press_win_key')
+  } catch (error) {
+    console.error(`模拟Win键失败: ${error}`)
+    throw new Error(`模拟Win键失败: ${error}`)
+  }
+}
+
 // 导出所有函数（简化版）
 export default {
   getTotp,
@@ -304,7 +321,8 @@ export default {
   isConnected,
   disconnect,
   cleanup,
-  testBluetooth
+  testBluetooth,
+  pressWinKey
 }
 
 // 注意：以下旧函数已删除，因为业务逻辑已迁移到Rust端：

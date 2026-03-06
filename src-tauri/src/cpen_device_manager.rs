@@ -684,33 +684,19 @@ impl CpenDeviceManager {
     /// 这个方法会实际检查蓝牙物理连接状态，而不是仅仅检查内存中的记录
     /// 可以用来验证连接是否真的还活着，避免使用过期的连接
     pub async fn is_connected(&mut self) -> Result<bool, CpenError> {
-        println!("检查Cpen设备连接状态...");
-        
-        // 先检查是否有记录的连接地址
         if self.connected_address.is_none() {
-            println!("没有记录的连接地址");
             return Ok(false);
         }
         
-        // 使用底层蓝牙管理器检查实际连接状态
         match self.bluetooth_manager.is_connected().await {
-            Ok(true) => {
-                println!("蓝牙物理连接正常");
-                Ok(true)
-            }
+            Ok(true) => Ok(true),
             Ok(false) => {
-                println!("蓝牙物理连接已断开");
-                // 更新内部状态以保持一致
                 self.connection_status = "disconnected".to_string();
                 self.connected_address = None;
                 self.current_device = None;
                 Ok(false)
             }
-            Err(e) => {
-                println!("检查蓝牙连接状态时出错: {}", e);
-                // 检查失败，保守返回false
-                Err(format!("检查连接状态失败: {}", e))
-            }
+            Err(e) => Err(format!("检查连接状态失败: {}", e))
         }
     }
     

@@ -161,7 +161,12 @@ onMounted(async () => {
   
   // 监听蓝牙按键事件
   const { listen } = await import('@tauri-apps/api/event')
-  buttonEventUnlisten = await listen('button-event', (event) => {
+  buttonEventUnlisten = await listen('button-event', async (event) => {
+    // 悬浮窗不处理按键事件
+    if (route.path === '/float') {
+      return
+    }
+    
     const eventType = event.payload.event_type
     if (eventType === 'button_press') {
       showToast('🔘 按键按下', '#3b82f6')
@@ -171,6 +176,14 @@ onMounted(async () => {
       showToast('🔘 按键释放', '#10b981')
       // 通知所有组件按键状态变化
       window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: false } }))
+      // 模拟右箭头键点击
+      try {
+        const { pressWinKey } = await import('./components/data/bluetooth')
+        await pressWinKey()
+        console.log('右箭头键模拟成功')
+      } catch (e) {
+        console.error('右箭头键模拟失败:', e)
+      }
     }
   })
   

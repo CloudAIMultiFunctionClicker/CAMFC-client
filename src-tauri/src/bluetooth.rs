@@ -317,17 +317,11 @@ impl BluetoothManager {
     pub async fn is_connected(&self) -> Result<bool, BtError> {
         match &self.connected_peripheral {
             Some(peripheral) => {
-                // 实际检查蓝牙连接状态，不光是内存中的状态
                 let connected = peripheral.is_connected().await
                     .map_err(|e| format!("检查连接状态失败: {}", e))?;
-                
-                println!("蓝牙连接状态检查: {}", if connected { "已连接" } else { "未连接" });
                 Ok(connected)
             }
-            None => {
-                println!("没有连接的peripheral对象");
-                Ok(false)
-            }
+            None => Ok(false)
         }
     }
 
