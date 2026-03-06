@@ -191,11 +191,11 @@ watch(isConnected, (newVal) => {
 
 /**
  * 扫描设备列表
+ * 如果只找到一个设备，直接连接，不用用户选
  */
 async function scanDevices() {
   try {
     isScanning.value = true
-    showDeviceSelection.value = true
     console.log('开始扫描Cpen设备...')
     
     const devices = await scanCpenDevices()
@@ -204,11 +204,21 @@ async function scanDevices() {
     console.log(`扫描完成，找到 ${devices.length} 个设备`)
     
     if (devices.length === 0) {
+      showDeviceSelection.value = true
       showToast('未找到Cpen设备')
+    } else if (devices.length === 1) {
+      // 只有一个设备，直接连，不用选了
+      console.log('只找到一个设备，直接连接')
+      showToast(`发现设备 ${devices[0].name}，正在连接...`)
+      await selectDevice(devices[0])
+    } else {
+      // 多个设备，让用户选
+      showDeviceSelection.value = true
     }
   } catch (error) {
     console.error('扫描设备失败:', error)
     showToast('扫描设备失败: ' + error.message)
+    showDeviceSelection.value = true
   } finally {
     isScanning.value = false
   }
