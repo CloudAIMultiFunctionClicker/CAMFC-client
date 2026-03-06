@@ -171,20 +171,11 @@ async fn get_connection_status() -> Result<String, String> {
 /// 注意：这个方法会实际检查蓝牙物理连接状态，而不仅仅是内存中的记录。
 #[tauri::command]
 async fn is_connected() -> Result<bool, String> {
-    println!("前端调用is_connected命令...");
-    
     let mut manager = get_cpen_device_manager()?.lock().await;
     
     match manager.is_connected().await {
-        Ok(connected) => {
-            println!("连接状态检查结果: {}", if connected { "已连接" } else { "未连接" });
-            Ok(connected)
-        }
-        Err(e) => {
-            println!("检查连接状态失败: {}", e);
-            // 检查失败时，保守返回false，表示连接不可用
-            Err(format!("检查连接状态失败: {}", e))
-        }
+        Ok(connected) => Ok(connected),
+        Err(e) => Err(format!("检查连接状态失败: {}", e))
     }
 }
 
@@ -1050,6 +1041,59 @@ fn get_monitors() -> Result<serde_json::Value, String> {
     }
 }
 
+/// 模拟按下并松开右箭头键
+/// 
+/// 前端调用这个命令来模拟键盘点击右箭头键
+/// 会先按下右箭头键，然后松开
+#[tauri::command]
+fn press_win_key() -> Result<(), String> {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput,
+        INPUT,
+        INPUT_KEYBOARD,
+        KEYBDINPUT,
+        KEYBD_EVENT_FLAGS,
+        VK_RIGHT,
+    };
+    
+    println!("[press_right_key] 开始模拟右箭头键点击...");
+    
+    unsafe {
+        let mut inputs: [INPUT; 2] = std::mem::zeroed();
+        
+        // 按下右箭头键
+        inputs[0].r#type = INPUT_KEYBOARD;
+        inputs[0].Anonymous.ki = KEYBDINPUT {
+            wVk: VK_RIGHT,
+            wScan: 0,
+            dwFlags: KEYBD_EVENT_FLAGS(0),
+            time: 0,
+            dwExtraInfo: 0,
+        };
+        
+        // 松开右箭头键
+        inputs[1].r#type = INPUT_KEYBOARD;
+        inputs[1].Anonymous.ki = KEYBDINPUT {
+            wVk: VK_RIGHT,
+            wScan: 0,
+            dwFlags: KEYBD_EVENT_FLAGS(2), // KEYEVENTF_KEYUP
+            time: 0,
+            dwExtraInfo: 0,
+        };
+        
+        println!("[press_right_key] 调用SendInput...");
+        let sent = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
+        println!("[press_right_key] SendInput返回: {}", sent);
+        
+        if sent != 2 {
+            return Err(format!("SendInput失败，只发送了 {} 个输入", sent));
+        }
+    }
+    
+    println!("[press_right_key] 右箭头键点击完成");
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // 初始化后端配置（必须在其他模块使用之前）
@@ -1169,6 +1213,8 @@ pub fn run() {
             // 截图命令
             capture_screen,
             get_monitors,
+            // 键盘模拟命令
+            press_win_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
