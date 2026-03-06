@@ -11,6 +11,8 @@ mod config;
 mod storage;
 // 事件发射模块导入
 mod event_emitter;
+// 截图模块导入
+mod screenshot;
 
 // 托盘相关导入
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
@@ -1003,6 +1005,51 @@ async fn get_backend_config() -> Result<serde_json::Value, String> {
     }
 }
 
+/// 截取屏幕截图
+/// 
+/// 前端调用这个命令截取当前屏幕
+/// 返回base64编码的PNG图片数据
+#[tauri::command]
+fn capture_screen() -> Result<serde_json::Value, String> {
+    println!("前端调用capture_screen命令...");
+    
+    match screenshot::capture_screen() {
+        Ok(result) => {
+            println!("截图成功: {}x{}", result.width, result.height);
+            Ok(serde_json::json!({
+                "success": true,
+                "image_data": format!("data:image/png;base64,{}", result.image_data),
+                "width": result.width,
+                "height": result.height
+            }))
+        }
+        Err(e) => {
+            println!("截图失败: {}", e);
+            Err(e)
+        }
+    }
+}
+
+/// 获取显示器列表
+#[tauri::command]
+fn get_monitors() -> Result<serde_json::Value, String> {
+    println!("前端调用get_monitors命令...");
+    
+    match screenshot::get_monitors() {
+        Ok(monitors) => {
+            println!("获取到 {} 个显示器", monitors.len());
+            Ok(serde_json::json!({
+                "success": true,
+                "monitors": monitors
+            }))
+        }
+        Err(e) => {
+            println!("获取显示器失败: {}", e);
+            Err(e)
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // 初始化后端配置（必须在其他模块使用之前）
@@ -1119,6 +1166,9 @@ pub fn run() {
             load_app_data,
             save_app_data,
             get_download_file_path,
+            // 截图命令
+            capture_screen,
+            get_monitors,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

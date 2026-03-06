@@ -47,3 +47,6 @@ rfd = "0.14"
 dotenv = "0.15"
 dirs = "5"
 totp-rs = { version = "5", features = ["gen_secret", "otpauth"] }
+xcap = "0.4"
+base64 = "0.22"
+image = "0.25"

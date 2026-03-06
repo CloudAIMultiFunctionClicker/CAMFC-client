@@ -112,6 +112,12 @@ const router = createRouter({
       name: 'float',
       // 悬浮窗页面
       component: () => import('../views/FloatView.vue')
+    },
+    {
+      path: '/screenshot',
+      name: 'screenshot',
+      // 截图预览页面
+      component: () => import('../views/ScreenshotView.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]
@@ -128,6 +134,12 @@ router.beforeEach((to, _from, next) => {
 
   // 悬浮窗页面不需要蓝牙连接，直接放行
   if (to.path === '/float') {
+    next()
+    return
+  }
+
+  // 截图页面不需要蓝牙连接，直接放行
+  if (to.path === '/screenshot') {
     next()
     return
   }

@@ -270,12 +270,12 @@ function closeNoteMenu() {
 
 /**
  * 处理屏幕截图
- * 占位功能，后续实现
+ * 打开截图预览页面
  */
-function handleScreenshot() {
-  console.log('屏幕截图功能（占位）')
-  alert('屏幕截图功能开发中...')
+async function handleScreenshot() {
+  console.log('打开截图页面')
   closeNoteMenu()
+  await openMainPage('/screenshot')
 }
 
 /**
