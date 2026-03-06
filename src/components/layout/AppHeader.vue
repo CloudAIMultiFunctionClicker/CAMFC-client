@@ -26,7 +26,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <script setup>
-import { inject } from 'vue'
+import { inject, ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 // 头部组件 - 现在加了主题切换功能
@@ -37,6 +37,21 @@ import { invoke } from '@tauri-apps/api/core'
 // 从App.vue注入的主题功能
 const theme = inject('theme')
 
+// 按钮状态
+const buttonPressed = ref(false)
+
+// 监听按钮状态变化
+const handleButtonState = (event) => {
+  buttonPressed.value = event.detail.pressed
+}
+
+onMounted(() => {
+  window.addEventListener('button-state', handleButtonState)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('button-state', handleButtonState)
+})
 
 </script>
 
@@ -58,7 +73,12 @@ const theme = inject('theme')
 
             <!-- 右侧：操作按钮区域 -->
             <div class="operation">
-
+                <!-- 按钮状态指示器 -->
+                <div class="btn-button-state" :class="{ 'pressed': buttonPressed }">
+                    <i class="ri-checkbox-circle-line" v-if="buttonPressed"></i>
+                    <i class="ri-checkbox-blank-circle-line" v-else></i>
+                    <span class="btn-text">{{ buttonPressed ? '按键: 按下' : '按键: 松开' }}</span>
+                </div>
                 
                 <!-- 主题切换按钮 -->
                 <button class="btn-theme" @click="theme?.toggleTheme">
@@ -152,7 +172,8 @@ h1 {
 .btn-share,
 .btn-delete,
 .btn-avatar,
-.btn-test {
+.btn-test,
+.btn-button-state {
     border: none;
     border-radius: 8px;
     /* 圆角大一点现代感强 */
@@ -169,6 +190,25 @@ h1 {
     /* 过渡效果，hover用 */
     height: 40px;
     /* 统一高度 */
+}
+
+/* 按钮状态指示器 */
+.btn-button-state {
+    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08)); 
+    color: var(--text-secondary, #cbd5e1);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.btn-button-state.pressed {
+    background-color: #10b981;
+    color: white;
+    border-color: #10b981;
+}
+
+.btn-button-state:hover {
+    background-color: var(--accent-blue, #3b82f6);
+    color: white;
+    border-color: var(--accent-blue, #3b82f6);
 }
 
 /* 主题切换按钮 - 放在第一个 */

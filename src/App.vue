@@ -153,16 +153,53 @@ onMounted(async () => {
   // 初始化后端配置（只会在应用启动时调用一次）
   await initBackendConfig()
   
+  // 蓝牙按键事件监听器引用
+  let buttonEventUnlisten = null
+  
+  // 导航事件监听器引用
+  let navigateEventUnlisten = null
+  
   // 监听蓝牙按键事件
   const { listen } = await import('@tauri-apps/api/event')
-  listen('button-event', (event) => {
+  buttonEventUnlisten = await listen('button-event', (event) => {
     const eventType = event.payload.event_type
     if (eventType === 'button_press') {
       showToast('🔘 按键按下', '#3b82f6')
+      // 通知所有组件按键状态变化
+      window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: true } }))
     } else if (eventType === 'button_release') {
       showToast('🔘 按键释放', '#10b981')
+      // 通知所有组件按键状态变化
+      window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: false } }))
     }
   })
+  
+  // 定时检查蓝牙连接状态（每10秒）
+  let connectionCheckInterval = null
+  
+  const checkConnectionStatus = async () => {
+    try {
+      // 动态导入蓝牙模块
+      const { isConnected } = await import('./components/data/bluetooth')
+      const connected = await isConnected()
+      
+      // 如果从已连接变为未连接，跳转到初始页面
+      if (bluetoothStore.isConnected() && !connected) {
+        console.log('蓝牙连接已断开，跳转到初始页面')
+        bluetoothStore.reset()
+        showToast('蓝牙连接已断开，重新连接')
+        // 跳转到初始页面
+        if (route.path !== '/') {
+          router.push('/')
+        }
+      }
+    } catch (error) {
+      // 静默处理错误，避免刷屏
+    }
+  }
+  
+  // 开始定时检查（每10秒，减少刷屏）
+  connectionCheckInterval = setInterval(checkConnectionStatus, 10000)
   
   // 监听系统主题变化，如果用户没有手动设置过，就跟着系统变
   const lightMediaQuery = window.matchMedia('(prefers-color-scheme: light)')
@@ -179,8 +216,7 @@ onMounted(async () => {
   
   // 监听悬浮窗发来的导航事件
   try {
-    const { listen } = await import('@tauri-apps/api/event')
-    await listen('navigate', (event) => {
+    navigateEventUnlisten = await listen('navigate', (event) => {
       console.log('收到导航事件:', event.payload)
       const path = event.payload
       // 只在非悬浮窗页面时跳转
@@ -195,6 +231,15 @@ onMounted(async () => {
   // 在组件卸载时清理监听器
   onUnmounted(() => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
+    if (connectionCheckInterval) {
+      clearInterval(connectionCheckInterval)
+    }
+    if (buttonEventUnlisten) {
+      buttonEventUnlisten()
+    }
+    if (navigateEventUnlisten) {
+      navigateEventUnlisten()
+    }
   })
   
 

@@ -400,48 +400,98 @@ impl BluetoothManager {
         
         // 先检查是否已经启动监听
         if self.listening_rx.is_none() || self.listening_handle.as_ref().map_or(true, |h| h.is_finished()) {
+            println!("[BLUETOOTH] 启动蓝牙通知监听...");
             let peripheral_clone = peripheral.clone();
             let char_clone = characteristic.clone();
-            let (tx, rx) = tokio::sync::mpsc::channel(10);
+            let (tx, rx) = tokio::sync::mpsc::channel(50);
+            
+            let mut last_button_state: Option<String> = None;
             
             // 启动监听任务
             let handle = tokio::spawn(async move {
-                if let Ok(stream) = peripheral_clone.notifications().await {
-                    let _ = peripheral_clone.subscribe(&char_clone).await;
-                    
-                    let mut stream = stream;
-                    while let Some(notif) = stream.next().await {
-                        let _ = tx.send(notif.value).await;
+                println!("[BLUETOOTH] 等待通知流...");
+                match peripheral_clone.notifications().await {
+                    Ok(stream) => {
+                        println!("[BLUETOOTH] 通知流已创建，正在订阅...");
+                        match peripheral_clone.subscribe(&char_clone).await {
+                            Ok(_) => println!("[BLUETOOTH] ✅ 订阅成功"),
+                            Err(e) => {
+                                println!("[BLUETOOTH] ❌ 订阅失败：{}", e);
+                                return;
+                            }
+                        }
+                        
+                        let mut stream = stream;
+                        println!("[BLUETOOTH] 开始监听通知...");
+                        while let Some(notif) = stream.next().await {
+                            let data_hex = notif.value.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
+                            let data_str = String::from_utf8_lossy(&notif.value);
+                            let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
+                            
+                            println!("========================================");
+                            println!("[BLUETOOTH] 收到数据包");
+                            println!("  时间：{}", timestamp);
+                            println!("  长度：{} bytes", notif.value.len());
+                            println!("  Hex: {}", data_hex);
+                            println!("  ASCII: {}", data_str.trim());
+                            println!("========================================");
+                            
+                            // 只在状态变化时发射按钮事件
+                            let data_str_lower = data_str.to_lowercase();
+                            if data_str_lower.contains("button_press") {
+                                if last_button_state.as_ref().map_or(true, |s| s != "press") {
+                                    println!("[BLUETOOTH] 按键按下（状态变化）");
+                                    last_button_state = Some("press".to_string());
+                                    tokio::spawn(async move {
+                                        emit_button_event("button_press");
+                                    });
+                                }
+                            } else if data_str_lower.contains("button_release") {
+                                if last_button_state.as_ref().map_or(true, |s| s != "release") {
+                                    println!("[BLUETOOTH] 按键释放（状态变化）");
+                                    last_button_state = Some("release".to_string());
+                                    tokio::spawn(async move {
+                                        emit_button_event("button_release");
+                                    });
+                                }
+                            }
+                            
+                            // 带背压的发送：缓冲区满时丢弃旧数据
+                            if tx.try_send(notif.value).is_err() {
+                                println!("[BLUETOOTH] 警告：缓冲区已满，丢弃旧数据");
+                            }
+                        }
                     }
+                    Err(e) => println!("[BLUETOOTH] ❌ 创建通知流失败：{}", e),
                 }
             });
             
             self.listening_rx = Some(rx);
             self.listening_handle = Some(handle);
+            println!("[BLUETOOTH] 监听任务已启动");
+        } else {
+            println!("[BLUETOOTH] 复用现有的监听任务");
         }
         
-        // 阻塞等待数据
+        // 阻塞等待数据（过滤按钮事件包）
         if let Some(rx) = &mut self.listening_rx {
-            match timeout(Duration::from_secs(10), rx.recv()).await {
-                Ok(Some(data)) => {
-                    // 日志输出收到的数据包
-                    let data_hex = data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
-                    let data_str = String::from_utf8_lossy(&data);
-                    println!("📥 收到蓝牙数据包: {} | hex: {}", data_str.trim(), data_hex);
-                    
-                    // 检测按键事件
-                    let data_str_lower = data_str.to_lowercase();
-                    if data_str_lower.contains("button_press") {
-                        println!("🔘 收到按键按下事件");
-                        emit_button_event("button_press");
-                    } else if data_str_lower.contains("button_release") {
-                        println!("🔘 收到按键释放事件");
-                        emit_button_event("button_release");
+            loop {
+                match timeout(Duration::from_secs(10), rx.recv()).await {
+                    Ok(Some(data)) => {
+                        // 检查是否是按钮事件包，如果是则跳过
+                        let data_str = String::from_utf8_lossy(&data);
+                        let data_str_lower = data_str.to_lowercase();
+                        
+                        if data_str_lower.contains("button_press") || data_str_lower.contains("button_release") {
+                            println!("[BLUETOOTH] 跳过按钮事件包：{}", data_str.trim());
+                            continue;
+                        }
+                        
+                        return Ok(data);
                     }
-                    Ok(data)
+                    Ok(None) => return Err("通道已关闭".to_string()),
+                    Err(_) => return Err("接收超时".to_string()),
                 }
-                Ok(None) => Err("通道已关闭".to_string()),
-                Err(_) => Err("接收超时".to_string()),
             }
         } else {
             Err("监听未启动".to_string())
