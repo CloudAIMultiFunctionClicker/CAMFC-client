@@ -334,25 +334,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { showToast } from '../components/layout/showToast.js'
+import { loadAllNotes, saveNoteContent, deleteNoteFromCloud, saveAllNotes } from '../components/data/noteStorage.js'
 
-const NOTES_KEY = 'camfc_notes'
-
-function loadNotesFromStorage() {
-  try {
-    const data = localStorage.getItem(NOTES_KEY)
-    return data ? JSON.parse(data) : []
-  } catch {
-    return []
-  }
-}
-
-function saveNotesToStorage(notesData) {
-  try {
-    localStorage.setItem(NOTES_KEY, JSON.stringify(notesData))
-  } catch (e) {
-    console.error('保存笔记失败:', e)
-  }
-}
 const notes = ref([])
 const selectedNote = ref(null)
 const showAddModal = ref(false)
@@ -384,36 +367,47 @@ const currentPageNotes = computed(() => {
 
 const loadedNotes = ref({})
 
-onMounted(() => {
-  loadNotes()
+onMounted(async () => {
+  await loadNotes()
 })
 
-function loadNotes() {
+async function loadNotes() {
   isLoading.value = true
-  const savedNotes = loadNotesFromStorage()
-  if (savedNotes && savedNotes.length > 0) {
-    notes.value = savedNotes
-  } else {
-    notes.value = []
+  console.info('[Notes] 开始从云盘加载笔记...')
+
+  try {
+    const loadedNotes = await loadAllNotes()
+
+    if (loadedNotes && loadedNotes.length > 0) {
+      notes.value = loadedNotes
+      console.info(`[Notes] 成功从云盘加载 ${loadedNotes.length} 条笔记`)
+    } else {
+      notes.value = []
+      console.info('[Notes] 云盘没有笔记')
+    }
+
+    if (notes.value.length === 0) {
+      console.info('[Notes] 创建默认笔记')
+      const defaultNote = {
+        id: Date.now(),
+        title: 'Hello',
+        content: '你好！这是你的第一个笔记。\n\n开始记录你的想法吧！',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        tags: [],
+        isPinned: false
+      }
+      notes.value = [defaultNote]
+      await saveAllNotes(notes.value)
+    }
+
+    isLoading.value = false
+    loadCurrentPageNotes()
+  } catch (error) {
+    console.error('[Notes] 加载笔记失败:', error)
+    isLoading.value = false
+    showToast('加载笔记失败', '#ef4444')
   }
-  
-  if (notes.value.length === 0) {
-    console.log('没有笔记，创建默认笔记')
-    const defaultNotes = [{
-      id: Date.now(),
-      title: 'Hello',
-      content: '你好！这是你的第一个笔记。\n\n开始记录你的想法吧！',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      tags: [],
-      isPinned: false
-    }]
-    notes.value = defaultNotes
-    saveNotesToStorage(notes.value)
-  }
-  
-  isLoading.value = false
-  loadCurrentPageNotes()
 }
 
 function loadCurrentPageNotes() {
@@ -444,7 +438,15 @@ function nextPage() {
 }
 
 function saveNotes() {
-  saveNotesToStorage(notes.value)
+  console.info('[Notes] 保存笔记到云盘...')
+  saveAllNotes(notes.value).then(success => {
+    if (success) {
+      console.info('[Notes] 笔记保存成功')
+    } else {
+      console.error('[Notes] 笔记保存失败')
+      showToast('保存笔记失败', '#ef4444')
+    }
+  })
 }
 
 function addNote() {
@@ -476,6 +478,10 @@ function deleteNote(id) {
 
 function confirmDelete() {
   if (noteToDelete.value) {
+    console.info(`[Notes] 删除笔记: ${noteToDelete.value}`)
+    deleteNoteFromCloud(noteToDelete.value).then(() => {
+      console.info(`[Notes] 云盘笔记已删除`)
+    })
     notes.value = notes.value.filter(n => n.id !== noteToDelete.value)
     if (selectedNote.value?.id === noteToDelete.value) {
       selectedNote.value = null
@@ -661,53 +667,14 @@ function formatDate(dateStr) {
 
 function exportNotes() {
   showImportExportMenu.value = false
-  try {
-    const data = JSON.stringify(notes.value, null, 2)
-    const blob = new Blob([data], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `camfc-notes-${new Date().toISOString().slice(0, 10)}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    showToast('笔记导出成功', '#10b981')
-  } catch (err) {
-    console.error('导出失败:', err)
-    showToast('导出失败', '#ef4444')
-  }
+  console.info('[Notes] 导出功能暂未开放')
+  showToast('导出功能暂未开放', '#f59e0b')
 }
 
 function importNotes() {
   showImportExportMenu.value = false
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.json'
-  input.onchange = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      try {
-        const importedNotes = JSON.parse(event.target.result)
-        if (Array.isArray(importedNotes)) {
-          notes.value = importedNotes
-          saveNotes()
-          currentPage.value = 1
-          loadCurrentPageNotes()
-          showToast(`成功导入 ${importedNotes.length} 条笔记`, '#10b981')
-        } else {
-          showToast('文件格式不正确', '#ef4444')
-        }
-      } catch (err) {
-        console.error('导入失败:', err)
-        showToast('导入失败，请检查文件格式', '#ef4444')
-      }
-    }
-    reader.readAsText(file)
-  }
-  input.click()
+  console.info('[Notes] 导入功能暂未开放')
+  showToast('导入功能暂未开放', '#f59e0b')
 }
 </script>
 
