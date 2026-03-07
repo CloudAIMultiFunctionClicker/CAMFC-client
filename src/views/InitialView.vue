@@ -521,8 +521,7 @@ async function startConnection() {
  * 再次尝试连接
  * 用户点击"再次尝试"按钮时调用
  * 
- * 照逻辑：如果再次失败，循环显示错误信息和重试按钮
- * 所以这个函数会重置状态并重新尝试，形成循环
+ * 改进：先彻底断开现有连接，清理状态后再重试
  */
 async function retryConnection() {
   console.log('用户点击再次尝试连接')
@@ -531,9 +530,20 @@ async function retryConnection() {
   retryCount.value++
   console.log(`第 ${retryCount.value} 次尝试连接`)
   
-  // 重置错误状态和超时状态
-  bluetoothStore.setError(null)
+  // 先彻底断开现有连接
+  try {
+    console.log('断开现有连接...')
+    await disconnect()
+  } catch (e) {
+    console.warn('断开连接时出错:', e)
+  }
+  
+  // 重置所有状态
+  bluetoothStore.reset()
   connectionTimedOut.value = false
+  
+  // 等待一小段时间让蓝牙稳定
+  await new Promise(resolve => setTimeout(resolve, 500))
   
   // 开始新的连接尝试
   await startConnection()
