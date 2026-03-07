@@ -66,6 +66,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <span>关闭</span>
       </div>
     </div>
+
+    <!-- 未连接提示框 -->
+    <Transition name="tip-fade">
+      <div v-if="showConnectTip" class="connect-tip">
+        <i class="ri-information-line"></i>
+        <span>请先连接设备</span>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -74,9 +82,13 @@ import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow, Window } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
+import { invoke } from '@tauri-apps/api/core'
+import { showToast } from '../components/layout/showToast.js'
 
 const isConnected = ref(false)
 const isMainWindowVisible = ref(true)
+const showConnectTip = ref(false)
+let connectTipTimer = null
 
 // 点击外部指令的处理函数
 let clickOutsideHandler = null
@@ -176,8 +188,48 @@ async function startDrag(e) {
   }
 }
 
+/**
+ * 显示未连接提示
+ */
+function showTip() {
+  showConnectTip.value = true
+  
+  // 清除之前的定时器
+  if (connectTipTimer) {
+    clearTimeout(connectTipTimer)
+  }
+  
+  // 1 秒后自动关闭
+  connectTipTimer = setTimeout(() => {
+    hideTip()
+  }, 1000)
+}
+
+/**
+ * 隐藏提示
+ */
+function hideTip() {
+  showConnectTip.value = false
+  if (connectTipTimer) {
+    clearTimeout(connectTipTimer)
+    connectTipTimer = null
+  }
+}
+
+/**
+ * 打开主页面（检查连接状态）
+ */
 async function openMainPage(path) {
   console.log('点击按钮，目标是:', path)
+
+  // 检查是否需要连接设备（云盘、设置、笔记管理需要连接）
+  const needConnection = ['/fileView', '/settings', '/notes'].includes(path)
+  if (needConnection && !isConnected.value) {
+    console.log('设备未连接，显示提示并打开首页')
+    showTip()
+    // 自动打开首页让用户连接设备
+    path = '/'
+  }
 
   try {
     // 使用 Window.getByLabel 获取主窗口
@@ -270,12 +322,98 @@ function closeNoteMenu() {
 
 /**
  * 处理屏幕截图
- * 打开截图预览页面
+ * 先隐藏主窗口，截图完成后再打开显示截图结果
  */
 async function handleScreenshot() {
-  console.log('打开截图页面')
+  console.log('开始截图流程')
   closeNoteMenu()
-  await openMainPage('/screenshot')
+
+  try {
+    // 获取主窗口
+    const mainWindow = await Window.getByLabel('main')
+    let wasVisible = false
+
+    // 如果主窗口存在且可见，先隐藏它
+    if (mainWindow) {
+      wasVisible = await mainWindow.isVisible()
+      if (wasVisible) {
+        console.log('隐藏主窗口以便截图')
+        await mainWindow.hide()
+        // 等待一段时间确保窗口完全隐藏
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+    }
+
+    // 调用截图命令
+    console.log('执行截图')
+    const result = await invoke('capture_screen')
+
+    if (result.success) {
+      console.log('截图成功，打开主窗口显示截图')
+      // 截图成功，打开主窗口并传递截图数据
+      await openScreenshotWindow(result)
+    } else {
+      console.error('截图失败:', result.error)
+      // 截图失败，如果之前窗口是可见的，恢复显示
+      if (wasVisible && mainWindow) {
+        await mainWindow.show()
+      }
+    }
+  } catch (e) {
+    console.error('截图过程出错:', e)
+  }
+}
+
+/**
+ * 打开截图窗口显示截图结果
+ */
+async function openScreenshotWindow(screenshotData) {
+  try {
+    // 获取主窗口
+    let mainWindow = await Window.getByLabel('main')
+
+    if (!mainWindow) {
+      // 创建新窗口
+      console.log('创建新的主窗口来显示截图')
+      const webview = new WebviewWindow('main', {
+        url: '/screenshot',
+        title: 'CAMFC Cloud',
+        width: 1152,
+        height: 648,
+        center: true
+      })
+
+      // 等待窗口创建完成后再发送截图数据
+      webview.once('tauri://created', async () => {
+        console.log('截图窗口创建成功，发送截图数据')
+        const webviewWindow = await WebviewWindow.getByLabel('main')
+        if (webviewWindow) {
+          await webviewWindow.emit('screenshot-data', screenshotData)
+        }
+      })
+
+      webview.once('tauri://error', (e) => {
+        console.error('截图窗口创建失败:', e)
+      })
+    } else {
+      // 窗口已存在，显示并导航到截图页面
+      console.log('使用现有主窗口显示截图')
+      await mainWindow.show()
+      await mainWindow.unminimize()
+      await mainWindow.center()
+      await mainWindow.setFocus()
+
+      // 发送导航事件
+      const webview = await WebviewWindow.getByLabel('main')
+      if (webview) {
+        await webview.emit('navigate', '/screenshot')
+        // 发送截图数据
+        await webview.emit('screenshot-data', screenshotData)
+      }
+    }
+  } catch (e) {
+    console.error('打开截图窗口失败:', e)
+  }
 }
 
 /**
@@ -586,5 +724,67 @@ html, body {
 
 .menu-item.back:hover i {
   color: #ef4444;
+}
+
+/* 未连接提示框 - 居中显示，白底黑字 */
+.connect-tip {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #ffffff;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 8px 12px 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  z-index: 1002;
+}
+
+/* 进入动画 */
+.tip-fade-enter-active {
+  animation: tip-fade-in 0.2s ease-out forwards;
+}
+
+/* 离开动画 */
+.tip-fade-leave-active {
+  animation: tip-fade-out 0.2s ease-in forwards;
+}
+
+.connect-tip i {
+  font-size: 16px;
+  color: #737373;
+}
+
+.connect-tip span {
+  font-size: 13px;
+  font-weight: 500;
+  color: #171717;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@keyframes tip-fade-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes tip-fade-out {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
 }
 </style>
