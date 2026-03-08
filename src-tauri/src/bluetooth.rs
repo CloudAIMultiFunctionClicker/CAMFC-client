@@ -253,8 +253,45 @@ impl BluetoothManager {
     }
 
     /// 3. 连接指定设备
+    /// 
+    /// 改进：添加重试机制，提高连接成功率
+    /// 改进：连接前强制清理旧的监听任务，避免使用旧对象
     pub async fn connect(&mut self, address: &str) -> Result<(), BtError> {
-        println!("连接 {}...", address);
+        // 连接前强制清理旧的监听任务和状态
+        // 这确保连接新设备时不会复用旧的监听任务
+        println!("[BLUETOOTH] 连接前清理旧状态...");
+        self.cleanup_connection_state().await;
+        
+        const MAX_RETRIES: u32 = 3;
+        const RETRY_DELAY_MS: u64 = 500;
+        
+        for attempt in 1..=MAX_RETRIES {
+            println!("[BLUETOOTH] 连接尝试 {}/{}: {}", attempt, MAX_RETRIES, address);
+            
+            match self.connect_once(address).await {
+                Ok(_) => {
+                    println!("[BLUETOOTH] 连接成功");
+                    return Ok(());
+                }
+                Err(e) if attempt < MAX_RETRIES => {
+                    println!("[BLUETOOTH] 连接失败，{}ms后重试: {}", RETRY_DELAY_MS, e);
+                    // 清理状态后重试
+                    self.cleanup_connection_state().await;
+                    sleep(Duration::from_millis(RETRY_DELAY_MS)).await;
+                }
+                Err(e) => {
+                    println!("[BLUETOOTH] 连接重试次数用尽: {}", e);
+                    return Err(e);
+                }
+            }
+        }
+        
+        Err("连接重试次数用尽".to_string())
+    }
+    
+    /// 单次连接尝试（内部方法）
+    async fn connect_once(&mut self, address: &str) -> Result<(), BtError> {
+        println!("[BLUETOOTH] 开始连接 {}...", address);
         
         // 先扫描找到设备
         let adapter = self.get_adapter().await?;
@@ -285,28 +322,74 @@ impl BluetoothManager {
         peripheral.connect().await
             .map_err(|e| format!("连接失败: {}", e))?;
         
-        println!("连接成功");
-        sleep(Duration::from_millis(100)).await;
+        // 连接后等待更长时间让连接稳定
+        sleep(Duration::from_millis(500)).await;
         
+        // 验证连接状态
         if !peripheral.is_connected().await.map_err(|e| format!("检查连接失败: {}", e))? {
             return Err("连接后立即断开".to_string());
         }
+        
+        // 预先发现服务，避免后续操作时出错
+        println!("[BLUETOOTH] 发现服务...");
+        match timeout(Duration::from_secs(5), peripheral.discover_services()).await {
+            Ok(Ok(_)) => println!("[BLUETOOTH] 服务发现完成"),
+            Ok(Err(e)) => {
+                println!("[BLUETOOTH] 服务发现失败: {}", e);
+                // 不返回错误，继续尝试
+            }
+            Err(_) => {
+                println!("[BLUETOOTH] 服务发现超时");
+                // 不返回错误，继续尝试
+            }
+        }
+        
+        // 再等待一下让服务发现生效
+        sleep(Duration::from_millis(200)).await;
         
         self.connected_peripheral = Some(peripheral);
         Ok(())
     }
 
+    /// 彻底清理连接状态（内部方法）
+    /// 
+    /// 这个方法会清理所有与连接相关的状态：
+    /// - 停止监听任务并等待其结束
+    /// - 清空监听通道
+    /// - 清空已连接的peripheral
+    /// 
+    /// 改进：等待监听任务真正结束，避免使用已关闭的对象
+    async fn cleanup_connection_state(&mut self) {
+        // 先停止监听任务
+        if let Some(h) = self.listening_handle.take() {
+            h.abort();
+            // 等待任务真正结束（最多等待1秒）
+            match timeout(Duration::from_secs(1), h).await {
+                Ok(_) => println!("[BLUETOOTH] 监听任务已结束"),
+                Err(_) => println!("[BLUETOOTH] 监听任务结束超时，继续清理"),
+            }
+        }
+        self.listening_rx = None;
+        self.connected_peripheral = None;
+        println!("[BLUETOOTH] 连接状态已彻底清理");
+    }
+
     /// 断开连接
     pub async fn disconnect(&mut self) -> Result<(), BtError> {
+        println!("[BLUETOOTH] 开始断开连接...");
+        
+        // 先停止监听
         self.stop_listening().await;
         
+        // 尝试断开蓝牙连接，忽略错误（可能已经断开了）
         if let Some(p) = &self.connected_peripheral {
-            p.disconnect().await
-                .map_err(|e| format!("断开失败: {}", e))?;
+            let _ = p.disconnect().await;
         }
         
-        self.connected_peripheral = None;
-        println!("断开");
+        // 彻底清理状态
+        self.cleanup_connection_state().await;
+        
+        println!("[BLUETOOTH] 断开连接完成");
         Ok(())
     }
 
@@ -314,14 +397,32 @@ impl BluetoothManager {
     /// 
     /// 这里不只是检查是否有连接的peripheral对象，还实际检查蓝牙物理连接状态
     /// 注意：这个方法可能会有一定的延迟（蓝牙设备响应时间）
+    /// 
+    /// 改进：添加超时保护，避免在设备无响应时卡住
     pub async fn is_connected(&self) -> Result<bool, BtError> {
         match &self.connected_peripheral {
             Some(peripheral) => {
-                let connected = peripheral.is_connected().await
-                    .map_err(|e| format!("检查连接状态失败: {}", e))?;
-                Ok(connected)
+                // 添加超时保护，2秒内必须返回结果
+                match timeout(Duration::from_secs(2), peripheral.is_connected()).await {
+                    Ok(Ok(connected)) => {
+                        println!("[BLUETOOTH] 连接状态检查完成: {}", connected);
+                        Ok(connected)
+                    }
+                    Ok(Err(e)) => {
+                        println!("[BLUETOOTH] 检查连接状态失败: {}", e);
+                        Err(format!("检查连接状态失败: {}", e))
+                    }
+                    Err(_) => {
+                        // 超时通常意味着连接已断开或设备无响应
+                        println!("[BLUETOOTH] 连接状态检测超时，假设已断开");
+                        Ok(false)
+                    }
+                }
             }
-            None => Ok(false)
+            None => {
+                println!("[BLUETOOTH] 没有已连接的peripheral");
+                Ok(false)
+            }
         }
     }
 
@@ -372,28 +473,47 @@ impl BluetoothManager {
     }
 
     /// 5. 阻塞接收（类似recv）
+    /// 
+    /// 改进：检测监听任务健康状态，必要时重启
     pub async fn recv(&mut self, service_uuid: &str, char_uuid: &str) -> Result<Vec<u8>, BtError> {
-        let peripheral = self.peripheral()?;
+        // 先检查监听任务是否健康，在获取peripheral之前
+        let need_restart = self.listening_rx.is_none() || 
+                           self.listening_handle.as_ref().map_or(true, |h| h.is_finished());
         
-        // 确保服务已发现
-        let service_uuid = Uuid::parse_str(service_uuid)
-            .map_err(|e| format!("解析服务UUID失败: {}", e))?;
-        
-        let services = peripheral.services();
-        let service = services
-            .iter()
-            .find(|s| s.uuid == service_uuid)
-            .ok_or_else(|| format!("未找到服务: {}", service_uuid))?;
-        
-        let char_uuid = Uuid::parse_str(char_uuid)
-            .map_err(|e| format!("解析特性UUID失败: {}", e))?;
-        
-        let characteristic = service.characteristics.iter()
-            .find(|c| c.uuid == char_uuid)
-            .ok_or_else(|| format!("未找到特性: {}", char_uuid))?;
-        
-        // 先检查是否已经启动监听
-        if self.listening_rx.is_none() || self.listening_handle.as_ref().map_or(true, |h| h.is_finished()) {
+        if need_restart {
+            println!("[BLUETOOTH] 监听任务需要重启，清理旧状态...");
+            
+            // 先清理旧的监听状态，等待任务结束
+            if let Some(h) = self.listening_handle.take() {
+                h.abort();
+                // 等待任务真正结束
+                match timeout(Duration::from_millis(500), h).await {
+                    Ok(_) => println!("[BLUETOOTH] 旧监听任务已结束"),
+                    Err(_) => println!("[BLUETOOTH] 旧监听任务结束超时"),
+                }
+            }
+            self.listening_rx = None;
+            
+            // 获取peripheral并启动监听
+            let peripheral = self.peripheral()?;
+            
+            // 确保服务已发现
+            let service_uuid_parsed = Uuid::parse_str(service_uuid)
+                .map_err(|e| format!("解析服务UUID失败: {}", e))?;
+            
+            let services = peripheral.services();
+            let service = services
+                .iter()
+                .find(|s| s.uuid == service_uuid_parsed)
+                .ok_or_else(|| format!("未找到服务: {}", service_uuid))?;
+            
+            let char_uuid_parsed = Uuid::parse_str(char_uuid)
+                .map_err(|e| format!("解析特性UUID失败: {}", e))?;
+            
+            let characteristic = service.characteristics.iter()
+                .find(|c| c.uuid == char_uuid_parsed)
+                .ok_or_else(|| format!("未找到特性: {}", char_uuid))?;
+            
             println!("[BLUETOOTH] 启动蓝牙通知监听...");
             let peripheral_clone = peripheral.clone();
             let char_clone = characteristic.clone();
@@ -408,9 +528,9 @@ impl BluetoothManager {
                     Ok(stream) => {
                         println!("[BLUETOOTH] 通知流已创建，正在订阅...");
                         match peripheral_clone.subscribe(&char_clone).await {
-                            Ok(_) => println!("[BLUETOOTH] ✅ 订阅成功"),
+                            Ok(_) => println!("[BLUETOOTH] 订阅成功"),
                             Err(e) => {
-                                println!("[BLUETOOTH] ❌ 订阅失败：{}", e);
+                                println!("[BLUETOOTH] 订阅失败：{}", e);
                                 return;
                             }
                         }
@@ -430,12 +550,16 @@ impl BluetoothManager {
                             println!("  ASCII: {}", data_str.trim());
                             println!("========================================");
                             
-                            // 检测按钮事件：0xAA = 按下，0xAB = 松开
+                            // 检测按钮事件
+                            // GPIO10: 0xAA = 按下，0xAB = 松开
+                            // GPIO9:  0xAC = 按下，0xAD = 松开
                             if notif.value.len() >= 1 {
                                 let first_byte = notif.value[0];
+                                
+                                // GPIO10 处理
                                 if first_byte == 0xAA {
                                     if last_button_state.as_ref().map_or(true, |s| s != "press") {
-                                        println!("[BLUETOOTH] 按键按下（0xAA，状态变化）");
+                                        println!("[BLUETOOTH] GPIO10 按下（0xAA）");
                                         last_button_state = Some("press".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_press");
@@ -443,10 +567,28 @@ impl BluetoothManager {
                                     }
                                 } else if first_byte == 0xAB {
                                     if last_button_state.as_ref().map_or(true, |s| s != "release") {
-                                        println!("[BLUETOOTH] 按键释放（0xAB，状态变化）");
+                                        println!("[BLUETOOTH] GPIO10 松开（0xAB）");
                                         last_button_state = Some("release".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_release");
+                                        });
+                                    }
+                                } 
+                                // GPIO9 处理 - 新增
+                                else if first_byte == 0xAC {
+                                    if last_button_state.as_ref().map_or(true, |s| s != "press_left") {
+                                        println!("[BLUETOOTH] GPIO9 按下（0xAC）");
+                                        last_button_state = Some("press_left".to_string());
+                                        tokio::spawn(async move {
+                                            emit_button_event("button_press_left");
+                                        });
+                                    }
+                                } else if first_byte == 0xAD {
+                                    if last_button_state.as_ref().map_or(true, |s| s != "release_left") {
+                                        println!("[BLUETOOTH] GPIO9 松开（0xAD）");
+                                        last_button_state = Some("release_left".to_string());
+                                        tokio::spawn(async move {
+                                            emit_button_event("button_release_left");
                                         });
                                     }
                                 }
@@ -457,8 +599,13 @@ impl BluetoothManager {
                                 println!("[BLUETOOTH] 警告：缓冲区已满，丢弃旧数据");
                             }
                         }
+                        
+                        // 通知流结束，说明连接可能已断开
+                        println!("[BLUETOOTH] 通知流已结束，连接可能已断开");
                     }
-                    Err(e) => println!("[BLUETOOTH] ❌ 创建通知流失败：{}", e),
+                    Err(e) => {
+                        println!("[BLUETOOTH] 创建通知流失败：{}", e);
+                    }
                 }
             });
             
@@ -474,18 +621,25 @@ impl BluetoothManager {
             loop {
                 match timeout(Duration::from_secs(10), rx.recv()).await {
                     Ok(Some(data)) => {
-                        // 检查是否是按钮事件包（0xAA = 按下，0xAB = 松开），如果是则跳过
-                        let is_button_event = data.len() >= 1 && (data[0] == 0xAA || data[0] == 0xAB);
+                        // 检查是否是按钮事件包，如果是则跳过
+                        // GPIO10: 0xAA/0xAB, GPIO9: 0xAC/0xAD
+                        let is_button_event = data.len() >= 1 && 
+                            (data[0] == 0xAA || data[0] == 0xAB || data[0] == 0xAC || data[0] == 0xAD);
                         
                         if is_button_event {
                             let data_hex = data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
-                            println!("[BLUETOOTH] 跳过按钮事件包：0x{} (第一个字节)", data_hex);
+                            println!("[BLUETOOTH] 跳过按钮事件包：0x{}", data_hex);
                             continue;
                         }
                         
                         return Ok(data);
                     }
-                    Ok(None) => return Err("通道已关闭".to_string()),
+                    Ok(None) => {
+                        // 通道已关闭，说明监听任务已结束
+                        println!("[BLUETOOTH] 监听通道已关闭，需要重新连接");
+                        self.listening_rx = None;
+                        return Err("监听通道已关闭，请重新连接".to_string());
+                    }
                     Err(_) => return Err("接收超时".to_string()),
                 }
             }
