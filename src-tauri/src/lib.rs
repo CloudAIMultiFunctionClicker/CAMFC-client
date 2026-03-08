@@ -1094,6 +1094,56 @@ fn press_win_key() -> Result<(), String> {
     Ok(())
 }
 
+/// 模拟按下并松开左箭头键
+/// 
+/// GPIO9按钮松开时调用，模拟按下左箭头键
+#[tauri::command]
+fn press_left_key() -> Result<(), String> {
+    use windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput,
+        INPUT,
+        INPUT_KEYBOARD,
+        KEYBDINPUT,
+        KEYBD_EVENT_FLAGS,
+        VK_LEFT,
+    };
+    
+    println!("[press_left_key] 开始模拟左箭头键点击...");
+    
+    unsafe {
+        let mut inputs: [INPUT; 2] = std::mem::zeroed();
+        
+        // 按下左箭头键
+        inputs[0].r#type = INPUT_KEYBOARD;
+        inputs[0].Anonymous.ki = KEYBDINPUT {
+            wVk: VK_LEFT,
+            wScan: 0,
+            dwFlags: KEYBD_EVENT_FLAGS(0),
+            time: 0,
+            dwExtraInfo: 0,
+        };
+        
+        // 松开左箭头键
+        inputs[1].r#type = INPUT_KEYBOARD;
+        inputs[1].Anonymous.ki = KEYBDINPUT {
+            wVk: VK_LEFT,
+            wScan: 0,
+            dwFlags: KEYBD_EVENT_FLAGS(2), // KEYEVENTF_KEYUP
+            time: 0,
+            dwExtraInfo: 0,
+        };
+        
+        let sent = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
+        
+        if sent != 2 {
+            return Err(format!("SendInput失败，只发送了 {} 个输入", sent));
+        }
+    }
+    
+    println!("[press_left_key] 左箭头键点击完成");
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // 初始化后端配置（必须在其他模块使用之前）
@@ -1215,6 +1265,7 @@ pub fn run() {
             get_monitors,
             // 键盘模拟命令
             press_win_key,
+            press_left_key,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

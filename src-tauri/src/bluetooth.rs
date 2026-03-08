@@ -550,12 +550,16 @@ impl BluetoothManager {
                             println!("  ASCII: {}", data_str.trim());
                             println!("========================================");
                             
-                            // 检测按钮事件：0xAA = 按下，0xAB = 松开
+                            // 检测按钮事件
+                            // GPIO10: 0xAA = 按下，0xAB = 松开
+                            // GPIO9:  0xAC = 按下，0xAD = 松开
                             if notif.value.len() >= 1 {
                                 let first_byte = notif.value[0];
+                                
+                                // GPIO10 处理
                                 if first_byte == 0xAA {
                                     if last_button_state.as_ref().map_or(true, |s| s != "press") {
-                                        println!("[BLUETOOTH] 按键按下（0xAA，状态变化）");
+                                        println!("[BLUETOOTH] GPIO10 按下（0xAA）");
                                         last_button_state = Some("press".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_press");
@@ -563,10 +567,28 @@ impl BluetoothManager {
                                     }
                                 } else if first_byte == 0xAB {
                                     if last_button_state.as_ref().map_or(true, |s| s != "release") {
-                                        println!("[BLUETOOTH] 按键释放（0xAB，状态变化）");
+                                        println!("[BLUETOOTH] GPIO10 松开（0xAB）");
                                         last_button_state = Some("release".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_release");
+                                        });
+                                    }
+                                } 
+                                // GPIO9 处理 - 新增
+                                else if first_byte == 0xAC {
+                                    if last_button_state.as_ref().map_or(true, |s| s != "press_left") {
+                                        println!("[BLUETOOTH] GPIO9 按下（0xAC）");
+                                        last_button_state = Some("press_left".to_string());
+                                        tokio::spawn(async move {
+                                            emit_button_event("button_press_left");
+                                        });
+                                    }
+                                } else if first_byte == 0xAD {
+                                    if last_button_state.as_ref().map_or(true, |s| s != "release_left") {
+                                        println!("[BLUETOOTH] GPIO9 松开（0xAD）");
+                                        last_button_state = Some("release_left".to_string());
+                                        tokio::spawn(async move {
+                                            emit_button_event("button_release_left");
                                         });
                                     }
                                 }
@@ -599,12 +621,14 @@ impl BluetoothManager {
             loop {
                 match timeout(Duration::from_secs(10), rx.recv()).await {
                     Ok(Some(data)) => {
-                        // 检查是否是按钮事件包（0xAA = 按下，0xAB = 松开），如果是则跳过
-                        let is_button_event = data.len() >= 1 && (data[0] == 0xAA || data[0] == 0xAB);
+                        // 检查是否是按钮事件包，如果是则跳过
+                        // GPIO10: 0xAA/0xAB, GPIO9: 0xAC/0xAD
+                        let is_button_event = data.len() >= 1 && 
+                            (data[0] == 0xAA || data[0] == 0xAB || data[0] == 0xAC || data[0] == 0xAD);
                         
                         if is_button_event {
                             let data_hex = data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
-                            println!("[BLUETOOTH] 跳过按钮事件包：0x{} (第一个字节)", data_hex);
+                            println!("[BLUETOOTH] 跳过按钮事件包：0x{}", data_hex);
                             continue;
                         }
                         
