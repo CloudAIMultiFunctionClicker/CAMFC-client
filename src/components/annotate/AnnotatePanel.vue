@@ -3,6 +3,7 @@
     <!-- 标注画布 -->
     <div 
       class="annotate-canvas-wrapper"
+      :class="{ panning: isPanning }"
       ref="canvasWrapper"
       @mousedown="handleMouseDown"
       @mousemove="handleMouseMove"
@@ -12,6 +13,9 @@
       <canvas 
         ref="annotateCanvas"
         class="annotate-canvas"
+        :style="{
+          transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${scale})`
+        }"
       ></canvas>
     </div>
 
@@ -172,6 +176,13 @@ const isDrawing = ref(false)
 const startPoint = ref({ x: 0, y: 0 })
 const currentPoint = ref({ x: 0, y: 0 })
 
+// 缩放和拖动相关
+const scale = ref(1)
+const panOffset = ref({ x: 0, y: 0 })
+const isPanning = ref(false)
+const panStart = ref({ x: 0, y: 0 })
+const panStartOffset = ref({ x: 0, y: 0 })
+
 // 标注数据
 const annotations = ref([])
 const selectedAnnotationId = ref(null)
@@ -196,10 +207,12 @@ const canRedo = computed(() => historyIndex.value < history.value.length - 1)
 onMounted(() => {
   initCanvas()
   window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('wheel', handleWheel, { passive: false })
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('wheel', handleWheel)
 })
 
 // 初始化画布
@@ -432,53 +445,72 @@ const handleMouseDown = (e) => {
   const rect = annotateCanvas.value.getBoundingClientRect()
   const scaleX = annotateCanvas.value.width / rect.width
   const scaleY = annotateCanvas.value.height / rect.height
-  const x = (e.clientX - rect.left) * scaleX
-  const y = (e.clientY - rect.top) * scaleY
+  const x = ((e.clientX - rect.left - panOffset.value.x) / scale.value) * scaleX
+  const y = ((e.clientY - rect.top - panOffset.value.y) / scale.value) * scaleY
   
-  if (currentTool.value === 'select') {
-    // 选择模式
+  // 在选择工具下，左键拖动用于移动画布
+  if (currentTool.value === 'select' && e.button === 0) {
+    // 检查是否点击在标注上
     const clickedAnnotation = findAnnotationAtPoint(x, y)
     if (clickedAnnotation) {
       selectedAnnotationId.value = clickedAnnotation.id
       isDrawing.value = true
       startPoint.value = { x, y }
+      redrawAnnotations()
+      return
     } else {
+      // 没有点击到标注，进入画布拖动模式
       selectedAnnotationId.value = null
+      isPanning.value = true
+      panStart.value = { x: e.clientX, y: e.clientY }
+      panStartOffset.value = { ...panOffset.value }
+      redrawAnnotations()
+      return
     }
-    redrawAnnotations()
-  } else if (currentTool.value === 'text') {
+  }
+  
+  if (currentTool.value === 'text') {
     // 文字输入模式
     isTextInputMode.value = true
     textPosition.value = { x, y }
     showTextInput(x, y)
-  } else {
+  } else if (currentTool.value === 'free') {
     // 绘制模式
     isDrawing.value = true
     startPoint.value = { x, y }
     currentPoint.value = { x, y }
     
-    if (currentTool.value === 'free') {
-      // 自由绘制
-      const newAnnotation = {
-        id: Date.now(),
-        type: 'free',
-        color: currentColor.value,
-        strokeWidth: currentStrokeWidth.value,
-        points: [{ x, y }]
-      }
-      annotations.value.push(newAnnotation)
+    // 自由绘制
+    const newAnnotation = {
+      id: Date.now(),
+      type: 'free',
+      color: currentColor.value,
+      strokeWidth: currentStrokeWidth.value,
+      points: [{ x, y }]
     }
+    annotations.value.push(newAnnotation)
   }
 }
 
 const handleMouseMove = (e) => {
+  // 处理拖动模式
+  if (isPanning.value) {
+    const dx = e.clientX - panStart.value.x
+    const dy = e.clientY - panStart.value.y
+    panOffset.value = {
+      x: panStartOffset.value.x + dx,
+      y: panStartOffset.value.y + dy
+    }
+    return
+  }
+  
   if (!isDrawing.value || !ctx) return
   
   const rect = annotateCanvas.value.getBoundingClientRect()
   const scaleX = annotateCanvas.value.width / rect.width
   const scaleY = annotateCanvas.value.height / rect.height
-  const x = (e.clientX - rect.left) * scaleX
-  const y = (e.clientY - rect.top) * scaleY
+  const x = ((e.clientX - rect.left - panOffset.value.x) / scale.value) * scaleX
+  const y = ((e.clientY - rect.top - panOffset.value.y) / scale.value) * scaleY
   currentPoint.value = { x, y }
   
   if (currentTool.value === 'select' && selectedAnnotationId.value) {
@@ -506,6 +538,11 @@ const handleMouseMove = (e) => {
 }
 
 const handleMouseUp = () => {
+  if (isPanning.value) {
+    isPanning.value = false
+    return
+  }
+  
   if (!isDrawing.value) return
   
   if (currentTool.value !== 'select' && currentTool.value !== 'free' && currentTool.value !== 'text') {
@@ -815,6 +852,32 @@ const cancelAnnotate = () => {
   emit('cancel')
 }
 
+// 滚轮缩放
+const handleWheel = (e) => {
+  if (!canvasWrapper.value) return
+  
+  e.preventDefault()
+  
+  const rect = canvasWrapper.value.getBoundingClientRect()
+  const mouseX = e.clientX - rect.left
+  const mouseY = e.clientY - rect.top
+  
+  const delta = -e.deltaY
+  const zoomSpeed = 0.001
+  const zoomFactor = Math.pow(1 + zoomSpeed, delta)
+  
+  const newScale = Math.min(Math.max(scale.value * zoomFactor, 0.5), 5)
+  
+  // 计算鼠标位置在缩放前后的偏移量
+  const scaleRatio = newScale / scale.value
+  panOffset.value = {
+    x: mouseX - (mouseX - panOffset.value.x) * scaleRatio,
+    y: mouseY - (mouseY - panOffset.value.y) * scaleRatio
+  }
+  
+  scale.value = newScale
+}
+
 // 监听窗口大小变化
 watch(() => props.imageData, () => {
   setTimeout(() => {
@@ -1037,5 +1100,15 @@ watch(() => props.imageData, () => {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+  transform-origin: center center;
+  transition: transform 0.1s ease-out;
+}
+
+.annotate-canvas-wrapper.panning {
+  cursor: grabbing !important;
+}
+
+.annotate-canvas-wrapper.panning .annotate-canvas {
+  cursor: grabbing !important;
 }
 </style>

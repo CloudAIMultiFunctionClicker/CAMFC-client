@@ -40,6 +40,14 @@
         
         <!-- 裁切模式覆盖层 -->
         <div v-else-if="isCropMode" class="crop-overlay">
+          <!-- 裁切提示栏 -->
+          <div class="crop-mode-header">
+            <span class="crop-mode-tip">拖动鼠标选择裁切区域，或点击取消返回</span>
+            <button class="crop-cancel-btn" @click="cancelCrop">
+              <i class="ri-close-line"></i>
+              取消
+            </button>
+          </div>
           <div class="crop-image-wrapper" ref="cropImageWrapper" @mousedown="startDrawCrop" @mousemove="onDrawing" @mouseup="endDrawCrop" @mouseleave="endDrawCrop">
             <img :src="screenshotData" alt="裁切预览" class="crop-base-image" />
             <!-- 裁切选框 -->
@@ -172,6 +180,11 @@ const processScreenshotData = (result) => {
     height: result.height,
     imageDataLength: result.image_data?.length
   })
+  
+  // 重置所有模式状态，回到预览模式
+  isCropMode.value = false
+  isAnnotateMode.value = false
+  cropBox.value = { x: 0, y: 0, width: 0, height: 0 }
   
   // 先设置数据
   screenshotData.value = result.image_data
@@ -909,6 +922,45 @@ onUnmounted(() => {
   flex-direction: column;
   z-index: 100;
   overflow: hidden;
+}
+
+.crop-mode-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--bg-secondary, #1e293b);
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  z-index: 101;
+}
+
+.crop-mode-tip {
+  color: var(--text-secondary, #94a3b8);
+  font-size: 14px;
+}
+
+.crop-cancel-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: transparent;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  border-radius: 6px;
+  color: var(--text-primary, #f1f5f9);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.crop-cancel-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.crop-cancel-btn i {
+  font-size: 16px;
 }
 
 .action-btn {

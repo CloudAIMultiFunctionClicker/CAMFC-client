@@ -39,8 +39,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       <button class="float-btn" @click.stop="openMainPage('/fileView')" title="云盘">
         <i class="ri-cloud-line"></i>
       </button>
-      <button class="float-btn note-btn" @click.stop="toggleNoteMenu" title="笔记">
+      <button class="float-btn note-btn" @click.stop="handleNoteManager" title="笔记">
         <i class="ri-sticky-note-line"></i>
+      </button>
+      <button class="float-btn screenshot-btn" @click.stop="toggleScreenshotMenu" title="截图">
+        <i class="ri-screenshot-line"></i>
       </button>
       <button class="float-btn" @click.stop="openMainPage('/settings')" title="设置">
         <i class="ri-settings-3-line"></i>
@@ -51,17 +54,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       </button>
     </div>
 
-    <!-- 笔记功能菜单 - 水平排布 -->
-    <div v-if="showNoteMenu" class="note-menu" @click.stop>
+
+
+    <!-- 截图功能菜单 - 水平排布 -->
+    <div v-if="showScreenshotMenu" class="screenshot-menu" @click.stop>
+      <div class="menu-item toggle-item" @click="toggleHideWindowOption">
+        <i :class="hideWindowBeforeScreenshot ? 'ri-checkbox-circle-line' : 'ri-circle-line'"></i>
+        <span>隐藏主窗口</span>
+      </div>
       <div class="menu-item" @click="handleScreenshot">
         <i class="ri-screenshot-line"></i>
         <span>屏幕截图</span>
       </div>
-      <div class="menu-item" @click="handleNoteManager">
-        <i class="ri-folder-open-line"></i>
-        <span>笔记管理</span>
-      </div>
-      <div class="menu-item back" @click="closeNoteMenu">
+      <div class="menu-item back" @click="closeScreenshotMenu">
         <i class="ri-close-line"></i>
         <span>关闭</span>
       </div>
@@ -108,8 +113,11 @@ onBeforeUnmount(() => {
   }
 })
 
-// 笔记菜单显示状态
-const showNoteMenu = ref(false)
+// 截图菜单显示状态
+const showScreenshotMenu = ref(false)
+
+// 截图前是否隐藏主窗口选项
+const hideWindowBeforeScreenshot = ref(true)
 
 let keepOnTopInterval = null
 let visibilityCheckInterval = null
@@ -177,7 +185,7 @@ async function startDrag(e) {
   if (e.target.closest('.float-btn') || 
       e.target.closest('.connection-status') ||
       e.target.closest('.menu-item') ||
-      e.target.closest('.note-menu')) {
+      e.target.closest('.screenshot-menu')) {
     return
   }
   try {
@@ -306,35 +314,43 @@ async function createMainWindow(path) {
 }
 
 /**
- * 切换笔记菜单显示
+ * 切换截图菜单显示
  */
-function toggleNoteMenu() {
-  showNoteMenu.value = !showNoteMenu.value
-  console.log('笔记菜单状态:', showNoteMenu.value)
+function toggleScreenshotMenu() {
+  showScreenshotMenu.value = !showScreenshotMenu.value
+  console.log('截图菜单状态:', showScreenshotMenu.value)
 }
 
 /**
- * 关闭笔记菜单
+ * 关闭截图菜单
  */
-function closeNoteMenu() {
-  showNoteMenu.value = false
+function closeScreenshotMenu() {
+  showScreenshotMenu.value = false
+}
+
+/**
+ * 切换隐藏主窗口选项
+ */
+function toggleHideWindowOption() {
+  hideWindowBeforeScreenshot.value = !hideWindowBeforeScreenshot.value
+  console.log('隐藏主窗口选项:', hideWindowBeforeScreenshot.value)
 }
 
 /**
  * 处理屏幕截图
- * 先隐藏主窗口，截图完成后再打开显示截图结果
+ * 根据用户选择决定是否隐藏主窗口，截图完成后再打开显示截图结果
  */
 async function handleScreenshot() {
   console.log('开始截图流程')
-  closeNoteMenu()
+  closeScreenshotMenu()
 
   try {
     // 获取主窗口
     const mainWindow = await Window.getByLabel('main')
     let wasVisible = false
 
-    // 如果主窗口存在且可见，先隐藏它
-    if (mainWindow) {
+    // 如果用户选择隐藏主窗口且主窗口存在且可见，先隐藏它
+    if (hideWindowBeforeScreenshot.value && mainWindow) {
       wasVisible = await mainWindow.isVisible()
       if (wasVisible) {
         console.log('隐藏主窗口以便截图')
@@ -354,7 +370,7 @@ async function handleScreenshot() {
       await openScreenshotWindow(result)
     } else {
       console.error('截图失败:', result.error)
-      // 截图失败，如果之前窗口是可见的，恢复显示
+      // 截图失败，如果之前窗口是可见的且被隐藏了，恢复显示
       if (wasVisible && mainWindow) {
         await mainWindow.show()
       }
@@ -426,18 +442,17 @@ async function openScreenshotWindow(screenshotData) {
  */
 async function handleNoteManager() {
   console.log('打开笔记管理')
-  closeNoteMenu()
   await openMainPage('/notes')
 }
 
 /**
  * 处理点击菜单外部区域
- * 当菜单显示时，点击外部关闭菜单
+ * 当截图菜单显示时，点击外部关闭菜单
  */
 function handleClickOutside(event) {
-  // 如果菜单显示，且点击的不是笔记按钮，则关闭菜单
-  if (showNoteMenu.value && !event.target.closest('.note-btn')) {
-    closeNoteMenu()
+  // 如果截图菜单显示，且点击的不是截图按钮，则关闭菜单
+  if (showScreenshotMenu.value && !event.target.closest('.screenshot-btn')) {
+    closeScreenshotMenu()
   }
 }
 
@@ -675,6 +690,32 @@ html, body {
   flex-direction: row;
   gap: 4px;
   animation: menu-slide-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* 截图功能菜单 - 水平排布，从右到左滑入 */
+.screenshot-menu {
+  position: fixed;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  padding: 6px 8px;
+  z-index: 1001;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  animation: menu-slide-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* 切换选项样式 */
+.screenshot-menu .toggle-item i {
+  font-size: 16px;
+}
+
+.screenshot-menu .toggle-item:hover i {
+  color: #3b82f6;
 }
 
 @keyframes menu-slide-in {
