@@ -1,95 +1,115 @@
 <template>
   <div class="annotate-panel">
-    <!-- 标注工具栏 -->
-    <div class="annotate-toolbar">
-      <!-- 工具选择 -->
-      <div class="tool-group">
-        <button 
-          v-for="tool in tools" 
-          :key="tool.id"
-          :class="['tool-btn', { active: currentTool === tool.id }]"
-          @click="selectTool(tool.id)"
-          :title="tool.name"
-        >
-          <i :class="tool.icon"></i>
-        </button>
-      </div>
+    <!-- 标注画布 -->
+    <div 
+      class="annotate-canvas-wrapper"
+      :class="{ panning: isPanning }"
+      ref="canvasWrapper"
+      @mousedown="handleMouseDown"
+      @mousemove="handleMouseMove"
+      @mouseup="handleMouseUp"
+      @mouseleave="handleMouseUp"
+    >
+      <canvas 
+        ref="annotateCanvas"
+        class="annotate-canvas"
+        :style="{
+          transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${scale})`
+        }"
+      ></canvas>
+    </div>
 
-      <div class="divider"></div>
-
-      <!-- 颜色选择 -->
-      <div class="tool-group">
-        <div class="color-picker">
+    <!-- 底部控制栏 -->
+    <div class="annotate-bottom-bar">
+      <!-- 左侧：标注工具栏 -->
+      <div class="annotate-toolbar">
+        <!-- 工具选择 -->
+        <div class="tool-group">
           <button 
-            v-for="color in colors" 
-            :key="color.value"
-            :class="['color-btn', { active: currentColor === color.value }]"
-            :style="{ backgroundColor: color.value }"
-            @click="selectColor(color.value)"
-            :title="color.name"
+            v-for="tool in tools" 
+            :key="tool.id"
+            :class="['tool-btn', { active: currentTool === tool.id }]"
+            @click="selectTool(tool.id)"
+            :title="tool.name"
           >
-            <i v-if="currentColor === color.value" class="ri-check-line"></i>
+            <i :class="tool.icon"></i>
+          </button>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 颜色选择 -->
+        <div class="tool-group">
+          <div class="color-picker">
+            <button 
+              v-for="color in colors" 
+              :key="color.value"
+              :class="['color-btn', { active: currentColor === color.value }]"
+              :style="{ backgroundColor: color.value }"
+              @click="selectColor(color.value)"
+              :title="color.name"
+            >
+              <i v-if="currentColor === color.value" class="ri-check-line"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 线条粗细 -->
+        <div class="tool-group">
+          <div class="stroke-width-picker">
+            <button 
+              v-for="width in strokeWidths" 
+              :key="width"
+              :class="['stroke-btn', { active: currentStrokeWidth === width }]"
+              @click="selectStrokeWidth(width)"
+              :title="`粗细：${width}px`"
+            >
+              <div 
+                class="stroke-preview" 
+                :style="{ 
+                  width: width + 'px', 
+                  height: width + 'px',
+                  backgroundColor: currentColor 
+                }"
+              ></div>
+            </button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 操作按钮 -->
+        <div class="tool-group">
+          <button 
+            class="action-btn"
+            @click="undo"
+            :disabled="!canUndo"
+            title="撤销 (Ctrl+Z)"
+          >
+            <i class="ri-arrow-go-back-line"></i>
+          </button>
+          <button 
+            class="action-btn"
+            @click="redo"
+            :disabled="!canRedo"
+            title="重做 (Ctrl+Y)"
+          >
+            <i class="ri-arrow-go-forward-line"></i>
+          </button>
+          <button 
+            class="action-btn"
+            @click="clearAll"
+            title="清除所有标注"
+          >
+            <i class="ri-delete-bin-line"></i>
           </button>
         </div>
       </div>
 
-      <div class="divider"></div>
-
-      <!-- 线条粗细 -->
-      <div class="tool-group">
-        <div class="stroke-width-picker">
-          <button 
-            v-for="width in strokeWidths" 
-            :key="width"
-            :class="['stroke-btn', { active: currentStrokeWidth === width }]"
-            @click="selectStrokeWidth(width)"
-            :title="`粗细：${width}px`"
-          >
-            <div 
-              class="stroke-preview" 
-              :style="{ 
-                width: width + 'px', 
-                height: width + 'px',
-                backgroundColor: currentColor 
-              }"
-            ></div>
-          </button>
-        </div>
-      </div>
-
-      <div class="divider"></div>
-
-      <!-- 操作按钮 -->
-      <div class="tool-group">
-        <button 
-          class="action-btn"
-          @click="undo"
-          :disabled="!canUndo"
-          title="撤销 (Ctrl+Z)"
-        >
-          <i class="ri-arrow-go-back-line"></i>
-        </button>
-        <button 
-          class="action-btn"
-          @click="redo"
-          :disabled="!canRedo"
-          title="重做 (Ctrl+Y)"
-        >
-          <i class="ri-arrow-go-forward-line"></i>
-        </button>
-        <button 
-          class="action-btn"
-          @click="clearAll"
-          title="清除所有标注"
-        >
-          <i class="ri-delete-bin-line"></i>
-        </button>
-      </div>
-
-      <div class="divider"></div>
-
-      <!-- 完成/取消 -->
-      <div class="tool-group">
+      <!-- 右侧：完成/取消按钮 -->
+      <div class="annotate-actions">
         <button 
           class="action-btn cancel-btn"
           @click="cancelAnnotate"
@@ -105,21 +125,6 @@
           <i class="ri-check-line"></i>
         </button>
       </div>
-    </div>
-
-    <!-- 标注画布 -->
-    <div 
-      class="annotate-canvas-wrapper"
-      ref="canvasWrapper"
-      @mousedown="handleMouseDown"
-      @mousemove="handleMouseMove"
-      @mouseup="handleMouseUp"
-      @mouseleave="handleMouseUp"
-    >
-      <canvas 
-        ref="annotateCanvas"
-        class="annotate-canvas"
-      ></canvas>
     </div>
   </div>
 </template>
@@ -164,12 +169,19 @@ const colors = [
 const strokeWidths = [2, 4, 6, 8, 10]
 
 // 状态
-const currentTool = ref('select')
+const currentTool = ref('free')
 const currentColor = ref('#ef4444')
 const currentStrokeWidth = ref(4)
 const isDrawing = ref(false)
 const startPoint = ref({ x: 0, y: 0 })
 const currentPoint = ref({ x: 0, y: 0 })
+
+// 缩放和拖动相关
+const scale = ref(1)
+const panOffset = ref({ x: 0, y: 0 })
+const isPanning = ref(false)
+const panStart = ref({ x: 0, y: 0 })
+const panStartOffset = ref({ x: 0, y: 0 })
 
 // 标注数据
 const annotations = ref([])
@@ -195,10 +207,12 @@ const canRedo = computed(() => historyIndex.value < history.value.length - 1)
 onMounted(() => {
   initCanvas()
   window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('wheel', handleWheel, { passive: false })
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
+  window.removeEventListener('wheel', handleWheel)
 })
 
 // 初始化画布
@@ -431,53 +445,72 @@ const handleMouseDown = (e) => {
   const rect = annotateCanvas.value.getBoundingClientRect()
   const scaleX = annotateCanvas.value.width / rect.width
   const scaleY = annotateCanvas.value.height / rect.height
-  const x = (e.clientX - rect.left) * scaleX
-  const y = (e.clientY - rect.top) * scaleY
+  const x = ((e.clientX - rect.left - panOffset.value.x) / scale.value) * scaleX
+  const y = ((e.clientY - rect.top - panOffset.value.y) / scale.value) * scaleY
   
-  if (currentTool.value === 'select') {
-    // 选择模式
+  // 在选择工具下，左键拖动用于移动画布
+  if (currentTool.value === 'select' && e.button === 0) {
+    // 检查是否点击在标注上
     const clickedAnnotation = findAnnotationAtPoint(x, y)
     if (clickedAnnotation) {
       selectedAnnotationId.value = clickedAnnotation.id
       isDrawing.value = true
       startPoint.value = { x, y }
+      redrawAnnotations()
+      return
     } else {
+      // 没有点击到标注，进入画布拖动模式
       selectedAnnotationId.value = null
+      isPanning.value = true
+      panStart.value = { x: e.clientX, y: e.clientY }
+      panStartOffset.value = { ...panOffset.value }
+      redrawAnnotations()
+      return
     }
-    redrawAnnotations()
-  } else if (currentTool.value === 'text') {
+  }
+  
+  if (currentTool.value === 'text') {
     // 文字输入模式
     isTextInputMode.value = true
     textPosition.value = { x, y }
     showTextInput(x, y)
-  } else {
+  } else if (currentTool.value === 'free') {
     // 绘制模式
     isDrawing.value = true
     startPoint.value = { x, y }
     currentPoint.value = { x, y }
     
-    if (currentTool.value === 'free') {
-      // 自由绘制
-      const newAnnotation = {
-        id: Date.now(),
-        type: 'free',
-        color: currentColor.value,
-        strokeWidth: currentStrokeWidth.value,
-        points: [{ x, y }]
-      }
-      annotations.value.push(newAnnotation)
+    // 自由绘制
+    const newAnnotation = {
+      id: Date.now(),
+      type: 'free',
+      color: currentColor.value,
+      strokeWidth: currentStrokeWidth.value,
+      points: [{ x, y }]
     }
+    annotations.value.push(newAnnotation)
   }
 }
 
 const handleMouseMove = (e) => {
+  // 处理拖动模式
+  if (isPanning.value) {
+    const dx = e.clientX - panStart.value.x
+    const dy = e.clientY - panStart.value.y
+    panOffset.value = {
+      x: panStartOffset.value.x + dx,
+      y: panStartOffset.value.y + dy
+    }
+    return
+  }
+  
   if (!isDrawing.value || !ctx) return
   
   const rect = annotateCanvas.value.getBoundingClientRect()
   const scaleX = annotateCanvas.value.width / rect.width
   const scaleY = annotateCanvas.value.height / rect.height
-  const x = (e.clientX - rect.left) * scaleX
-  const y = (e.clientY - rect.top) * scaleY
+  const x = ((e.clientX - rect.left - panOffset.value.x) / scale.value) * scaleX
+  const y = ((e.clientY - rect.top - panOffset.value.y) / scale.value) * scaleY
   currentPoint.value = { x, y }
   
   if (currentTool.value === 'select' && selectedAnnotationId.value) {
@@ -505,6 +538,11 @@ const handleMouseMove = (e) => {
 }
 
 const handleMouseUp = () => {
+  if (isPanning.value) {
+    isPanning.value = false
+    return
+  }
+  
   if (!isDrawing.value) return
   
   if (currentTool.value !== 'select' && currentTool.value !== 'free' && currentTool.value !== 'text') {
@@ -814,6 +852,32 @@ const cancelAnnotate = () => {
   emit('cancel')
 }
 
+// 滚轮缩放
+const handleWheel = (e) => {
+  if (!canvasWrapper.value) return
+  
+  e.preventDefault()
+  
+  const rect = canvasWrapper.value.getBoundingClientRect()
+  const mouseX = e.clientX - rect.left
+  const mouseY = e.clientY - rect.top
+  
+  const delta = -e.deltaY
+  const zoomSpeed = 0.001
+  const zoomFactor = Math.pow(1 + zoomSpeed, delta)
+  
+  const newScale = Math.min(Math.max(scale.value * zoomFactor, 0.5), 5)
+  
+  // 计算鼠标位置在缩放前后的偏移量
+  const scaleRatio = newScale / scale.value
+  panOffset.value = {
+    x: mouseX - (mouseX - panOffset.value.x) * scaleRatio,
+    y: mouseY - (mouseY - panOffset.value.y) * scaleRatio
+  }
+  
+  scale.value = newScale
+}
+
 // 监听窗口大小变化
 watch(() => props.imageData, () => {
   setTimeout(() => {
@@ -830,14 +894,29 @@ watch(() => props.imageData, () => {
   background-color: var(--bg-primary, #0f172a);
 }
 
+.annotate-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: var(--bg-secondary, #1e293b);
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  gap: 16px;
+}
+
 .annotate-toolbar {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  background-color: var(--bg-secondary, #1e293b);
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  flex: 1;
   flex-wrap: wrap;
+}
+
+.annotate-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .tool-group {
@@ -967,14 +1046,25 @@ watch(() => props.imageData, () => {
   cursor: not-allowed;
 }
 
+/* 工具栏中的操作按钮 */
+.annotate-toolbar .action-btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+/* 底部操作栏的按钮 */
+.annotate-actions .action-btn {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  padding: 0;
+}
+
 .action-btn.primary-btn {
   background-color: var(--accent-blue, #3b82f6);
   border-color: var(--accent-blue, #3b82f6);
   color: #fff;
-  width: auto;
-  padding: 0 16px;
-  font-size: 14px;
-  gap: 6px;
 }
 
 .action-btn.primary-btn:hover {
@@ -982,7 +1072,14 @@ watch(() => props.imageData, () => {
 }
 
 .action-btn.cancel-btn {
+  background-color: var(--bg-primary, #0f172a);
   color: var(--text-secondary, #94a3b8);
+}
+
+.action-btn.cancel-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: #ef4444;
 }
 
 .annotate-canvas-wrapper {
@@ -1003,5 +1100,15 @@ watch(() => props.imageData, () => {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+  transform-origin: center center;
+  transition: transform 0.1s ease-out;
+}
+
+.annotate-canvas-wrapper.panning {
+  cursor: grabbing !important;
+}
+
+.annotate-canvas-wrapper.panning .annotate-canvas {
+  cursor: grabbing !important;
 }
 </style>

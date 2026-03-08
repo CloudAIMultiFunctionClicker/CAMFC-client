@@ -40,18 +40,13 @@
         
         <!-- 裁切模式覆盖层 -->
         <div v-else-if="isCropMode" class="crop-overlay">
-          <div class="crop-header">
-            <div class="crop-title">裁切图像 - 拖动鼠标选择区域</div>
-            <div class="crop-actions">
-              <button class="action-btn" @click="cancelCrop">
-                <i class="ri-close-line"></i>
-                取消
-              </button>
-              <button class="action-btn primary" @click="applyCrop" :disabled="!cropBox.width || !cropBox.height">
-                <i class="ri-check-line"></i>
-                应用
-              </button>
-            </div>
+          <!-- 裁切提示栏 -->
+          <div class="crop-mode-header">
+            <span class="crop-mode-tip">拖动鼠标选择裁切区域，或点击取消返回</span>
+            <button class="crop-cancel-btn" @click="cancelCrop">
+              <i class="ri-close-line"></i>
+              取消
+            </button>
           </div>
           <div class="crop-image-wrapper" ref="cropImageWrapper" @mousedown="startDrawCrop" @mousemove="onDrawing" @mouseup="endDrawCrop" @mouseleave="endDrawCrop">
             <img :src="screenshotData" alt="裁切预览" class="crop-base-image" />
@@ -78,6 +73,15 @@
               <!-- 裁切区域尺寸显示 -->
               <div class="crop-size-label">
                 {{ Math.round(cropBox.width) }} x {{ Math.round(cropBox.height) }}
+              </div>
+              <!-- 裁切操作按钮 -->
+              <div class="crop-selection-actions">
+                <button class="crop-action-btn cancel" @click="cancelCrop" title="取消">
+                  <i class="ri-close-line"></i>
+                </button>
+                <button class="crop-action-btn apply" @click="applyCrop" title="应用">
+                  <i class="ri-check-line"></i>
+                </button>
               </div>
             </div>
           </div>
@@ -122,7 +126,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onBeforeMount, onMounted, onUnmounted, watch } from 'vue'
 import { listen } from '@tauri-apps/api/event'
 import { showToast } from '../components/layout/showToast.js'
 import AnnotatePanel from '../components/annotate/AnnotatePanel.vue'
@@ -169,43 +173,53 @@ const hasExistingAnnotations = ref(false)
 // 监听截图数据事件
 let unlistenScreenshotData = null
 
+const processScreenshotData = (result) => {
+  console.log('处理截图数据:', {
+    hasImageData: !!result.image_data,
+    width: result.width,
+    height: result.height,
+    imageDataLength: result.image_data?.length
+  })
+  
+  // 重置所有模式状态，回到预览模式
+  isCropMode.value = false
+  isAnnotateMode.value = false
+  cropBox.value = { x: 0, y: 0, width: 0, height: 0 }
+  
+  // 先设置数据
+  screenshotData.value = result.image_data
+  width.value = result.width
+  height.value = result.height
+  screenshotTime.value = new Date().toLocaleString('zh-CN')
+  
+  // 确保图片加载完成后再显示
+  const img = new Image()
+  img.onload = () => {
+    console.log('图片加载成功:', img.width, img.height)
+    showToast('截图成功', '#10b981')
+    resetZoom()
+  }
+  img.onerror = () => {
+    console.error('图片加载失败')
+    showToast('图片加载失败', '#ef4444')
+  }
+  img.src = result.image_data
+}
+
 const setupScreenshotListener = async () => {
+  // 先设置监听器，确保在组件挂载时就能接收事件
   unlistenScreenshotData = await listen('screenshot-data', (event) => {
-    console.log('收到截图数据:', event.payload)
+    console.log('📸 收到截图数据事件')
     const result = event.payload
     if (result.success) {
-      console.log('截图数据有效:', {
-        hasImageData: !!result.image_data,
-        width: result.width,
-        height: result.height,
-        imageDataLength: result.image_data?.length
-      })
-      
-      // 先设置数据
-      screenshotData.value = result.image_data
-      width.value = result.width
-      height.value = result.height
-      screenshotTime.value = new Date().toLocaleString('zh-CN')
-      
-      // 确保图片加载完成后再显示
-      const img = new Image()
-      img.onload = () => {
-        console.log('图片加载成功:', img.width, img.height)
-        showToast('截图成功', '#10b981')
-        resetZoom()
-      }
-      img.onerror = () => {
-        console.error('图片加载失败')
-        showToast('图片加载失败', '#ef4444')
-      }
-      img.src = result.image_data
+      processScreenshotData(result)
     } else {
       error.value = result.error || '截图失败'
       showToast(error.value, '#ef4444')
     }
   })
   
-  console.log('截图监听器已设置')
+  console.log('✅ 截图监听器已设置完成')
 }
 
 const captureScreenshot = async () => {
@@ -634,8 +648,12 @@ const stopResize = () => {
   document.removeEventListener('mouseup', stopResize)
 }
 
+// 在组件挂载前就设置监听器，确保能接收到事件
+onBeforeMount(async () => {
+  await setupScreenshotListener()
+})
+
 onMounted(() => {
-  setupScreenshotListener()
   document.addEventListener('keydown', handleKeyDown)
 })
 
@@ -906,24 +924,43 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.crop-header {
+.crop-mode-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
+  justify-content: space-between;
+  padding: 12px 16px;
   background-color: var(--bg-secondary, #1e293b);
   border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  z-index: 101;
 }
 
-.crop-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text-primary, #f1f5f9);
+.crop-mode-tip {
+  color: var(--text-secondary, #94a3b8);
+  font-size: 14px;
 }
 
-.crop-actions {
+.crop-cancel-btn {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: transparent;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
+  border-radius: 6px;
+  color: var(--text-primary, #f1f5f9);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.crop-cancel-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.crop-cancel-btn i {
+  font-size: 16px;
 }
 
 .action-btn {
@@ -990,6 +1027,48 @@ onUnmounted(() => {
   cursor: move;
   z-index: 10;
   pointer-events: none;
+}
+
+.crop-selection-actions {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+  z-index: 20;
+}
+
+.crop-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 18px;
+  color: #fff;
+}
+
+.crop-action-btn.cancel {
+  background-color: #ef4444;
+}
+
+.crop-action-btn.cancel:hover {
+  background-color: #dc2626;
+}
+
+.crop-action-btn.apply {
+  background-color: #10b981;
+}
+
+.crop-action-btn.apply:hover {
+  background-color: #059669;
 }
 
 .crop-handle {
