@@ -187,8 +187,11 @@ onMounted(async () => {
     }
   })
   
-  // 定时检查蓝牙连接状态（每10秒）
+  // 定时检查蓝牙连接状态（每 10 秒）
   let connectionCheckInterval = null
+  
+  // 蓝牙断开提示框是否显示中，避免重复显示
+  let isShowingDisconnectDialog = false
   
   const checkConnectionStatus = async () => {
     try {
@@ -198,17 +201,138 @@ onMounted(async () => {
       
       // 如果从已连接变为未连接，跳转到初始页面
       if (bluetoothStore.isConnected() && !connected) {
-        console.log('蓝牙连接已断开，跳转到初始页面')
+        console.log('蓝牙连接已断开，准备显示提示')
+        
+        // 避免重复显示对话框
+        if (isShowingDisconnectDialog) {
+          console.log('对话框已在显示中，跳过')
+          return
+        }
+        
+        isShowingDisconnectDialog = true
+        
+        // 重置状态
         bluetoothStore.reset()
-        showToast('蓝牙连接已断开，重新连接')
-        // 跳转到初始页面
-        if (route.path !== '/') {
-          router.push('/')
+        
+        // 显示确认对话框
+        const userConfirmed = await showDisconnectConfirm()
+        
+        if (userConfirmed) {
+          console.log('用户确认断开，刷新页面')
+          // 刷新整个页面
+          window.location.reload()
         }
       }
     } catch (error) {
       // 静默处理错误，避免刷屏
+      console.log('检查连接状态出错:', error)
     }
+  }
+  
+  // 显示蓝牙断开确认对话框
+  const showDisconnectConfirm = async () => {
+    return new Promise((resolve) => {
+      // 创建对话框
+      const dialog = document.createElement('div')
+      dialog.className = 'disconnect-dialog'
+      dialog.innerHTML = `
+        <div class="disconnect-dialog-content">
+          <div class="disconnect-dialog-icon">⚠️</div>
+          <h3>设备已断开连接</h3>
+          <p>当前蓝牙设备已断开，点击确认后重新连接</p>
+          <div class="disconnect-dialog-actions">
+            <button class="disconnect-btn confirm">确认</button>
+          </div>
+        </div>
+      `
+      
+      // 添加样式
+      const style = document.createElement('style')
+      style.textContent = `
+        .disconnect-dialog {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 99999;
+          backdrop-filter: blur(4px);
+        }
+        
+        .disconnect-dialog-content {
+          background-color: var(--bg-secondary, #1e293b);
+          border-radius: 16px;
+          padding: 32px;
+          max-width: 400px;
+          text-align: center;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+          border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+        }
+        
+        .disconnect-dialog-icon {
+          font-size: 48px;
+          margin-bottom: 16px;
+        }
+        
+        .disconnect-dialog-content h3 {
+          font-size: 20px;
+          font-weight: 600;
+          color: var(--text-primary, #f1f5f9);
+          margin: 0 0 12px 0;
+        }
+        
+        .disconnect-dialog-content p {
+          font-size: 14px;
+          color: var(--text-secondary, #94a3b8);
+          margin: 0 0 24px 0;
+        }
+        
+        .disconnect-dialog-actions {
+          display: flex;
+          gap: 12px;
+          justify-content: center;
+        }
+        
+        .disconnect-btn {
+          padding: 10px 32px;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          border: none;
+        }
+        
+        .disconnect-btn.confirm {
+          background-color: var(--accent-blue, #3b82f6);
+          color: #fff;
+        }
+        
+        .disconnect-btn.confirm:hover {
+          background-color: #2563eb;
+        }
+      `
+      
+      document.head.appendChild(style)
+      document.body.appendChild(dialog)
+      
+      // 绑定按钮事件
+      const confirmBtn = dialog.querySelector('.confirm')
+      
+      const closeDialog = () => {
+        dialog.remove()
+        style.remove()
+      }
+      
+      confirmBtn.addEventListener('click', () => {
+        closeDialog()
+        resolve(true)
+      })
+    })
   }
   
   // 开始定时检查（每10秒，减少刷屏）

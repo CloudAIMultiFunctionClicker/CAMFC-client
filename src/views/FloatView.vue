@@ -406,9 +406,13 @@ async function openScreenshotWindow(screenshotData) {
       // 发送导航事件
       const webview = await WebviewWindow.getByLabel('main')
       if (webview) {
+        // 先发送导航事件
         await webview.emit('navigate', '/screenshot')
-        // 发送截图数据
+        // 等待更长时间确保页面完全加载（第一次可能需要更多时间）
+        await new Promise(resolve => setTimeout(resolve, 300))
+        // 再发送截图数据
         await webview.emit('screenshot-data', screenshotData)
+        console.log('截图数据已发送')
       }
     }
   } catch (e) {
