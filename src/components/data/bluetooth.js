@@ -295,10 +295,10 @@ export async function testBluetooth() {
 }
 
 /**
- * 模拟按下并松开上箭头键
+ * 模拟按下并松开右箭头键
  * 
  * 调用Rust端的press_win_key命令
- * GPIO10 按钮松开时调用
+ * GPIO10按钮松开时调用
  * 
  * @returns {Promise<void>}
  */
@@ -306,13 +306,13 @@ export async function pressWinKey() {
   try {
     await invoke('press_win_key')
   } catch (error) {
-    console.error(`模拟下箭头键失败：${error}`)
-    throw new Error(`模拟下箭头键失败：${error}`)
+    console.error(`模拟右箭头键失败: ${error}`)
+    throw new Error(`模拟右箭头键失败: ${error}`)
   }
 }
 
 /**
- * 模拟按下并松开下箭头键
+ * 模拟按下并松开左箭头键
  * 
  * 调用Rust端的press_left_key命令
  * GPIO9按钮松开时调用
@@ -323,8 +323,8 @@ export async function pressLeftKey() {
   try {
     await invoke('press_left_key')
   } catch (error) {
-    console.error(`模拟下箭头键失败：${error}`)
-    throw new Error(`模拟下箭头键失败：${error}`)
+    console.error(`模拟左箭头键失败: ${error}`)
+    throw new Error(`模拟左箭头键失败: ${error}`)
   }
 }
 

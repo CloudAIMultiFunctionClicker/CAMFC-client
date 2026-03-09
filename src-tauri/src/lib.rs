@@ -1041,10 +1041,10 @@ fn get_monitors() -> Result<serde_json::Value, String> {
     }
 }
 
-/// 模拟按下并松开上箭头键
+/// 模拟按下并松开右箭头键
 /// 
-/// 前端调用这个命令来模拟键盘点击上箭头键
-/// 会先按下上箭头键，然后松开
+/// 前端调用这个命令来模拟键盘点击右箭头键
+/// 会先按下右箭头键，然后松开
 #[tauri::command]
 fn press_win_key() -> Result<(), String> {
     use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -1053,50 +1053,50 @@ fn press_win_key() -> Result<(), String> {
         INPUT_KEYBOARD,
         KEYBDINPUT,
         KEYBD_EVENT_FLAGS,
-        VK_UP,
+        VK_RIGHT,
     };
     
-    println!("[press_up_key] 开始模拟上箭头键点击...");
+    println!("[press_right_key] 开始模拟右箭头键点击...");
     
     unsafe {
         let mut inputs: [INPUT; 2] = std::mem::zeroed();
         
-        // 按下上箭头键
+        // 按下右箭头键
         inputs[0].r#type = INPUT_KEYBOARD;
         inputs[0].Anonymous.ki = KEYBDINPUT {
-            wVk: VK_UP,
+            wVk: VK_RIGHT,
             wScan: 0,
             dwFlags: KEYBD_EVENT_FLAGS(0),
             time: 0,
             dwExtraInfo: 0,
         };
         
-        // 松开上箭头键
+        // 松开右箭头键
         inputs[1].r#type = INPUT_KEYBOARD;
         inputs[1].Anonymous.ki = KEYBDINPUT {
-            wVk: VK_UP,
+            wVk: VK_RIGHT,
             wScan: 0,
             dwFlags: KEYBD_EVENT_FLAGS(2), // KEYEVENTF_KEYUP
             time: 0,
             dwExtraInfo: 0,
         };
         
-        println!("[press_up_key] 调用 SendInput...");
+        println!("[press_right_key] 调用SendInput...");
         let sent = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
-        println!("[press_up_key] SendInput 返回：{}", sent);
+        println!("[press_right_key] SendInput返回: {}", sent);
         
         if sent != 2 {
             return Err(format!("SendInput失败，只发送了 {} 个输入", sent));
         }
     }
     
-    println!("[press_up_key] 上箭头键点击完成");
+    println!("[press_right_key] 右箭头键点击完成");
     Ok(())
 }
 
-/// 模拟按下并松开下箭头键
+/// 模拟按下并松开左箭头键
 /// 
-/// GPIO9 按钮松开时调用，模拟按下下箭头键
+/// GPIO9按钮松开时调用，模拟按下左箭头键
 #[tauri::command]
 fn press_left_key() -> Result<(), String> {
     use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -1105,28 +1105,28 @@ fn press_left_key() -> Result<(), String> {
         INPUT_KEYBOARD,
         KEYBDINPUT,
         KEYBD_EVENT_FLAGS,
-        VK_DOWN,
+        VK_LEFT,
     };
     
-    println!("[press_down_key] 开始模拟下箭头键点击...");
+    println!("[press_left_key] 开始模拟左箭头键点击...");
     
     unsafe {
         let mut inputs: [INPUT; 2] = std::mem::zeroed();
         
-        // 按下下箭头键
+        // 按下左箭头键
         inputs[0].r#type = INPUT_KEYBOARD;
         inputs[0].Anonymous.ki = KEYBDINPUT {
-            wVk: VK_DOWN,
+            wVk: VK_LEFT,
             wScan: 0,
             dwFlags: KEYBD_EVENT_FLAGS(0),
             time: 0,
             dwExtraInfo: 0,
         };
         
-        // 松开下箭头键
+        // 松开左箭头键
         inputs[1].r#type = INPUT_KEYBOARD;
         inputs[1].Anonymous.ki = KEYBDINPUT {
-            wVk: VK_DOWN,
+            wVk: VK_LEFT,
             wScan: 0,
             dwFlags: KEYBD_EVENT_FLAGS(2), // KEYEVENTF_KEYUP
             time: 0,
@@ -1136,11 +1136,11 @@ fn press_left_key() -> Result<(), String> {
         let sent = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
         
         if sent != 2 {
-            return Err(format!("SendInput 失败，只发送了 {} 个输入", sent));
+            return Err(format!("SendInput失败，只发送了 {} 个输入", sent));
         }
     }
     
-    println!("[press_down_key] 下箭头键点击完成");
+    println!("[press_left_key] 左箭头键点击完成");
     Ok(())
 }
 
