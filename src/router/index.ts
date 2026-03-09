@@ -84,12 +84,6 @@ const router = createRouter({
       component: () => import('../views/HardwareSettings.vue')
     },
     {
-      path: '/software-settings',
-      name: 'softwareSettings',
-      // 软件设置占位页面
-      component: () => import('../views/SoftwareSettings.vue')
-    },
-    {
       path: '/more-info',
       name: 'moreInfo',
       // 更多信息占位页面

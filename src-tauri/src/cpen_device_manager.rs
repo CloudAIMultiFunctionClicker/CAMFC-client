@@ -538,10 +538,11 @@ impl CpenDeviceManager {
         ).await
         .map_err(|e| format!("发送 setTime 命令失败：{}", e))?;
         
-        // 不读取 setTime 的响应，因为设备可能不响应
-        // 等待一小段时间让设备处理
-        sleep(Duration::from_millis(200)).await;
-        
+        // 读取并丢弃 setTime 的响应，避免它干扰后续 getTotp 的读取
+        let _set_time_response = self.bluetooth_manager.recv(service_uuid, char_uuid).await
+            .map_err(|e| format!("接收 setTime 响应失败: {}", e))?;
+        println!("[CPEN] setTime 响应已处理");
+
         // 发送 getTotp 命令
         println!("[CPEN] 发送getTotp命令");
         self.bluetooth_manager.send(

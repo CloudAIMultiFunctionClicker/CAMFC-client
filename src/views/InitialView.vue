@@ -133,7 +133,7 @@ import {
   cleanup
 } from '../components/data/bluetooth.js'
 import { showToast } from '../components/layout/showToast.js'
-import { setCurrentUserId } from '../components/data/storage.js'
+import { setCurrentUserId, loadAppData, saveAppData } from '../components/data/storage.js'
 
 console.info('InitialView - 蓝牙连接界面（简化版，业务逻辑在Rust端）')
 
@@ -248,6 +248,17 @@ async function selectDevice(device) {
     
     bluetoothStore.setStatus('connected')
     showToast('设备连接成功！')
+    
+    // 保存设备地址，用于自动连接
+    try {
+      const savedCpen = await loadAppData('settings_cpen')
+      const settings = savedCpen ? JSON.parse(savedCpen) : { autoConnect: false, lastDeviceAddress: '' }
+      settings.lastDeviceAddress = device.address
+      await saveAppData('settings_cpen', JSON.stringify(settings))
+      console.log('已保存设备地址:', device.address)
+    } catch (e) {
+      console.warn('保存设备地址失败:', e)
+    }
     
     showDeviceSelection.value = false
     
@@ -550,8 +561,8 @@ async function retryConnection() {
 }
 
 // 组件挂载时设置
-onMounted(() => {
-  console.log('InitialView mounted，等待用户点击开始连接')
+onMounted(async () => {
+  console.log('InitialView mounted')
   
   // 重置状态，确保从干净状态开始
   bluetoothStore.reset()
@@ -559,7 +570,33 @@ onMounted(() => {
   retryCount.value = 0
   hasStarted.value = false
   
-  // 不再自动开始连接，等待用户点击按钮后扫描设备
+  // 检查自动连接设置
+  try {
+    const savedCpen = await loadAppData('settings_cpen')
+    if (savedCpen) {
+      const settings = JSON.parse(savedCpen)
+      if (settings.autoConnect && settings.lastDeviceAddress) {
+        console.log('自动连接已启用，尝试连接上次设备:', settings.lastDeviceAddress)
+        hasStarted.value = true
+        bluetoothStore.setStatus('connecting')
+        
+        try {
+          await connectCpenDevice(settings.lastDeviceAddress)
+          bluetoothStore.setStatus('connected')
+          showToast('设备自动连接成功！')
+          jumpToFileView()
+          return
+        } catch (e) {
+          console.warn('自动连接失败:', e)
+          showToast('自动连接失败，请手动连接')
+          hasStarted.value = false
+          bluetoothStore.setStatus('disconnected')
+        }
+      }
+    }
+  } catch (e) {
+    console.error('读取自动连接设置失败:', e)
+  }
 })
 </script>
 
