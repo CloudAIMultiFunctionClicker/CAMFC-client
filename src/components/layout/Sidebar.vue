@@ -143,35 +143,20 @@ const toggleCollapse = () => {
 </template>
 
 <style scoped>
-/* 侧边栏基础样式 - 使用CSS变量支持主题切换 */
-/* 现在颜色都从全局变量获取，亮色/暗色模式自动切换 */
-
 .sidebar {
     width: 240px;
     height: calc(100vh - 65px);
-    /* 全高 */
-    background: var(
-        --bg-sidebar,
-        linear-gradient(135deg, #1e293b 0%, #334155 100%)
-    );
-    border-right: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
-    /* 主题化边框 */
+    background: #fff;
+    border-right: 1px solid #eee;
     display: flex;
     flex-direction: column;
-    /* 垂直布局 */
     padding: 20px 0;
-    /* 上下有内边距 */
     box-sizing: border-box;
     position: relative;
     z-index: 900;
-    /* 在头部下面 */
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    /* 使用贝塞尔曲线让动画更自然，包含所有属性的过渡 */
     overflow-y: auto;
-    /* 内容超出时可滚动 */
 }
 
-/* 自定义滚动条样式 */
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
@@ -181,121 +166,82 @@ const toggleCollapse = () => {
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-    background: var(--border-color, rgba(255, 255, 255, 0.2));
+    background: #ddd;
     border-radius: 3px;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted, #64748b);
+    background: #999;
 }
 
-/* 折叠状态 - 侧边栏向左滑出屏幕 */
 .sidebar.collapsed {
-    width: 240px; /* 保持宽度，但靠transform来移动 */
+    width: 240px;
     opacity: 0;
-    transform: translateX(-100%); /* 完全滑出屏幕左边 */
+    transform: translateX(-100%);
     overflow: hidden;
     padding: 0;
     border-right: none;
-    /* 移除了visibility: hidden，让opacity和transform来处理隐藏效果 */
-    pointer-events: none; /* 确保折叠时无法点击 */
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* 折叠时过渡时间稍长 */
+    pointer-events: none;
 }
 
-/* 悬浮按钮样式 - 调整得更协调 */
 .float-collapse-btn {
     position: fixed;
     left: 16px;
-    top: 80px; /* 在头部下方一点 */
-    background: var(--bg-sidebar, #1e293b);
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    top: 80px;
+    background: #fff;
+    border: 1px solid #ddd;
     width: 36px;
     height: 36px;
-    border-radius: 8px; /* 改为圆角矩形，更符合设计 */
-    color: var(--text-secondary, #cbd5e1);
+    border-radius: 4px;
+    color: #666;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000; /* 确保在最上层 */
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
-    opacity: 0.9;
+    z-index: 1000;
 }
 
 .float-collapse-btn:hover {
-    background: var(--hover-bg, rgba(255, 255, 255, 0.1));
-    color: var(--text-primary, #f8fafc);
-    transform: translateY(-1px); /* 轻微上浮效果 */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    opacity: 1;
-}
-
-.float-collapse-btn:active {
-    transform: translateY(0); /* 点击时恢复位置 */
+    background: #333;
+    color: #fff;
 }
 
 .float-collapse-btn i {
     font-size: 1.3rem;
-    transition: transform 0.3s ease;
 }
 
-/* 悬浮按钮的动画效果 */
-.float-collapse-btn {
-    animation: floatIn 0.3s ease-out;
-}
-
-@keyframes floatIn {
-    from {
-        opacity: 0;
-        transform: translateX(-10px);
-    }
-    to {
-        opacity: 0.9;
-        transform: translateX(0);
-    }
-}
-
-/* Logo区域样式 */
 .logo-area {
     padding: 0 20px 20px;
-    /* 左右内边距，底部有间距 */
-    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
+    border-bottom: 1px solid #eee;
     margin-bottom: 20px;
     position: relative;
-    /* 为折叠按钮定位 */
 }
 
-/* 折叠按钮样式（侧边栏内的） */
 .collapse-btn {
     position: absolute;
     right: 12px;
     top: 12px;
-    background: var(--hover-bg, rgba(255, 255, 255, 0.1));
+    background: #f5f5f5;
     border: none;
     width: 28px;
     height: 28px;
-    border-radius: 6px; /* 与悬浮按钮保持一致 */
-    color: var(--text-secondary, #cbd5e1);
+    border-radius: 4px;
+    color: #666;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
 }
 
 .collapse-btn:hover {
-    background: var(--hover-bg, rgba(255, 255, 255, 0.15));
-    color: var(--text-primary, #f8fafc);
-    transform: rotate(15deg); /* 轻微旋转效果 */
+    background: #333;
+    color: #fff;
 }
 
 .collapse-btn i {
     font-size: 1.2rem;
-    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); /* 更平滑的旋转动画 */
 }
 
-/* 折叠状态下侧边栏内按钮旋转 */
 .sidebar:not(.collapsed) .collapse-btn i {
     transform: rotate(0deg);
 }
@@ -306,7 +252,7 @@ const toggleCollapse = () => {
 
 .logo-area h2 {
     margin: 0;
-    color: var(--text-primary, #f8fafc);
+    color: #333;
     font-size: 1.25rem;
     font-weight: 600;
     display: flex;
@@ -317,18 +263,16 @@ const toggleCollapse = () => {
 
 .logo-area h2 i {
     font-size: 1.5rem;
-    color: var(--accent-blue, #3b82f6);
-    /* 使用主题蓝色 */
+    color: #333;
 }
 
 .subtitle {
     margin: 0;
-    color: var(--text-muted, #94a3b8);
+    color: #999;
     font-size: 0.875rem;
     line-height: 1.4;
 }
 
-/* 用量进度条样式 */
 .storage-usage {
     padding: 8px 0;
 }
@@ -339,17 +283,17 @@ const toggleCollapse = () => {
     align-items: center;
     margin-bottom: 8px;
     font-size: 12px;
-    color: var(--text-muted, #94a3b8);
+    color: #999;
 }
 
 .usage-text {
-    color: var(--accent-blue, #3b82f6);
+    color: #333;
     font-weight: 500;
 }
 
 .usage-bar {
     height: 6px;
-    background: var(--bg-primary, #0f172a);
+    background: #f5f5f5;
     border-radius: 3px;
     overflow: hidden;
 }
@@ -357,32 +301,23 @@ const toggleCollapse = () => {
 .usage-progress {
     height: 100%;
     border-radius: 3px;
-    transition: width 0.3s ease;
 }
 
 .usage-progress.unlimited {
     width: 100%;
-    background: linear-gradient(90deg, 
-        var(--accent-blue, #3b82f6) 0%, 
-        #10b981 50%, 
-        var(--accent-green, #22c55e) 100%
-    );
+    background: #333;
 }
 
-/* 菜单通用样式 */
 .main-menu {
     padding: 0 20px;
     margin-bottom: 24px;
-    /* 菜单之间的间距 */
 }
 
 .menu-title {
     margin: 0 0 12px 0;
-    color: var(--text-secondary, #cbd5e1);
+    color: #666;
     font-size: 0.875rem;
     font-weight: 500;
-    text-transform: uppercase;
-    /* 大写字母，看起来像标题 */
     letter-spacing: 0.05em;
     display: flex;
     align-items: center;
@@ -402,55 +337,45 @@ const toggleCollapse = () => {
 
 .menu-item {
     margin-bottom: 4px;
-    /* 菜单项之间的间距 */
 }
 
-/* 菜单链接样式 */
 .menu-link {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    color: var(--text-secondary, #cbd5e1);
+    color: #666;
     text-decoration: none;
-    border-radius: 8px;
-    /* 跟按钮一样的圆角 */
-    transition: all 0.2s ease;
-    /* 过渡效果 */
+    border-radius: 4px;
     font-size: 0.9375rem;
 }
 
 .menu-link i {
     font-size: 1.125rem;
     width: 24px;
-    /* 固定图标宽度，对齐好看 */
     display: flex;
     justify-content: center;
 }
 
 .menu-link:hover {
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
-    color: var(--text-primary, #f1f5f9);
+    background-color: #f5f5f5;
+    color: #333;
 }
 
-/* 路由链接激活状态 - 先写个样式，等有script了再用 */
-/* TODO: 这里需要router-link-active类来高亮当前页面 */
 .menu-link.router-link-active {
-    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.15);
-    color: var(--accent-blue, #3b82f6);
+    background-color: #f5f5f5;
+    color: #333;
     font-weight: 500;
 }
 
 .menu-link.router-link-active i {
-    color: var(--accent-blue, #3b82f6);
+    color: #333;
 }
 
-/* 底部区域样式 */
 .sidebar-footer {
     margin-top: auto;
-    /* 推到最底部 */
     padding: 20px 20px 0;
-    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
+    border-top: 1px solid #eee;
 }
 
 .footer-btn {
@@ -461,14 +386,12 @@ const toggleCollapse = () => {
     padding: 10px 12px;
     background: none;
     border: none;
-    color: var(--text-muted, #94a3b8);
+    color: #999;
     text-align: left;
-    border-radius: 8px;
+    border-radius: 4px;
     cursor: pointer;
-    transition: all 0.2s ease;
     font-size: 0.9375rem;
     margin-bottom: 8px;
-    /* 按钮之间的间距 */
 }
 
 .footer-btn i {
@@ -476,33 +399,26 @@ const toggleCollapse = () => {
 }
 
 .footer-btn:hover {
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-    color: var(--text-secondary, #cbd5e1);
+    background-color: #f5f5f5;
+    color: #333;
 }
 
-/* 响应式设计 - 小屏幕时可能需要调整 */
-/* 现在折叠功能能用了，但手机端可能还需要调整 */
 @media (max-width: 1024px) {
     .sidebar {
         width: 200px;
-        /* 稍微窄一点 */
     }
 }
 
-/* 超小屏幕 - 可能需要完全不同的布局 */
-/* TODO: 在手机上侧边栏可能应该变成底部导航或者可滑出的抽屉 */
 @media (max-width: 768px) {
     .sidebar {
         width: 200px;
-        /* 手机端稍微窄一点 */
     }
 
     .float-collapse-btn {
-        top: 70px; /* 手机端调整悬浮按钮位置 */
+        top: 70px;
         left: 8px;
         width: 36px;
         height: 36px;
     }
 }
 </style>
-.footer-btn i {

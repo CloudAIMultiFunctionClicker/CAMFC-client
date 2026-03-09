@@ -752,8 +752,8 @@ function importNotes() {
 
 <style scoped>
 .notes-container {
-  padding: 30px;
-  max-width: 1200px;
+  padding: 60px;
+  max-width: 800px;
   margin: 0 auto;
   min-height: calc(100vh - 100px);
 }
@@ -766,8 +766,8 @@ function importNotes() {
 }
 
 .page-title {
-  font-size: 28px;
-  color: var(--text-primary);
+  font-size: 2.5rem;
+  color: #333;
   margin: 0;
   display: flex;
   align-items: center;
@@ -775,27 +775,25 @@ function importNotes() {
 }
 
 .page-title-icon {
-  font-size: 28px;
-  color: var(--accent-blue, #3b82f6);
+  font-size: 2.5rem;
+  color: #333;
 }
 
 .add-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
-  background-color: var(--accent-blue);
+  padding: 10px 24px;
+  background-color: #333;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .add-btn:hover {
-  background-color: #4a8bd6;
-  transform: translateY(-1px);
+  background-color: #555;
 }
 
 .add-btn i {
@@ -812,18 +810,17 @@ function importNotes() {
   align-items: center;
   gap: 6px;
   padding: 10px 16px;
-  background-color: var(--bg-secondary);
-  color: var(--text-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  background-color: #fff;
+  color: #666;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .action-btn:hover {
-  background-color: var(--hover-bg);
-  color: var(--text-primary);
+  background-color: #f5f5f5;
+  color: #333;
 }
 
 .action-btn i {
@@ -839,10 +836,9 @@ function importNotes() {
   top: 100%;
   right: 0;
   margin-top: 8px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
   min-width: 150px;
   z-index: 100;
   overflow: hidden;
@@ -856,20 +852,19 @@ function importNotes() {
   padding: 10px 16px;
   background: none;
   border: none;
-  color: var(--text-primary);
+  color: #333;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
   text-align: left;
 }
 
 .dropdown-item:hover {
-  background-color: var(--hover-bg);
+  background-color: #f9f9f9;
 }
 
 .dropdown-item i {
   font-size: 16px;
-  color: var(--text-secondary);
+  color: #666;
 }
 
 .dropdown-enter-active,
@@ -886,9 +881,9 @@ function importNotes() {
 .empty-state {
   text-align: center;
   padding: 80px 20px;
-  background-color: var(--bg-secondary);
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
+  background-color: #fff;
+  border-radius: 4px;
+  border: 1px solid #eee;
 }
 
 .empty-icon {
@@ -898,24 +893,24 @@ function importNotes() {
 
 .empty-message {
   font-size: 20px;
-  color: var(--text-primary);
+  color: #333;
   margin-bottom: 10px;
 }
 
 .empty-desc {
-  color: var(--text-muted);
+  color: #999;
 }
 
 .loading-state {
   text-align: center;
   padding: 80px 20px;
-  background-color: var(--bg-secondary);
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
+  background-color: #fff;
+  border-radius: 4px;
+  border: 1px solid #eee;
 }
 
 .loading-state p {
-  color: var(--text-secondary);
+  color: #666;
   margin-top: 16px;
 }
 
@@ -925,15 +920,15 @@ function importNotes() {
 }
 
 .loading-overlay p {
-  color: var(--text-secondary);
+  color: #666;
   margin-top: 12px;
 }
 
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid var(--border-color);
-  border-top-color: var(--accent-blue, #3b82f6);
+  border: 3px solid #eee;
+  border-top-color: #333;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto;
@@ -960,17 +955,16 @@ function importNotes() {
   justify-content: center;
   width: 36px;
   height: 36px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  color: var(--text-primary);
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #333;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .page-btn:hover:not(:disabled) {
-  background-color: var(--hover-bg);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: #f5f5f5;
+  border-color: #333;
 }
 
 .page-btn:disabled {
@@ -991,22 +985,21 @@ function importNotes() {
   min-width: 36px;
   height: 36px;
   padding: 0 10px;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  color: var(--text-primary);
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #333;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .page-num:hover {
-  background-color: var(--hover-bg);
+  background-color: #f5f5f5;
 }
 
 .page-num.active {
-  background-color: var(--accent-blue, #3b82f6);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: #333;
+  border-color: #333;
   color: white;
 }
 
@@ -1017,28 +1010,25 @@ function importNotes() {
 }
 
 .note-card {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 20px;
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 24px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .note-card:hover {
-  border-color: var(--accent-blue);
-  transform: translateY(-2px);
+  border-color: #333;
 }
 
 .note-card.active {
-  border-color: var(--accent-blue);
-  box-shadow: 0 4px 12px rgba(var(--accent-blue-rgb), 0.15);
+  border-color: #333;
 }
 
 .note-title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #333;
   margin-bottom: 10px;
   white-space: nowrap;
   overflow: hidden;
@@ -1047,7 +1037,7 @@ function importNotes() {
 
 .note-preview {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: #666;
   margin-bottom: 15px;
   line-height: 1.5;
   min-height: 42px;
@@ -1061,7 +1051,7 @@ function importNotes() {
 
 .note-date {
   font-size: 12px;
-  color: var(--text-muted);
+  color: #999;
 }
 
 .note-editor {
@@ -1070,8 +1060,8 @@ function importNotes() {
   top: 65px;
   width: 400px;
   height: calc(100vh - 65px);
-  background-color: var(--bg-secondary);
-  border-left: 1px solid var(--border-color);
+  background-color: #fff;
+  border-left: 1px solid #eee;
   display: flex;
   flex-direction: column;
   z-index: 100;
@@ -1084,7 +1074,6 @@ function importNotes() {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1092,16 +1081,15 @@ function importNotes() {
 }
 
 .note-modal-content {
-  background-color: var(--bg-secondary);
-  border-radius: 16px;
+  background-color: #fff;
+  border-radius: 4px;
   width: 90%;
   max-width: 900px;
   max-height: 85vh;
   min-height: 500px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #eee;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
 .note-modal-overlay,
@@ -1145,7 +1133,7 @@ function importNotes() {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #eee;
 }
 
 .note-modal-actions {
@@ -1166,7 +1154,7 @@ function importNotes() {
   border: none;
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #333;
   outline: none;
 }
 
@@ -1174,30 +1162,29 @@ function importNotes() {
   flex: 1;
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #333;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .title-input::placeholder {
-  color: var(--text-muted);
+  color: #999;
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: #999;
   cursor: pointer;
   font-size: 20px;
   padding: 4px;
   border-radius: 4px;
-  transition: all 0.2s;
 }
 
 .close-btn:hover {
-  color: var(--text-primary);
-  background-color: var(--hover-bg);
+  color: #333;
+  background-color: #f5f5f5;
 }
 
 .editor-actions {
@@ -1208,53 +1195,51 @@ function importNotes() {
 .edit-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: #999;
   cursor: pointer;
   font-size: 18px;
   padding: 4px 8px;
   border-radius: 4px;
-  transition: all 0.2s;
 }
 
 .edit-btn:hover {
-  color: var(--accent-blue, #3b82f6);
-  background-color: rgba(59, 130, 246, 0.1);
+  color: #333;
+  background-color: #f5f5f5;
 }
 
 .save-btn {
   background: none;
   border: none;
-  color: #22c55e;
+  color: #2a7;
   cursor: pointer;
   font-size: 18px;
   padding: 4px 8px;
   border-radius: 4px;
-  transition: all 0.2s;
 }
 
 .save-btn:hover {
-  background-color: rgba(34, 197, 94, 0.1);
+  background-color: #f5f5f5;
 }
 
 .preview-text {
   font-size: 15px;
-  color: var(--text-primary);
+  color: #333;
   line-height: 1.6;
 }
 
 .preview-text.empty {
-  color: var(--text-muted);
+  color: #999;
 }
 
 .preview-text :deep(h1),
 .preview-text :deep(h2),
 .preview-text :deep(h3) {
   margin: 16px 0 10px;
-  color: var(--text-primary);
+  color: #333;
 }
 
 .preview-text :deep(code) {
-  background-color: var(--bg-primary);
+  background-color: #f5f5f5;
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'Monaco', 'Menlo', monospace;
@@ -1262,7 +1247,7 @@ function importNotes() {
 }
 
 .preview-text :deep(del) {
-  color: var(--text-muted);
+  color: #999;
 }
 
 .preview-text :deep(li) {
@@ -1272,7 +1257,7 @@ function importNotes() {
 
 .preview-text :deep(.markdown-image) {
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: 4px;
   margin: 12px 0;
 }
 
@@ -1282,7 +1267,7 @@ function importNotes() {
   min-height: 400px;
   background: none;
   border: none;
-  color: var(--text-primary);
+  color: #333;
   font-size: 15px;
   line-height: 1.7;
   resize: none;
@@ -1291,26 +1276,12 @@ function importNotes() {
 }
 
 .note-editor-textarea::placeholder {
-  color: var(--text-muted);
+  color: #999;
 }
 
 .editor-container {
   width: 100%;
   min-height: 400px;
-}
-
-.note-editor-textarea {
-  width: 100%;
-  height: 100%;
-  min-height: 400px;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 15px;
-  line-height: 1.7;
-  resize: none;
-  outline: none;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
 }
 
 .editor-toolbar {
@@ -1321,10 +1292,9 @@ function importNotes() {
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  background-color: var(--bg-secondary, #1e293b);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background-color: #fff;
+  border: 1px solid #eee;
+  border-radius: 4px;
   z-index: 10;
 }
 
@@ -1336,22 +1306,21 @@ function importNotes() {
   height: 32px;
   background: none;
   border: none;
-  border-radius: 6px;
-  color: var(--text-secondary, #94a3b8);
+  border-radius: 4px;
+  color: #666;
   font-size: 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
 .toolbar-btn:hover {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
-  color: var(--text-primary, #f1f5f9);
+  background-color: #f5f5f5;
+  color: #333;
 }
 
 .toolbar-divider {
   width: 1px;
   height: 20px;
-  background-color: var(--border-color, rgba(255, 255, 255, 0.2));
+  background-color: #eee;
   margin: 0 4px;
 }
 
@@ -1374,13 +1343,12 @@ function importNotes() {
   left: 50%;
   transform: translateX(-50%) translateY(5px);
   padding: 8px 12px;
-  background-color: var(--bg-primary, #0f172a);
-  color: var(--text-primary, #f8fafc);
+  background-color: #333;
+  color: #fff;
   font-size: 12px;
   white-space: nowrap;
-  border-radius: 6px;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border: 1px solid #eee;
   opacity: 0;
   visibility: hidden;
   transition: all 0.2s ease;
@@ -1396,16 +1364,16 @@ function importNotes() {
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: var(--bg-primary, #0f172a);
+  border-top-color: #333;
 }
 
 .tooltip-syntax {
   display: block;
   margin-top: 4px;
   padding-top: 4px;
-  border-top: 1px dashed var(--border-color, rgba(255, 255, 255, 0.2));
+  border-top: 1px dashed #666;
   font-family: 'Monaco', 'Menlo', monospace;
-  color: var(--accent-blue, #3b82f6);
+  color: #ccc;
   font-size: 11px;
 }
 
@@ -1415,14 +1383,14 @@ function importNotes() {
   border: none;
   padding: 20px;
   font-size: 15px;
-  color: var(--text-primary);
+  color: #333;
   line-height: 1.6;
   resize: none;
   outline: none;
 }
 
 .content-input::placeholder {
-  color: var(--text-muted);
+  color: #999;
 }
 
 .modal-overlay {
@@ -1432,8 +1400,6 @@ function importNotes() {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1441,11 +1407,11 @@ function importNotes() {
 }
 
 .modal-content {
-  background-color: var(--bg-secondary);
-  border-radius: 12px;
+  background-color: #fff;
+  border-radius: 4px;
   width: 90%;
   max-width: 500px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #eee;
 }
 
 .modal-header {
@@ -1453,12 +1419,12 @@ function importNotes() {
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #eee;
 }
 
 .modal-header h3 {
   margin: 0;
-  color: var(--text-primary);
+  color: #333;
 }
 
 .modal-body {
@@ -1475,24 +1441,22 @@ function importNotes() {
 
 .input-wrapper .title-input {
   width: 100%;
-  padding: 14px 16px;
-  background: var(--bg-primary, #0f172a);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 10px;
-  color: var(--text-primary, #f8fafc);
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #333;
   font-size: 15px;
   outline: none;
-  transition: all 0.2s ease;
   box-sizing: border-box;
 }
 
 .input-wrapper .title-input::placeholder {
-  color: var(--text-muted, #64748b);
+  color: #999;
 }
 
 .input-wrapper .title-input:focus {
-  border-color: var(--accent-blue, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: #333;
 }
 
 .modal-footer {
@@ -1500,49 +1464,46 @@ function importNotes() {
   justify-content: flex-end;
   gap: 10px;
   padding: 20px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid #eee;
 }
 
 .cancel-btn {
   padding: 10px 20px;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .cancel-btn:hover {
-  background-color: var(--hover-bg);
+  background-color: #f5f5f5;
 }
 
 .confirm-btn {
   padding: 10px 20px;
-  background-color: var(--accent-blue);
+  background-color: #333;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .confirm-btn:hover {
-  background-color: #4a8bd6;
+  background-color: #555;
 }
 
 .delete-confirm-btn {
   padding: 10px 20px;
-  background-color: #ef4444;
+  background-color: #c00;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 4px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .delete-confirm-btn:hover {
-  background-color: #dc2626;
+  background-color: #a00;
 }
 
 .delete-modal-body {
@@ -1550,7 +1511,7 @@ function importNotes() {
 }
 
 .danger-text {
-  color: #ef4444;
+  color: #c00;
   font-weight: 500;
 }
 
@@ -1561,38 +1522,36 @@ function importNotes() {
 .more-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: #999;
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 16px;
-  transition: all 0.2s;
 }
 
 .more-btn:hover {
-  color: var(--text-primary);
-  background-color: var(--hover-bg);
+  color: #333;
+  background-color: #f5f5f5;
 }
 
 .more-menu-content {
-  background-color: var(--bg-secondary);
-  border-radius: 12px;
+  background-color: #fff;
+  border-radius: 4px;
   width: 280px;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid #eee;
   overflow: hidden;
 }
 
 .more-menu-header {
   padding: 16px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid #eee;
 }
 
 .more-menu-title {
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #333;
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1602,7 +1561,7 @@ function importNotes() {
 .more-menu-date {
   display: block;
   font-size: 12px;
-  color: var(--text-muted);
+  color: #999;
 }
 
 .more-menu-actions {
@@ -1617,23 +1576,22 @@ function importNotes() {
   padding: 12px 16px;
   background: none;
   border: none;
-  border-radius: 8px;
-  color: var(--text-primary);
+  border-radius: 4px;
+  color: #333;
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.2s;
 }
 
 .more-menu-item:hover {
-  background-color: var(--hover-bg);
+  background-color: #f9f9f9;
 }
 
 .more-menu-item.danger {
-  color: #ef4444;
+  color: #c00;
 }
 
 .more-menu-item.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: #fff0f0;
 }
 
 @media (max-width: 768px) {

@@ -419,23 +419,21 @@ setTimeout(() => {
 </template>
 
 <style>
-/* 全局主题样式 - 通过body.light-mode类切换 */
-/* 暗色主题（默认） */
+/* 全局主题样式 - 简洁黑白灰风格 */
 body {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-sidebar: #1e293b;
-  --bg-header: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --accent-blue: #3b82f6;
-  --accent-blue-rgb: 59, 130, 246;
-  --accent-red: #dc3545;
-  --accent-red-rgb: 220, 53, 69;
-  --hover-bg: rgba(255, 255, 255, 0.08);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #fff;
+  --bg-tertiary: #f9f9f9;
+  --text-primary: #333;
+  --text-secondary: #666;
+  --text-muted: #999;
+  --border-color: #eee;
+  --border-color-darker: #ddd;
+  --accent: #333;
+  --accent-hover: #555;
+  --error: #c00;
+  --success: #2a7;
+  line-height: 1.6;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -449,33 +447,14 @@ input, textarea, [contenteditable="true"] {
   user-select: text;
 }
 
-/* 亮色主题 */
-body.light-mode {
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-sidebar: #ffffff;
-  --bg-header: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
-  --border-color: rgba(0, 0, 0, 0.1);
-  --accent-blue: #2563eb;
-  --accent-blue-rgb: 37, 99, 235; /* 亮色模式下的RGB值 */
-  --accent-red: #dc2626;
-  --accent-red-rgb: 220, 38, 38; /* 亮色模式下的RGB值 */
-  --hover-bg: rgba(0, 0, 0, 0.05);
-}
-
-/* 应用基础样式 */
 body {
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
 
-/* 全局滚动条样式 */
 ::-webkit-scrollbar {
   width: 8px;
 }

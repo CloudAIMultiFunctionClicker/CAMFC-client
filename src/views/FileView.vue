@@ -93,56 +93,47 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 </template>
 
 <style scoped>
-  /* 主容器样式 - 使用flex布局 */
   .main-container {
     display: flex;
     width: 100%;
-    height: calc(100vh - 65px); /* 减去头部高度 */
-    overflow: hidden; /* 防止滚动条出现在容器上 */
+    height: calc(100vh - 65px);
+    overflow: hidden;
   }
 
-  /* 内容区域样式 - 使用CSS变量支持主题切换 */
   .content-area {
-    flex: 1; /* 占据剩余空间 */
-    background: var(--bg-primary, #0f172a); /* 使用主题主背景色 */
+    flex: 1;
+    background: #f5f5f5;
     padding: 24px;
-    margin-left: 0; /* 默认没有左边距 */
+    margin-left: 0;
     box-sizing: border-box;
-    overflow-y: auto; /* 内容区域可滚动 */
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 添加平滑过渡效果，与侧边栏动画保持一致 */
+    overflow-y: auto;
   }
-  
-  /* 当侧边栏收起时，内容区域向左扩展填充空间 */
-  /* 通过添加负的margin-left来实现平滑的左移效果 */
+
   .content-area.expanded {
-    margin-left: -240px; /* 向左移动240px，填充侧边栏的空间 */
-    /* 注意：这里用负的margin-left，实际上内容区域会向左移动 */
-    /* 配合侧边栏的transform: translateX(-100%)，实现同步的滑动效果 */
+    margin-left: -240px;
   }
-  
-  /* 提示文字样式 */
+
   .hint {
     margin-top: 10px;
     font-size: 0.9rem;
-    color: var(--text-muted, #64748b);
+    color: #999;
     font-style: italic;
   }
 
-  /* 占位内容样式 - 也使用CSS变量 */
   .placeholder {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: var(--text-muted, #64748b); /* 使用主题次要文字色 */
+    color: #999;
     text-align: center;
   }
 
   .placeholder i {
     font-size: 4rem;
     margin-bottom: 20px;
-    color: var(--text-muted, #334155); /* 使用主题次要文字色 */
+    color: #999;
     opacity: 0.5;
   }
 
@@ -150,7 +141,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     margin: 0 0 12px 0;
     font-size: 1.5rem;
     font-weight: 600;
-    color: var(--text-secondary, #cbd5e1); /* 使用主题次要文字色 */
+    color: #666;
   }
 
   .placeholder p {
@@ -160,21 +151,19 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     line-height: 1.6;
   }
 
-  /* 响应式设计 - 小屏幕调整 */
-  /* TODO: 在手机上可能需要调整侧边栏和内容的布局 */
   @media (max-width: 768px) {
     .main-container {
       height: calc(100vh - 64px);
     }
-    
+
     .content-area {
       padding: 16px;
     }
-    
+
     .placeholder i {
       font-size: 3rem;
     }
-    
+
     .placeholder h3 {
       font-size: 1.25rem;
     }

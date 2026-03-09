@@ -672,7 +672,7 @@ onUnmounted(() => {
 .screenshot-page {
   height: 100vh;
   max-height: 100vh;
-  background-color: var(--bg-primary, #0f172a);
+  background-color: #f5f5f5;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -683,14 +683,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  background-color: var(--bg-secondary, #1e293b);
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: #fff;
+  border-bottom: 1px solid #eee;
 }
 
 .screenshot-header h1 {
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary, #f1f5f9);
+  color: #333;
   margin: 0;
 }
 
@@ -701,16 +701,15 @@ onUnmounted(() => {
   padding: 8px 16px;
   background: none;
   border: none;
-  color: var(--text-secondary, #94a3b8);
+  color: #666;
   font-size: 14px;
   cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.2s;
+  border-radius: 4px;
 }
 
 .back-btn:hover {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-  color: var(--text-primary, #f1f5f9);
+  background-color: #f5f5f5;
+  color: #333;
 }
 
 .header-actions {
@@ -723,26 +722,26 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background-color: var(--bg-secondary, #1e293b);
-  color: var(--text-primary, #f1f5f9);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .action-btn:hover {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
+  background-color: #f5f5f5;
 }
 
 .action-btn.primary {
-  background-color: var(--accent-blue, #3b82f6);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: #333;
+  border-color: #333;
+  color: white;
 }
 
 .action-btn.primary:hover {
-  background-color: #2563eb;
+  background-color: #555;
 }
 
 .screenshot-content {
@@ -761,14 +760,14 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted, #64748b);
+  color: #999;
 }
 
 .loading-state .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-top-color: var(--accent-blue, #3b82f6);
+  border: 3px solid #eee;
+  border-top-color: #333;
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
@@ -782,7 +781,7 @@ onUnmounted(() => {
 
 .error-state i {
   font-size: 48px;
-  color: #ef4444;
+  color: #c00;
   margin-bottom: 16px;
 }
 
@@ -798,14 +797,14 @@ onUnmounted(() => {
 .screenshot-info {
   display: flex;
   gap: 24px;
-  color: var(--text-muted, #64748b);
+  color: #999;
   font-size: 14px;
 }
 
 .image-wrapper {
   flex: 1;
-  background-color: var(--bg-secondary, #1e293b);
-  border-radius: 12px;
+  background-color: #fff;
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -820,7 +819,6 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   transform-origin: center center;
-  transition: transform 0.1s ease-out;
 }
 
 .screenshot-image {
@@ -829,8 +827,7 @@ onUnmounted(() => {
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
   cursor: grab;
   user-select: none;
   -webkit-user-drag: none;
@@ -855,17 +852,16 @@ onUnmounted(() => {
   justify-content: center;
   width: 36px;
   height: 36px;
-  background-color: var(--bg-secondary, #1e293b);
-  color: var(--text-primary, #f1f5f9);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   font-size: 18px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .zoom-btn:hover:not(:disabled) {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
+  background-color: #f5f5f5;
 }
 
 .zoom-btn:disabled {
@@ -876,7 +872,7 @@ onUnmounted(() => {
 .control-divider {
   width: 1px;
   height: 24px;
-  background-color: var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: #ddd;
   margin: 0 4px;
   align-self: center;
 }
@@ -886,34 +882,31 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 0 12px;
-  background-color: var(--bg-secondary, #1e293b);
-  color: var(--text-primary, #f1f5f9);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   font-size: 14px;
   font-weight: 500;
   min-width: 60px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .zoom-scale-btn:hover {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
+  background-color: #f5f5f5;
 }
 
-/* 标注模式样式 */
 .annotate-overlay {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.95);
+  background-color: rgba(0, 0, 0, 0.5);
   z-index: 100;
   overflow: hidden;
 }
 
-/* 裁切模式样式 */
 .crop-overlay {
   position: absolute;
   top: 0;
@@ -932,13 +925,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background-color: var(--bg-secondary, #1e293b);
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: #fff;
+  border-bottom: 1px solid #eee;
   z-index: 101;
 }
 
 .crop-mode-tip {
-  color: var(--text-secondary, #94a3b8);
+  color: #666;
   font-size: 14px;
 }
 
@@ -948,18 +941,17 @@ onUnmounted(() => {
   gap: 6px;
   padding: 6px 12px;
   background-color: transparent;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-  border-radius: 6px;
-  color: var(--text-primary, #f1f5f9);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #333;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .crop-cancel-btn:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-  border-color: #ef4444;
-  color: #ef4444;
+  background-color: #fff0f0;
+  border-color: #c00;
+  color: #c00;
 }
 
 .crop-cancel-btn i {
@@ -972,25 +964,25 @@ onUnmounted(() => {
   gap: 6px;
   padding: 8px 16px;
   background-color: transparent;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-  border-radius: 6px;
-  color: var(--text-primary, #f1f5f9);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  color: #333;
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .action-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: #f5f5f5;
 }
 
 .action-btn.primary {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
+  background-color: #333;
+  border-color: #333;
+  color: white;
 }
 
 .action-btn.primary:hover {
-  background-color: #2563eb;
+  background-color: #555;
 }
 
 .action-btn i {
@@ -1022,11 +1014,10 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* 裁切选框样式 */
 .crop-selection {
   position: absolute;
-  border: 2px solid #3b82f6;
-  background-color: rgba(59, 130, 246, 0.1);
+  border: 2px solid #333;
+  background-color: rgba(51, 51, 51, 0.1);
   cursor: move;
   z-index: 10;
   pointer-events: none;
@@ -1051,31 +1042,30 @@ onUnmounted(() => {
 .crop-action-btn {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: 4px;
   border: none;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
   font-size: 18px;
   color: #fff;
 }
 
 .crop-action-btn.cancel {
-  background-color: #ef4444;
+  background-color: #c00;
 }
 
 .crop-action-btn.cancel:hover {
-  background-color: #dc2626;
+  background-color: #a00;
 }
 
 .crop-action-btn.apply {
-  background-color: #10b981;
+  background-color: #2a7;
 }
 
 .crop-action-btn.apply:hover {
-  background-color: #059669;
+  background-color: #2596;
 }
 
 .crop-handle {
@@ -1083,7 +1073,7 @@ onUnmounted(() => {
   width: 10px;
   height: 10px;
   background-color: #fff;
-  border: 2px solid #3b82f6;
+  border: 2px solid #333;
   border-radius: 50%;
   z-index: 10;
 }
