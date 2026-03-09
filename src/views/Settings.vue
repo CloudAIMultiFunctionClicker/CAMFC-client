@@ -253,7 +253,7 @@ const checkFilesystemLogin = async () => {
     
     if (id) {
       try {
-        const result = await ls('/')
+        const result = await ls('')
         cloudAccessible = result !== null
       } catch (lsError) {
         console.warn('访问云盘失败:', lsError)
