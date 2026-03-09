@@ -16,6 +16,8 @@
         "title": "CAMFC Cloud",
         "width": 1152,
         "height": 648,
+        "decorations": false,
+        "resizable": true,
         "url": "/"
       },
       {

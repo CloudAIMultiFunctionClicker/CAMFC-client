@@ -446,16 +446,19 @@ setTimeout(() => {
 </script>
 
 <template>
-  <!-- router-view用来显示路由组件 -->
-  <!-- 整个应用的主题通过body类名控制 -->
-  <AppHeader v-if="!isFloatPage"/>
-
-    <router-view></router-view>
-
+  <!-- router-view 用来显示路由组件 -->
+  <!-- 整个应用的主题通过 body 类名控制 -->
+  <div class="app-container" v-if="!isFloatPage">
+    <AppHeader/>
+    <div class="main-content">
+      <router-view></router-view>
+    </div>
+  </div>
+  <router-view v-else></router-view>
 </template>
 
 <style>
-/* 全局主题样式 - 通过body.light-mode类切换 */
+/* 全局主题样式 - 通过 body.light-mode 类切换 */
 /* 暗色主题（默认） */
 body {
   --bg-primary: #0f172a;
@@ -496,9 +499,9 @@ body.light-mode {
   --text-muted: #64748b;
   --border-color: rgba(0, 0, 0, 0.1);
   --accent-blue: #2563eb;
-  --accent-blue-rgb: 37, 99, 235; /* 亮色模式下的RGB值 */
+  --accent-blue-rgb: 37, 99, 235; /* 亮色模式下的 RGB 值 */
   --accent-red: #dc2626;
-  --accent-red-rgb: 220, 38, 38; /* 亮色模式下的RGB值 */
+  --accent-red-rgb: 220, 38, 38; /* 亮色模式下的 RGB 值 */
   --hover-bg: rgba(0, 0, 0, 0.05);
 }
 
@@ -509,6 +512,21 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  overflow: hidden; /* 防止出现滚动条 */
+}
+
+/* 应用容器布局 */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 主内容区域 */
+.main-content {
+  flex: 1;
+  overflow: hidden;
 }
 
 /* 全局滚动条样式 */

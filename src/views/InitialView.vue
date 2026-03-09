@@ -569,9 +569,11 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: calc(100vh - 65px); /* 减去header高度 */
+  height: 100%;
+  width: 100%;
   text-align: center;
   padding: 20px;
+  overflow: auto; /* 允许内容在需要时滚动 */
 }
 
 .title {
