@@ -156,6 +156,9 @@ onMounted(async () => {
   // 蓝牙按键事件监听器引用
   let buttonEventUnlisten = null
   
+  // 蓝牙断开事件监听器引用
+  let bluetoothDisconnectUnlisten = null
+  
   // 导航事件监听器引用
   let navigateEventUnlisten = null
   
@@ -169,37 +172,37 @@ onMounted(async () => {
     
     const eventType = event.payload.event_type
     
-    // GPIO10 处理 -> 右箭头
+    // GPIO10 处理 -> 上箭头
     if (eventType === 'button_press') {
       showToast('🔘 GPIO10 按下', '#3b82f6')
       window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: true } }))
     } else if (eventType === 'button_release') {
       showToast('🔘 GPIO10 松开', '#10b981')
       window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: false } }))
-      // 模拟右箭头键
+      // 模拟上箭头键
       try {
         const { pressWinKey } = await import('./components/data/bluetooth')
         await pressWinKey()
-        console.log('右箭头键模拟成功')
+        console.log('上箭头键模拟成功')
       } catch (e) {
-        console.error('右箭头键模拟失败:', e)
+        console.error('上箭头键模拟失败:', e)
       }
     }
     
-    // GPIO9 处理 -> 左箭头
+    // GPIO9 处理 -> 下箭头
     else if (eventType === 'button_press_left') {
       showToast('🔘 GPIO9 按下', '#8b5cf6')
       window.dispatchEvent(new CustomEvent('button-state-left', { detail: { pressed: true } }))
     } else if (eventType === 'button_release_left') {
       showToast('🔘 GPIO9 松开', '#f59e0b')
       window.dispatchEvent(new CustomEvent('button-state-left', { detail: { pressed: false } }))
-      // 模拟左箭头键
+      // 模拟下箭头键
       try {
         const { pressLeftKey } = await import('./components/data/bluetooth')
         await pressLeftKey()
-        console.log('左箭头键模拟成功')
+        console.log('下箭头键模拟成功')
       } catch (e) {
-        console.error('左箭头键模拟失败:', e)
+        console.error('下箭头键模拟失败:', e)
       }
     }
   })
@@ -245,6 +248,36 @@ onMounted(async () => {
       console.log('检查连接状态出错:', error)
     }
   }
+  
+  // 监听蓝牙断开事件（实时检测）
+  bluetoothDisconnectUnlisten = await listen('bluetooth-disconnect', async () => {
+    console.log('🔴 收到蓝牙断开事件')
+    
+    // 如果当前是已连接状态，显示提示
+    if (bluetoothStore.isConnected()) {
+      console.log('蓝牙设备已断开，准备显示提示')
+      
+      // 避免重复显示对话框
+      if (isShowingDisconnectDialog) {
+        console.log('对话框已在显示中，跳过')
+        return
+      }
+      
+      isShowingDisconnectDialog = true
+      
+      // 重置状态
+      bluetoothStore.reset()
+      
+      // 显示确认对话框
+      const userConfirmed = await showDisconnectConfirm()
+      
+      if (userConfirmed) {
+        console.log('用户确认断开，刷新页面')
+        // 刷新整个页面
+        window.location.reload()
+      }
+    }
+  })
   
   // 显示蓝牙断开确认对话框
   const showDisconnectConfirm = async () => {
@@ -352,8 +385,8 @@ onMounted(async () => {
     })
   }
   
-  // 开始定时检查（每10秒，减少刷屏）
-  connectionCheckInterval = setInterval(checkConnectionStatus, 10000)
+  // 开始定时检查（每 2 秒，快速响应断开）
+  connectionCheckInterval = setInterval(checkConnectionStatus, 2000)
   
   // 监听系统主题变化，如果用户没有手动设置过，就跟着系统变
   const lightMediaQuery = window.matchMedia('(prefers-color-scheme: light)')
@@ -390,6 +423,9 @@ onMounted(async () => {
     }
     if (buttonEventUnlisten) {
       buttonEventUnlisten()
+    }
+    if (bluetoothDisconnectUnlisten) {
+      bluetoothDisconnectUnlisten()
     }
     if (navigateEventUnlisten) {
       navigateEventUnlisten()

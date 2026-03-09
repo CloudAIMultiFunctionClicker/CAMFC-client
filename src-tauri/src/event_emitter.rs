@@ -27,3 +27,11 @@ pub fn emit_button_event(event_type: &str) {
         let _ = handle.emit("button-event", event);
     }
 }
+
+/// 发射蓝牙断开事件
+pub fn emit_bluetooth_disconnect() {
+    if let Some(handle) = get_app_handle() {
+        println!("[EVENT] 发射蓝牙断开事件");
+        let _ = handle.emit("bluetooth-disconnect", ());
+    }
+}

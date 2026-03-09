@@ -226,13 +226,20 @@ impl CpenDeviceManager {
         self.current_device = Some(target_device.clone());
         self.connection_status = "connected".to_string();
         
-        println!("[CPEN] 成功连接到Cpen设备: {} ({})", 
+        println!("[CPEN] 成功连接到 Cpen 设备：{} ({})", 
                  target_device.name, target_device.address);
         
         // 连接后等待一小会儿，让设备稳定
         sleep(Duration::from_millis(500)).await;
         
-        println!("[CPEN] 设备连接成功，TOTP刷新策略已启用（提前5秒刷新）");
+        // 确保服务已发现并准备好
+        println!("[CPEN] 等待设备服务准备就绪...");
+        match self.bluetooth_manager.ensure_services_ready().await {
+            Ok(_) => println!("[CPEN] 设备服务已就绪"),
+            Err(e) => println!("[CPEN] 等待设备服务就绪失败：{}，继续尝试", e),
+        }
+        
+        println!("[CPEN] 设备连接成功，TOTP 刷新策略已启用（提前 5 秒刷新）");
         
         Ok(())
     }
@@ -493,7 +500,7 @@ impl CpenDeviceManager {
         Err("获取TOTP重试次数用尽".to_string())
     }
     
-    /// 单次TOTP获取尝试（内部方法）
+    /// 单次 TOTP 获取尝试（内部方法）
     async fn get_totp_once(&mut self) -> Result<String, CpenError> {
         // 检查是否已有连接
         let was_already_connected = self.connected_address.is_some();
@@ -529,25 +536,13 @@ impl CpenDeviceManager {
             char_uuid, 
             set_time_command.as_bytes()
         ).await
-        .map_err(|e| format!("发送setTime命令失败: {}", e))?;
+        .map_err(|e| format!("发送 setTime 命令失败：{}", e))?;
         
-        sleep(Duration::from_millis(100)).await;
+        // 不读取 setTime 的响应，因为设备可能不响应
+        // 等待一小段时间让设备处理
+        sleep(Duration::from_millis(200)).await;
         
-        // 尝试读取setTime的响应（设备可能不响应）
-        match tokio::time::timeout(
-            Duration::from_millis(500), 
-            self.bluetooth_manager.recv(service_uuid, char_uuid)
-        ).await {
-            Ok(Ok(response)) => {
-                let response_str = String::from_utf8_lossy(&response);
-                println!("[CPEN] 收到setTime响应: {}", response_str);
-            }
-            _ => {
-                println!("[CPEN] setTime无响应（可能正常）");
-            }
-        }
-        
-        // 发送getTotp命令
+        // 发送 getTotp 命令
         println!("[CPEN] 发送getTotp命令");
         self.bluetooth_manager.send(
             service_uuid, 

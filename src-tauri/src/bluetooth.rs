@@ -426,7 +426,23 @@ impl BluetoothManager {
         }
     }
 
-  /// 获取已连接的peripheral
+    /// 确保服务已发现并准备好
+    /// 
+    /// 在重新连接后调用，确保设备服务已经完全准备好
+    pub async fn ensure_services_ready(&mut self) -> Result<(), BtError> {
+        let peripheral = self.peripheral()?;
+        
+        // 发现服务
+        timeout(Duration::from_millis(3000), peripheral.discover_services()).await
+            .map_err(|_| "服务发现超时".to_string())?
+            .map_err(|e| format!("服务发现失败：{}", e))?;
+        
+        println!("[BLUETOOTH] 服务发现完成，共发现 {} 个服务", peripheral.services().len());
+        
+        Ok(())
+    }
+
+    /// 获取已连接的 peripheral
     fn peripheral(&self) -> Result<&btleplug::platform::Peripheral, BtError> {
         self.connected_peripheral.as_ref().ok_or_else(|| "未连接".to_string())
     }
@@ -602,9 +618,15 @@ impl BluetoothManager {
                         
                         // 通知流结束，说明连接可能已断开
                         println!("[BLUETOOTH] 通知流已结束，连接可能已断开");
+                        
+                        // 发射蓝牙断开事件，通知前端
+                        crate::event_emitter::emit_bluetooth_disconnect();
                     }
                     Err(e) => {
                         println!("[BLUETOOTH] 创建通知流失败：{}", e);
+                        
+                        // 发射蓝牙断开事件，通知前端
+                        crate::event_emitter::emit_bluetooth_disconnect();
                     }
                 }
             });
