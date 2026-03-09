@@ -8,8 +8,8 @@
       <h1>屏幕截图</h1>
       <div class="header-actions">
         <button class="action-btn primary" @click="saveScreenshot" :disabled="!screenshotData">
-          <i class="ri-download-line"></i>
-          保存
+          <i class="ri-share-box-line"></i>
+          导出
         </button>
       </div>
     </header>
@@ -75,11 +75,11 @@
                 {{ Math.round(cropBox.width) }} x {{ Math.round(cropBox.height) }}
               </div>
               <!-- 裁切操作按钮 -->
-              <div class="crop-selection-actions">
-                <button class="crop-action-btn cancel" @click="cancelCrop" title="取消">
+              <div class="crop-selection-actions" @mousedown.stop @mousemove.stop @mouseup.stop>
+                <button class="crop-action-btn cancel" @mousedown.stop @click="cancelCrop" title="取消">
                   <i class="ri-close-line"></i>
                 </button>
-                <button class="crop-action-btn apply" @click="applyCrop" title="应用">
+                <button class="crop-action-btn apply" @mousedown.stop @click="applyCrop" title="应用">
                   <i class="ri-check-line"></i>
                 </button>
               </div>
@@ -469,6 +469,9 @@ const applyCrop = () => {
     // 退出裁切模式
     isCropMode.value = false
     cropBox.value = { x: 0, y: 0, width: 0, height: 0 }
+    
+    // 重置缩放和平移状态
+    resetZoom()
     
     showToast('裁切成功', '#10b981')
   }
@@ -1037,8 +1040,12 @@ onUnmounted(() => {
   margin-top: 8px;
   display: flex;
   gap: 8px;
-  pointer-events: auto;
-  z-index: 20;
+  pointer-events: auto !important;
+  z-index: 100;
+}
+
+.crop-selection-actions button {
+  pointer-events: auto !important;
 }
 
 .crop-action-btn {
