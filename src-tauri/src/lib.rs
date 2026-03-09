@@ -49,10 +49,23 @@ fn greet(name: &str) -> String {
 /// 退出应用程序
 ///
 /// 前端调用这个命令来完全退出应用
-/// 会清理所有资源并关闭应用
+/// 会先断开蓝牙连接，再关闭应用
 #[tauri::command]
 fn exit_app(app_handle: tauri::AppHandle) {
     println!("前端请求退出应用...");
+    
+    // 退出前先断开蓝牙连接
+    let rt = tokio::runtime::Runtime::new().expect("创建运行时失败");
+    rt.block_on(async {
+        if let Some(manager) = CPEN_DEVICE_MANAGER.get() {
+            if let Err(e) = manager.lock().await.disconnect().await {
+                eprintln!("断开蓝牙连接失败: {}", e);
+            } else {
+                println!("蓝牙连接已断开");
+            }
+        }
+    });
+    
     app_handle.exit(0);
 }
 
@@ -1185,6 +1198,18 @@ pub fn run() {
                             }
                         }
                         "quit" => {
+                            // 退出应用前先断开蓝牙连接
+                            println!("退出应用，先断开蓝牙连接...");
+                            let rt = tokio::runtime::Runtime::new().expect("创建运行时失败");
+                            rt.block_on(async {
+                                if let Some(manager) = CPEN_DEVICE_MANAGER.get() {
+                                    if let Err(e) = manager.lock().await.disconnect().await {
+                                        eprintln!("断开蓝牙连接失败: {}", e);
+                                    } else {
+                                        println!("蓝牙连接已断开");
+                                    }
+                                }
+                            });
                             // 退出应用
                             app.exit(0);
                         }

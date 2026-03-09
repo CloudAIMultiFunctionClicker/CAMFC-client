@@ -150,8 +150,11 @@ onMounted(async () => {
   // 初始时确保body有正确的类
   updateBodyClass()
   
-  // 初始化后端配置（只会在应用启动时调用一次）
-  await initBackendConfig()
+  // 先显示窗口，再异步检测服务器
+  // 使用setTimeout延迟执行，让窗口先渲染出来
+  setTimeout(async () => {
+    await initBackendConfig()
+  }, 100)
   
   // 蓝牙按键事件监听器引用
   let buttonEventUnlisten = null

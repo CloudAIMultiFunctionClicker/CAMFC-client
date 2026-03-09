@@ -30,6 +30,7 @@ pub struct BluetoothManager {
     connected_peripheral: Option<btleplug::platform::Peripheral>,
     listening_rx: Option<tokio::sync::mpsc::Receiver<Vec<u8>>>,
     listening_handle: Option<tokio::task::JoinHandle<()>>,
+    last_connected_state: Option<bool>,
 }
 
 impl BluetoothManager {
@@ -39,6 +40,7 @@ impl BluetoothManager {
             connected_peripheral: None,
             listening_rx: None,
             listening_handle: None,
+            last_connected_state: None,
         }
     }
 
@@ -399,28 +401,38 @@ impl BluetoothManager {
     /// 注意：这个方法可能会有一定的延迟（蓝牙设备响应时间）
     /// 
     /// 改进：添加超时保护，避免在设备无响应时卡住
-    pub async fn is_connected(&self) -> Result<bool, BtError> {
+    pub async fn is_connected(&mut self) -> Result<bool, BtError> {
         match &self.connected_peripheral {
             Some(peripheral) => {
-                // 添加超时保护，2秒内必须返回结果
                 match timeout(Duration::from_secs(2), peripheral.is_connected()).await {
                     Ok(Ok(connected)) => {
-                        println!("[BLUETOOTH] 连接状态检查完成: {}", connected);
+                        if self.last_connected_state != Some(connected) {
+                            self.last_connected_state = Some(connected);
+                            println!("[BLUETOOTH] 连接状态变化: {}", connected);
+                        }
                         Ok(connected)
                     }
                     Ok(Err(e)) => {
-                        println!("[BLUETOOTH] 检查连接状态失败: {}", e);
+                        if self.last_connected_state != Some(false) {
+                            self.last_connected_state = Some(false);
+                            println!("[BLUETOOTH] 检查连接状态失败: {}", e);
+                        }
                         Err(format!("检查连接状态失败: {}", e))
                     }
                     Err(_) => {
-                        // 超时通常意味着连接已断开或设备无响应
-                        println!("[BLUETOOTH] 连接状态检测超时，假设已断开");
+                        if self.last_connected_state != Some(false) {
+                            self.last_connected_state = Some(false);
+                            println!("[BLUETOOTH] 连接状态检测超时，假设已断开");
+                        }
                         Ok(false)
                     }
                 }
             }
             None => {
-                println!("[BLUETOOTH] 没有已连接的peripheral");
+                if self.last_connected_state != Some(false) {
+                    self.last_connected_state = Some(false);
+                    println!("[BLUETOOTH] 没有已连接的peripheral");
+                }
                 Ok(false)
             }
         }

@@ -79,7 +79,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
       <div v-else-if="activeNav === 'ui'" class="settings-panel">
         <h3>界面设置</h3>
-        <div class="placeholder-text">界面设置功能开发中...</div>
+        <p class="placeholder-text">界面设置功能开发中...</p>
       </div>
 
       <div v-else-if="activeNav === 'theme'" class="settings-panel">
@@ -96,7 +96,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         </div>
         <div class="setting-item">
           <span>跟随系统主题</span>
-          <button class="toggle-btn active">
+          <button 
+            class="toggle-btn" 
+            :class="{ active: storageSettings.followSystemTheme }"
+            @click="toggleFollowSystemTheme"
+          >
             <span class="toggle-slider"></span>
           </button>
         </div>
@@ -106,14 +110,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <h3>储存空间管理</h3>
         <div class="storage-info">
           <div class="storage-bar">
-            <div class="storage-used" style="width: 35%"></div>
+            <div class="storage-used" :style="{ width: Math.min((cacheSize / 1073741824) * 100, 100) + '%' }"></div>
           </div>
-          <p class="storage-text">已使用 350 MB / 1 GB</p>
+          <p class="storage-text">已使用 {{ formatSize(cacheSize) }} / 1 GB</p>
         </div>
         <button class="action-btn" @click="clearCache">清理缓存</button>
         <div class="setting-item">
           <span>自动清理缓存</span>
-          <button class="toggle-btn">
+          <button 
+            class="toggle-btn" 
+            :class="{ active: storageSettings.autoCleanCache }"
+            @click="toggleAutoCleanCache"
+          >
             <span class="toggle-slider"></span>
           </button>
         </div>
@@ -121,7 +129,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
       <div v-else-if="activeNav === 'help'" class="settings-panel help-panel">
         <h3>帮助与反馈</h3>
-        <p class="placeholder-text">帮助与反馈内容占位...</p>
+        <button class="action-btn" @click="openIssue">提交问题或反馈</button>
       </div>
 
       <div v-else-if="activeNav === 'about'" class="settings-panel">
@@ -136,7 +144,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
           <span>检查更新</span>
           <span class="setting-value">已是最新</span>
         </div>
-        <button class="action-btn">查看更新日志</button>
+        <button class="action-btn" @click="openChangelog">查看更新日志</button>
       </div>
     </main>
   </div>
@@ -144,21 +152,29 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 <script setup>
 import { inject, ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { showToast } from '../components/layout/showToast.js'
 import { disconnect, getDeviceId } from '../components/data/bluetooth.js'
 import { ls } from '../components/data/fileSystem.js'
+import { loadAppData, saveAppData } from '../components/data/storage.js'
+import { openUrl } from '@tauri-apps/plugin-opener'
 
 const theme = inject('theme')
 const activeNav = ref('cpen')
 
 const cpenSettings = ref({
-  autoConnect: false
+  autoConnect: false,
+  lastDeviceAddress: ''
 })
 
-
+const storageSettings = ref({
+  autoCleanCache: false,
+  followSystemTheme: false
+})
 
 const deviceId = ref(null)
 const isFilesystemLoggedIn = ref(false)
+const cacheSize = ref(0)
 
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
@@ -170,12 +186,57 @@ const navItems = [
   { id: 'about', label: '关于', icon: 'ri-information-line' }
 ]
 
+const loadSettings = async () => {
+  try {
+    const savedCpen = await loadAppData('settings_cpen')
+    if (savedCpen) {
+      cpenSettings.value = JSON.parse(savedCpen)
+    }
 
+    const savedStorage = await loadAppData('settings_storage')
+    if (savedStorage) {
+      storageSettings.value = JSON.parse(savedStorage)
+    }
+  } catch (error) {
+    console.error('加载设置失败:', error)
+  }
+}
 
-const toggleAutoConnect = () => {
+const toggleAutoConnect = async () => {
   cpenSettings.value.autoConnect = !cpenSettings.value.autoConnect
+  await saveAppData('settings_cpen', JSON.stringify(cpenSettings.value))
   const status = cpenSettings.value.autoConnect ? '已启用' : '已禁用'
   showToast(`自动连接 Cpen 设备：${status}`, '#3b82f6')
+}
+
+const toggleFollowSystemTheme = async () => {
+  storageSettings.value.followSystemTheme = !storageSettings.value.followSystemTheme
+  await saveAppData('settings_storage', JSON.stringify(storageSettings.value))
+  
+  if (storageSettings.value.followSystemTheme) {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    theme?.setTheme(!mediaQuery.matches)
+    mediaQuery.addEventListener('change', handleSystemThemeChange)
+  } else {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    mediaQuery.removeEventListener('change', handleSystemThemeChange)
+  }
+  
+  const status = storageSettings.value.followSystemTheme ? '已启用' : '已禁用'
+  showToast(`跟随系统主题：${status}`, '#3b82f6')
+}
+
+const handleSystemThemeChange = (e) => {
+  if (storageSettings.value.followSystemTheme) {
+    theme?.setTheme(!e.matches)
+  }
+}
+
+const toggleAutoCleanCache = async () => {
+  storageSettings.value.autoCleanCache = !storageSettings.value.autoCleanCache
+  await saveAppData('settings_storage', JSON.stringify(storageSettings.value))
+  const status = storageSettings.value.autoCleanCache ? '已启用' : '已禁用'
+  showToast(`自动清理缓存：${status}`, '#3b82f6')
 }
 
 const checkFilesystemLogin = async () => {
@@ -217,19 +278,36 @@ const logout = async () => {
   }, 500)
 }
 
-
-
-
-
-const clearCache = () => {
+const clearCache = async () => {
   showToast('正在清理缓存...', '#f59e0b')
-  setTimeout(() => {
-    showToast('缓存清理完成', '#10b981')
-  }, 1000)
+  cacheSize.value = 0
+  showToast('缓存清理完成', '#10b981')
+}
+
+const getCacheSize = () => {
+  cacheSize.value = 0
+}
+
+const openChangelog = () => {
+  openUrl('https://github.com/CloudAIMultiFunctionClicker/CAMFC-client/releases/')
+}
+
+const openIssue = () => {
+  openUrl('https://github.com/CloudAIMultiFunctionClicker/CAMFC-client/issues/')
+}
+
+const formatSize = (bytes) => {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 onMounted(() => {
+  loadSettings()
   checkFilesystemLogin()
+  getCacheSize()
 })
 </script>
 

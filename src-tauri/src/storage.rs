@@ -59,16 +59,21 @@ pub async fn save_storage(storage: &AppStorage) -> Result<()> {
 
 #[tauri::command]
 pub async fn load_app_data(key: String) -> Result<String, String> {
+    println!("[STORAGE] 加载设置: {}", key);
+    
     let storage = load_storage().await
         .map_err(|e| format!("加载数据失败: {}", e))?;
     
     let value = storage.data.get(&key).cloned().unwrap_or_default();
     
+    println!("[STORAGE] 加载设置完成: {} = {}", key, if value.is_empty() { "(空)" } else { "(有值)" });
     Ok(value)
 }
 
 #[tauri::command]
 pub async fn save_app_data(key: String, value: String) -> Result<(), String> {
+    println!("[STORAGE] 保存设置: {} = {}", key, value);
+    
     let mut storage = load_storage().await
         .map_err(|e| format!("加载数据失败: {}", e))?;
     
@@ -77,6 +82,7 @@ pub async fn save_app_data(key: String, value: String) -> Result<(), String> {
     save_storage(&storage).await
         .map_err(|e| format!("保存数据失败: {}", e))?;
     
+    println!("[STORAGE] 设置保存成功");
     Ok(())
 }
 
