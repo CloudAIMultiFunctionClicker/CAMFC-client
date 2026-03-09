@@ -138,7 +138,13 @@ router.beforeEach((to, _from, next) => {
     return
   }
 
-  // 获取蓝牙store
+  // 笔记页面不需要蓝牙连接，直接放行
+  if (to.path === '/notes') {
+    next()
+    return
+  }
+
+  // 获取蓝牙 store
   const bluetoothStore = useBluetoothStore()
 
   // 检查蓝牙是否已连接
