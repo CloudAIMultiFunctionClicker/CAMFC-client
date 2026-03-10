@@ -382,6 +382,8 @@ const startDownloadProgressMonitor = (fileId) => {
     try {
       const progress = await getDownloadProgress(fileId)
       downloadProgress.value = progress.progress_percentage || 0
+      downloadedSize.value = progress.downloaded || 0
+      totalSize.value = progress.total_size || 0
       
       // 格式化速度显示
       if (progress.speed_kbps) {
@@ -392,7 +394,7 @@ const startDownloadProgressMonitor = (fileId) => {
         }
       }
       
-      console.log(`下载进度：${downloadProgress.value}%, 速度：${downloadSpeed.value}`)
+      console.log(`下载进度：${downloadProgress.value}%, 已下载：${downloadedSize.value}, 总大小：${totalSize.value}, 速度：${downloadSpeed.value}`)
     } catch (error) {
       console.warn('获取下载进度失败:', error)
     }
@@ -984,7 +986,10 @@ const isFileSelected = (itemPath) => {
       <div class="progress-track">
         <div class="progress-fill" :style="{ width: downloadProgress + '%' }"></div>
       </div>
-      <div class="progress-speed">{{ downloadSpeed }}</div>
+      <div class="progress-size-info">
+        <span class="progress-speed">{{ downloadSpeed }}</span>
+        <span class="progress-size">{{ formatSize(downloadedSize) }} / {{ formatSize(totalSize) }}</span>
+      </div>
     </div>
 
 
@@ -1181,7 +1186,19 @@ const isFileSelected = (itemPath) => {
 .progress-speed {
   font-size: 12px;
   color: var(--text-secondary);
-  text-align: right;
+}
+
+.progress-size-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.progress-size {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
 }
 
 .nav-btn {
