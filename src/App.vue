@@ -28,18 +28,16 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 <script setup>
 import { ref, provide, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-// 导入Pinia store来获取蓝牙状态
+// 导入 Pinia store 来获取蓝牙状态
 import { useBluetoothStore } from './stores/bluetooth.js'
 
 import {showToast} from './components/layout/showToast.js'
+import TitleBar from './components/layout/TitleBar.vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const isFloatPage = computed(() => route.path === '/float')
-
-// 导入应用头部组件
-import AppHeader from './components/layout/AppHeader.vue'
 
 // 导入后端配置初始化函数
 import { initBackendConfig } from './config/backend.js'
@@ -452,7 +450,8 @@ setTimeout(() => {
   <!-- router-view 用来显示路由组件 -->
   <!-- 整个应用的主题通过 body 类名控制 -->
   <div class="app-container" v-if="!isFloatPage">
-    <AppHeader/>
+    <!-- 自定义顶栏 -->
+    <TitleBar />
     <div class="main-content">
       <router-view></router-view>
     </div>

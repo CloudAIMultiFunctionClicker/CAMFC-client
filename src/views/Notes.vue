@@ -1051,6 +1051,12 @@ function importNotes() {
   margin-bottom: 15px;
   line-height: 1.5;
   min-height: 42px;
+  max-height: 63px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .note-meta {

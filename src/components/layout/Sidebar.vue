@@ -132,11 +132,6 @@ const toggleCollapse = () => {
                 <span>设置</span>
             </button>
 
-            <button class="footer-btn">
-                <i class="ri-question-line"></i>
-                <span>帮助</span>
-            </button>
-
             <!-- TODO: 这里以后可以放用户信息 -->
         </div>
     </aside>
