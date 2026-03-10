@@ -29,9 +29,11 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 import { ls,mkdir,rm } from '../data/fileSystem.js'
 import { showToast} from '../layout/showToast.js'
 import { ref, watch, onMounted, onUnmounted } from 'vue'
-import { batchDownloadFiles, extractFileId } from '../data/download.js'
+import { batchDownloadFiles, extractFileId, downloadFile } from '../data/download.js'
 import { uploadFilesFromPaths, selectFiles } from '../data/upload.js'
 import { getFileIcon } from '../../utils/fileIcon.js'
+import { openFile } from '../data/storage.js'
+import { getDownloadProgress } from '../data/download.js'
 
 
 // TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
@@ -50,6 +52,15 @@ const props = defineProps({
 const fileList = ref([])
 const loading = ref(false)
 const error = ref(null)
+
+// 下载进度相关状态
+const downloadingFile = ref(null) // 当前正在下载的文件
+const downloadProgress = ref(0) // 下载进度百分比
+const downloadSpeed = ref('') // 下载速度
+const downloadedSize = ref(0) // 已下载大小（字节）
+const totalSize = ref(0) // 总大小（字节）
+const showDownloadProgress = ref(false) // 是否显示下载进度条
+let downloadProgressTimer = null // 下载进度定时器
 
 // 上传弹窗相关状态
 const showUploadModal = ref(false)
@@ -175,7 +186,6 @@ const confirmUpload = async () => {
     
     if (result.success) {
       console.log('上传任务已创建，共', result.count, '个文件')
-      showToast(`开始上传 ${result.count} 个文件到 ${targetPath || '根目录'}...`, '#3b82f6')
       
       // 上传任务已在后端执行，传输页面会显示进度
       // 这里不等待上传完成，让用户在传输页面查看进度
@@ -270,11 +280,132 @@ const handleDownloadClick = async () => {
           console.error(`检查下载状态失败: ${fileId}`, error)
         }
       }
-    }, 2000) // 2秒后检查状态
+    }, 2000) // 2 秒后检查状态
     
   } catch (error) {
     console.error('下载过程中出错:', error)
-    showToast(`下载出错: ${error.message}`, '#ef4444')
+    showToast(`下载出错：${error.message}`, '#ef4444')
+  }
+}
+
+// 双击文件处理：下载并打开
+const handleFileDoubleClick = async (item) => {
+  console.log('===== 双击事件触发 =====')
+  console.log('双击 item:', item)
+  console.log('item.name:', item.name)
+  console.log('item.path:', item.path)
+  console.log('item.is_dir:', item.is_dir)
+  console.log('item.is_file:', item.is_file)
+  console.log('item.type:', item.type)
+  console.log('loading:', loading.value)
+  
+  // 如果是文件夹，进入文件夹
+  // 兼容两种数据格式：is_dir 字段或 type === 'dir'
+  const isDir = item.is_dir || item.type === 'dir' || item.type === 'folder'
+  const isFile = item.is_file || item.type === 'file'
+  
+  console.log('判断结果 - isDir:', isDir, 'isFile:', isFile)
+  
+  if (isDir) {
+    console.log('进入文件夹:', item.path)
+    if (!loading.value) {
+      enterFolder(item.path)
+    }
+    return
+  }
+  
+  // 如果是文件，下载并打开
+  if (isFile && !loading.value) {
+    console.log('✓✓✓ 双击文件，开始下载并打开:', item.name)
+    
+    try {
+      // 初始化下载进度显示
+      downloadingFile.value = item.name
+      downloadProgress.value = 0
+      downloadSpeed.value = '0 KB/s'
+      showDownloadProgress.value = true
+      
+      // 启动进度监控定时器
+      startDownloadProgressMonitor(item.path)
+      
+      console.log('开始调用 downloadFile, path:', item.path)
+      
+      // 下载文件
+      const result = await downloadFile(item.path)
+      
+      // 停止进度监控
+      stopDownloadProgressMonitor()
+      
+      console.log('downloadFile 返回结果:', result)
+      // 显示下载成功
+      showToast(`${item.name} 下载成功`, '#10b981')
+      
+      // 关闭进度条
+      showDownloadProgress.value = false
+      downloadingFile.value = null
+      
+      // 延迟一下再打开文件，确保文件已完全写入
+      setTimeout(async () => {
+        try {
+          console.log('准备打开文件:', result)
+          // 打开文件
+          await openFile(result)
+          console.log('✓ 文件已打开:', result)
+        } catch (openError) {
+          console.error('打开文件失败:', openError)
+          showToast(`打开文件失败：${openError.message}`, '#ef4444')
+        }
+      }, 500)
+      
+    } catch (error) {
+      console.error('双击下载文件失败:', error)
+      // 停止进度监控
+      stopDownloadProgressMonitor()
+      showDownloadProgress.value = false
+      downloadingFile.value = null
+      // 错误提示已在 downloadFile 中显示
+    }
+  } else {
+    console.log('✗ 不是文件或正在加载中，isFile:', isFile, 'loading:', loading.value)
+  }
+}
+
+// 下载进度监控函数
+const startDownloadProgressMonitor = (fileId) => {
+  // 清除之前的定时器
+  if (downloadProgressTimer) {
+    clearInterval(downloadProgressTimer)
+  }
+  
+  // 每 500ms 更新一次进度
+  downloadProgressTimer = setInterval(async () => {
+    try {
+      const progress = await getDownloadProgress(fileId)
+      downloadProgress.value = progress.progress_percentage || 0
+      
+      // 格式化速度显示
+      if (progress.speed_kbps) {
+        if (progress.speed_kbps < 1024) {
+          downloadSpeed.value = `${progress.speed_kbps.toFixed(1)} KB/s`
+        } else {
+          downloadSpeed.value = `${(progress.speed_kbps / 1024).toFixed(2)} MB/s`
+        }
+      }
+      
+      console.log(`下载进度：${downloadProgress.value}%, 速度：${downloadSpeed.value}`)
+    } catch (error) {
+      console.warn('获取下载进度失败:', error)
+    }
+  }, 500)
+  
+  console.log('下载进度监控已启动')
+}
+
+const stopDownloadProgressMonitor = () => {
+  if (downloadProgressTimer) {
+    clearInterval(downloadProgressTimer)
+    downloadProgressTimer = null
+    console.log('下载进度监控已停止')
   }
 }
 
@@ -372,13 +503,24 @@ const fetchFiles = async (path) => {
     const result = await ls(path)
     
     if (result && result.entries) {
-      fileList.value = result.entries
+      // 统一转换数据格式，确保有 is_dir 和 is_file 字段
+      fileList.value = result.entries.map(item => {
+        // 兼容不同的数据格式
+        const isDir = item.is_dir || item.type === 'dir' || item.type === 'folder' || item.is_directory
+        const isFile = item.is_file || item.type === 'file' || !isDir
+        
+        return {
+          ...item,
+          is_dir: isDir,
+          is_file: isFile
+        }
+      })
       console.log('获取到文件列表:', fileList.value.length, '个项目')
     } else {
-      // 如果返回null或者没有entries，可能是超时了
+      // 如果返回 null 或者没有 entries，可能是超时了
       fileList.value = []
       error.value = '请求超时或返回数据格式不对'
-      console.warn('API返回数据格式不对:', result)
+      console.warn('API 返回数据格式不对:', result)
     }
   } catch (err) {
     // 处理错误信息，根据状态码显示不同的提示
@@ -833,6 +975,18 @@ const isFileSelected = (itemPath) => {
       </div>
     </div>
 
+    <!-- 下载进度条 -->
+    <div v-if="showDownloadProgress" class="download-progress-bar">
+      <div class="progress-info">
+        <span class="progress-file">{{ downloadingFile }}</span>
+        <span class="progress-percent">{{ downloadProgress }}%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" :style="{ width: downloadProgress + '%' }"></div>
+      </div>
+      <div class="progress-speed">{{ downloadSpeed }}</div>
+    </div>
+
 
 
     <!-- 文件表格 - 始终显示，加载时加上遮罩 -->
@@ -858,13 +1012,13 @@ const isFileSelected = (itemPath) => {
       </div>
 
       <!-- 文件列表 -->
-      <div v-else class="table-body">
+      <div v-else class="table-body" :class="{ 'loading-blur': loading }">
         <div 
           v-for="(item, index) in fileList" 
           :key="item.path" 
           class="table-row" 
           @click="(e) => handleFileClick(item, index, e)"
-          @dblclick="item.is_dir && !loading ? enterFolder(item.path) : null"
+          @dblclick="handleFileDoubleClick(item)"
           :class="{ 
             'is-dir': item.is_dir, 
             'is-file': item.is_file, 
@@ -932,6 +1086,102 @@ const isFileSelected = (itemPath) => {
   border-bottom: 1px solid var(--border-color);
   margin-bottom: 16px;
   border-radius: 8px;
+}
+
+/* 下载进度条 */
+.download-progress-bar {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.progress-file {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.progress-percent {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  margin-left: 12px;
+  min-width: 50px;
+  text-align: right;
+}
+
+.progress-track {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-primary);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), #60a5fa);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-speed {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: right;
 }
 
 .nav-btn {
@@ -1101,6 +1351,14 @@ const isFileSelected = (itemPath) => {
 
 .table-body {
   /* 文件列表内容 */
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* 加载时的模糊和灰色效果 */
+.table-body.loading-blur {
+  filter: blur(4px) grayscale(0.8);
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .table-row {

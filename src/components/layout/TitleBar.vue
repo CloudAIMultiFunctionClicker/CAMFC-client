@@ -36,6 +36,8 @@ const theme = inject('theme')
 const router = useRouter()
 
 const showConfirmDialog = ref(false)
+const showCloseRipple = ref(false)
+const closeRippleStyle = ref({})
 
 const currentWindow = getCurrentWindow()
 
@@ -98,7 +100,36 @@ const closeApp = async () => {
 }
 
 const requestClose = () => {
-  showConfirmDialog.value = true
+  // 获取关闭按钮的位置
+  const closeBtn = document.querySelector('.close-btn')
+  if (closeBtn) {
+    const rect = closeBtn.getBoundingClientRect()
+    // 计算波纹中心位置（相对于视口）
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    
+    // 计算需要的最大扩散半径（覆盖整个窗口）
+    const windowWidth = window.innerWidth
+    const windowHeight = window.innerHeight
+    const maxRadius = Math.sqrt(Math.pow(windowWidth, 2) + Math.pow(windowHeight, 2))
+    
+    // 设置波纹样式
+    closeRippleStyle.value = {
+      left: centerX + 'px',
+      top: centerY + 'px',
+      '--ripple-radius': maxRadius + 'px'
+    }
+    
+    // 触发扩散动画
+    showCloseRipple.value = true
+    
+    // 延迟显示确认对话框
+    setTimeout(() => {
+      showConfirmDialog.value = true
+    }, 100)
+  } else {
+    showConfirmDialog.value = true
+  }
 }
 
 const confirmClose = async () => {
@@ -108,6 +139,7 @@ const confirmClose = async () => {
 
 const cancelClose = () => {
   showConfirmDialog.value = false
+  showCloseRipple.value = false
 }
 
 const hideToTray = async () => {
@@ -143,6 +175,10 @@ const goHome = () => {
       </div>
       
       <div class="title-right">
+        <button class="icon-btn tray-btn" @click="hideToTray" title="隐藏到托盘">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-picture-in-picture-icon lucide-picture-in-picture"><path d="M2 10h6V4"/><path d="m2 4 6 6"/><path d="M21 10V7a2 2 0 0 0-2-2h-7"/><path d="M3 14v2a2 2 0 0 0 2 2h3"/><rect x="12" y="14" width="10" height="7" rx="1"/></svg>
+        </button>
+        
         <button class="icon-btn home-btn" @click="goHome" title="主页">
           <Home :size="18" :stroke-width="3" />
         </button>
@@ -152,15 +188,17 @@ const goHome = () => {
           <Sun v-else :size="18" :stroke-width="2.5" />
         </button>
         
+        <div class="divider"></div>
+        
         <div class="window-controls">
           <button class="icon-btn window-btn" @click="minimizeWindow" title="最小化">
             <Minus :size="18" :stroke-width="3" />
           </button>
           <button class="icon-btn window-btn" @click="toggleMaximize" :title="isMaximized ? '还原' : '最大化'">
-            <Copy v-if="isMaximized" :size="18" :stroke-width="3" class="restore-icon" />
-            <Square v-else :size="18" :stroke-width="3" />
+            <Copy v-if="isMaximized" :size="15" :stroke-width="3" class="restore-icon" />
+            <Square v-else :size="15" :stroke-width="3" />
           </button>
-          <button class="icon-btn window-btn close-btn" @click="requestClose" title="关闭">
+          <button ref="closeBtnRef" class="icon-btn window-btn close-btn" @click="requestClose" title="关闭">
             <X :size="18" :stroke-width="3" />
           </button>
         </div>
@@ -168,23 +206,21 @@ const goHome = () => {
     </div>
   </header>
   
-  <Transition name="modal">
-    <div v-if="showConfirmDialog" class="confirm-overlay" @click="cancelClose">
+  <!-- 窗口关闭扩散波纹 -->
+  <Transition name="ripple-fade">
+    <div v-if="showCloseRipple" class="close-ripple" :style="closeRippleStyle"></div>
+  </Transition>
+  
+  <Transition name="confirm">
+    <div v-if="showConfirmDialog" class="confirm-container" @click="cancelClose">
+      <div class="ripple-effect" @click.stop></div>
       <div class="confirm-dialog" @click.stop>
-        <div class="confirm-header">
-          <X class="confirm-icon" :size="24" :stroke-width="2.5" />
-          <h3>关闭应用</h3>
-        </div>
         <div class="confirm-body">
-          <p>请选择关闭方式：</p>
+          <p>你点击了关闭按钮，你希望？</p>
           <div class="close-options">
             <button class="option-btn" @click="hideToTray">
               <div class="option-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                  <line x1="8" y1="21" x2="16" y2="21"/>
-                  <line x1="12" y1="17" x2="12" y2="21"/>
-                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-picture-in-picture-icon lucide-picture-in-picture"><path d="M2 10h6V4"/><path d="m2 4 6 6"/><path d="M21 10V7a2 2 0 0 0-2-2h-7"/><path d="M3 14v2a2 2 0 0 0 2 2h3"/><rect x="12" y="14" width="10" height="7" rx="1"/></svg>
               </div>
               <div class="option-content">
                 <h4>隐藏到托盘</h4>
@@ -193,10 +229,7 @@ const goHome = () => {
             </button>
             <button class="option-btn" @click="confirmClose">
               <div class="option-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 6 6 18M6 6l12 12"/>
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-x-icon lucide-circle-x"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
               </div>
               <div class="option-content">
                 <h4>完全关闭</h4>
@@ -204,9 +237,6 @@ const goHome = () => {
               </div>
             </button>
           </div>
-        </div>
-        <div class="confirm-actions">
-          <button class="cancel-btn" @click="cancelClose">取消</button>
         </div>
       </div>
     </div>
@@ -285,6 +315,18 @@ const goHome = () => {
   color: white;
 }
 
+.tray-btn:hover {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--accent-blue, #3b82f6);
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--border-color, rgba(255, 255, 255, 0.1));
+  margin: 0 4px;
+}
+
 .window-controls {
   display: flex;
   align-items: center;
@@ -318,28 +360,105 @@ const goHome = () => {
 }
 
 /* 关闭确认对话框样式 */
-.confirm-overlay {
+.confirm-container {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 9999;
 }
 
+/* 窗口关闭扩散波纹 */
+.close-ripple {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10000;
+}
+
+.close-ripple::before {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0.15) 40%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: closeRippleExpand 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes closeRippleExpand {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(50);
+    opacity: 0;
+  }
+}
+
+/* 波纹淡入淡出 */
+.ripple-fade-enter-active,
+.ripple-fade-leave-active {
+  transition: opacity 0.4s ease;
+}
+
+.ripple-fade-enter-from,
+.ripple-fade-leave-to {
+  opacity: 0;
+}
+
+/* 扩散波纹效果 */
+.ripple-effect {
+  position: absolute;
+  top: 56px;
+  right: 24px;
+  width: 320px;
+  height: 280px;
+  border-radius: 12px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
+  animation: rippleExpand 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes rippleExpand {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
 .confirm-dialog {
+  position: absolute;
+  top: 56px;
+  right: 24px;
   background-color: var(--bg-secondary);
-  border-radius: 16px;
-  width: 90%;
-  max-width: 400px;
+  border-radius: 12px;
+  width: 320px;
   border: 1px solid var(--border-color);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   overflow: hidden;
+  animation: dialogFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes dialogFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .confirm-header {
@@ -464,25 +583,27 @@ const goHome = () => {
   background-color: var(--hover-bg);
 }
 
-/* 对话框动画 */
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s ease;
+/* 对话框进入动画 - 干净利落的效果 */
+.confirm-enter-active {
+  transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.modal-enter-from,
-.modal-leave-to {
+.confirm-leave-active {
+  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.confirm-enter-from,
+.confirm-leave-to {
   opacity: 0;
 }
 
-.modal-enter-active .confirm-dialog,
-.modal-leave-active .confirm-dialog {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.modal-enter-from .confirm-dialog,
-.modal-leave-to .confirm-dialog {
+.confirm-enter-from .confirm-dialog {
+  opacity: 0;
   transform: scale(0.9);
+}
+
+.confirm-leave-to .confirm-dialog {
   opacity: 0;
+  transform: scale(0.98);
 }
 </style>

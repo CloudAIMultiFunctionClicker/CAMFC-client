@@ -288,7 +288,6 @@ onMounted(async () => {
       dialog.className = 'disconnect-dialog'
       dialog.innerHTML = `
         <div class="disconnect-dialog-content">
-          <div class="disconnect-dialog-icon">⚠️</div>
           <h3>设备已断开连接</h3>
           <p>当前蓝牙设备已断开，点击确认后重新连接</p>
           <div class="disconnect-dialog-actions">
@@ -322,11 +321,6 @@ onMounted(async () => {
           text-align: center;
           box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
           border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-        }
-        
-        .disconnect-dialog-icon {
-          font-size: 48px;
-          margin-bottom: 16px;
         }
         
         .disconnect-dialog-content h3 {

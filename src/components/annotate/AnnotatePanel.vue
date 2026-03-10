@@ -803,11 +803,6 @@ const handleKeyDown = (e) => {
 
 // 完成标注
 const completeAnnotate = () => {
-  if (annotations.value.length === 0) {
-    showToast('没有标注内容', '#f59e0b')
-    return
-  }
-  
   // 将标注绘制到 canvas 上并导出
   const canvas = document.createElement('canvas')
   canvas.width = annotateCanvas.value.width
@@ -843,7 +838,9 @@ const completeAnnotate = () => {
       imageData: annotatedData,
       annotations: annotations.value
     })
-    showToast('标注已保存', '#10b981')
+    if (annotations.value.length > 0) {
+      showToast('标注已保存', '#10b981')
+    }
   }
 }
 
@@ -898,10 +895,11 @@ watch(() => props.imageData, () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 16px 16px;
   background-color: var(--bg-secondary, #1e293b);
   border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   gap: 16px;
+  margin-bottom: 16px;
 }
 
 .annotate-toolbar {

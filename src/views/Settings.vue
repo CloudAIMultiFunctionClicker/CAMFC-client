@@ -47,43 +47,29 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       <div v-if="activeNav === 'cpen'" class="settings-panel">
         <h3>Cpen 设置</h3>
         <div class="setting-item">
-          <span>自动连接 Cpen 设备</span>
-          <button 
-            class="toggle-btn" 
-            :class="{ active: cpenSettings.autoConnect }"
-            @click="toggleAutoConnect"
-          >
-            <span class="toggle-slider"></span>
-          </button>
-        </div>
-        <div class="setting-item">
           <span>设备名称</span>
-          <span class="setting-value">{{ deviceId || '未连接' }}</span>
-        </div>
-      </div>
-
-      <div v-else-if="activeNav === 'account'" class="settings-panel">
-        <h3>账户</h3>
-        <div class="setting-item">
-          <span>登录状态</span>
-          <span class="setting-value" :class="isFilesystemLoggedIn ? 'status-online' : 'status-offline'">
-            {{ isFilesystemLoggedIn ? '已登录' : '未登录' }}
-          </span>
+          <span class="setting-value">{{ deviceName || '未连接' }}</span>
         </div>
         <div class="setting-item">
-          <span>用户名</span>
+          <span>设备 ID</span>
           <span class="setting-value">{{ deviceId || '未连接' }}</span>
         </div>
-        <button class="action-btn danger" @click="logout">退出登录</button>
+        <button class="action-btn danger" @click="disconnectDevice">断开设备</button>
       </div>
 
       <div v-else-if="activeNav === 'hardware'" class="settings-panel">
-        <h3>硬件设置</h3>
+        <h3>连接设置</h3>
         <div class="setting-card">
           <div class="setting-item">
             <div class="setting-label">
-              <span class="label-text">蓝牙保活间隔（秒）</span>
-              <span class="label-desc">保持蓝牙连接的心跳间隔，过短可能影响电量</span>
+              <div class="label-with-tooltip">
+                <span class="label-text">心跳包</span>
+                <div class="tooltip-wrapper">
+                  <i class="ri-question-line"></i>
+                  <span class="tooltip-text">设备之间会定期发送心跳包，以确定被连接设备的状态</span>
+                </div>
+              </div>
+              <span class="label-desc">保持蓝牙连接的心跳包，过短可能影响电量</span>
             </div>
             <div class="setting-control">
               <input 
@@ -177,27 +163,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         </div>
       </div>
 
-      <div v-else-if="activeNav === 'storage'" class="settings-panel">
-        <h3>储存空间管理</h3>
-        <div class="storage-info">
-          <div class="storage-bar">
-            <div class="storage-used" :style="{ width: Math.min((cacheSize / 1073741824) * 100, 100) + '%' }"></div>
-          </div>
-          <p class="storage-text">已使用 {{ formatSize(cacheSize) }} / 1 GB</p>
-        </div>
-        <button class="action-btn" @click="clearCache">清理缓存</button>
-        <div class="setting-item">
-          <span>自动清理缓存</span>
-          <button 
-            class="toggle-btn" 
-            :class="{ active: storageSettings.autoCleanCache }"
-            @click="toggleAutoCleanCache"
-          >
-            <span class="toggle-slider"></span>
-          </button>
-        </div>
-      </div>
-
       <div v-else-if="activeNav === 'help'" class="settings-panel help-panel">
         <h3>帮助与反馈</h3>
         <button class="action-btn" @click="openIssue">提交问题或反馈</button>
@@ -255,17 +220,16 @@ const localBluetoothVersion = ref('5.0')
 let keepAliveTimer = null
 
 const deviceId = ref(null)
+const deviceName = ref(null)
 const isFilesystemLoggedIn = ref(false)
 const cacheSize = ref(0)
 const downloadPath = ref('')
 
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
-  { id: 'account', label: '账户', icon: 'ri-user-line' },
-  { id: 'hardware', label: '硬件设置', icon: 'ri-cpu-line' },
+  { id: 'hardware', label: '连接设置', icon: 'ri-link' },
   { id: 'download', label: '下载设置', icon: 'ri-download-line' },
   { id: 'theme', label: '深色模式', icon: 'ri-moon-line' },
-  { id: 'storage', label: '储存空间管理', icon: 'ri-hard-drive-line' },
   { id: 'help', label: '帮助与反馈', icon: 'ri-question-line' },
   { id: 'about', label: '关于', icon: 'ri-information-line' }
 ]
@@ -341,7 +305,6 @@ const saveKeepAliveInterval = async () => {
     hardwareSettings.value.keepAliveInterval = 300
   }
   await saveAppData('hardware_settings', JSON.stringify(hardwareSettings.value))
-  showToast(`蓝牙保活间隔：${hardwareSettings.value.keepAliveInterval}秒`, '#3b82f6')
   
   // 重启保活定时器
   stopKeepAliveTimer()
@@ -419,12 +382,32 @@ const checkFilesystemLogin = async () => {
   try {
     let id = null
     let cloudAccessible = false
+    let name = null
     
     try {
       id = await getDeviceId()
       deviceId.value = id
+      
+      // 获取设备名称
+      const { invoke } = await import('@tauri-apps/api/core')
+      const status = await invoke('get_connection_status')
+      console.log('连接状态原始值:', status)
+      // 从连接状态中提取设备名（去掉"已连接到设备："前缀）
+      if (status && status.startsWith('已连接')) {
+        // 找到第一个冒号（中文或英文）的位置
+        const colonIndex = status.indexOf(':') !== -1 ? status.indexOf(':') : status.indexOf('：')
+        if (colonIndex !== -1 && colonIndex < status.length - 1) {
+          name = status.substring(colonIndex + 1).trim()
+        } else {
+          name = status
+        }
+      } else if (status && status !== '未连接') {
+        name = status
+      }
+      console.log('提取的设备名:', name)
+      deviceName.value = name
     } catch (idError) {
-      console.warn('获取设备ID失败:', idError)
+      console.warn('获取设备信息失败:', idError)
     }
     
     if (id) {
@@ -442,7 +425,16 @@ const checkFilesystemLogin = async () => {
     console.warn('检查登录状态失败:', error)
     isFilesystemLoggedIn.value = false
     deviceId.value = null
+    deviceName.value = null
   }
+}
+
+const disconnectDevice = async () => {
+  showToast('正在断开设备...', '#f59e0b')
+  await disconnect()
+  deviceName.value = null
+  deviceId.value = null
+  showToast('已断开设备连接', '#10b981')
 }
 
 const logout = async () => {
@@ -666,6 +658,66 @@ onUnmounted(() => {
 .label-text {
   font-size: 15px;
   font-weight: 500;
+}
+
+.label-with-tooltip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.tooltip-wrapper i {
+  font-size: 16px;
+  color: var(--text-muted, #64748b);
+  transition: color 0.2s;
+}
+
+.tooltip-wrapper:hover i {
+  color: var(--accent-blue, #3b82f6);
+}
+
+.tooltip-text {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  transform: translateY(-8px);
+  background-color: var(--bg-primary, #0f172a);
+  color: var(--text-primary, #f1f5f9);
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.2s ease;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.tooltip-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 20px;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--bg-primary, #0f172a);
+}
+
+.tooltip-wrapper:hover .tooltip-text {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(-4px);
 }
 
 .label-desc {

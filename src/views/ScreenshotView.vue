@@ -844,7 +844,7 @@ onUnmounted(() => {
   display: flex;
   gap: 8px;
   position: absolute;
-  bottom: 16px;
+  bottom: 32px;
   right: 16px;
   z-index: 10;
 }
@@ -1033,15 +1033,13 @@ onUnmounted(() => {
 }
 
 .crop-selection-actions {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 8px;
+  position: fixed;
+  bottom: 32px;
+  right: 16px;
   display: flex;
   gap: 8px;
   pointer-events: auto !important;
-  z-index: 100;
+  z-index: 1000;
 }
 
 .crop-selection-actions button {
@@ -1049,33 +1047,49 @@ onUnmounted(() => {
 }
 
 .crop-action-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: var(--bg-secondary, #1e293b);
+  color: var(--text-primary, #f1f5f9);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  font-size: 18px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 18px;
-  color: #fff;
+}
+
+.crop-action-btn:hover:not(:disabled) {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
+}
+
+.crop-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .crop-action-btn.cancel {
-  background-color: #ef4444;
+  background-color: var(--bg-secondary, #1e293b);
+  color: var(--text-primary, #f1f5f9);
 }
 
 .crop-action-btn.cancel:hover {
-  background-color: #dc2626;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: #ef4444;
 }
 
 .crop-action-btn.apply {
-  background-color: #10b981;
+  background-color: var(--bg-secondary, #1e293b);
+  color: var(--text-primary, #f1f5f9);
 }
 
 .crop-action-btn.apply:hover {
-  background-color: #059669;
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: #10b981;
 }
 
 .crop-handle {

@@ -141,11 +141,14 @@ router.beforeEach((to, _from, next) => {
   const bluetoothStore = useBluetoothStore()
 
   // 检查蓝牙是否已连接
-  if (bluetoothStore.isConnected()) {
+  const connected = bluetoothStore.isConnected()
+  console.log(`[路由守卫] 目标：${to.path}, 蓝牙状态：${bluetoothStore.bluetoothStatus}, 连接：${connected}`)
+  
+  if (connected) {
     next()
   } else {
     // 未连接，强制跳回首页
-    console.warn('蓝牙未连接，阻止跳转到:', to.path)
+    console.warn('[路由守卫] 蓝牙未连接，阻止跳转到:', to.path)
     next('/')
   }
 })

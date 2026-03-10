@@ -48,20 +48,16 @@ import { getActiveDownloads, setActiveDownloads } from './storage.js'
  */
 export async function downloadFile(fileId) {
   try {
-    console.info(`开始下载文件，文件ID: ${fileId}`)
+    console.info(`开始下载文件，文件 ID: ${fileId}`)
     
-    // 显示下载开始提示
-    showToast(`开始下载文件...`, '#3b82f6')
-    
-    // 调用Rust下载命令
+    // 调用 Rust 下载命令
     const result = await invoke('download_file', { fileId })
     
     const stored = await getActiveDownloads()
     stored.push(fileId)
     await setActiveDownloads(stored)
     
-    console.info(`文件下载成功: ${result}`)
-    showToast(`文件下载完成`, '#10b981')
+    console.info(`文件下载成功：${result}`)
     
     return result
   } catch (error) {
@@ -194,7 +190,6 @@ export async function batchDownloadFiles(fileIds) {
   }
   
   console.info(`批量下载 ${fileIds.length} 个文件`)
-  showToast(`开始批量下载 ${fileIds.length} 个文件...`, '#3b82f6')
   
   const results = []
   let successCount = 0
@@ -203,10 +198,10 @@ export async function batchDownloadFiles(fileIds) {
   for (let i = 0; i < fileIds.length; i++) {
     const fileId = fileIds[i]
     try {
-      console.info(`下载第 ${i + 1}/${fileIds.length} 个文件: ${fileId}`)
+      console.info(`下载第 ${i + 1}/${fileIds.length} 个文件：${fileId}`)
       
       // 显示当前下载进度
-      showToast(`下载中 (${i + 1}/${fileIds.length}): ${fileId}`, '#3b82f6')
+      showToast(`下载中：${fileId}`, '#3b82f6')
       
       const result = await downloadFile(fileId)
       results.push({ fileId, success: true, result })

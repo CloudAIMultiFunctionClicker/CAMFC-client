@@ -125,13 +125,6 @@ const toggleCollapse = () => {
 
         <!-- 底部区域 -->
         <div class="sidebar-footer">
-            <!-- 移除底部的折叠按钮，因为现在有悬浮按钮了 -->
-            <!-- 简单放几个底部按钮 -->
-            <button class="footer-btn">
-                <i class="ri-settings-3-line"></i>
-                <span>设置</span>
-            </button>
-
             <!-- TODO: 这里以后可以放用户信息 -->
         </div>
     </aside>
