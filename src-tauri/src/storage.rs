@@ -2,6 +2,7 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::process::Command;
 use tokio::fs;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -99,4 +100,98 @@ pub async fn get_download_file_path(file_id: String) -> Result<String, String> {
     let data_dir = get_app_data_dir()?;
     let file_path = data_dir.join(&file_id);
     Ok(file_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn open_file(file_path: String) -> Result<(), String> {
+    println!("[STORAGE] 打开文件：{}", file_path);
+    
+    // 使用 Windows 的 start 命令打开文件
+    Command::new("cmd")
+        .args(["/C", "start", "", &file_path])
+        .spawn()
+        .map_err(|e| format!("打开文件失败：{}", e))?;
+    
+    println!("[STORAGE] 文件打开命令已执行");
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_folder(folder_path: String) -> Result<(), String> {
+    println!("[STORAGE] 打开文件夹：{}", folder_path);
+    
+    // 使用 Windows 的 explorer 命令打开文件夹
+    Command::new("explorer")
+        .arg(&folder_path)
+        .spawn()
+        .map_err(|e| format!("打开文件夹失败：{}", e))?;
+    
+    println!("[STORAGE] 文件夹打开命令已执行");
+    Ok(())
+}
+
+use std::sync::OnceLock;
+
+const DOWNLOAD_PATH_KEY: &str = "download_path";
+
+static CUSTOM_DOWNLOAD_PATH: OnceLock<String> = OnceLock::new();
+
+pub fn get_download_path_for_download() -> Result<String, String> {
+    if let Some(path) = CUSTOM_DOWNLOAD_PATH.get() {
+        return Ok(path.clone());
+    }
+    // 缓存未初始化时返回空字符串，使用默认路径
+    Ok(String::new())
+}
+
+pub fn set_download_path_cache(path: &str) {
+    CUSTOM_DOWNLOAD_PATH.set(path.to_string()).ok();
+}
+
+pub async fn load_download_path_to_cache() -> Result<String, String> {
+    let storage = load_storage().await
+        .map_err(|e| format!("加载存储失败: {}", e))?;
+    
+    let path = storage.data.get(DOWNLOAD_PATH_KEY).cloned().unwrap_or_default();
+    
+    if !path.is_empty() {
+        set_download_path_cache(&path);
+    }
+    
+    Ok(path)
+}
+
+#[tauri::command]
+pub async fn get_custom_download_path() -> Result<String, String> {
+    // 如果缓存已初始化，直接返回
+    if let Some(path) = CUSTOM_DOWNLOAD_PATH.get() {
+        return Ok(path.clone());
+    }
+    
+    // 从存储加载
+    let path = load_download_path_to_cache().await?;
+    Ok(path)
+}
+
+#[tauri::command]
+pub async fn set_custom_download_path(path: String) -> Result<(), String> {
+    println!("[STORAGE] 设置自定义下载路径: {}", path);
+    
+    // 更新缓存
+    set_download_path_cache(&path);
+    
+    let mut storage = load_storage().await
+        .map_err(|e| format!("加载存储失败: {}", e))?;
+    
+    if path.is_empty() {
+        storage.data.remove(DOWNLOAD_PATH_KEY);
+    } else {
+        storage.data.insert(DOWNLOAD_PATH_KEY.to_string(), path.clone());
+    }
+    
+    save_storage(&storage).await
+        .map_err(|e| format!("保存存储失败: {}", e))?;
+    
+    println!("[STORAGE] 自定义下载路径保存成功: {}", path);
+    Ok(())
 }

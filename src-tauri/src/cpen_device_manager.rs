@@ -694,6 +694,25 @@ impl CpenDeviceManager {
         }
     }
     
+    /// 获取本地蓝牙版本
+    pub async fn get_local_bluetooth_version(&mut self) -> Result<String, CpenError> {
+        self.bluetooth_manager.get_local_bluetooth_info().await
+    }
+
+    /// 获取 Cpen 设备的蓝牙版本
+    pub async fn get_cpen_bluetooth_version(&mut self) -> Result<String, CpenError> {
+        self.bluetooth_manager.get_cpen_bluetooth_version().await
+    }
+
+    /// 发送蓝牙保活心跳包
+    pub async fn send_keep_alive(&mut self) -> Result<(), CpenError> {
+        // Cpen 设备的 UUID
+        let service_uuid = "d816e4c6-1b99-4da7-bcd5-7c37cc2642c4";
+        let char_uuid = "d816e4c7-1b99-4da7-bcd5-7c37cc2642c4";
+        
+        self.bluetooth_manager.send_keep_alive(service_uuid, char_uuid).await
+    }
+
     /// 获取当前连接的设备信息（调试用）
     pub fn get_current_device_info(&self) -> Option<String> {
         self.current_device.as_ref().map(|dev| {

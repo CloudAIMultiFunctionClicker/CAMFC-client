@@ -21,6 +21,7 @@ use hex::encode as hex_encode;
 
 // 导入配置模块
 use crate::config;
+use crate::storage;
 
 // 默认分片大小 256KB
 const CHUNK_SIZE: u64 = 256 * 1024; // 256KB
@@ -601,23 +602,35 @@ impl DownloadTask {
 }
 
 // 工具函数：获取应用数据目录
-pub async fn get_app_data_dir() -> Result<PathBuf> {
-    // 使用系统默认的下载目录
-    // Windows: C:\Users\{username}\Downloads
-    let download_dir = if cfg!(target_os = "windows") {
-        let user_profile = std::env::var("USERPROFILE")
-            .context("获取用户目录失败")?;
-        PathBuf::from(user_profile).join("Downloads")
-    } else {
-        // 其他系统用当前目录的downloads文件夹
-        std::env::current_dir()
-            .context("获取当前目录失败")?
-            .join("downloads")
+pub fn get_app_data_dir() -> Result<PathBuf> {
+    // 先检查是否有自定义下载路径
+    let custom_path = storage::get_download_path_for_download();
+    
+    let download_dir = match custom_path {
+        Ok(path) if !path.is_empty() => {
+            // 使用自定义下载路径
+            println!("[DOWNLOAD] 使用自定义下载路径: {}", path);
+            PathBuf::from(path)
+        }
+        _ => {
+            // 使用系统默认的下载目录
+            // Windows: C:\Users\{username}\Downloads
+            if cfg!(target_os = "windows") {
+                let user_profile = std::env::var("USERPROFILE")
+                    .context("获取用户目录失败")?;
+                PathBuf::from(user_profile).join("Downloads")
+            } else {
+                // 其他系统用当前目录的downloads文件夹
+                std::env::current_dir()
+                    .context("获取当前目录失败")?
+                    .join("downloads")
+            }
+        }
     };
     
-    // 确保目录存在
+    // 确保目录存在（同步创建）
     if !download_dir.exists() {
-        fs::create_dir_all(&download_dir).await
+        std::fs::create_dir_all(&download_dir)
             .context(format!("创建下载目录失败: {:?}", download_dir))?;
     }
     

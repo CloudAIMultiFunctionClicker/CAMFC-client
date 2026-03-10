@@ -315,7 +315,7 @@ onUnmounted(() => {
               class="transfer-item"
             >
               <div class="item-name">
-                <span class="file-icon">📄</span>
+                <span class="file-icon"><i class="ri-file-text-line"></i></span>
                 <span class="file-name">{{ item.name }}</span>
               </div>
               <div class="item-size">{{ item.size }}</div>
@@ -341,7 +341,7 @@ onUnmounted(() => {
                   v-if="item.status !== 'completed' && item.status !== 'failed'"
                   :title="item.status === 'paused' ? '继续' : '暂停'"
                 >
-                  {{ item.status === 'paused' ? '▶' : '⏸' }}
+                  <i :class="item.status === 'paused' ? 'ri-play-fill' : 'ri-pause-fill'"></i>
                 </button>
                 <button
                   class="action-btn retry"
@@ -349,7 +349,7 @@ onUnmounted(() => {
                   v-if="item.status === 'failed'"
                   title="重试"
                 >
-                  ↻
+                  <i class="ri-restart-line"></i>
                 </button>
                 <button
                   class="action-btn cancel"
@@ -357,13 +357,13 @@ onUnmounted(() => {
                   v-if="item.status !== 'completed'"
                   title="取消"
                 >
-                  ✕
+                  <i class="ri-close-line"></i>
                 </button>
               </div>
             </div>
 
             <div class="empty-state" v-if="uploadList.length === 0">
-              <span class="empty-icon">📤</span>
+              <span class="empty-icon"><i class="ri-upload-cloud-2-line"></i></span>
               <p>暂无上传任务</p>
             </div>
           </div>
@@ -391,7 +391,7 @@ onUnmounted(() => {
               class="transfer-item"
             >
               <div class="item-name">
-                <span class="file-icon">📄</span>
+                <span class="file-icon"><i class="ri-file-text-line"></i></span>
                 <span class="file-name">{{ item.name }}</span>
               </div>
               <div class="item-size">{{ item.size }}</div>
@@ -417,7 +417,7 @@ onUnmounted(() => {
                   v-if="item.status === 'completed'"
                   title="打开文件夹"
                 >
-                  📁
+                  <i class="ri-folder-open-line"></i>
                 </button>
                 <button
                   class="action-btn"
@@ -425,7 +425,7 @@ onUnmounted(() => {
                   v-if="item.status === 'completed'"
                   title="打开文件"
                 >
-                  📄
+                  <i class="ri-file-text-line"></i>
                 </button>
                 <button
                   class="action-btn"
@@ -433,7 +433,7 @@ onUnmounted(() => {
                   v-if="item.status !== 'completed' && item.status !== 'failed'"
                   :title="item.status === 'paused' ? '继续' : '暂停'"
                 >
-                  {{ item.status === 'paused' ? '▶' : '⏸' }}
+                  <i :class="item.status === 'paused' ? 'ri-play-fill' : 'ri-pause-fill'"></i>
                 </button>
                 <button
                   class="action-btn retry"
@@ -441,7 +441,7 @@ onUnmounted(() => {
                   v-if="item.status === 'failed'"
                   title="重试"
                 >
-                  ↻
+                  <i class="ri-restart-line"></i>
                 </button>
                 <button
                   class="action-btn cancel"
@@ -449,13 +449,13 @@ onUnmounted(() => {
                   v-if="item.status !== 'completed'"
                   title="取消"
                 >
-                  ✕
+                  <i class="ri-close-line"></i>
                 </button>
               </div>
             </div>
 
             <div class="empty-state" v-if="downloadList.length === 0">
-              <span class="empty-icon">📥</span>
+              <span class="empty-icon"><i class="ri-download-cloud-2-line"></i></span>
               <p>暂无下载任务</p>
             </div>
           </div>
@@ -745,7 +745,7 @@ onUnmounted(() => {
 }
 
 .empty-icon {
-  font-size: 48px;
+  font-size: clamp(48px, 8vw, 96px);
   display: block;
   margin-bottom: 16px;
   opacity: 0.5;

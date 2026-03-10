@@ -77,13 +77,6 @@ const router = createRouter({
     },
     // 新增仪表板相关路由
     {
-      path: '/hardware-settings',
-      name: 'hardwareSettings',
-      // 硬件设置占位页面
-      // TODO: 这个页面还没具体功能，先放个占位
-      component: () => import('../views/HardwareSettings.vue')
-    },
-    {
       path: '/more-info',
       name: 'moreInfo',
       // 更多信息占位页面

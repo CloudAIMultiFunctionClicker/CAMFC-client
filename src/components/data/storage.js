@@ -28,11 +28,12 @@
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { openPath } from '@tauri-apps/plugin-opener'
 
 export async function openFile(filePath) {
   try {
-    await openPath(filePath)
+    console.log('打开文件:', filePath)
+    await invoke('open_file', { filePath })
+    console.log('文件打开命令已发送')
     return true
   } catch (error) {
     console.error('打开文件失败:', error)
@@ -42,8 +43,9 @@ export async function openFile(filePath) {
 
 export async function openFolder(filePath) {
   try {
-    const folderPath = filePath.substring(0, filePath.lastIndexOf('\\')) || filePath.substring(0, filePath.lastIndexOf('/'))
-    await openPath(folderPath)
+    console.log('打开文件夹:', filePath)
+    await invoke('open_folder', { folderPath: filePath })
+    console.log('文件夹打开命令已发送')
     return true
   } catch (error) {
     console.error('打开文件夹失败:', error)

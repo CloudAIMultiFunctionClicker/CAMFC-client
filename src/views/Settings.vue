@@ -77,9 +77,80 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
         <button class="action-btn danger" @click="logout">退出登录</button>
       </div>
 
-      <div v-else-if="activeNav === 'ui'" class="settings-panel">
-        <h3>界面设置</h3>
-        <p class="placeholder-text">界面设置功能开发中...</p>
+      <div v-else-if="activeNav === 'hardware'" class="settings-panel">
+        <h3>硬件设置</h3>
+        <div class="setting-card">
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="label-text">蓝牙保活间隔（秒）</span>
+              <span class="label-desc">保持蓝牙连接的心跳间隔，过短可能影响电量</span>
+            </div>
+            <div class="setting-control">
+              <input 
+                type="number" 
+                v-model.number="hardwareSettings.keepAliveInterval"
+                class="number-input"
+                min="1"
+                max="300"
+                @change="saveKeepAliveInterval"
+              />
+              <span class="unit">秒</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="setting-card">
+          <h4 class="card-title">蓝牙版本信息</h4>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Cpen 硬件蓝牙版本</span>
+              <span class="info-value">{{ cpenBluetoothVersion }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">本地蓝牙版本</span>
+              <span class="info-value">{{ localBluetoothVersion }}</span>
+            </div>
+          </div>
+          <div class="refresh-tip">
+            <i class="ri-refresh-line"></i>
+            <span>连接设备后自动获取版本信息</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="activeNav === 'download'" class="settings-panel">
+        <h3>下载设置</h3>
+        <div class="setting-card">
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="label-text">自定义下载路径</span>
+              <span class="label-desc">文件将下载到指定目录，留空使用系统默认下载目录</span>
+            </div>
+            <div class="path-control">
+              <input 
+                type="text" 
+                v-model="downloadPath" 
+                class="path-input" 
+                placeholder="点击右侧按钮选择目录"
+                readonly
+              />
+              <button class="action-btn small" @click="selectDownloadPath">选择</button>
+              <button 
+                v-if="downloadPath" 
+                class="action-btn small danger" 
+                @click="clearDownloadPath"
+              >
+                清除
+              </button>
+            </div>
+          </div>
+          <div class="path-actions">
+            <button class="action-btn secondary" @click="openDownloadFolder">
+              <i class="ri-folder-open-line"></i>
+              打开下载目录
+            </button>
+          </div>
+        </div>
       </div>
 
       <div v-else-if="activeNav === 'theme'" class="settings-panel">
@@ -151,13 +222,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 </template>
 
 <script setup>
-import { inject, ref, onMounted } from 'vue'
+import { inject, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from '../components/layout/showToast.js'
 import { disconnect, getDeviceId } from '../components/data/bluetooth.js'
 import { ls } from '../components/data/fileSystem.js'
 import { loadAppData, saveAppData } from '../components/data/storage.js'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { open } from '@tauri-apps/plugin-dialog'
 
 const theme = inject('theme')
 const activeNav = ref('cpen')
@@ -172,14 +244,26 @@ const storageSettings = ref({
   followSystemTheme: false
 })
 
+const hardwareSettings = ref({
+  keepAliveInterval: 30
+})
+
+const cpenBluetoothVersion = ref('未连接')
+const localBluetoothVersion = ref('5.0')
+
+// 保活定时器
+let keepAliveTimer = null
+
 const deviceId = ref(null)
 const isFilesystemLoggedIn = ref(false)
 const cacheSize = ref(0)
+const downloadPath = ref('')
 
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
   { id: 'account', label: '账户', icon: 'ri-user-line' },
-  { id: 'ui', label: '界面设置', icon: 'ri-layout-grid-line' },
+  { id: 'hardware', label: '硬件设置', icon: 'ri-cpu-line' },
+  { id: 'download', label: '下载设置', icon: 'ri-download-line' },
   { id: 'theme', label: '深色模式', icon: 'ri-moon-line' },
   { id: 'storage', label: '储存空间管理', icon: 'ri-hard-drive-line' },
   { id: 'help', label: '帮助与反馈', icon: 'ri-question-line' },
@@ -196,6 +280,16 @@ const loadSettings = async () => {
     const savedStorage = await loadAppData('settings_storage')
     if (savedStorage) {
       storageSettings.value = JSON.parse(savedStorage)
+    }
+
+    // 加载自定义下载路径
+    const { invoke } = await import('@tauri-apps/api/core')
+    try {
+      const customPath = await invoke('get_custom_download_path')
+      downloadPath.value = customPath || ''
+    } catch (e) {
+      console.warn('获取自定义下载路径失败:', e)
+      downloadPath.value = ''
     }
   } catch (error) {
     console.error('加载设置失败:', error)
@@ -237,6 +331,88 @@ const toggleAutoCleanCache = async () => {
   await saveAppData('settings_storage', JSON.stringify(storageSettings.value))
   const status = storageSettings.value.autoCleanCache ? '已启用' : '已禁用'
   showToast(`自动清理缓存：${status}`, '#3b82f6')
+}
+
+const saveKeepAliveInterval = async () => {
+  if (hardwareSettings.value.keepAliveInterval < 1) {
+    hardwareSettings.value.keepAliveInterval = 1
+  }
+  if (hardwareSettings.value.keepAliveInterval > 300) {
+    hardwareSettings.value.keepAliveInterval = 300
+  }
+  await saveAppData('hardware_settings', JSON.stringify(hardwareSettings.value))
+  showToast(`蓝牙保活间隔：${hardwareSettings.value.keepAliveInterval}秒`, '#3b82f6')
+  
+  // 重启保活定时器
+  stopKeepAliveTimer()
+  if (hardwareSettings.value.keepAliveInterval > 0) {
+    startKeepAliveTimer()
+  }
+}
+
+const startKeepAliveTimer = () => {
+  if (keepAliveTimer) {
+    clearInterval(keepAliveTimer)
+  }
+  
+  const interval = hardwareSettings.value.keepAliveInterval * 1000 // 转换为毫秒
+  
+  keepAliveTimer = setInterval(async () => {
+    try {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('send_keep_alive')
+      console.log(`保活心跳包已发送（间隔：${hardwareSettings.value.keepAliveInterval}秒）`)
+    } catch (e) {
+      console.warn('发送保活心跳包失败:', e)
+    }
+  }, interval)
+  
+  console.log(`蓝牙保活定时器已启动，间隔：${hardwareSettings.value.keepAliveInterval}秒`)
+}
+
+const stopKeepAliveTimer = () => {
+  if (keepAliveTimer) {
+    clearInterval(keepAliveTimer)
+    keepAliveTimer = null
+    console.log('蓝牙保活定时器已停止')
+  }
+}
+
+const loadHardwareSettings = async () => {
+  try {
+    const saved = await loadAppData('hardware_settings')
+    if (saved) {
+      hardwareSettings.value = JSON.parse(saved)
+    }
+  } catch (error) {
+    console.error('加载硬件设置失败:', error)
+  }
+}
+
+const fetchBluetoothVersions = async () => {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    
+    // 获取本地蓝牙版本
+    try {
+      const localVersion = await invoke('get_local_bluetooth_version')
+      localBluetoothVersion.value = localVersion
+    } catch (e) {
+      console.warn('获取本地蓝牙版本失败:', e)
+      localBluetoothVersion.value = '获取失败'
+    }
+    
+    // 获取 Cpen 设备蓝牙版本
+    try {
+      const cpenVersion = await invoke('get_cpen_bluetooth_version')
+      cpenBluetoothVersion.value = cpenVersion
+    } catch (e) {
+      console.warn('获取 Cpen 设备蓝牙版本失败:', e)
+      cpenBluetoothVersion.value = '未连接'
+    }
+  } catch (e) {
+    console.warn('导入 Tauri 模块失败:', e)
+  }
 }
 
 const checkFilesystemLogin = async () => {
@@ -296,6 +472,61 @@ const openIssue = () => {
   openUrl('https://github.com/CloudAIMultiFunctionClicker/CAMFC-client/issues/')
 }
 
+const selectDownloadPath = async () => {
+  try {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: '选择下载目录'
+    })
+    
+    if (selected) {
+      downloadPath.value = selected
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('set_custom_download_path', { path: selected })
+      showToast('下载路径已设置为: ' + selected, '#10b981')
+    }
+  } catch (e) {
+    console.error('选择下载目录失败:', e)
+    showToast('选择下载目录失败', '#ef4444')
+  }
+}
+
+const clearDownloadPath = async () => {
+  try {
+    downloadPath.value = ''
+    const { invoke } = await import('@tauri-apps/api/core')
+    await invoke('set_custom_download_path', { path: '' })
+    showToast('已恢复使用系统默认下载目录', '#10b981')
+  } catch (e) {
+    console.error('清除下载路径失败:', e)
+    showToast('清除下载路径失败', '#ef4444')
+  }
+}
+
+const openDownloadFolder = async () => {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    let targetPath = downloadPath.value
+    
+    if (!targetPath) {
+      // 使用系统默认下载目录
+      if (navigator.platform.indexOf('Win') > -1) {
+        targetPath = 'C:\\Users\\' + (await import('os').then(m => m.default?.userInfo?.().username || '')) + '\\Downloads'
+      }
+    }
+    
+    if (targetPath) {
+      await invoke('open_folder', { folderPath: targetPath })
+    } else {
+      showToast('无法确定下载目录', '#f59e0b')
+    }
+  } catch (e) {
+    console.error('打开下载目录失败:', e)
+    showToast('打开下载目录失败', '#ef4444')
+  }
+}
+
 const formatSize = (bytes) => {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -306,8 +537,20 @@ const formatSize = (bytes) => {
 
 onMounted(() => {
   loadSettings()
+  loadHardwareSettings()
+  fetchBluetoothVersions()
   checkFilesystemLogin()
   getCacheSize()
+  
+  // 启动保活定时器
+  if (hardwareSettings.value.keepAliveInterval > 0) {
+    startKeepAliveTimer()
+  }
+})
+
+onUnmounted(() => {
+  // 组件卸载时停止保活定时器
+  stopKeepAliveTimer()
 })
 </script>
 
@@ -407,6 +650,107 @@ onMounted(() => {
   font-size: 15px;
 }
 
+.setting-card {
+  background-color: var(--bg-secondary, #1e293b);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.setting-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.label-text {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.label-desc {
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
+}
+
+.setting-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.number-input {
+  width: 80px;
+  padding: 8px 12px;
+  background-color: var(--bg-primary, #0f172a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  color: var(--text-primary, #f1f5f9);
+  font-size: 14px;
+  text-align: center;
+}
+
+.number-input:focus {
+  outline: none;
+  border-color: var(--accent-blue, #3b82f6);
+}
+
+.unit {
+  font-size: 14px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0 0 16px 0;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background-color: var(--bg-primary, #0f172a);
+  border-radius: 8px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: var(--text-muted, #64748b);
+  font-weight: 500;
+}
+
+.info-value {
+  font-size: 15px;
+  color: var(--text-primary, #f1f5f9);
+  font-weight: 600;
+}
+
+.refresh-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  background-color: var(--bg-primary, #0f172a);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.refresh-tip i {
+  font-size: 14px;
+  color: var(--accent-blue, #3b82f6);
+}
+
 .toggle-btn {
   position: relative;
   width: 48px;
@@ -483,6 +827,44 @@ onMounted(() => {
 
 .action-btn.danger:hover {
   background-color: rgba(220, 53, 69, 0.3);
+}
+
+.action-btn.small {
+  margin-top: 0;
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+.path-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.path-input {
+  flex: 1;
+  padding: 10px 14px;
+  background-color: var(--bg-primary, #0f172a);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  color: var(--text-primary, #f1f5f9);
+  font-size: 14px;
+}
+
+.path-input:focus {
+  outline: none;
+  border-color: var(--accent-blue, #3b82f6);
+}
+
+.path-input::placeholder {
+  color: var(--text-muted, #64748b);
+}
+
+.path-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
 }
 
 
