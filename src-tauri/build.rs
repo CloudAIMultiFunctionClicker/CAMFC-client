@@ -1,4 +1,4 @@
-/**
+/*
  * CAMFC Client - Tauri 构建配置
  *
  * 保留所有权利
@@ -15,3 +15,7 @@
  * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
  * Email: admin@mc666.top
  */
+
+fn main() {
+    tauri_build::build()
+}
