@@ -1,4 +1,4 @@
-/*/*
+/*
 保留所有权利
 
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
@@ -12,7 +12,6 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-*/
 */
 
 import axios from "axios";
