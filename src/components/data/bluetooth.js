@@ -93,6 +93,35 @@ export async function scanCpenDevices() {
 }
 
 /**
+ * 扫描所有蓝牙设备（包括Cpen和其他设备）
+ * 
+ * 调用Rust端的scan_all_bluetooth_devices命令：
+ * 1. 确保蓝牙已开启
+ * 2. 扫描所有蓝牙设备
+ * 3. 返回所有发现的设备（不连接）
+ * 
+ * 注意：这个函数不会自动连接设备，只返回设备列表供用户选择
+ * 
+ * @returns {Promise<Array<{name: string, address: string}>>} 所有蓝牙设备列表
+ */
+export async function scanAllBluetoothDevices() {
+  try {
+    console.info('开始扫描所有蓝牙设备...')
+    
+    const devices = await invoke('scan_all_bluetooth_devices')
+    
+    console.info(`扫描完成，找到 ${devices.length} 个蓝牙设备`)
+    
+    return devices
+  } catch (error) {
+    console.error(`扫描蓝牙设备失败: ${error}`)
+    // 如果Rust端没有实现这个命令，返回空数组
+    console.warn('scan_all_bluetooth_devices 命令可能未实现，返回空数组')
+    return []
+  }
+}
+
+/**
  * 连接到指定的Cpen设备
  * 
  * 调用Rust端的connect_cpen_device命令：

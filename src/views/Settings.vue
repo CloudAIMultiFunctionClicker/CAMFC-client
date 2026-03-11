@@ -197,6 +197,7 @@ Email: admin@mc666.top
       <div v-else-if="activeNav === 'help'" class="settings-panel help-panel">
         <h3>帮助与反馈</h3>
         <button class="action-btn" @click="openIssue">提交问题或反馈</button>
+        <button class="action-btn" @click="showFaq = true">常见问题 (FAQ)</button>
       </div>
 
       <div v-else-if="activeNav === 'about'" class="settings-panel">
@@ -215,10 +216,33 @@ Email: admin@mc666.top
       </div>
     </main>
   </div>
+  
+  <!-- FAQ iframe 弹窗 -->
+  <Transition name="slide-right">
+    <div v-if="showFaq" class="faq-overlay" @click="showFaq = false">
+      <div class="faq-panel" :class="{ 'light-mode': isLightMode }" @click.stop>
+        <div class="faq-header">
+          <button class="close-btn" @click="showFaq = false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+          <button class="close-btn" @click="openFaqInBrowser" title="在浏览器中打开">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </button>
+        </div>
+        <div class="faq-body">
+          <iframe 
+            src="https://chatbot.weixin.qq.com/webapp/6h2QNMkoVgfSPjIqghfjRG17CxC9b7?isFloat=True&robotName=智能问答"
+            frameborder="0"
+            allowfullscreen
+          ></iframe>
+        </div>
+      </div>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
-import { inject, ref, onMounted, onUnmounted } from 'vue'
+import { inject, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from '../components/layout/showToast.js'
 import { disconnect, getDeviceId } from '../components/data/bluetooth.js'
@@ -256,6 +280,15 @@ const isFilesystemLoggedIn = ref(false)
 const cacheSize = ref(0)
 const downloadPath = ref('')
 const closeBehavior = ref('ask') // 'minimize' | 'exit' | 'ask'
+const showFaq = ref(false)
+const isLightMode = ref(false)
+
+// 监听主题变化，同步 FAQ 悬浮窗
+watch(() => theme?.isLightMode, (newVal) => {
+  if (newVal !== undefined) {
+    isLightMode.value = newVal
+  }
+}, { immediate: true })
 
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
@@ -488,6 +521,15 @@ const logout = async () => {
   setTimeout(() => {
     window.location.href = '/'
   }, 500)
+}
+
+const openFaqInBrowser = async () => {
+  try {
+    await openUrl('https://chatbot.weixin.qq.com/webapp/6h2QNMkoVgfSPjIqghfjRG17CxC9b7?isFloat=True&robotName=智能问答')
+  } catch (error) {
+    console.error('在浏览器中打开 FAQ 失败:', error)
+    showToast('打开失败', '#ef4444')
+  }
 }
 
 const clearCache = async () => {
@@ -1171,5 +1213,103 @@ onUnmounted(() => {
   }
 }
 
+/* FAQ 弹窗样式 */
+.faq-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
 
+.faq-panel {
+  width: 60vw;
+  max-width: 90vw;
+  height: 100vh;
+  background-color: var(--bg-primary, #0f172a);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 亮色模式 */
+.faq-panel.light-mode {
+  background-color: var(--bg-primary, #f8fafc);
+}
+
+.faq-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.faq-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #f8fafc);
+}
+
+.close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary, #cbd5e1);
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #f8fafc);
+}
+
+/* 亮色模式下的按钮样式 */
+.faq-panel.light-mode .close-btn:hover {
+  background-color: var(--hover-bg, rgba(0, 0, 0, 0.05));
+  color: var(--text-primary, #0f172a);
+}
+
+.faq-body {
+  flex: 1;
+  overflow: hidden;
+}
+
+.faq-body iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* 从右侧滑入动画 */
+.slide-right-enter-active {
+  transition: all 0.3s ease-out;
+}
+
+.slide-right-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.slide-right-enter-from,
+.slide-right-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+
+.slide-right-enter-from .faq-overlay,
+.slide-right-leave-to .faq-overlay {
+  opacity: 0;
+}
 </style>

@@ -16,93 +16,91 @@ Email: admin@mc666.top
 
 <template>
   <div class="initial-container">
-    <!-- 动态标题 -->
-    <h1 class="title" :class="{ 'error-title': showConnectionFailed }">
-      {{ showConnectionFailed ? '无法连接' : (isScanning ? '连接设备中' : (showDeviceSelection ? '选择要连接的设备' : (hasStarted ? '连接中' : '欢迎使用 CAMFC 客户端'))) }}
-    </h1>
-    
-    <!-- 开始连接按钮（初始状态显示） -->
-    <div class="start-container" v-if="!hasStarted">
-      <button 
-        class="start-btn" 
-        @click="handleStartConnection"
-        :disabled="isStarting"
-      >
-        {{ isStarting ? '连接中...' : '开始连接' }}
-      </button>
+    <!-- 左半部分 - 保留区域 -->
+    <div class="left-panel">
+      <div class="left-content">
+        <h1 class="app-title">CAMFC 客户端</h1>
+        <p class="app-subtitle">智能蓝牙连接</p>
+      </div>
     </div>
     
-    <!-- 弹跳进度条（连接中或扫描中显示） -->
-    <div class="progress-container" v-if="(isConnecting && hasStarted) || isScanning">
-      <div class="bouncing-progress"></div>
-    </div>
-    
-    <!-- 设备选择界面 -->
-    <div class="device-selection" v-if="showDeviceSelection && !isScanning">
-      <p class="device-selection-tip">{{ deviceList.length > 0 ? '请选择要连接的 Cpen 设备：' : '未搜索到设备' }}</p>
-      <div class="device-list">
-        <div 
-          v-for="device in deviceList" 
-          :key="device.address"
-          class="device-item"
-          :class="{ 'device-item-disabled': isConnectingDevice }"
-          @click="selectDevice(device)"
+    <!-- 右半部分 - 蓝牙设备列表 -->
+    <div class="right-panel">
+      <div class="right-header">
+        <h2 class="panel-title">
+          <i class="ri-bluetooth-line"></i>
+          蓝牙设备
+        </h2>
+        <button 
+          class="refresh-btn" 
+          @click="rescanDevices" 
+          :disabled="isScanning"
+          :class="{ 'spinning': isScanning }"
         >
-          <span class="device-name">{{ device.name }}</span>
-          <span class="device-address">{{ device.address }}</span>
+          <i class="ri-refresh-line"></i>
+        </button>
+      </div>
+      
+      <!-- Cpen 设备列表 -->
+      <div class="device-section" v-if="cpenDevices.length > 0">
+        <div class="device-list">
+          <div 
+            v-for="device in cpenDevices" 
+            :key="device.address"
+            class="device-card cpen-device"
+            :class="{ 'connecting': isConnectingDevice && selectedDevice?.address === device.address }"
+            @click="selectDevice(device)"
+          >
+            <div class="device-info">
+              <span class="device-name">{{ device.name }}</span>
+              <span class="device-address">{{ formatAddress(device.address) }}</span>
+            </div>
+            <div class="device-action">
+              <i v-if="isConnectingDevice && selectedDevice?.address === device.address" class="ri-loader-4-line spinning"></i>
+              <i v-else class="ri-arrow-right-s-line"></i>
+            </div>
+          </div>
         </div>
       </div>
-      <button class="rescan-btn" @click="rescanDevices" :disabled="isScanning">
-        {{ isScanning ? '扫描中...' : '重新扫描' }}
-      </button>
-    </div>
-    
-    <!-- 5秒倒计时进度条（连接成功后显示） -->
-    <div class="countdown-container" v-if="isConnected && showCountdown">
-      <h2 class="countdown-title">连接成功！5秒后跳转到主页面
-
-      </h2>
-      <div class="countdown-bar">
-        <div 
-          class="countdown-progress" 
-          :style="{ width: countdownProgress + '%' }"
-        ></div>
-      </div>
-      <p class="countdown-text">{{ countdownSeconds }}秒</p>
-      <!-- 跳过按钮，可以手动跳过等待 -->
-      <button class="skip-btn" @click="skipCountdown">跳过等待</button>
-    </div>
-    
-    <!-- 状态显示 -->
-    <div class="status-info">
-      <p v-if="showConnectionFailed" class="error">无法连接到 Cpen 设备</p>
-      <p v-if="isConnected && !showCountdown" class="success">
-        设备连接成功！
-      </p>
-    </div>
-    
-    <!-- 操作按钮 -->
-    <div class="action-buttons">
-      <!-- 连接失败或超时时显示"再次尝试"按钮 -->
-      <button 
-        v-if="showConnectionFailed && !isConnecting && hasStarted" 
-        class="retry-btn"
-        @click="retryConnection"
-        :disabled="isConnecting"
-      >
-        {{ isConnecting ? '连接中...' : '再次尝试' }}
-      </button>
       
-      <!-- 连接成功时显示"进入主页面"按钮 -->
-      <button 
-        v-if="isConnected && !showCountdown && hasStarted" 
-        class="enter-btn"
-        @click="jumpToFileView"
-      >
-        进入主界面
-      </button>
+      <!-- 空状态 -->
+      <div v-if="!isScanning && cpenDevices.length === 0" class="empty-state">
+        <i class="ri-bluetooth-off-line"></i>
+        <p>未发现蓝牙设备</p>
+        <button class="retry-btn" @click="rescanDevices">
+          重新扫描
+        </button>
+      </div>
+    </div>
+    
+    <!-- 倒计时弹窗 -->
+    <div v-if="showCountdown" class="countdown-overlay">
+      <div class="countdown-modal">
+        <div class="success-icon">
+          <i class="ri-check-line"></i>
+        </div>
+        <h3>连接成功！</h3>
+        <p>{{ countdownSeconds }} 秒后自动跳转</p>
+        <div class="countdown-bar">
+          <div class="countdown-progress" :style="{ width: countdownProgress + '%' }"></div>
+        </div>
+        <button class="skip-countdown-btn" @click="skipCountdown">立即进入</button>
+      </div>
     </div>
 
+    <!-- 左下角问号帮助按钮 -->
+    <div class="help-corner">
+      <span class="help-text">连接失败</span>
+      <div class="help-icon">?</div>
+      <!-- Tooltip -->
+      <div class="help-tooltip">
+        <div class="tooltip-content">
+          <p>① 确定设备处于配对状态</p>
+          <p>② 确定电脑的蓝牙版本需要5.0及以上</p>
+          <p>③ 其他问题请通过 GitHub Issue 提交</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -111,108 +109,98 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBluetoothStore } from '../stores/bluetooth.js'
 import { 
-  getTotp,
   scanCpenDevices,
-  connectCpenDevice,
-  getDeviceId,
-  getConnectionStatus,
-  disconnect,
-  cleanup
+  connectCpenDevice
 } from '../components/data/bluetooth.js'
 import { showToast } from '../components/layout/showToast.js'
-import { setCurrentUserId, loadAppData, saveAppData } from '../components/data/storage.js'
+import { loadAppData, saveAppData } from '../components/data/storage.js'
 
-console.info('InitialView - 蓝牙连接界面（简化版，业务逻辑在Rust端）')
+console.info('InitialView - 蓝牙连接界面（左右分栏版）')
 
 const router = useRouter()
 const bluetoothStore = useBluetoothStore()
 
-// 是否已经开始连接（点击了开始按钮）
-const hasStarted = ref(false)
+// 设备列表
+const cpenDevices = ref([])
 
-// 是否正在启动连接（防呆设计，防止重复点击）
-const isStarting = ref(false)
+// 扫描状态
+const isScanning = ref(false)
+const isConnectingDevice = ref(false)
+const selectedDevice = ref(null)
 
-// 倒计时相关状态
+// 倒计时相关
 const showCountdown = ref(false)
 const countdownSeconds = ref(5)
 const countdownProgress = ref(100)
 let countdownTimer = null
 
-// 设备选择相关状态
-const showDeviceSelection = ref(false)
-const deviceList = ref([])
-const isScanning = ref(false)
-
-// 设备连接防重复点击
-const isConnectingDevice = ref(false)
-
-// 状态计算（直接从store获取连接状态和错误信息）
-// 注意：TOTP和deviceId不再从store读取，改为直接调用Rust命令
-const isConnecting = computed(() => bluetoothStore.isConnecting())
+// 状态计算
 const isConnected = computed(() => bluetoothStore.isConnected())
+const connectedDeviceName = computed(() => bluetoothStore.deviceInfo?.name || 'Cpen设备')
 const error = computed(() => bluetoothStore.error)
 
-// 超时状态
-const connectionTimedOut = ref(false)
-
-// 重试次数计数（用于调试和循环显示）
-const retryCount = ref(0)
-
-// 连接失败状态（包括错误和超时）
-const showConnectionFailed = computed(() => {
-  // 当有错误，或者连接超过一定时间但仍然没有连接成功时显示"无法连接"
-  return error.value || connectionTimedOut.value
+// 状态样式
+const statusClass = computed(() => {
+  if (isConnected.value) return 'connected'
+  if (isScanning.value) return 'scanning'
+  if (error.value) return 'error'
+  return 'disconnected'
 })
 
-// 监听连接成功状态
+const statusText = computed(() => {
+  if (isConnected.value) return '已连接'
+  if (isScanning.value) return '扫描中...'
+  if (error.value) return '连接失败'
+  return '未连接'
+})
+
+// 监听连接成功（已改为在 selectDevice 中直接跳转）
 watch(isConnected, (newVal) => {
   if (newVal) {
-    // 设备连接成功，直接跳转到主页面
-    console.log('设备已连接，直接跳转到主页面')
-    jumpToFileView()
-    // 连接成功，清除超时状态
-    connectionTimedOut.value = false
+    console.log('设备已连接')
   }
 })
 
 /**
- * 扫描设备列表
- * 如果只找到一个设备，直接连接，不用用户选
+ * 格式化蓝牙地址
+ */
+function formatAddress(address) {
+  if (!address) return ''
+  // 只显示前8位和后4位，中间用...代替
+  if (address.length > 12) {
+    return address.substring(0, 8) + '...' + address.substring(address.length - 4)
+  }
+  return address
+}
+
+/**
+ * 扫描所有蓝牙设备
  */
 async function scanDevices() {
   try {
     isScanning.value = true
-    console.log('开始扫描Cpen设备...')
+    console.log('开始扫描蓝牙设备...')
     
-    const devices = await scanCpenDevices()
-    deviceList.value = devices
+    // 扫描 Cpen 设备
+    const cpenList = await scanCpenDevices()
+    cpenDevices.value = cpenList
+    console.log(`找到 ${cpenList.length} 个 Cpen 设备`)
     
-    console.log(`扫描完成，找到 ${devices.length} 个设备`)
-    
-    if (devices.length === 0) {
-      showDeviceSelection.value = true
-      showToast('未找到 Cpen 设备')
-    } else if (devices.length === 1) {
-      // 只有一个设备，直接连，不用选了
-      console.log('只找到一个设备，直接连接')
-      showToast(`发现设备 ${devices[0].name}，正在连接...`)
-      await selectDevice(devices[0])
+    if (cpenList.length === 0) {
+      showToast('未发现 Cpen 设备')
     } else {
-      // 多个设备，让用户选
-      showDeviceSelection.value = true
+      showToast(`发现 ${cpenList.length} 个 Cpen 设备`)
     }
   } catch (error) {
     console.error('扫描设备失败:', error)
     showToast('扫描设备失败: ' + error.message)
-    showDeviceSelection.value = true
   } finally {
     isScanning.value = false
   }
 }
 
 /**
- * 重新扫描设备
+ * 重新扫描
  */
 async function rescanDevices() {
   await scanDevices()
@@ -224,675 +212,578 @@ async function rescanDevices() {
 async function selectDevice(device) {
   if (isConnectingDevice.value) return
   
+  selectedDevice.value = device
   isConnectingDevice.value = true
   
   try {
-    console.log(`用户选择设备: ${device.name} (${device.address})`)
-    
+    console.log(`选择设备: ${device.name} (${device.address})`)
     bluetoothStore.setStatus('connecting')
     
-    await connectCpenDevice(device.address)
+    // 设置连接超时
+    const connectPromise = connectCpenDevice(device.address)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('连接超时')), 10000) // 10秒超时
+    })
+    
+    await Promise.race([connectPromise, timeoutPromise])
     
     bluetoothStore.setStatus('connected')
     showToast('设备连接成功！')
     
-    // 保存设备地址，用于自动连接
+    // 保存设备地址
     try {
       const savedCpen = await loadAppData('settings_cpen')
       const settings = savedCpen ? JSON.parse(savedCpen) : { autoConnect: false, lastDeviceAddress: '' }
       settings.lastDeviceAddress = device.address
       await saveAppData('settings_cpen', JSON.stringify(settings))
-      console.log('已保存设备地址:', device.address)
     } catch (e) {
       console.warn('保存设备地址失败:', e)
     }
     
-    showDeviceSelection.value = false
-    
-    await afterDeviceConnected()
+    // 连接成功直接跳转
+    jumpToMain()
   } catch (error) {
     console.error('连接设备失败:', error)
     bluetoothStore.setError('连接失败')
-    showToast('连接失败: ' + error.message)
+    showToast('连接失败：' + error.message)
   } finally {
     isConnectingDevice.value = false
   }
 }
 
 /**
- * 设备连接成功后的处理
- */
-async function afterDeviceConnected() {
-  try {
-    const totp = await getTotp()
-    console.log('TOTP获取成功:', totp)
-    
-    try {
-      const deviceId = await getDeviceId()
-      console.log('设备ID获取成功:', deviceId)
-    } catch (idError) {
-      console.warn('获取设备ID失败，但不影响连接:', idError)
-    }
-    
-    try {
-      const status = await getConnectionStatus()
-      console.log('连接状态:', status)
-      bluetoothStore.setDeviceInfo(status)
-    } catch (statusError) {
-      console.warn('获取连接状态失败:', statusError)
-    }
-    
-    startCountdown()
-  } catch (error) {
-    console.error('获取TOTP失败:', error)
-    showToast('获取TOTP失败: ' + error.message)
-    bluetoothStore.setError('获取TOTP失败')
-  }
-}
-
-/**
- * 更新Pinia状态（简化版）
- * 
- * 重构后，业务逻辑在Rust端，前端只需要：
- * 1. 调用Rust命令获取结果
- * 2. 根据结果更新连接状态
- * 3. 处理UI反馈
- * 
- * 注意：TOTP和deviceId不再存入store，直接使用
- */
-function updateStoreFromResult(result) {
-  if (result.success) {
-    // 成功连接，更新状态
-    bluetoothStore.setStatus('connected')
-    if (result.deviceInfo) {
-      bluetoothStore.setDeviceInfo(result.deviceInfo)
-    }
-  } else {
-    // 连接失败，设置错误状态
-    bluetoothStore.setError(result.error || '连接失败')
-  }
-}
-
-/**
- * 开始5秒倒计时
- * 计划连接成功后显示5秒倒计时，然后跳转到文件管理
- * 
- * 实现思路：每秒更新一次，更新进度条和剩余时间
- * TODO: 倒计时结束后要跳转路由，还要清理定时器避免内存泄漏
+ * 开始倒计时
  */
 function startCountdown() {
   showCountdown.value = true
   countdownSeconds.value = 5
   countdownProgress.value = 100
   
-  // 清理之前的定时器（安全起见）
   if (countdownTimer) {
     clearInterval(countdownTimer)
   }
   
   countdownTimer = setInterval(() => {
     countdownSeconds.value--
-    countdownProgress.value = countdownSeconds.value * 20 // 5秒对应100%
-    
-    console.log(`倒计时剩余: ${countdownSeconds.value}秒`)
+    countdownProgress.value = countdownSeconds.value * 20
     
     if (countdownSeconds.value <= 0) {
-      // 倒计时结束，跳转到文件管理
       clearInterval(countdownTimer)
-      jumpToFileView()
+      jumpToMain()
     }
   }, 1000)
 }
 
 /**
- * 手动跳过倒计时
- * 用户可能不想等5秒，所以加个跳过按钮
+ * 跳过倒计时
  */
 function skipCountdown() {
-  console.log('用户跳过倒计时')
-  
   if (countdownTimer) {
     clearInterval(countdownTimer)
   }
-  
-  jumpToFileView()
+  jumpToMain()
 }
 
 /**
- * 直接跳过连接进入主页
- * 用户不想连接蓝牙时使用
+ * 跳转到主页面
  */
-function skipToMain() {
-  console.log('用户跳过蓝牙连接，直接进入主页')
-  
-  if (countdownTimer) {
-    clearInterval(countdownTimer)
-  }
-  
-  jumpToFileView()
-}
-
-/**
- * 跳转到文件管理路由
- * 直接用router.push跳转
- */
-function jumpToFileView() {
-  console.log('跳转到主页面')
-  showCountdown.value = false  // 先隐藏倒计时UI
+function jumpToMain() {
+  showCountdown.value = false
   router.push('/main')
 }
 
 /**
- * 处理开始连接按钮点击
- * 用户点击"开始连接"按钮后才初始化蓝牙连接
- * 添加防呆设计：防止重复点击导致多次连接
+ * 跳过蓝牙连接
  */
-async function handleStartConnection() {
-  // 防呆检查：如果已经在连接中，直接返回
-  if (isStarting.value) {
-    console.log('连接已在进行中，忽略重复点击')
-    return
-  }
-
-  console.log('用户点击开始连接')
-
-  // 设置防呆标志，防止重复点击
-  isStarting.value = true
-
-  try {
-    hasStarted.value = true
-    await scanDevices()
-  } catch (error) {
-    console.error('开始连接失败:', error)
-    // 出错时重置状态，允许用户重试
-    isStarting.value = false
-    hasStarted.value = false
-  }
-  // 注意：成功开始扫描后，isStarting 保持 true 直到页面状态改变
-  // 扫描完成后由其他逻辑控制 hasStarted 状态
+function skipToMain() {
+  console.log('用户跳过蓝牙连接')
+  router.push('/main')
 }
 
 /**
- * 开始连接蓝牙设备（简化版）
- * 
- * 重构后，所有业务逻辑在Rust端：
- * 1. 调用getTotp()会自动扫描、连接、获取TOTP
- * 2. 如果失败，会抛出错误
- * 3. 成功后，我们可以获取设备ID等信息
- * 
- * 注意：这个函数现在只调用简单的接口，不处理复杂逻辑
+ * 显示连接失败帮助信息
  */
-async function startConnection() {
-  try {
-    console.log('开始自动连接Cpen设备（简化版）...')
-    
-    // 重置超时状态
-    connectionTimedOut.value = false
-    
-    // 先设置状态为连接中
-    bluetoothStore.setStatus('connecting')
-    
-    // 设置超时检测 - 15秒后如果还没有连接成功，就显示"无法连接"
-    // 思考：15秒够吗？Rust端扫描5秒，再加上连接、发送命令的时间...
-    // 先这样吧，不够再调
-    const timeoutDuration = 15000 // 15秒
-    let timeoutId = null
-    
-    // 用户提到"当没有cpen连接已经超时并且toast已经出来了"
-    // 所以我们需要在超时后显示"无法连接"而不仅仅是等待状态
-    const timeoutPromise = new Promise((_, reject) => {
-      timeoutId = setTimeout(() => {
-        console.warn('蓝牙连接超时（15秒）')
-        connectionTimedOut.value = true
-        // 超时时设置错误状态，让界面显示"无法连接"
-        bluetoothStore.setError('连接超时')
-        showToast('连接超时，请重试')
-        reject(new Error('连接超时'))
-      }, timeoutDuration)
-    })
-    
-    // 连接任务
-    const connectionPromise = (async () => {
-      // 1. 获取TOTP（这会自动扫描、连接设备、发送命令）
-      const totp = await getTotp()
-      
-      console.log('TOTP获取成功，设备已连接:', totp)
-      
-      // 2. 更新状态为已连接
-      bluetoothStore.setStatus('connected')
-      // 注意：TOTP不再存入store，直接使用返回值
-      
-      // 3. 尝试获取设备ID（可选）
-      try {
-        const deviceId = await getDeviceId()
-        console.log('设备ID获取成功:', deviceId)
-        setCurrentUserId(deviceId)
-      } catch (idError) {
-        console.warn('获取设备ID失败，但不影响连接:', idError)
-      }
-      
-      // 4. 获取连接状态信息（包含设备名）
-      try {
-        const status = await getConnectionStatus()
-        console.log('连接状态:', status)
-        // 可以尝试从状态信息中提取设备名，但先简单处理
-        bluetoothStore.setDeviceInfo(status)
-      } catch (statusError) {
-        console.warn('获取连接状态失败:', statusError)
-      }
-      
-      // 5. 显示成功提示
-      showToast('设备连接成功！')
-      
-      console.log('连接过程完成')
-    })()
-    
-    // 使用Promise.race等待连接完成或超时
-    await Promise.race([connectionPromise, timeoutPromise])
-    
-    // 清除超时定时器（如果还没触发）
-    if (timeoutId) {
-      clearTimeout(timeoutId)
-    }
-    
-  } catch (error) {
-    console.error('连接过程中出错:', error)
-    
-    // 处理错误
-    const errorMsg = error.message || error.toString()
-    
-    // 用户说"要显示连接失败"，所以我们统一显示"连接失败"
-    // 但保留具体错误信息在store中供调试用
-    const displayErrorMsg = '连接失败'
-    // 注意：超时时已经设置过错误了，这里不再重复设置
-    if (!connectionTimedOut.value) {
-      bluetoothStore.setError(displayErrorMsg)
-      showToast(displayErrorMsg)
-    }
-    
-    // 设置状态为断开连接
-    bluetoothStore.setStatus('disconnected')
-  }
+function showConnectionHelp() {
+  showToast('连接失败帮助：\n1. 确保设备已开启\n2. 确保设备在附近\n3. 尝试重新扫描\n4. 重启应用后重试')
 }
 
-/**
- * 再次尝试连接
- * 用户点击"再次尝试"按钮时调用
- * 
- * 改进：先彻底断开现有连接，清理状态后再重试
- */
-async function retryConnection() {
-  console.log('用户点击再次尝试连接')
-  
-  // 增加重试计数
-  retryCount.value++
-  console.log(`第 ${retryCount.value} 次尝试连接`)
-  
-  // 先彻底断开现有连接
-  try {
-    console.log('断开现有连接...')
-    await disconnect()
-  } catch (e) {
-    console.warn('断开连接时出错:', e)
-  }
-  
-  // 重置所有状态
-  bluetoothStore.reset()
-  connectionTimedOut.value = false
-  
-  // 等待一小段时间让蓝牙稳定
-  await new Promise(resolve => setTimeout(resolve, 500))
-  
-  // 开始新的连接尝试
-  await startConnection()
-}
-
-// 组件挂载时设置
+// 组件挂载时自动扫描
 onMounted(async () => {
-  console.log('InitialView mounted')
+  console.log('InitialView mounted，开始自动扫描')
   
-  // 重置状态，确保从干净状态开始
+  // 重置状态
   bluetoothStore.reset()
-  connectionTimedOut.value = false
-  retryCount.value = 0
-  hasStarted.value = false
   
-  // 检查自动连接设置
-  try {
-    const savedCpen = await loadAppData('settings_cpen')
-    if (savedCpen) {
-      const settings = JSON.parse(savedCpen)
-      if (settings.autoConnect && settings.lastDeviceAddress) {
-        console.log('自动连接已启用，尝试连接上次设备:', settings.lastDeviceAddress)
-        hasStarted.value = true
-        bluetoothStore.setStatus('connecting')
-        
-        try {
-          await connectCpenDevice(settings.lastDeviceAddress)
-          bluetoothStore.setStatus('connected')
-          showToast('设备自动连接成功！')
-          jumpToFileView()
-          return
-        } catch (e) {
-          console.warn('自动连接失败:', e)
-          showToast('自动连接失败，请手动连接')
-          hasStarted.value = false
-          bluetoothStore.setStatus('disconnected')
-        }
-      }
-    }
-  } catch (e) {
-    console.error('读取自动连接设置失败:', e)
-  }
+  // 立即开始扫描
+  await scanDevices()
 })
 </script>
 
 <style scoped>
 .initial-container {
   display: flex;
-  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+/* 左半部分 */
+.left-panel {
+  flex: 0 0 40%;
+  display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  width: 100%;
+  padding: 40px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+}
+
+.left-content {
   text-align: center;
-  padding: 20px;
-  overflow: auto; /* 允许内容在需要时滚动 */
-}
-
-.title {
-  font-size: 24px;
-  margin-bottom: 40px;
   color: var(--text-primary);
-  transition: color 0.3s ease;
 }
 
-.error-title {
-  color: var(--accent-red);
+.app-title {
+  font-size: 42px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text-primary);
 }
 
-/* 开始连接容器 */
-.start-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 15px;
-  margin: 40px 0;
-}
-
-.start-btn {
-  padding: 15px 50px;
-  background-color: var(--accent-blue);
-  color: white;
-  border: none;
-  border-radius: 10px;
+.app-subtitle {
   font-size: 18px;
-  font-weight: bold;
+  color: var(--text-secondary);
+  margin-bottom: 40px;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 30px;
+  padding: 12px 24px;
+  background: var(--bg-primary);
+  border-radius: 25px;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.connected {
+  background: #4ade80;
+}
+
+.status-indicator.scanning {
+  background: #fbbf24;
+}
+
+.status-indicator.error {
+  background: #f87171;
+}
+
+.status-indicator.disconnected {
+  background: #9ca3af;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+.status-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.connected-device {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 15px 25px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 12px;
+  margin-bottom: 30px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.connected-device i {
+  font-size: 24px;
+  color: #10b981;
+}
+
+.connected-device span {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.skip-btn {
+  padding: 12px 30px;
+  background: var(--bg-primary);
+  border: 2px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: 25px;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.start-btn:hover {
-  background-color: #4a8bd6;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
-}
-
-.start-btn:active {
-  transform: translateY(0);
-}
-
-.start-btn:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-  opacity: 0.7;
-  transform: none;
-  box-shadow: none;
-}
-
-.start-hint {
-  color: var(--text-secondary);
-  font-size: 14px;
-  margin: 0;
-}
-
-.progress-container {
-  margin-bottom: 30px;
-}
-
-/* 弹跳进度条样式 */
-.bouncing-progress {
-  width: 60px;
-  height: 60px;
-  background-color: var(--accent-blue);
-  border-radius: 50%;
-  animation: bounce 1s infinite ease-in-out;
-}
-
-/* 弹跳动画 */
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-/* 倒计时容器 */
-.countdown-container {
-  margin: 30px 0;
-  padding: 20px;
-  background-color: var(--bg-secondary);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  max-width: 400px;
-  width: 100%;
-}
-
-.countdown-title {
-  font-size: 20px;
-  margin-bottom: 20px;
-  color: #55aa55;
-}
-
-/* 倒计时进度条 */
-.countdown-bar {
-  width: 100%;
-  height: 20px;
-  background-color: var(--bg-primary);
-  border-radius: 10px;
-  overflow: hidden;
-  margin-bottom: 10px;
-  border: 1px solid var(--border-color);
-}
-
-.countdown-progress {
-  height: 100%;
-  background-color: #55aa55;
-  border-radius: 10px;
-  transition: width 0.3s ease;
-  /* 渐变效果 */
-  background: linear-gradient(90deg, #55aa55, #7ccc7c);
-}
-
-.countdown-text {
-  font-size: 24px;
-  font-weight: bold;
-  color: var(--text-primary);
-  margin: 10px 0;
-}
-
-/* 跳过按钮 */
-.skip-btn {
-  margin-top: 15px;
-  padding: 8px 20px;
-  background-color: var(--accent-blue);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.2s;
 }
 
 .skip-btn:hover {
-  background-color: #4a8bd6;
+  background: var(--hover-bg);
+  border-color: var(--text-muted);
 }
 
-.status-info {
-  margin-top: 20px;
-  min-height: 60px;
-}
-
-.status-info p {
-  margin: 10px 0;
-  font-size: 16px;
-}
-
-.success {
-  color: #55aa55;
-  font-weight: bold;
-}
-
-.error {
-  color: var(--accent-red);
-  font-weight: bold;
-}
-
-.info {
-  color: var(--text-secondary);
-}
-
-/* 操作按钮样式 */
-.action-buttons {
-  margin-top: 30px;
+/* 右半部分 */
+.right-panel {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  padding: 30px;
+  background: var(--bg-primary);
+  overflow-y: auto;
+}
+
+.right-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.panel-title i {
+  color: var(--accent-blue);
+  font-size: 26px;
+}
+
+.refresh-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: var(--hover-bg);
+  color: var(--accent-blue);
+}
+
+.refresh-btn.spinning i {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 设备分区 */
+.device-section {
+  margin-bottom: 25px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.section-title i {
+  color: var(--accent-blue);
+}
+
+/* 设备列表 */
+.device-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.device-card {
+  display: flex;
   align-items: center;
   gap: 15px;
-}
-
-.retry-btn {
-  padding: 12px 30px;
-  background-color: var(--accent-blue);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 150px;
-}
-
-.retry-btn:hover:not(:disabled) {
-  background-color: #4a8bd6;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(74, 139, 214, 0.3);
-}
-
-.retry-btn:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.enter-btn {
-  padding: 12px 30px;
-  background-color: #55aa55;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-width: 150px;
-}
-
-.enter-btn:hover {
-  background-color: #4a994a;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(85, 170, 85, 0.3);
-}
-
-/* 设备选择界面 */
-.device-selection {
-  margin: 30px 0;
-  padding: 20px;
-  background-color: var(--bg-secondary);
+  padding: 16px 20px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  max-width: 400px;
-  width: 100%;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.device-selection-tip {
-  font-size: 16px;
-  color: var(--text-primary);
-  margin-bottom: 20px;
+.device-card:hover {
+  border-color: var(--accent-blue);
+  box-shadow: 0 4px 12px rgba(var(--accent-blue-rgb), 0.15);
+  transform: translateY(-2px);
 }
 
-.device-list {
-  max-height: 300px;
-  overflow-y: auto;
-  margin-bottom: 20px;
+.device-card.connecting {
+  opacity: 0.7;
+  pointer-events: none;
 }
 
-.device-item {
+.device-info {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 15px;
-  margin-bottom: 10px;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.device-item:hover {
-  border-color: var(--accent-blue);
-  background-color: var(--bg-secondary);
-}
-
-.device-item-disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  pointer-events: none;
+  gap: 4px;
 }
 
 .device-name {
   font-size: 16px;
-  font-weight: bold;
+  font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 5px;
 }
 
 .device-address {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
-.rescan-btn {
+.device-action {
+  font-size: 20px;
+  color: var(--text-muted);
+}
+
+.device-card:hover .device-action {
+  color: var(--accent-blue);
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  color: var(--text-muted);
+}
+
+.empty-state i {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.retry-btn {
   padding: 10px 24px;
-  background-color: var(--accent-blue);
+  background: var(--accent-blue);
   color: white;
   border: none;
   border-radius: 8px;
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background 0.3s ease;
 }
 
-.rescan-btn:hover:not(:disabled) {
-  background-color: #4a8bd6;
+.retry-btn:hover {
+  background: var(--accent-blue);
+  filter: brightness(1.1);
 }
 
-.rescan-btn:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
+/* 倒计时弹窗 */
+.countdown-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.countdown-modal {
+  background: var(--bg-secondary);
+  padding: 40px;
+  border-radius: 20px;
+  text-align: center;
+  min-width: 300px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+}
+
+.success-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: #4ade80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.success-icon i {
+  font-size: 40px;
+  color: white;
+}
+
+.countdown-modal h3 {
+  font-size: 24px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.countdown-modal p {
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.countdown-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.countdown-progress {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), #8b5cf6);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.skip-countdown-btn {
+  padding: 12px 30px;
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.skip-countdown-btn:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+/* 左下角帮助按钮 */
+.help-corner {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 100;
+}
+
+.help-corner:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.help-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-primary);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.help-text {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Tooltip 样式 */
+.help-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  margin-bottom: 10px;
+  padding: 12px 16px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-color);
+}
+
+.help-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 20px;
+  border: 6px solid transparent;
+  border-top-color: var(--bg-secondary);
+}
+
+.help-corner:hover .help-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.tooltip-content p {
+  margin: 0;
+  padding: 4px 0;
 }
 </style>

@@ -207,10 +207,6 @@ const showDevelopingToast = () => {
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-picture-in-picture-icon lucide-picture-in-picture"><path d="M2 10h6V4"/><path d="m2 4 6 6"/><path d="M21 10V7a2 2 0 0 0-2-2h-7"/><path d="M3 14v2a2 2 0 0 0 2 2h3"/><rect x="12" y="14" width="10" height="7" rx="1"/></svg>
         </button>
         
-        <button class="icon-btn download-btn" @click="showDevelopingToast" title="下载记录">
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
-        </button>
-        
         <button class="icon-btn theme-btn" @click="theme?.toggleTheme" title="切换主题">
           <Moon v-if="theme?.isLightMode.value" :size="18" :stroke-width="2.5" />
           <Sun v-else :size="18" :stroke-width="2.5" />
@@ -270,11 +266,8 @@ const showDevelopingToast = () => {
               <input type="checkbox" v-model="rememberChoice" />
               <span>记住此次选择</span>
             </label>
-            <p class="remember-tip">下次将直接执行，可在设置中修改</p>
+            <p v-if="rememberChoice" class="remember-tip">下次将直接执行，可在设置中修改</p>
           </div>
-        </div>
-        <div class="confirm-actions">
-          <button class="cancel-btn" @click="cancelClose">取消</button>
         </div>
       </div>
     </div>
@@ -662,9 +655,9 @@ const showDevelopingToast = () => {
 
 .remember-tip {
   margin: 0;
-  padding: 0 0 0 28px;
-  font-size: 12px;
-  color: var(--text-muted);
+  padding: 4px 0 0 28px;
+  font-size: 11px;
+  color: #94a3b8;
 }
 
 .confirm-actions {

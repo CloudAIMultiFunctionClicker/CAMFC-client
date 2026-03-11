@@ -230,6 +230,30 @@ async fn scan_cpen_devices() -> Result<Vec<DeviceInfo>, String> {
     }
 }
 
+/// 扫描并返回所有蓝牙设备（包括Cpen和其他设备）
+/// 
+/// 前端调用这个命令获取所有可发现的蓝牙设备。
+/// 不会自动连接，只返回设备列表供用户选择。
+/// 
+/// 返回值：设备列表（包含name和address）
+#[tauri::command]
+async fn scan_all_bluetooth_devices() -> Result<Vec<DeviceInfo>, String> {
+    println!("前端调用scan_all_bluetooth_devices命令...");
+    
+    let mut manager = get_cpen_device_manager()?.lock().await;
+    
+    match manager.scan_all_bluetooth_devices().await {
+        Ok(devices) => {
+            println!("扫描成功，找到 {} 个蓝牙设备", devices.len());
+            Ok(devices)
+        }
+        Err(e) => {
+            println!("扫描失败: {}", e);
+            Err(format!("扫描失败: {}", e))
+        }
+    }
+}
+
 /// 连接到指定的Cpen设备
 /// 
 /// 前端调用这个命令连接用户选择的设备。
@@ -1343,6 +1367,7 @@ pub fn run() {
             get_backend_config,  // 获取后端配置
             get_totp,           // 主要功能：获取TOTP
             scan_cpen_devices,  // 扫描Cpen设备列表
+            scan_all_bluetooth_devices, // 扫描所有蓝牙设备
             connect_cpen_device, // 连接指定的Cpen设备
             get_device_id,      // 获取设备ID
             get_connection_status, // 获取连接状态

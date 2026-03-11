@@ -331,14 +331,60 @@ impl CpenDeviceManager {
         
         Ok(cpen_devices)
     }
-    
+
+    /// 扫描所有蓝牙设备（包括Cpen和其他设备）
+    ///
+    /// 这个方法会：
+    /// 1. 确保蓝牙已开启
+    /// 2. 扫描蓝牙设备
+    /// 3. 返回所有发现的设备（不连接）
+    ///
+    /// 返回：所有发现的蓝牙设备列表
+    pub async fn scan_all_bluetooth_devices(&mut self) -> Result<Vec<DeviceInfo>, CpenError> {
+        println!("开始扫描所有蓝牙设备...");
+
+        // 1. 确保蓝牙已开启
+        match self.bluetooth_manager.enable_bluetooth() {
+            Ok(_) => {
+                println!("✅ 蓝牙状态检查通过（Windows API）");
+            }
+            Err(e) => {
+                println!("⚠️ Windows蓝牙API检查失败，尝试用btleplug检测: {}", e);
+                match self.bluetooth_manager.check_bluetooth_via_btleplug().await {
+                    Ok(_) => {
+                        println!("✅ 蓝牙状态检查通过（btleplug fallback）");
+                    }
+                    Err(btleplug_err) => {
+                        let err_msg = format!("蓝牙检测失败: {}, {}", e, btleplug_err);
+                        println!("❌ {}", err_msg);
+                        return Err(err_msg);
+                    }
+                }
+            }
+        }
+
+        // 2. 扫描设备
+        println!("开始扫描蓝牙设备...");
+        let devices = self.bluetooth_manager.scan_devices(SCAN_DURATION_MS).await
+            .map_err(|e| format!("扫描设备失败: {}", e))?;
+
+        println!("扫描完成，发现 {} 个设备", devices.len());
+
+        // 3. 返回所有设备（不过滤）
+        for (i, dev) in devices.iter().enumerate() {
+            println!("  蓝牙设备[{}]: {} - {}", i, dev.name, dev.address);
+        }
+
+        Ok(devices)
+    }
+
     /// 连接到指定的Cpen设备
-    /// 
+    ///
     /// 这个方法会：
     /// 1. 断开当前连接（如果有）
     /// 2. 连接到指定地址的设备
     /// 3. 记录连接状态
-    /// 
+    ///
     /// 参数：设备地址（Bluetooth address）
     pub async fn connect_to_device(&mut self, address: &str) -> Result<DeviceInfo, CpenError> {
         println!("开始连接到指定Cpen设备: {}", address);
