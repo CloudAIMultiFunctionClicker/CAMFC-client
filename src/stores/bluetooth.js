@@ -1,6 +1,8 @@
 /**
  * CAMFC Client - 蓝牙状态管理store（重构版）
- * 
+ *
+ * 保留所有权利
+ *
  * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
  * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
  *
@@ -13,25 +15,12 @@
  * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
  * Email: admin@mc666.top
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- *
  * 蓝牙状态管理store（重构版）
  * 只管理蓝牙连接状态，不存储TOTP和设备ID
- * 
+ *
  * 重构说明：TOTP和设备ID改为直接从Rust命令获取，不再通过store缓存
  * 这样保证数据实时性，简化状态管理
- * 
+ *
  * TODO: 考虑是否还需要deviceInfo，可能也改为直接从Rust获取？
  */
 

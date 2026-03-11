@@ -1,3 +1,19 @@
+<!--
+保留所有权利
+
+Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+
+Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+Email: abc.cxh2009@foxmail.com
+
+Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+Email: 1220594170@qq.com
+
+Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+Email: admin@mc666.top
+-->
+
 <template>
   <div class="annotate-panel">
     <!-- 标注画布 -->
@@ -803,11 +819,6 @@ const handleKeyDown = (e) => {
 
 // 完成标注
 const completeAnnotate = () => {
-  if (annotations.value.length === 0) {
-    showToast('没有标注内容', '#f59e0b')
-    return
-  }
-  
   // 将标注绘制到 canvas 上并导出
   const canvas = document.createElement('canvas')
   canvas.width = annotateCanvas.value.width
@@ -843,7 +854,9 @@ const completeAnnotate = () => {
       imageData: annotatedData,
       annotations: annotations.value
     })
-    showToast('标注已保存', '#10b981')
+    if (annotations.value.length > 0) {
+      showToast('标注已保存', '#10b981')
+    }
   }
 }
 
@@ -898,10 +911,11 @@ watch(() => props.imageData, () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 16px 16px;
   background-color: var(--bg-secondary, #1e293b);
   border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   gap: 16px;
+  margin-bottom: 16px;
 }
 
 .annotate-toolbar {

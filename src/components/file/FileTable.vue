@@ -1,4 +1,6 @@
 <!--
+保留所有权利
+
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
 Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
@@ -10,28 +12,17 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <script setup>
 import { ls,mkdir,rm } from '../data/fileSystem.js'
 import { showToast} from '../layout/showToast.js'
 import { ref, watch, onMounted, onUnmounted } from 'vue'
-import { batchDownloadFiles, extractFileId } from '../data/download.js'
+import { batchDownloadFiles, extractFileId, downloadFile } from '../data/download.js'
 import { uploadFilesFromPaths, selectFiles } from '../data/upload.js'
 import { getFileIcon } from '../../utils/fileIcon.js'
+import { openFile } from '../data/storage.js'
+import { getDownloadProgress } from '../data/download.js'
 
 
 // TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
@@ -175,7 +166,6 @@ const confirmUpload = async () => {
     
     if (result.success) {
       console.log('上传任务已创建，共', result.count, '个文件')
-      showToast(`开始上传 ${result.count} 个文件到 ${targetPath || '根目录'}...`, '#3b82f6')
       
       // 上传任务已在后端执行，传输页面会显示进度
       // 这里不等待上传完成，让用户在传输页面查看进度
@@ -270,11 +260,75 @@ const handleDownloadClick = async () => {
           console.error(`检查下载状态失败: ${fileId}`, error)
         }
       }
-    }, 2000) // 2秒后检查状态
+    }, 2000) // 2 秒后检查状态
     
   } catch (error) {
     console.error('下载过程中出错:', error)
-    showToast(`下载出错: ${error.message}`, '#ef4444')
+    showToast(`下载出错：${error.message}`, '#ef4444')
+  }
+}
+
+// 双击文件处理：下载并打开
+const handleFileDoubleClick = async (item) => {
+  console.log('===== 双击事件触发 =====')
+  console.log('双击 item:', item)
+  console.log('item.name:', item.name)
+  console.log('item.path:', item.path)
+  console.log('item.is_dir:', item.is_dir)
+  console.log('item.is_file:', item.is_file)
+  console.log('item.type:', item.type)
+  console.log('loading:', loading.value)
+  
+  // 如果是文件夹，进入文件夹
+  // 兼容两种数据格式：is_dir 字段或 type === 'dir'
+  const isDir = item.is_dir || item.type === 'dir' || item.type === 'folder'
+  const isFile = item.is_file || item.type === 'file'
+  
+  console.log('判断结果 - isDir:', isDir, 'isFile:', isFile)
+  
+  if (isDir) {
+    console.log('进入文件夹:', item.path)
+    if (!loading) {
+      enterFolder(item.path)
+    }
+    return
+  }
+  
+  // 如果是文件，下载并打开
+  if (isFile && !loading) {
+    console.log('✓✓✓ 双击文件，开始下载并打开:', item.name)
+    
+    try {
+      // 显示下载提示
+      showToast(`下载中：${item.name}`, '#3b82f6')
+      console.log('开始调用 downloadFile, path:', item.path)
+      
+      // 下载文件
+      const result = await downloadFile(item.path)
+      
+      console.log('downloadFile 返回结果:', result)
+      // 显示下载成功
+      showToast(`${item.name} 下载成功`, '#10b981')
+      
+      // 延迟一下再打开文件，确保文件已完全写入
+      setTimeout(async () => {
+        try {
+          console.log('准备打开文件:', result)
+          // 打开文件
+          await openFile(result)
+          console.log('✓ 文件已打开:', result)
+        } catch (openError) {
+          console.error('打开文件失败:', openError)
+          showToast(`打开文件失败：${openError.message}`, '#ef4444')
+        }
+      }, 500)
+      
+    } catch (error) {
+      console.error('双击下载文件失败:', error)
+      // 错误提示已在 downloadFile 中显示
+    }
+  } else {
+    console.log('✗ 不是文件或正在加载中，isFile:', isFile, 'loading:', loading.value)
   }
 }
 
@@ -372,13 +426,24 @@ const fetchFiles = async (path) => {
     const result = await ls(path)
     
     if (result && result.entries) {
-      fileList.value = result.entries
+      // 统一转换数据格式，确保有 is_dir 和 is_file 字段
+      fileList.value = result.entries.map(item => {
+        // 兼容不同的数据格式
+        const isDir = item.is_dir || item.type === 'dir' || item.type === 'folder' || item.is_directory
+        const isFile = item.is_file || item.type === 'file' || !isDir
+        
+        return {
+          ...item,
+          is_dir: isDir,
+          is_file: isFile
+        }
+      })
       console.log('获取到文件列表:', fileList.value.length, '个项目')
     } else {
-      // 如果返回null或者没有entries，可能是超时了
+      // 如果返回 null 或者没有 entries，可能是超时了
       fileList.value = []
       error.value = '请求超时或返回数据格式不对'
-      console.warn('API返回数据格式不对:', result)
+      console.warn('API 返回数据格式不对:', result)
     }
   } catch (err) {
     // 处理错误信息，根据状态码显示不同的提示
@@ -858,13 +923,13 @@ const isFileSelected = (itemPath) => {
       </div>
 
       <!-- 文件列表 -->
-      <div v-else class="table-body">
+      <div v-else class="table-body" :class="{ 'loading-blur': loading }">
         <div 
           v-for="(item, index) in fileList" 
           :key="item.path" 
           class="table-row" 
           @click="(e) => handleFileClick(item, index, e)"
-          @dblclick="item.is_dir && !loading ? enterFolder(item.path) : null"
+          @dblclick="handleFileDoubleClick(item)"
           :class="{ 
             'is-dir': item.is_dir, 
             'is-file': item.is_file, 
@@ -1101,6 +1166,14 @@ const isFileSelected = (itemPath) => {
 
 .table-body {
   /* 文件列表内容 */
+  transition: filter 0.3s ease, opacity 0.3s ease;
+}
+
+/* 加载时的模糊和灰色效果 */
+.table-body.loading-blur {
+  filter: blur(4px) grayscale(0.8);
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 .table-row {

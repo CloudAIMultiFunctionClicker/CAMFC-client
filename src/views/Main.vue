@@ -1,4 +1,6 @@
 <!--
+保留所有权利
+
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
 Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
@@ -10,19 +12,6 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <template>
@@ -36,33 +25,20 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       <button class="nav-card file-manager" @click="goToFileView">
         <div class="card-icon">☁️</div>
         <h3 class="card-title">云盘</h3>
-        <p class="card-desc">浏览和管理云盘文件</p>
-        <div class="card-hint">点击进入</div>
       </button>
       
       <!-- 笔记按钮 -->
       <button class="nav-card notes" @click="goToNotes">
         <div class="card-icon">📝</div>
         <h3 class="card-title">笔记</h3>
-        <p class="card-desc">创建和管理笔记</p>
-        <div class="card-hint">占位功能</div>
       </button>
       
       <!-- 设置按钮 -->
       <button class="nav-card settings" @click="goToSettings">
         <div class="card-icon">⚙️</div>
         <h3 class="card-title">设置</h3>
-        <p class="card-desc">硬件设置、软件设置和更多信息</p>
-        <div class="card-hint">点击进入</div>
       </button>
     </div>
-    
-    <!-- 底部说明 -->
-    <p class="dashboard-footer">
-      提示：文件管理功能已实现，其他功能暂为占位，后续会逐步完善
-      <br>
-      <!-- TODO: 这里可以加个版本号或者状态提示 -->
-    </p>
   </div>
 </template>
 

@@ -1,4 +1,6 @@
 <!--
+保留所有权利
+
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
 Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
@@ -10,26 +12,13 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <template>
   <div class="initial-container">
     <!-- 动态标题 -->
     <h1 class="title" :class="{ 'error-title': showConnectionFailed }">
-      {{ showConnectionFailed ? '无法连接' : (showDeviceSelection ? '选择要连接的设备' : (hasStarted ? '等待蓝牙连接Cpen设备' : '欢迎使用CAMFC客户端')) }}
+      {{ showConnectionFailed ? '无法连接' : (isScanning ? '连接设备中' : (showDeviceSelection ? '选择要连接的设备' : (hasStarted ? '连接中' : '欢迎使用 CAMFC 客户端'))) }}
     </h1>
     
     <!-- 开始连接按钮（初始状态显示） -->
@@ -41,7 +30,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       >
         {{ isStarting ? '连接中...' : '开始连接' }}
       </button>
-      <p class="start-hint">{{ isStarting ? '正在初始化蓝牙连接...' : '点击按钮开始连接蓝牙设备' }}</p>
     </div>
     
     <!-- 弹跳进度条（连接中或扫描中显示） -->
@@ -50,8 +38,8 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     </div>
     
     <!-- 设备选择界面 -->
-    <div class="device-selection" v-if="showDeviceSelection">
-      <p class="device-selection-tip">请选择要连接的Cpen设备：</p>
+    <div class="device-selection" v-if="showDeviceSelection && !isScanning">
+      <p class="device-selection-tip">{{ deviceList.length > 0 ? '请选择要连接的 Cpen 设备：' : '未搜索到设备' }}</p>
       <div class="device-list">
         <div 
           v-for="device in deviceList" 
@@ -87,8 +75,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
     
     <!-- 状态显示 -->
     <div class="status-info">
-      <p v-if="isConnecting && hasStarted && !showDeviceSelection">正在扫描并连接蓝牙设备...</p>
-      <p v-if="showConnectionFailed" class="error">无法连接到Cpen设备</p>
+      <p v-if="showConnectionFailed" class="error">无法连接到 Cpen 设备</p>
       <p v-if="isConnected && !showCountdown" class="success">
         设备连接成功！
       </p>
@@ -205,7 +192,7 @@ async function scanDevices() {
     
     if (devices.length === 0) {
       showDeviceSelection.value = true
-      showToast('未找到Cpen设备')
+      showToast('未找到 Cpen 设备')
     } else if (devices.length === 1) {
       // 只有一个设备，直接连，不用选了
       console.log('只找到一个设备，直接连接')

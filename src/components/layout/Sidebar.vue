@@ -1,4 +1,6 @@
 <!--
+保留所有权利
+
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
 Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
@@ -10,19 +12,6 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <!--
@@ -123,17 +112,7 @@ const toggleCollapse = () => {
             </ul>
         </nav>
 
-        <!-- 底部区域 -->
-        <div class="sidebar-footer">
-            <!-- 移除底部的折叠按钮，因为现在有悬浮按钮了 -->
-            <!-- 简单放几个底部按钮 -->
-            <button class="footer-btn">
-                <i class="ri-settings-3-line"></i>
-                <span>设置</span>
-            </button>
 
-            <!-- TODO: 这里以后可以放用户信息 -->
-        </div>
     </aside>
 </template>
 
@@ -440,41 +419,6 @@ const toggleCollapse = () => {
     color: var(--accent-blue, #3b82f6);
 }
 
-/* 底部区域样式 */
-.sidebar-footer {
-    margin-top: auto;
-    /* 推到最底部 */
-    padding: 20px 20px 0;
-    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
-}
-
-.footer-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 12px;
-    background: none;
-    border: none;
-    color: var(--text-muted, #94a3b8);
-    text-align: left;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.9375rem;
-    margin-bottom: 8px;
-    /* 按钮之间的间距 */
-}
-
-.footer-btn i {
-    font-size: 1.125rem;
-}
-
-.footer-btn:hover {
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-    color: var(--text-secondary, #cbd5e1);
-}
-
 /* 响应式设计 - 小屏幕时可能需要调整 */
 /* 现在折叠功能能用了，但手机端可能还需要调整 */
 @media (max-width: 1024px) {
@@ -500,4 +444,3 @@ const toggleCollapse = () => {
     }
 }
 </style>
-.footer-btn i {

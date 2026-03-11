@@ -1,4 +1,6 @@
 <!--
+保留所有权利
+
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
 Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
@@ -10,19 +12,6 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <template>
@@ -84,7 +73,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             :class="{ active: selectedNote?.uuid === note.uuid }"
             @click="selectNote(note)"
           >
-            <div class="note-title">{{ note.title }}</div>
+            <div class="note-title-wrapper">
+              <input
+                v-if="editingCardNote === note.uuid"
+                ref="cardTitleInput"
+                v-model="note.title"
+                class="card-title-edit-input"
+                @blur="saveCardTitleEdit(note)"
+                @keyup.enter="saveCardTitleEdit(note)"
+                @keyup.escape="cancelCardTitleEdit"
+                @click.stop
+              />
+              <span 
+                v-else 
+                class="note-title"
+                @dblclick.stop="startCardTitleEdit(note)"
+                title="双击编辑标题"
+              >{{ note.title }}</span>
+            </div>
             <div class="note-preview">{{ (note.content || '').substring(0, 50) }}...</div>
             <div class="note-meta">
               <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
@@ -265,45 +271,27 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       <div v-if="showMoreMenu" class="modal-overlay" @click="closeMoreMenu">
         <div class="more-menu-content" @click.stop>
           <div class="more-menu-header">
-            <span class="more-menu-title">{{ moreMenuNote?.title }}</span>
+            <input
+              v-if="editingNote === moreMenuNote?.uuid"
+              ref="titleInput"
+              v-model="moreMenuNote.title"
+              class="more-menu-title-input"
+              @blur="saveTitleEdit"
+              @keyup.enter="saveTitleEdit"
+              @keyup.escape="cancelTitleEdit"
+            />
+            <span v-else class="more-menu-title">{{ moreMenuNote?.title }}</span>
             <span class="more-menu-date">{{ moreMenuNote ? formatDate(moreMenuNote.updatedAt) : '' }}</span>
           </div>
           <div class="more-menu-actions">
-            <button class="more-menu-item" @click="openRenameModal">
+            <button class="more-menu-item" @click="startTitleEdit">
               <i class="ri-edit-line"></i>
               <span>重命名</span>
             </button>
-            <button class="more-menu-item danger" @click="openDeleteFromMenu">
-              <i class="ri-delete-bin-line"></i>
-              <span>删除</span>
+            <button class="more-menu-item danger" :class="{ 'confirming': isConfirmingDelete }" @click="handleDeleteClick">
+              <i :class="isConfirmingDelete ? 'ri-question-line' : 'ri-delete-bin-line'"></i>
+              <span>{{ isConfirmingDelete ? '确认删除' : '删除' }}</span>
             </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
-
-    <Transition name="modal">
-      <div v-if="showRenameModal" class="modal-overlay" @click="cancelRename">
-        <div class="modal-content" @click.stop>
-          <div class="modal-header">
-            <h3><i class="ri-pencil-line"></i> 重命名笔记</h3>
-            <button class="close-btn" @click="cancelRename">
-              <i class="ri-close-line"></i>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="input-wrapper">
-              <input
-                v-model="newNoteName"
-                class="title-input"
-                placeholder="请输入新名称"
-                @keyup.enter="confirmRename"
-              >
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="cancel-btn" @click="cancelRename">取消</button>
-            <button class="confirm-btn" @click="confirmRename">确定</button>
           </div>
         </div>
       </div>
@@ -369,9 +357,14 @@ const moreMenuNote = ref(null)
 const showRenameModal = ref(false)
 const renameNote = ref(null)
 const newNoteName = ref('')
+const editingNote = ref(null)
+const editingCardNote = ref(null)
+const titleInput = ref(null)
+const cardTitleInput = ref(null)
 const isEditing = ref(false)
 const showSaveConfirmModal = ref(false)
 const showImportExportMenu = ref(false)
+const isConfirmingDelete = ref(false)
 let originalContent = ''
 
 const pageSize = 9
@@ -521,39 +514,69 @@ function openMoreMenu(note, event) {
 function closeMoreMenu() {
   showMoreMenu.value = false
   moreMenuNote.value = null
+  isConfirmingDelete.value = false
 }
 
-function openRenameModal() {
+function startTitleEdit() {
   if (moreMenuNote.value) {
-    renameNote.value = moreMenuNote.value
-    newNoteName.value = moreMenuNote.value.title
-    showRenameModal.value = true
-    closeMoreMenu()
+    editingNote.value = moreMenuNote.value.uuid
+    setTimeout(() => {
+      if (titleInput.value) {
+        titleInput.value.focus()
+        titleInput.value.select()
+      }
+    }, 100)
   }
 }
 
-async function confirmRename() {
-  if (renameNote.value && newNoteName.value.trim()) {
-    renameNote.value.title = newNoteName.value.trim()
-    renameNote.value.updatedAt = new Date().toISOString()
-    await syncNoteToCloud(renameNote.value)
-    showRenameModal.value = false
-    renameNote.value = null
-    newNoteName.value = ''
+function saveTitleEdit() {
+  if (moreMenuNote.value && moreMenuNote.value.title.trim()) {
+    moreMenuNote.value.title = moreMenuNote.value.title.trim()
+    moreMenuNote.value.updatedAt = new Date().toISOString()
+    syncNoteToCloud(moreMenuNote.value)
   }
+  editingNote.value = null
 }
 
-function cancelRename() {
-  showRenameModal.value = false
-  renameNote.value = null
-  newNoteName.value = ''
+function cancelTitleEdit() {
+  editingNote.value = null
 }
 
-function openDeleteFromMenu() {
-  if (moreMenuNote.value) {
-    noteToDelete.value = moreMenuNote.value.uuid
-    showDeleteModal.value = true
-    closeMoreMenu()
+function startCardTitleEdit(note) {
+  editingCardNote.value = note.uuid
+  setTimeout(() => {
+    if (cardTitleInput.value) {
+      cardTitleInput.value.focus()
+      cardTitleInput.value.select()
+    }
+  }, 100)
+}
+
+function saveCardTitleEdit(note) {
+  if (note && note.title.trim()) {
+    note.title = note.title.trim()
+    note.updatedAt = new Date().toISOString()
+    syncNoteToCloud(note)
+  }
+  editingCardNote.value = null
+}
+
+function cancelCardTitleEdit() {
+  editingCardNote.value = null
+}
+
+function handleDeleteClick() {
+  if (isConfirmingDelete.value) {
+    // 确认删除，执行删除操作
+    if (moreMenuNote.value) {
+      noteToDelete.value = moreMenuNote.value.uuid
+      confirmDelete()
+      isConfirmingDelete.value = false
+      closeMoreMenu()
+    }
+  } else {
+    // 第一次点击，进入确认状态
+    isConfirmingDelete.value = true
   }
 }
 
@@ -695,7 +718,13 @@ function insertMarkdown(type) {
 }
 
 function formatDate(dateStr) {
+  if (!dateStr) {
+    return ''
+  }
   const date = new Date(dateStr)
+  if (isNaN(date.getTime())) {
+    return ''
+  }
   return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
@@ -1035,6 +1064,11 @@ function importNotes() {
   box-shadow: 0 4px 12px rgba(var(--accent-blue-rgb), 0.15);
 }
 
+.note-title-wrapper {
+  margin-bottom: 10px;
+  position: relative;
+}
+
 .note-title {
   font-size: 16px;
   font-weight: 600;
@@ -1043,6 +1077,30 @@ function importNotes() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.note-title:hover {
+  color: var(--accent-blue);
+}
+
+.card-title-edit-input {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 6px 10px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--accent-blue);
+  border-radius: 6px;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.card-title-edit-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .note-preview {
@@ -1605,6 +1663,26 @@ function importNotes() {
   white-space: nowrap;
 }
 
+.more-menu-title-input {
+  display: block;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--accent-blue);
+  border-radius: 6px;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.more-menu-title-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
 .more-menu-date {
   display: block;
   font-size: 12px;
@@ -1640,6 +1718,21 @@ function importNotes() {
 
 .more-menu-item.danger:hover {
   background-color: rgba(239, 68, 68, 0.1);
+}
+
+.more-menu-item.danger.confirming {
+  background-color: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  animation: pulse-confirm 1s ease-in-out infinite;
+}
+
+@keyframes pulse-confirm {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.35);
+  }
 }
 
 @media (max-width: 768px) {
