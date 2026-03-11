@@ -235,6 +235,19 @@ onUnmounted(() => {
 const initCanvas = () => {
   if (!canvasWrapper.value || !annotateCanvas.value) return
   
+  console.log('[AnnotatePanel] initCanvas 调用', {
+    hasImageData: !!props.imageData,
+    imageDataLength: props.imageData?.length,
+    imageWidth: props.imageWidth,
+    imageHeight: props.imageHeight
+  })
+  
+  if (!props.imageData) {
+    console.error('[AnnotatePanel] imageData 为空，无法初始化')
+    showToast('图片数据加载失败', '#ef4444')
+    return
+  }
+  
   const wrapper = canvasWrapper.value
   
   // 使用图片原始分辨率作为 canvas 尺寸，避免模糊
@@ -254,8 +267,14 @@ const initCanvas = () => {
   img.src = props.imageData
   
   img.onload = () => {
+    console.log('[AnnotatePanel] 图片加载成功', img.width, img.height)
     drawBackground(img)
     redrawAnnotations()
+  }
+  
+  img.onerror = (err) => {
+    console.error('[AnnotatePanel] 图片加载失败', err)
+    showToast('图片加载失败', '#ef4444')
   }
 }
 

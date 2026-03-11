@@ -13,79 +13,92 @@ Email: 1220594170@qq.com
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
 -->
-          <div class="crop-image-wrapper" ref="cropImageWrapper" @mousedown="startDrawCrop" @mousemove="onDrawing" @mouseup="endDrawCrop" @mouseleave="endDrawCrop">
-            <img :src="screenshotData" alt="裁切预览" class="crop-base-image" />
-            <!-- 裁切选框 -->
-            <div 
-              v-if="cropBox.width > 0 && cropBox.height > 0"
-              class="crop-selection"
-              :style="{
-                left: cropBox.x + 'px',
-                top: cropBox.y + 'px',
-                width: cropBox.width + 'px',
-                height: cropBox.height + 'px'
-              }"
-            >
-              <!-- 八个调整大小的手柄 -->
-              <div class="crop-handle crop-handle-nw" @mousedown.stop="startResize('nw')"></div>
-              <div class="crop-handle crop-handle-n" @mousedown.stop="startResize('n')"></div>
-              <div class="crop-handle crop-handle-ne" @mousedown.stop="startResize('ne')"></div>
-              <div class="crop-handle crop-handle-e" @mousedown.stop="startResize('e')"></div>
-              <div class="crop-handle crop-handle-se" @mousedown.stop="startResize('se')"></div>
-              <div class="crop-handle crop-handle-s" @mousedown.stop="startResize('s')"></div>
-              <div class="crop-handle crop-handle-sw" @mousedown.stop="startResize('sw')"></div>
-              <div class="crop-handle crop-handle-w" @mousedown.stop="startResize('w')"></div>
-              <!-- 裁切区域尺寸显示 -->
-              <div class="crop-size-label">
-                {{ Math.round(cropBox.width) }} x {{ Math.round(cropBox.height) }}
-              </div>
-              <!-- 裁切操作按钮 -->
-              <div class="crop-selection-actions" @mousedown.stop @mousemove.stop @mouseup.stop>
-                <button class="crop-action-btn cancel" @mousedown.stop @click="cancelCrop" title="取消">
-                  <i class="ri-close-line"></i>
-                </button>
-                <button class="crop-action-btn apply" @mousedown.stop @click="applyCrop" title="应用">
-                  <i class="ri-check-line"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <!-- 正常预览模式 -->
-        <div v-else class="image-wrapper" ref="imageWrapper" @wheel="handleWheel">
-          <div 
-            class="image-drag-container" 
-            :style="{ transform: `translate(${translateX}px, ${translateY}px) scale(${scale})` }"
-            @mousedown="startDrag"
-            @mousemove="drag"
-            @mouseup="endDrag"
-            @mouseleave="endDrag"
-          >
-            <img :src="screenshotData" alt="屏幕截图" class="screenshot-image" draggable="false" />
+<template>
+  <div class="screenshot-container">
+    <main class="screenshot-main">
+      <!-- 裁切模式 -->
+      <div v-if="isCropMode" class="crop-image-wrapper" ref="cropImageWrapper" @mousedown="startDrawCrop" @mousemove="onDrawing" @mouseup="endDrawCrop" @mouseleave="endDrawCrop">
+        <img :src="screenshotData" alt="裁切预览" class="crop-base-image" />
+        <!-- 裁切选框 -->
+        <div 
+          v-if="cropBox.width > 0 && cropBox.height > 0"
+          class="crop-selection"
+          :style="{
+            left: cropBox.x + 'px',
+            top: cropBox.y + 'px',
+            width: cropBox.width + 'px',
+            height: cropBox.height + 'px'
+          }"
+        >
+          <!-- 八个调整大小的手柄 -->
+          <div class="crop-handle crop-handle-nw" @mousedown.stop="startResize('nw')"></div>
+          <div class="crop-handle crop-handle-n" @mousedown.stop="startResize('n')"></div>
+          <div class="crop-handle crop-handle-ne" @mousedown.stop="startResize('ne')"></div>
+          <div class="crop-handle crop-handle-e" @mousedown.stop="startResize('e')"></div>
+          <div class="crop-handle crop-handle-se" @mousedown.stop="startResize('se')"></div>
+          <div class="crop-handle crop-handle-s" @mousedown.stop="startResize('s')"></div>
+          <div class="crop-handle crop-handle-sw" @mousedown.stop="startResize('sw')"></div>
+          <div class="crop-handle crop-handle-w" @mousedown.stop="startResize('w')"></div>
+          <!-- 裁切区域尺寸显示 -->
+          <div class="crop-size-label">
+            {{ Math.round(cropBox.width) }} x {{ Math.round(cropBox.height) }}
           </div>
-        </div>
-        <div class="zoom-controls" v-show="!isCropMode && !isAnnotateMode">
-          <button class="zoom-btn" @click="zoomOut" :disabled="scale <= 0.1">
-            <i class="ri-zoom-out-line"></i>
-          </button>
-          <button class="zoom-scale-btn" @click="resetZoom">
-            {{ Math.round(scale * 100) }}%
-          </button>
-          <button class="zoom-btn" @click="zoomIn" :disabled="scale >= 3">
-            <i class="ri-zoom-in-line"></i>
-          </button>
-          <div class="control-divider"></div>
-          <button class="zoom-btn" @click="handleAnnotate" title="标注">
-            <i class="ri-edit-line"></i>
-          </button>
-          <button class="zoom-btn" @click="handleCrop" title="裁切">
-            <i class="ri-crop-line"></i>
-          </button>
+          <!-- 裁切操作按钮 -->
+          <div class="crop-selection-actions" @mousedown.stop @mousemove.stop @mouseup.stop>
+            <button class="crop-action-btn cancel" @mousedown.stop @click="cancelCrop" title="取消">
+              <i class="ri-close-line"></i>
+            </button>
+            <button class="crop-action-btn apply" @mousedown.stop @click="applyCrop" title="应用">
+              <i class="ri-check-line"></i>
+            </button>
+          </div>
         </div>
       </div>
 
-
+      <!-- 正常预览模式 -->
+      <div v-else class="image-wrapper" ref="imageWrapper" @wheel="handleWheel">
+        <div 
+          class="image-drag-container" 
+          :style="{ transform: `translate(${translateX}px, ${translateY}px) scale(${scale})` }"
+          @mousedown="startDrag"
+          @mousemove="drag"
+          @mouseup="endDrag"
+          @mouseleave="endDrag"
+        >
+          <img :src="screenshotData" alt="屏幕截图" class="screenshot-image" draggable="false" />
+        </div>
+      </div>
+      <div class="zoom-controls" v-show="!isCropMode && !isAnnotateMode">
+        <button class="zoom-btn" @click="zoomOut" :disabled="scale <= 0.1">
+          <i class="ri-zoom-out-line"></i>
+        </button>
+        <button class="zoom-scale-btn" @click="resetZoom">
+          {{ Math.round(scale * 100) }}%
+        </button>
+        <button class="zoom-btn" @click="zoomIn" :disabled="scale >= 3">
+          <i class="ri-zoom-in-line"></i>
+        </button>
+        <div class="control-divider"></div>
+        <button class="zoom-btn" @click="handleAnnotate" title="标注">
+          <i class="ri-edit-line"></i>
+        </button>
+        <button class="zoom-btn" @click="handleCrop" title="裁切">
+          <i class="ri-crop-line"></i>
+        </button>
+      </div>
+      
+      <!-- 标注模式 -->
+      <div v-if="isAnnotateMode" class="annotate-overlay">
+        <AnnotatePanel
+          :image-data="screenshotData"
+          :image-width="width"
+          :image-height="height"
+          :existing-annotations="hasExistingAnnotations ? loadAnnotations(currentImageId)?.annotations : null"
+          @complete="handleAnnotateComplete"
+          @cancel="handleAnnotateCancel"
+        />
+      </div>
     </main>
   </div>
 </template>
@@ -245,7 +258,17 @@ const handleCrop = () => {
 }
 
 const handleAnnotate = () => {
-  if (!screenshotData.value) return
+  if (!screenshotData.value) {
+    console.error('[ScreenshotView] screenshotData 为空，无法进入标注模式')
+    return
+  }
+  
+  console.log('[ScreenshotView] 进入标注模式', {
+    hasData: !!screenshotData.value,
+    dataLength: screenshotData.value?.length,
+    width: width.value,
+    height: height.value
+  })
   
   // 生成或获取图片 ID
   if (!currentImageId.value) {
@@ -266,6 +289,16 @@ const handleAnnotate = () => {
 const handleAnnotateComplete = (data) => {
   annotatedImageData.value = data.imageData
   screenshotData.value = data.imageData
+  
+  // 更新宽高为标注后的图片尺寸
+  // 创建临时 Image 对象获取新图片的宽高
+  const img = new Image()
+  img.onload = () => {
+    width.value = img.width
+    height.value = img.height
+    console.log('[ScreenshotView] 标注完成，图片尺寸更新为:', img.width, 'x', img.height)
+  }
+  img.src = data.imageData
   
   // 保存标注数据
   if (currentImageId.value) {
@@ -712,7 +745,24 @@ onUnmounted(() => {
 
 .screenshot-content {
   flex: 1;
-  padding: 24px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 截图页面容器 - 占满整个窗口 */
+.screenshot-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 主内容区域 */
+.screenshot-main {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -755,9 +805,10 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   position: relative;
   overflow: hidden;
+  min-height: 0;
 }
 
 .screenshot-info {
@@ -765,6 +816,7 @@ onUnmounted(() => {
   gap: 24px;
   color: var(--text-muted, #64748b);
   font-size: 14px;
+  flex-shrink: 0;
 }
 
 .image-wrapper {
@@ -776,6 +828,7 @@ onUnmounted(() => {
   justify-content: center;
   overflow: hidden;
   position: relative;
+  min-height: 0;
 }
 
 .image-drag-container {
@@ -868,13 +921,13 @@ onUnmounted(() => {
 
 /* 标注模式样式 */
 .annotate-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.95);
-  z-index: 100;
+  z-index: 1000;
   overflow: hidden;
 }
 
@@ -975,6 +1028,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   background-color: transparent;
+  max-height: calc(100vh - 100px);
+  min-height: 0;
 }
 
 .crop-base-image {
@@ -983,6 +1038,7 @@ onUnmounted(() => {
   max-height: 100%;
   width: auto;
   height: auto;
+  object-fit: contain;
   user-select: none;
   pointer-events: none;
 }
