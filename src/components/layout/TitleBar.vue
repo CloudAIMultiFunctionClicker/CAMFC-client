@@ -165,6 +165,10 @@ const startWindowDrag = async (event) => {
 const goHome = () => {
   router.push('/main')
 }
+
+const showDevelopingToast = () => {
+  alert('下载进度功能开发中')
+}
 </script>
 
 <template>
@@ -172,6 +176,9 @@ const goHome = () => {
     <div class="title-bar-content" @mousedown="startWindowDrag">
       <div class="title-left">
         <span class="app-title">CAMFC Cloud</span>
+        <button class="icon-btn home-btn" @click="goHome" title="主页">
+          <Home :size="18" :stroke-width="3" />
+        </button>
       </div>
       
       <div class="title-right">
@@ -179,8 +186,8 @@ const goHome = () => {
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-picture-in-picture-icon lucide-picture-in-picture"><path d="M2 10h6V4"/><path d="m2 4 6 6"/><path d="M21 10V7a2 2 0 0 0-2-2h-7"/><path d="M3 14v2a2 2 0 0 0 2 2h3"/><rect x="12" y="14" width="10" height="7" rx="1"/></svg>
         </button>
         
-        <button class="icon-btn home-btn" @click="goHome" title="主页">
-          <Home :size="18" :stroke-width="3" />
+        <button class="icon-btn download-btn" @click="showDevelopingToast" title="下载记录">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download-icon lucide-download"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
         </button>
         
         <button class="icon-btn theme-btn" @click="theme?.toggleTheme" title="切换主题">
@@ -269,6 +276,7 @@ const goHome = () => {
 .title-left {
   display: flex;
   align-items: center;
+  gap: 8px;
   flex: 0 0 auto;
   min-width: 200px;
 }
@@ -320,6 +328,11 @@ const goHome = () => {
   color: var(--accent-blue, #3b82f6);
 }
 
+.download-btn:hover {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--accent-green, #10b981);
+}
+
 .divider {
   width: 1px;
   height: 24px;
@@ -332,6 +345,7 @@ const goHome = () => {
   align-items: center;
   gap: 0;
   margin-left: 8px;
+  margin-right: -16px;
 }
 
 .window-btn.close-btn:hover {

@@ -53,15 +53,6 @@ const fileList = ref([])
 const loading = ref(false)
 const error = ref(null)
 
-// 下载进度相关状态
-const downloadingFile = ref(null) // 当前正在下载的文件
-const downloadProgress = ref(0) // 下载进度百分比
-const downloadSpeed = ref('') // 下载速度
-const downloadedSize = ref(0) // 已下载大小（字节）
-const totalSize = ref(0) // 总大小（字节）
-const showDownloadProgress = ref(false) // 是否显示下载进度条
-let downloadProgressTimer = null // 下载进度定时器
-
 // 上传弹窗相关状态
 const showUploadModal = ref(false)
 const droppedFiles = ref([])
@@ -308,41 +299,27 @@ const handleFileDoubleClick = async (item) => {
   
   if (isDir) {
     console.log('进入文件夹:', item.path)
-    if (!loading.value) {
+    if (!loading) {
       enterFolder(item.path)
     }
     return
   }
   
   // 如果是文件，下载并打开
-  if (isFile && !loading.value) {
+  if (isFile && !loading) {
     console.log('✓✓✓ 双击文件，开始下载并打开:', item.name)
     
     try {
-      // 初始化下载进度显示
-      downloadingFile.value = item.name
-      downloadProgress.value = 0
-      downloadSpeed.value = '0 KB/s'
-      showDownloadProgress.value = true
-      
-      // 启动进度监控定时器
-      startDownloadProgressMonitor(item.path)
-      
+      // 显示下载提示
+      showToast(`下载中：${item.name}`, '#3b82f6')
       console.log('开始调用 downloadFile, path:', item.path)
       
       // 下载文件
       const result = await downloadFile(item.path)
       
-      // 停止进度监控
-      stopDownloadProgressMonitor()
-      
       console.log('downloadFile 返回结果:', result)
       // 显示下载成功
       showToast(`${item.name} 下载成功`, '#10b981')
-      
-      // 关闭进度条
-      showDownloadProgress.value = false
-      downloadingFile.value = null
       
       // 延迟一下再打开文件，确保文件已完全写入
       setTimeout(async () => {
@@ -359,55 +336,10 @@ const handleFileDoubleClick = async (item) => {
       
     } catch (error) {
       console.error('双击下载文件失败:', error)
-      // 停止进度监控
-      stopDownloadProgressMonitor()
-      showDownloadProgress.value = false
-      downloadingFile.value = null
       // 错误提示已在 downloadFile 中显示
     }
   } else {
     console.log('✗ 不是文件或正在加载中，isFile:', isFile, 'loading:', loading.value)
-  }
-}
-
-// 下载进度监控函数
-const startDownloadProgressMonitor = (fileId) => {
-  // 清除之前的定时器
-  if (downloadProgressTimer) {
-    clearInterval(downloadProgressTimer)
-  }
-  
-  // 每 500ms 更新一次进度
-  downloadProgressTimer = setInterval(async () => {
-    try {
-      const progress = await getDownloadProgress(fileId)
-      downloadProgress.value = progress.progress_percentage || 0
-      downloadedSize.value = progress.downloaded || 0
-      totalSize.value = progress.total_size || 0
-      
-      // 格式化速度显示
-      if (progress.speed_kbps) {
-        if (progress.speed_kbps < 1024) {
-          downloadSpeed.value = `${progress.speed_kbps.toFixed(1)} KB/s`
-        } else {
-          downloadSpeed.value = `${(progress.speed_kbps / 1024).toFixed(2)} MB/s`
-        }
-      }
-      
-      console.log(`下载进度：${downloadProgress.value}%, 已下载：${downloadedSize.value}, 总大小：${totalSize.value}, 速度：${downloadSpeed.value}`)
-    } catch (error) {
-      console.warn('获取下载进度失败:', error)
-    }
-  }, 500)
-  
-  console.log('下载进度监控已启动')
-}
-
-const stopDownloadProgressMonitor = () => {
-  if (downloadProgressTimer) {
-    clearInterval(downloadProgressTimer)
-    downloadProgressTimer = null
-    console.log('下载进度监控已停止')
   }
 }
 
@@ -977,21 +909,6 @@ const isFileSelected = (itemPath) => {
       </div>
     </div>
 
-    <!-- 下载进度条 -->
-    <div v-if="showDownloadProgress" class="download-progress-bar">
-      <div class="progress-info">
-        <span class="progress-file">{{ downloadingFile }}</span>
-        <span class="progress-percent">{{ downloadProgress }}%</span>
-      </div>
-      <div class="progress-track">
-        <div class="progress-fill" :style="{ width: downloadProgress + '%' }"></div>
-      </div>
-      <div class="progress-size-info">
-        <span class="progress-speed">{{ downloadSpeed }}</span>
-        <span class="progress-size">{{ formatSize(downloadedSize) }} / {{ formatSize(totalSize) }}</span>
-      </div>
-    </div>
-
 
 
     <!-- 文件表格 - 始终显示，加载时加上遮罩 -->
@@ -1091,114 +1008,6 @@ const isFileSelected = (itemPath) => {
   border-bottom: 1px solid var(--border-color);
   margin-bottom: 16px;
   border-radius: 8px;
-}
-
-/* 下载进度条 */
-.download-progress-bar {
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  border: 1px solid var(--border-color);
-  animation: slideDown 0.3s ease;
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.progress-file {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-}
-
-.progress-percent {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--accent-blue);
-  margin-left: 12px;
-  min-width: 50px;
-  text-align: right;
-}
-
-.progress-track {
-  width: 100%;
-  height: 8px;
-  background: var(--bg-primary);
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent-blue), #60a5fa);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.progress-fill::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.3),
-    transparent
-  );
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.progress-speed {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.progress-size-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 8px;
-}
-
-.progress-size {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: 500;
 }
 
 .nav-btn {

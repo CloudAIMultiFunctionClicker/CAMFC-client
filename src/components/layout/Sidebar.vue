@@ -123,10 +123,7 @@ const toggleCollapse = () => {
             </ul>
         </nav>
 
-        <!-- 底部区域 -->
-        <div class="sidebar-footer">
-            <!-- TODO: 这里以后可以放用户信息 -->
-        </div>
+
     </aside>
 </template>
 
@@ -433,41 +430,6 @@ const toggleCollapse = () => {
     color: var(--accent-blue, #3b82f6);
 }
 
-/* 底部区域样式 */
-.sidebar-footer {
-    margin-top: auto;
-    /* 推到最底部 */
-    padding: 20px 20px 0;
-    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
-}
-
-.footer-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 12px;
-    background: none;
-    border: none;
-    color: var(--text-muted, #94a3b8);
-    text-align: left;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.9375rem;
-    margin-bottom: 8px;
-    /* 按钮之间的间距 */
-}
-
-.footer-btn i {
-    font-size: 1.125rem;
-}
-
-.footer-btn:hover {
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-    color: var(--text-secondary, #cbd5e1);
-}
-
 /* 响应式设计 - 小屏幕时可能需要调整 */
 /* 现在折叠功能能用了，但手机端可能还需要调整 */
 @media (max-width: 1024px) {
@@ -493,4 +455,3 @@ const toggleCollapse = () => {
     }
 }
 </style>
-.footer-btn i {

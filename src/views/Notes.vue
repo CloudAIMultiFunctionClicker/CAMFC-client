@@ -299,9 +299,9 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
               <i class="ri-edit-line"></i>
               <span>重命名</span>
             </button>
-            <button class="more-menu-item danger" @click="openDeleteFromMenu">
-              <i class="ri-delete-bin-line"></i>
-              <span>删除</span>
+            <button class="more-menu-item danger" :class="{ 'confirming': isConfirmingDelete }" @click="handleDeleteClick">
+              <i :class="isConfirmingDelete ? 'ri-question-line' : 'ri-delete-bin-line'"></i>
+              <span>{{ isConfirmingDelete ? '确认删除' : '删除' }}</span>
             </button>
           </div>
         </div>
@@ -375,6 +375,7 @@ const cardTitleInput = ref(null)
 const isEditing = ref(false)
 const showSaveConfirmModal = ref(false)
 const showImportExportMenu = ref(false)
+const isConfirmingDelete = ref(false)
 let originalContent = ''
 
 const pageSize = 9
@@ -524,6 +525,7 @@ function openMoreMenu(note, event) {
 function closeMoreMenu() {
   showMoreMenu.value = false
   moreMenuNote.value = null
+  isConfirmingDelete.value = false
 }
 
 function startTitleEdit() {
@@ -574,11 +576,18 @@ function cancelCardTitleEdit() {
   editingCardNote.value = null
 }
 
-function openDeleteFromMenu() {
-  if (moreMenuNote.value) {
-    noteToDelete.value = moreMenuNote.value.uuid
-    showDeleteModal.value = true
-    closeMoreMenu()
+function handleDeleteClick() {
+  if (isConfirmingDelete.value) {
+    // 确认删除，执行删除操作
+    if (moreMenuNote.value) {
+      noteToDelete.value = moreMenuNote.value.uuid
+      confirmDelete()
+      isConfirmingDelete.value = false
+      closeMoreMenu()
+    }
+  } else {
+    // 第一次点击，进入确认状态
+    isConfirmingDelete.value = true
   }
 }
 
@@ -1720,6 +1729,21 @@ function importNotes() {
 
 .more-menu-item.danger:hover {
   background-color: rgba(239, 68, 68, 0.1);
+}
+
+.more-menu-item.danger.confirming {
+  background-color: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  animation: pulse-confirm 1s ease-in-out infinite;
+}
+
+@keyframes pulse-confirm {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.35);
+  }
 }
 
 @media (max-width: 768px) {
