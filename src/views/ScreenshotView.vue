@@ -1,53 +1,18 @@
-<template>
-  <div class="screenshot-page">
-    <header class="screenshot-header">
-      <button class="back-btn" @click="goBack">
-        <i class="ri-delete-bin-line"></i>
-        删除
-      </button>
-      <h1>屏幕截图</h1>
-      <div class="header-actions">
-        <button class="action-btn primary" @click="saveScreenshot" :disabled="!screenshotData">
-          <i class="ri-share-box-line"></i>
-          导出
-        </button>
-      </div>
-    </header>
+<!--
+保留所有权利
 
-    <main class="screenshot-content">
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>正在截取屏幕...</p>
-      </div>
+Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
-      <div v-else-if="error" class="error-state">
-        <i class="ri-error-warning-line"></i>
-        <p>{{ error }}</p>
-        <button class="action-btn" @click="retakeScreenshot">重试</button>
-      </div>
+Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+Email: abc.cxh2009@foxmail.com
 
-      <div v-else-if="screenshotData" class="preview-container">
-        <!-- 标注模式覆盖层 -->
-        <div v-if="isAnnotateMode" class="annotate-overlay">
-          <AnnotatePanel 
-            :imageData="screenshotData"
-            :imageWidth="width"
-            :imageHeight="height"
-            @complete="handleAnnotateComplete"
-            @cancel="handleAnnotateCancel"
-          />
-        </div>
-        
-        <!-- 裁切模式覆盖层 -->
-        <div v-else-if="isCropMode" class="crop-overlay">
-          <!-- 裁切提示栏 -->
-          <div class="crop-mode-header">
-            <span class="crop-mode-tip">拖动鼠标选择裁切区域，或点击取消返回</span>
-            <button class="crop-cancel-btn" @click="cancelCrop">
-              <i class="ri-close-line"></i>
-              取消
-            </button>
-          </div>
+Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+Email: 1220594170@qq.com
+
+Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+Email: admin@mc666.top
+-->
           <div class="crop-image-wrapper" ref="cropImageWrapper" @mousedown="startDrawCrop" @mousemove="onDrawing" @mouseup="endDrawCrop" @mouseleave="endDrawCrop">
             <img :src="screenshotData" alt="裁切预览" class="crop-base-image" />
             <!-- 裁切选框 -->
