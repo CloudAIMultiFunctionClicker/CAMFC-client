@@ -1,16 +1,3 @@
-//! Cpen设备管理器
-//!
-//! 这个模块负责处理Cpen蓝牙设备的完整业务逻辑：
-//! 1. 扫描蓝牙设备并识别Cpen设备（根据名前缀）
-//! 2. 保证全局只连接一个Cpen设备（重要要求！）
-//! 3. 自动处理连接、断开、重连
-//! 4. 实现TOTP缓存（30秒有效）
-//! 5. 管理设备ID缓存
-//!
-//! 思考：为啥要单独搞这个模块？
-//! 计划业务逻辑全在Rust，前端只调简单接口。这样前端代码能大幅简化。
-//! 另外，保证单设备连接也是用户明确要求的。
-
 use std::time::{SystemTime, Duration};
 use crate::bluetooth::{BluetoothManager, DeviceInfo};
 use tokio::time::sleep;

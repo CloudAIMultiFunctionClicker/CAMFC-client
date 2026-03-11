@@ -25,7 +25,7 @@ use cpen_device_manager::CpenDeviceManager;
 use bluetooth::DeviceInfo;
 use download::{DownloadTask, AuthInfo, get_app_data_dir};
 use upload::UploadTask;
-use storage::{load_app_data, save_app_data, get_download_file_path, get_custom_download_path, set_custom_download_path, open_folder, load_download_path_to_cache};
+use storage::{load_app_data, save_app_data, get_download_file_path, get_custom_download_path, set_custom_download_path, open_file, open_folder, load_download_path_to_cache};
 use event_emitter::set_app_handle;
 
 // 导入同步原语
@@ -1356,6 +1356,7 @@ pub fn run() {
             get_download_file_path,
             get_custom_download_path,
             set_custom_download_path,
+            open_file,
             open_folder,
             // 截图命令
             capture_screen,

@@ -151,6 +151,48 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             </button>
           </div>
         </div>
+        <div class="setting-card">
+          <h4>窗口关闭行为</h4>
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="label-text">点击关闭按钮时</span>
+              <span class="label-desc">选择点击窗口右上角关闭按钮时的行为</span>
+            </div>
+            <div class="close-behavior-options">
+              <button 
+                class="behavior-option" 
+                :class="{ active: closeBehavior === 'minimize' }"
+                @click="setCloseBehavior('minimize')"
+              >
+                <i class="ri-window-line"></i>
+                <span>隐藏到托盘</span>
+              </button>
+              <button 
+                class="behavior-option" 
+                :class="{ active: closeBehavior === 'exit' }"
+                @click="setCloseBehavior('exit')"
+              >
+                <i class="ri-close-circle-line"></i>
+                <span>完全关闭</span>
+              </button>
+              <button 
+                class="behavior-option" 
+                :class="{ active: closeBehavior === 'ask' }"
+                @click="setCloseBehavior('ask')"
+              >
+                <i class="ri-question-line"></i>
+                <span>每次询问</span>
+              </button>
+            </div>
+          </div>
+          <div class="setting-item">
+            <button class="action-btn secondary" @click="clearCloseBehavior">
+              <i class="ri-delete-bin-line"></i>
+              清除关闭偏好
+            </button>
+            <p class="setting-hint">清除后，下次点击关闭按钮时会重新询问</p>
+          </div>
+        </div>
       </div>
 
       <div v-else-if="activeNav === 'theme'" class="settings-panel">
@@ -258,6 +300,7 @@ const deviceId = ref(null)
 const isFilesystemLoggedIn = ref(false)
 const cacheSize = ref(0)
 const downloadPath = ref('')
+const closeBehavior = ref('ask') // 'minimize' | 'exit' | 'ask'
 
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
@@ -290,6 +333,18 @@ const loadSettings = async () => {
     } catch (e) {
       console.warn('获取自定义下载路径失败:', e)
       downloadPath.value = ''
+    }
+    
+    // 加载关闭行为偏好
+    try {
+      const savedCloseBehavior = await loadAppData('close_preference')
+      if (savedCloseBehavior) {
+        const pref = JSON.parse(savedCloseBehavior)
+        closeBehavior.value = pref.preference || 'ask'
+      }
+    } catch (e) {
+      console.warn('加载关闭偏好失败:', e)
+      closeBehavior.value = 'ask'
     }
   } catch (error) {
     console.error('加载设置失败:', error)
@@ -524,6 +579,31 @@ const openDownloadFolder = async () => {
   } catch (e) {
     console.error('打开下载目录失败:', e)
     showToast('打开下载目录失败', '#ef4444')
+  }
+}
+
+const setCloseBehavior = async (behavior) => {
+  try {
+    closeBehavior.value = behavior
+    await saveAppData('close_preference', JSON.stringify({ preference: behavior }))
+    console.log('[设置页面] 保存关闭偏好:', behavior)
+    const text = behavior === 'minimize' ? '隐藏到托盘' : behavior === 'exit' ? '完全关闭' : '每次询问'
+    showToast(`关闭行为已设置为：${text}`, '#10b981')
+  } catch (e) {
+    console.error('[设置页面] 保存关闭偏好失败:', e)
+    showToast('保存失败', '#ef4444')
+  }
+}
+
+const clearCloseBehavior = async () => {
+  try {
+    closeBehavior.value = 'ask'
+    await saveAppData('close_preference', JSON.stringify({ preference: 'ask' }))
+    console.log('[设置页面] 清除关闭偏好')
+    showToast('已清除关闭偏好，下次将重新询问', '#10b981')
+  } catch (e) {
+    console.error('[设置页面] 清除关闭偏好失败:', e)
+    showToast('清除失败', '#ef4444')
   }
 }
 
@@ -865,6 +945,65 @@ onUnmounted(() => {
   margin-top: 12px;
   display: flex;
   gap: 8px;
+}
+
+.setting-card h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0 0 16px 0;
+}
+
+.close-behavior-options {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.behavior-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  background-color: var(--bg-primary, #0f172a);
+  border: 2px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary, #f1f5f9);
+  font-size: 14px;
+}
+
+.behavior-option i {
+  font-size: 24px;
+  color: var(--text-muted, #64748b);
+  transition: color 0.2s ease;
+}
+
+.behavior-option:hover {
+  border-color: var(--accent-blue, #3b82f6);
+  background-color: var(--hover-bg, rgba(59, 130, 246, 0.1));
+}
+
+.behavior-option:hover i {
+  color: var(--accent-blue, #3b82f6);
+}
+
+.behavior-option.active {
+  border-color: var(--accent-blue, #3b82f6);
+  background-color: rgba(59, 130, 246, 0.2);
+}
+
+.behavior-option.active i {
+  color: var(--accent-blue, #3b82f6);
+}
+
+.setting-hint {
+  margin: 8px 0 0 0;
+  font-size: 13px;
+  color: var(--text-muted, #64748b);
 }
 
 

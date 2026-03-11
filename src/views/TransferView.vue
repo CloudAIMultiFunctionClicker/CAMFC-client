@@ -30,7 +30,7 @@ import Sidebar from '../components/layout/Sidebar.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getUploadProgress, pauseUpload, resumeUpload } from '../components/data/upload.js'
 import { getDownloadProgress, pauseDownload, resumeDownload } from '../components/data/download.js'
-import { getActiveUploads, setActiveUploads, getActiveDownloads, setActiveDownloads, openFile, openFolder } from '../components/data/storage.js'
+import { getActiveUploads, setActiveUploads, getActiveDownloads, setActiveDownloads, openFile, openFolder, getUploadHistory, saveUploadHistory, getDownloadHistory, saveDownloadHistory } from '../components/data/storage.js'
 import { invoke } from '@tauri-apps/api/core'
 
 const isSidebarCollapsed = ref(false)
@@ -43,6 +43,8 @@ const activeTab = ref('upload')
 
 const uploadList = ref([])
 const downloadList = ref([])
+const uploadHistory = ref([])
+const downloadHistory = ref([])
 let pollTimer = null
 
 const formatSize = (bytes) => {
@@ -66,7 +68,7 @@ const refreshUploads = async () => {
     for (const id of uploadIds) {
       try {
         const progress = await getUploadProgress(id)
-        if (progress && progress.status !== 'Error') {
+        if (progress && progress.status !== 'Error' && progress.status !== 'Pending') {
           validIds.push(id)
           newList.push({
             id: progress.upload_id,
@@ -108,7 +110,7 @@ const refreshDownloads = async () => {
     for (const id of fileIds) {
       try {
         const progress = await getDownloadProgress(id)
-        if (progress && progress.status !== 'Error') {
+        if (progress && progress.status !== 'Error' && progress.status !== 'Pending') {
           validIds.push(id)
           newList.push({
             id: progress.file_id,
@@ -150,6 +152,83 @@ const mapStatus = (status) => {
 
 const refreshAll = async () => {
   await Promise.all([refreshUploads(), refreshDownloads()])
+  await checkAndSaveCompleted()
+}
+
+const loadHistory = async () => {
+  uploadHistory.value = await getUploadHistory()
+  downloadHistory.value = await getDownloadHistory()
+}
+
+const saveToHistory = async (item, type) => {
+  if (type === 'upload') {
+    const history = await getUploadHistory()
+    const newHistory = [
+      {
+        id: item.id,
+        name: item.name,
+        size: item.size,
+        status: item.status,
+        speed: item.speed,
+        completedTime: Date.now()
+      },
+      ...history
+    ].slice(0, 100)
+    await saveUploadHistory(newHistory)
+    uploadHistory.value = newHistory
+  } else {
+    const history = await getDownloadHistory()
+    const newHistory = [
+      {
+        id: item.id,
+        name: item.name,
+        size: item.size,
+        status: item.status,
+        speed: item.speed,
+        completedTime: Date.now(),
+        fileId: item.fileId || item.id
+      },
+      ...history
+    ].slice(0, 100)
+    await saveDownloadHistory(newHistory)
+    downloadHistory.value = newHistory
+  }
+}
+
+let previousUploadStatus = {}
+let previousDownloadStatus = {}
+
+const checkAndSaveCompleted = async () => {
+  for (const item of uploadList.value) {
+    const prevStatus = previousUploadStatus[item.id]
+    if ((item.status === 'completed' || item.status === 'failed') && prevStatus && prevStatus !== 'completed' && prevStatus !== 'failed') {
+      await saveToHistory(item, 'upload')
+      await removeFromActiveList(item.id, 'upload')
+    }
+    previousUploadStatus[item.id] = item.status
+  }
+  for (const item of downloadList.value) {
+    const prevStatus = previousDownloadStatus[item.id]
+    if ((item.status === 'completed' || item.status === 'failed') && prevStatus && prevStatus !== 'completed' && prevStatus !== 'failed') {
+      await saveToHistory(item, 'download')
+      await removeFromActiveList(item.id, 'download')
+    }
+    previousDownloadStatus[item.id] = item.status
+  }
+}
+
+const removeFromActiveList = async (id, type) => {
+  if (type === 'upload') {
+    const stored = await getActiveUploads()
+    const newList = stored.filter(sid => sid !== id)
+    await setActiveUploads(newList)
+    uploadList.value = uploadList.value.filter(i => i.id !== id)
+  } else {
+    const stored = await getActiveDownloads()
+    const newList = stored.filter(sid => sid !== id)
+    await setActiveDownloads(newList)
+    downloadList.value = downloadList.value.filter(i => i.id !== id)
+  }
 }
 
 const handlePause = async (item, type) => {
@@ -195,9 +274,48 @@ const handleRetry = (item, type) => {
   item.progress = 0
 }
 
+const deleteHistoryItem = async (item, type) => {
+  if (item.completedTime) {
+    // 这是历史记录，从历史记录中删除
+    if (type === 'upload') {
+      const history = await getUploadHistory()
+      const newHistory = history.filter(h => !(h.id === item.id && h.completedTime === item.completedTime))
+      await saveUploadHistory(newHistory)
+      uploadHistory.value = newHistory
+    } else {
+      const history = await getDownloadHistory()
+      const newHistory = history.filter(h => !(h.id === item.id && h.completedTime === item.completedTime))
+      await saveDownloadHistory(newHistory)
+      downloadHistory.value = newHistory
+    }
+  } else {
+    // 这是活跃任务，从活跃列表中删除
+    if (type === 'upload') {
+      const stored = await getActiveUploads()
+      const newList = stored.filter(id => id !== item.id)
+      await setActiveUploads(newList)
+      uploadList.value = uploadList.value.filter(i => i.id !== item.id)
+    } else {
+      const stored = await getActiveDownloads()
+      const newList = stored.filter(id => id !== item.id)
+      await setActiveDownloads(newList)
+      downloadList.value = downloadList.value.filter(i => i.id !== item.id)
+    }
+  }
+}
+
+const clearHistory = async () => {
+  await saveUploadHistory([])
+  await saveDownloadHistory([])
+  uploadHistory.value = []
+  downloadHistory.value = []
+}
+
 const handleOpenFile = async (item) => {
   try {
-    const filePath = await invoke('get_download_file_path', { fileId: item.fileId })
+    const fileId = item.fileId || item.id
+    console.log('打开文件，fileId:', fileId)
+    const filePath = await invoke('get_download_file_path', { fileId })
     await openFile(filePath)
   } catch (error) {
     console.error('打开文件失败:', error)
@@ -206,7 +324,9 @@ const handleOpenFile = async (item) => {
 
 const handleOpenFolder = async (item) => {
   try {
-    const filePath = await invoke('get_download_file_path', { fileId: item.fileId })
+    const fileId = item.fileId || item.id
+    console.log('打开文件夹，fileId:', fileId)
+    const filePath = await invoke('get_download_file_path', { fileId })
     await openFolder(filePath)
   } catch (error) {
     console.error('打开文件夹失败:', error)
@@ -215,20 +335,46 @@ const handleOpenFolder = async (item) => {
 
 const clearCompleted = async (type) => {
   if (type === 'upload') {
-    const completedIds = uploadList.value
-      .filter(i => i.status === 'completed' || i.status === 'failed')
-      .map(i => i.id)
+    const completedItems = uploadList.value.filter(i => i.status === 'completed' || i.status === 'failed')
+    const completedIds = completedItems.map(i => i.id)
     if (completedIds.length > 0) {
+      const history = await getUploadHistory()
+      const newHistory = [
+        ...completedItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          size: item.size,
+          status: item.status,
+          speed: item.speed,
+          completedTime: Date.now()
+        })),
+        ...history
+      ].slice(0, 100)
+      await saveUploadHistory(newHistory)
+      
       const stored = await getActiveUploads()
       const newList = stored.filter(id => !completedIds.includes(id))
       await setActiveUploads(newList)
     }
     uploadList.value = uploadList.value.filter(i => i.status !== 'completed' && i.status !== 'failed')
   } else {
-    const completedIds = downloadList.value
-      .filter(i => i.status === 'completed' || i.status === 'failed')
-      .map(i => i.id)
+    const completedItems = downloadList.value.filter(i => i.status === 'completed' || i.status === 'failed')
+    const completedIds = completedItems.map(i => i.id)
     if (completedIds.length > 0) {
+      const history = await getDownloadHistory()
+      const newHistory = [
+        ...completedItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          size: item.size,
+          status: item.status,
+          speed: item.speed,
+          completedTime: Date.now()
+        })),
+        ...history
+      ].slice(0, 100)
+      await saveDownloadHistory(newHistory)
+      
       const stored = await getActiveDownloads()
       const newList = stored.filter(id => !completedIds.includes(id))
       await setActiveDownloads(newList)
@@ -261,6 +407,7 @@ const getStatusClass = (status) => {
 }
 
 onMounted(() => {
+  loadHistory()
   refreshAll()
   pollTimer = setInterval(refreshAll, 500)
 })
@@ -310,8 +457,8 @@ onUnmounted(() => {
 
           <div class="list-content">
             <div
-              v-for="item in uploadList"
-              :key="item.id"
+              v-for="item in [...uploadList, ...uploadHistory]"
+              :key="item.id + (item.completedTime || '')"
               class="transfer-item"
             >
               <div class="item-name">
@@ -320,13 +467,13 @@ onUnmounted(() => {
               </div>
               <div class="item-size">{{ item.size }}</div>
               <div class="item-progress">
-                <div class="progress-bar">
+                <div class="progress-bar" v-if="item.status !== 'completed' && item.status !== 'failed'">
                   <div
                     class="progress-fill"
                     :style="{ width: item.progress + '%' }"
                   ></div>
                 </div>
-                <span class="progress-text">{{ item.uploaded }} / {{ item.total }}</span>
+                <span class="progress-text" v-if="item.status !== 'completed' && item.status !== 'failed'">{{ item.uploaded }} / {{ item.total }}</span>
               </div>
               <div class="item-status">
                 <span class="status-badge" :class="getStatusClass(item.status)">
@@ -359,6 +506,14 @@ onUnmounted(() => {
                 >
                   <i class="ri-close-line"></i>
                 </button>
+                <button
+                  class="action-btn"
+                  @click="deleteHistoryItem(item, 'upload')"
+                  v-if="item.status === 'completed' || item.status === 'failed'"
+                  title="删除"
+                >
+                  <i class="ri-delete-bin-line"></i>
+                </button>
               </div>
             </div>
 
@@ -366,12 +521,6 @@ onUnmounted(() => {
               <span class="empty-icon"><i class="ri-upload-cloud-2-line"></i></span>
               <p>暂无上传任务</p>
             </div>
-          </div>
-
-          <div class="list-footer" v-if="uploadList.length > 0">
-            <button class="clear-btn" @click="clearCompleted('upload')">
-              清除已完成
-            </button>
           </div>
         </div>
 
@@ -386,8 +535,8 @@ onUnmounted(() => {
 
           <div class="list-content">
             <div
-              v-for="item in downloadList"
-              :key="item.id"
+              v-for="item in [...downloadList, ...downloadHistory]"
+              :key="item.id + (item.completedTime || '')"
               class="transfer-item"
             >
               <div class="item-name">
@@ -396,13 +545,13 @@ onUnmounted(() => {
               </div>
               <div class="item-size">{{ item.size }}</div>
               <div class="item-progress">
-                <div class="progress-bar">
+                <div class="progress-bar" v-if="item.status !== 'completed' && item.status !== 'failed'">
                   <div
                     class="progress-fill"
                     :style="{ width: item.progress + '%' }"
                   ></div>
                 </div>
-                <span class="progress-text">{{ item.downloaded }} / {{ item.total }}</span>
+                <span class="progress-text" v-if="item.status !== 'completed' && item.status !== 'failed'">{{ item.downloaded }} / {{ item.total }}</span>
               </div>
               <div class="item-status">
                 <span class="status-badge" :class="getStatusClass(item.status)">
@@ -451,6 +600,14 @@ onUnmounted(() => {
                 >
                   <i class="ri-close-line"></i>
                 </button>
+                <button
+                  class="action-btn"
+                  @click="deleteHistoryItem(item, 'download')"
+                  v-if="item.status === 'completed' || item.status === 'failed'"
+                  title="删除"
+                >
+                  <i class="ri-delete-bin-line"></i>
+                </button>
               </div>
             </div>
 
@@ -459,13 +616,8 @@ onUnmounted(() => {
               <p>暂无下载任务</p>
             </div>
           </div>
-
-          <div class="list-footer" v-if="downloadList.length > 0">
-            <button class="clear-btn" @click="clearCompleted('download')">
-              清除已完成
-            </button>
-          </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -773,5 +925,21 @@ onUnmounted(() => {
   .item-progress, .item-status, .item-action {
     padding-left: 30px;
   }
+}
+
+.history-section {
+  border-top: 1px solid var(--border-color);
+}
+
+.history-header {
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(0,0,0,0.1);
+}
+
+.history-item {
+  opacity: 0.8;
 }
 </style>

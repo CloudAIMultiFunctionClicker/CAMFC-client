@@ -31,11 +31,14 @@ import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { Moon, Sun, Minus, Square, Copy, X, Home } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
+import { loadAppData, saveAppData } from '../../components/data/storage.js'
 
 const theme = inject('theme')
 const router = useRouter()
 
 const showConfirmDialog = ref(false)
+const rememberChoice = ref(false)
+const closePreference = ref(null) // 'minimize' | 'exit' | null
 
 const currentWindow = getCurrentWindow()
 
@@ -60,6 +63,7 @@ const setupResizeObserver = () => {
 onMounted(() => {
   checkWindowState()
   setupResizeObserver()
+  loadClosePreference()
 })
 
 onUnmounted(() => {
@@ -67,6 +71,36 @@ onUnmounted(() => {
     resizeObserver.disconnect()
   }
 })
+
+const loadClosePreference = async () => {
+  try {
+    const saved = await loadAppData('close_preference')
+    console.log('[关闭偏好] 加载原始数据:', saved)
+    if (saved) {
+      const pref = JSON.parse(saved)
+      closePreference.value = pref.preference
+      console.log('[关闭偏好] 加载成功:', closePreference.value)
+    } else {
+      console.log('[关闭偏好] 无保存的偏好')
+    }
+  } catch (error) {
+    console.error('[关闭偏好] 加载失败:', error)
+  }
+}
+
+const saveClosePreference = async (preference) => {
+  try {
+    console.log('[关闭偏好] 准备保存:', preference)
+    await saveAppData('close_preference', JSON.stringify({ preference }))
+    console.log('[关闭偏好] 保存成功:', preference)
+    
+    // 验证保存
+    const verify = await loadAppData('close_preference')
+    console.log('[关闭偏好] 验证保存结果:', verify)
+  } catch (error) {
+    console.error('[关闭偏好] 保存失败:', error)
+  }
+}
 
 const minimizeWindow = async () => {
   try {
@@ -97,21 +131,51 @@ const closeApp = async () => {
   }
 }
 
-const requestClose = () => {
-  showConfirmDialog.value = true
+const requestClose = async () => {
+  // 每次都重新读取最新的偏好设置
+  await loadClosePreference()
+  
+  // 根据偏好执行不同的操作
+  if (closePreference.value === 'minimize') {
+    // 直接隐藏到托盘
+    hideToTray(true)
+  } else if (closePreference.value === 'exit') {
+    // 直接退出
+    confirmClose(true)
+  } else {
+    // 'ask' 或者未设置，显示确认对话框
+    showConfirmDialog.value = true
+    rememberChoice.value = false
+  }
 }
 
-const confirmClose = async () => {
+const confirmClose = async (fromPreference = false) => {
   showConfirmDialog.value = false
+  if (rememberChoice.value && !fromPreference) {
+    await saveClosePreference('exit')
+  }
   await closeApp()
+}
+
+const confirmCloseWithRemember = async () => {
+  console.log('[关闭偏好] 点击完全关闭，复选框状态:', rememberChoice.value)
+  await confirmClose(false)
 }
 
 const cancelClose = () => {
   showConfirmDialog.value = false
 }
 
-const hideToTray = async () => {
+const hideToTrayWithRemember = async () => {
+  console.log('[关闭偏好] 点击隐藏到托盘，复选框状态:', rememberChoice.value)
+  await hideToTray(false)
+}
+
+const hideToTray = async (fromPreference = false) => {
   showConfirmDialog.value = false
+  if (rememberChoice.value && !fromPreference) {
+    await saveClosePreference('minimize')
+  }
   try {
     await currentWindow.hide()
   } catch (error) {
@@ -178,7 +242,7 @@ const goHome = () => {
         <div class="confirm-body">
           <p>请选择关闭方式：</p>
           <div class="close-options">
-            <button class="option-btn" @click="hideToTray">
+            <button class="option-btn" @click="hideToTrayWithRemember">
               <div class="option-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
@@ -191,7 +255,7 @@ const goHome = () => {
                 <p>应用将在后台运行，可从托盘重新打开</p>
               </div>
             </button>
-            <button class="option-btn" @click="confirmClose">
+            <button class="option-btn" @click="confirmCloseWithRemember">
               <div class="option-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M18 6 6 18M6 6l12 12"/>
@@ -203,6 +267,13 @@ const goHome = () => {
                 <p>应用将完全退出，需要重新启动</p>
               </div>
             </button>
+          </div>
+          <div class="remember-choice">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="rememberChoice" />
+              <span>记住此次选择</span>
+            </label>
+            <p class="remember-tip">下次将直接执行，可在设置中修改</p>
           </div>
         </div>
         <div class="confirm-actions">
@@ -433,6 +504,74 @@ const goHome = () => {
   font-size: 13px;
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+.remember-choice {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  user-select: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.checkbox-label:hover {
+  background-color: var(--hover-bg);
+}
+
+.checkbox-label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-primary);
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.checkbox-label input[type="checkbox"]:hover {
+  border-color: var(--accent-blue);
+}
+
+.checkbox-label input[type="checkbox"]:checked {
+  background-color: var(--accent-blue);
+  border-color: var(--accent-blue);
+}
+
+.checkbox-label input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 4px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.remember-tip {
+  margin: 0;
+  padding: 0 0 0 28px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .confirm-actions {

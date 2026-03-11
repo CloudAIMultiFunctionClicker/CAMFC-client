@@ -124,3 +124,29 @@ export async function getTheme() {
 export async function setTheme(theme) {
   return saveAppData('theme', theme)
 }
+
+export async function getUploadHistory() {
+  const value = await loadAppData('upload_history')
+  try {
+    return JSON.parse(value || '[]')
+  } catch {
+    return []
+  }
+}
+
+export async function saveUploadHistory(history) {
+  return saveAppData('upload_history', JSON.stringify(history))
+}
+
+export async function getDownloadHistory() {
+  const value = await loadAppData('download_history')
+  try {
+    return JSON.parse(value || '[]')
+  } catch {
+    return []
+  }
+}
+
+export async function saveDownloadHistory(history) {
+  return saveAppData('download_history', JSON.stringify(history))
+}

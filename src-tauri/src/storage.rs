@@ -96,19 +96,21 @@ pub fn get_app_data_dir() -> Result<PathBuf, String> {
 }
 
 #[tauri::command]
-pub async fn get_download_file_path(file_id: String) -> Result<String, String> {
-    let data_dir = get_app_data_dir()?;
-    let file_path = data_dir.join(&file_id);
+pub async fn get_download_file_path(fileId: String) -> Result<String, String> {
+    // 使用 download 模块的 get_app_data_dir 函数，它会考虑自定义下载路径
+    let data_dir = crate::download::get_app_data_dir()
+        .map_err(|e| format!("获取下载目录失败：{}", e))?;
+    let file_path = data_dir.join(&fileId);
     Ok(file_path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
-pub fn open_file(file_path: String) -> Result<(), String> {
-    println!("[STORAGE] 打开文件：{}", file_path);
+pub fn open_file(filePath: String) -> Result<(), String> {
+    println!("[STORAGE] 打开文件：{}", filePath);
     
     // 使用 Windows 的 start 命令打开文件
     Command::new("cmd")
-        .args(["/C", "start", "", &file_path])
+        .args(["/C", "start", "", &filePath])
         .spawn()
         .map_err(|e| format!("打开文件失败：{}", e))?;
     
@@ -117,12 +119,17 @@ pub fn open_file(file_path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn open_folder(folder_path: String) -> Result<(), String> {
-    println!("[STORAGE] 打开文件夹：{}", folder_path);
+pub fn open_folder(folderPath: String) -> Result<(), String> {
+    println!("[STORAGE] 打开文件所在文件夹：{}", folderPath);
+    
+    // 提取文件路径中的目录部分
+    let path = PathBuf::from(&folderPath);
+    let parent_dir = path.parent()
+        .ok_or_else(|| format!("无法获取文件 {:?} 的父目录", folderPath))?;
     
     // 使用 Windows 的 explorer 命令打开文件夹
     Command::new("explorer")
-        .arg(&folder_path)
+        .arg(parent_dir)
         .spawn()
         .map_err(|e| format!("打开文件夹失败：{}", e))?;
     
