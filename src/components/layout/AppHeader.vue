@@ -190,16 +190,11 @@ header {
     width: 100%;
     height: 48px;
     flex-shrink: 0;
-    /* 防止被压缩 */
-    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-    /* 使用主题边框色 */
-    background: var(--bg-header, linear-gradient(135deg, #0f172a 0%, #1e293b 100%));
-    /* 使用主题头部背景 */
+    border-bottom: 1px solid var(--border-color, #30363d);
+    background: var(--bg-header, #161b22);
     position: relative;
     z-index: 1000;
-    /* 确保在最上面 */
     transition: background 0.3s ease, border-color 0.3s ease;
-    /* 主题切换过渡效果 */
 }
 
 /* 工具栏布局 */
@@ -224,17 +219,11 @@ h1 {
     display: flex;
     align-items: center;
     gap: 12px;
-    /* flex gap 真好用 */
-    color: var(--text-primary, #f8fafc);
-    /* 使用主题主要文字色 */
+    color: var(--text-primary, #f0f6fc);
     font-size: 1.2rem;
-    /* 减小字体大小 */
     font-weight: 450;
-    /* 改成中等粗细 */
     letter-spacing: -0.025em;
-    /* 字距收紧一点感觉更现代？ */
     transition: color 0.3s ease;
-    /* 文字颜色过渡 */
 }
 
 /* 右侧按钮区域 */
@@ -255,173 +244,143 @@ h1 {
 .btn-share,
 .btn-delete,
 .btn-avatar,
-.btn-test,
 .btn-button-state {
     border: none;
-    border-radius: 8px;
-    /* 圆角大一点现代感强 */
+    border-radius: .375rem;
     padding: 6px 12px;
-    /* 减小 padding 以适应更窄的顶栏 */
     font-size: 13px;
-    /* 稍微减小字体 */
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
-    /* 图标和文字的间距 */
     font-weight: 500;
     transition: all 0.2s ease;
-    /* 过渡效果，hover 用 */
     height: 32px;
-    /* 统一高度，从 40px 减小到 32px */
 }
 
-/* 按钮状态指示器 */
 .btn-button-state {
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08)); 
-    color: var(--text-secondary, #cbd5e1);
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    background-color: var(--hover-bg, #f3f4f6); 
+    color: var(--text-secondary, #57606a);
+    border: 1px solid var(--border-color, #d0d7de);
 }
 
 .btn-button-state.pressed {
-    background-color: #10b981;
+    background-color: var(--accent-green, #2da44e);
     color: white;
-    border-color: #10b981;
+    border-color: var(--accent-green, #2da44e);
 }
 
 .btn-button-state:hover {
-    background-color: var(--accent-blue, #3b82f6);
-    color: white;
-    border-color: var(--accent-blue, #3b82f6);
+    background-color: var(--bg-tertiary, #f6f8fa);
+    border-color: var(--text-muted, #8c959f);
 }
 
 /* 主题切换按钮 - 放在第一个 */
 .btn-theme {
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08)); 
-    color: var(--text-secondary, #cbd5e1);
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    background-color: var(--bg-secondary, #f6f8fa);
+    color: var(--text-primary, #24292f);
+    border: 1px solid var(--border-color, #d0d7de);
 }
 
 .btn-theme:hover {
-    background-color: var(--accent-blue, #3b82f6);
-    color: white;
-    border-color: var(--accent-blue, #3b82f6);
+    background-color: var(--bg-tertiary, #f6f8fa);
+    border-color: var(--text-muted, #8c959f);
 }
 
 /* 云按钮 - 就是个装饰性的 */
 .btn-cloud {
-    background: var(--hover-bg, rgba(255, 255, 255, 0.08));
-    /* 使用主题 hover 背景色 */
-    color: var(--text-muted, #94a3b8);
-    /* 使用主题次要文字色 */
+    background: var(--bg-secondary, #f6f8fa);
+    color: var(--text-primary, #24292f);
     padding: 6px;
-    border-radius: 50%;
-    /* 圆形 */
+    border-radius: .375rem;
     width: 32px;
     height: 32px;
+    border: 1px solid var(--border-color, #d0d7de);
 }
 
-a {
-   text-decoration: none;
-}
 a:hover { 
     text-decoration: none;
 }
 
 /* 下拉按钮 - 中性色 */
 .btn-dropdown {
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
-    /* 使用主题hover背景色 */
-    color: var(--text-secondary, #cbd5e1);
-    /* 使用主题次要文字色 */
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    background-color: var(--bg-secondary, #f6f8fa);
+    color: var(--text-primary, #24292f);
+    border: 1px solid var(--border-color, #d0d7de);
 }
 
 /* 上传按钮 - 主操作按钮，突出显示 */
 .btn-upload {
-    background: linear-gradient(135deg, var(--accent-blue, #3b82f6) 0%, #1d4ed8 100%);
-    /* 使用主题蓝色 */
+    background: var(--accent-blue, #0969da);
     color: white;
-    border: none;
-    box-shadow: 0 2px 10px rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
-    /* 使用主题蓝色发光 */
+    border: 1px solid rgba(9, 105, 218, 0.5);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* 分享按钮 - 深蓝色 */
 .btn-share {
-    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.2);
-    /* 使用主题蓝色，半透明 */
-    color: white;
-    border: 1px solid rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
+    background-color: var(--bg-secondary, #f6f8fa);
+    color: var(--text-primary, #24292f);
+    border: 1px solid var(--border-color, #d0d7de);
 }
 
 /* 删除按钮 - 红色警告色 */
 .btn-delete {
-    background-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.8);
-    /* 使用主题红色，半透明 */
-    color: white;
-    border: 1px solid rgba(var(--accent-red-rgb, 220, 53, 69), 0.3);
+  background-color: var(--danger-bg, #ffebe9);
+  color: var(--accent-red, #cf222e);
+  border: 1px solid rgba(207, 34, 46, 0.2);
+}
+
+.btn-delete:hover {
+  background-color: var(--accent-red, #cf222e);
+  color: white;
+  border-color: var(--accent-red, #cf222e);
 }
 
 /* 头像按钮 - 圆形 */
 .btn-avatar {
-    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.1);
-    border: 2px solid rgba(var(--accent-blue-rgb, 59, 130, 246), 0.5);
-    /* 蓝色边框 */
+    background-color: var(--bg-secondary, #f6f8fa);
+    border: 1px solid var(--border-color, #d0d7de);
     border-radius: 50%;
     width: 32px;
     height: 32px;
-    color: var(--accent-blue, #3b82f6);
-    /* 蓝色图标 */
+    color: var(--text-primary, #24292f);
     padding: 0;
 }
 
-/* ====== HOVER 效果 ====== */
-
 .btn-cloud:hover {
-    background: var(--accent-blue, #3b82f6);
-    /* hover时用主题蓝色 */
-    color: white;
+    background: var(--hover-bg, #f3f4f6);
+    border-color: var(--text-muted, #8c959f);
 }
 
 .btn-dropdown:hover {
-    background-color: var(--accent-blue, #3b82f6);
-    /* hover时用主题蓝色 */
-    color: white;
-    border-color: var(--accent-blue, #3b82f6);
+    background-color: var(--hover-bg, #f3f4f6);
+    border-color: var(--text-muted, #8c959f);
 }
 
-/* 上传按钮hover - 让它亮一点 */
+/* 上传按钮 hover - 让它亮一点 */
 .btn-upload:hover {
-    background: linear-gradient(135deg, #4a94ff 0%, #2563eb 100%);
-    box-shadow: 0 4px 15px rgba(var(--accent-blue-rgb, 59, 130, 246), 0.4);
-    /* hover时阴影强一点 */
+    background: var(--accent-blue-bright, #0550ae);
+    border-color: rgba(9, 105, 218, 0.8);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 .btn-share:hover {
-    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
-    /* hover时更不透明 */
-    border-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.5);
+    background-color: var(--hover-bg, #f3f4f6);
+    border-color: var(--text-muted, #8c959f);
 }
 
 .btn-delete:hover {
-    background-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.95);
-    border-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.5);
+    background-color: var(--accent-red, #cf222e);
+    color: white;
+    border-color: var(--accent-red, #cf222e);
 }
 
 .btn-avatar:hover {
-    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.2);
-    border-color: var(--accent-blue, #3b82f6);
-    color: #60a5fa;
-    /* 亮一点的蓝 */
-}
-
-
-
-.btn-test:hover {
-    background-color: #16a34a;
-    border-color: #16a34a;
+    background-color: var(--selected-bg, #ddf4ff);
+    border-color: var(--accent-blue, #0969da);
+    color: var(--accent-blue, #0969da);
 }
 
 /* 图标统一样式 */
@@ -447,35 +406,32 @@ a:hover {
     gap: 0;
     margin-left: 16px;
     padding-left: 16px;
-    border-left: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    border-left: 1px solid var(--border-color, #30363d);
 }
 
 /* 窗口控制按钮 */
 .window-control-btn {
     width: 40px;
-    /* 减小宽度以适应更窄的顶栏 */
     height: 32px;
-    /* 减小高度 */
     border: none;
     background: transparent;
-    color: var(--text-secondary, #cbd5e1);
+    color: var(--text-secondary, #57606a);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
     font-size: 16px;
-    /* 稍微减小图标大小 */
-    border-radius: 8px;
+    border-radius: .375rem;
 }
 
 .window-control-btn:hover {
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
-    color: var(--text-primary, #f8fafc);
+    background-color: var(--hover-bg, #f3f4f6);
+    color: var(--text-primary, #24292f);
 }
 
 .window-control-btn.close-btn:hover {
-    background-color: #ef4444;
+    background-color: var(--accent-red, #cf222e);
     color: white;
 }
 

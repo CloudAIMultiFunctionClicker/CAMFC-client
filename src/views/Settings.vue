@@ -197,7 +197,7 @@ Email: admin@mc666.top
       <div v-else-if="activeNav === 'about'" class="settings-panel">
         <h3>关于</h3>
         <div class="about-info">
-          <div class="app-icon">☁️</div>
+          <Cloud :size="64" class="app-icon" />
           <h4>CAMFC Cloud</h4>
           <p class="version">版本 1.0.0</p>
           <p class="desc">云端多功能点击器客户端</p>
@@ -244,6 +244,7 @@ import { ls } from '../components/data/fileSystem.js'
 import { loadAppData, saveAppData } from '../components/data/storage.js'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { open } from '@tauri-apps/plugin-dialog'
+import { Cloud } from 'lucide-vue-next'
 
 const theme = inject('theme')
 const activeNav = ref('cpen')
@@ -652,13 +653,13 @@ onUnmounted(() => {
 .settings-page {
   display: flex;
   min-height: 100vh;
-  background-color: var(--bg-primary, #0f172a);
+  background-color: var(--bg-primary, #ffffff);
 }
 
 .settings-sidebar {
   width: 260px;
-  background-color: var(--bg-secondary, #1e293b);
-  border-right: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: var(--bg-secondary, #ffffff);
+  border-right: 1px solid var(--border-color, #d0d7de);
   padding: 24px 16px;
   flex-shrink: 0;
 }
@@ -666,7 +667,7 @@ onUnmounted(() => {
 .sidebar-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary, #f1f5f9);
+  color: var(--text-primary, #24292f);
   margin: 0 0 24px 8px;
   padding: 0 8px;
 }
@@ -685,8 +686,8 @@ onUnmounted(() => {
   padding: 12px 16px;
   background: none;
   border: none;
-  border-radius: 8px;
-  color: var(--text-secondary, #94a3b8);
+  border-radius: .375rem;
+  color: var(--text-secondary, #57606a);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -694,13 +695,14 @@ onUnmounted(() => {
 }
 
 .nav-item:hover {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-  color: var(--text-primary, #f1f5f9);
+  background-color: var(--hover-bg, #f3f4f6);
+  color: var(--text-primary, #24292f);
 }
 
 .nav-item.active {
-  background-color: var(--accent-blue, #3b82f6);
-  color: white;
+  background-color: var(--selected-bg, #ddf4ff);
+  color: var(--accent-blue, #0969da);
+  font-weight: 500;
 }
 
 .nav-item i {
@@ -713,23 +715,43 @@ onUnmounted(() => {
   flex: 1;
   padding: 32px;
   overflow-y: auto;
+  background-color: var(--bg-primary, #ffffff);
 }
 
 .settings-panel {
   width: 100%;
+  max-width: 800px;
 }
 
 .settings-panel h3 {
   font-size: 24px;
   font-weight: 600;
-  color: var(--text-primary, #f1f5f9);
+  color: var(--text-primary, #24292f);
   margin: 0 0 24px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color, #d0d7de);
 }
 
 .placeholder-text {
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, #8c959f);
   font-size: 15px;
   line-height: 1.6;
+}
+
+.label-desc {
+  font-size: 13px;
+  color: var(--text-muted, #8c959f);
+}
+
+.setting-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unit {
+  font-size: 14px;
+  color: var(--text-secondary, #57606a);
 }
 
 .setting-item {
@@ -737,18 +759,27 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background-color: var(--bg-secondary, #1e293b);
-  border-radius: 12px;
+  background-color: var(--bg-secondary, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
   margin-bottom: 12px;
-  color: var(--text-primary, #f1f5f9);
+  color: var(--text-primary, #24292f);
   font-size: 15px;
 }
 
 .setting-card {
-  background-color: var(--bg-secondary, #1e293b);
-  border-radius: 12px;
+  background-color: var(--bg-secondary, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
   padding: 20px;
   margin-bottom: 16px;
+}
+
+.setting-card h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #24292f);
+  margin: 0 0 16px 0;
 }
 
 .setting-label {
@@ -790,14 +821,13 @@ onUnmounted(() => {
   position: absolute;
   left: 0;
   bottom: 100%;
-  transform: translateY(-8px);
-  background-color: var(--bg-primary, #0f172a);
-  color: var(--text-primary, #f1f5f9);
+  background-color: var(--bg-primary, #ffffff);
+  color: var(--text-primary, #24292f);
   font-size: 12px;
   padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-radius: .375rem;
+  border: 1px solid var(--border-color, #d0d7de);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   white-space: nowrap;
   opacity: 0;
   visibility: hidden;
@@ -813,13 +843,12 @@ onUnmounted(() => {
   left: 20px;
   transform: translateX(-50%);
   border: 6px solid transparent;
-  border-top-color: var(--bg-primary, #0f172a);
+  border-top-color: var(--bg-primary, #ffffff);
 }
 
 .tooltip-wrapper:hover .tooltip-text {
   opacity: 1;
   visibility: visible;
-  transform: translateY(-4px);
 }
 
 .label-desc {
@@ -836,17 +865,38 @@ onUnmounted(() => {
 .number-input {
   width: 80px;
   padding: 8px 12px;
-  background-color: var(--bg-primary, #0f172a);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 6px;
-  color: var(--text-primary, #f1f5f9);
+  background-color: var(--input-bg, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  color: var(--text-primary, #24292f);
   font-size: 14px;
   text-align: center;
 }
 
 .number-input:focus {
   outline: none;
-  border-color: var(--accent-blue, #3b82f6);
+  border-color: var(--accent-blue, #0969da);
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+}
+
+.path-input {
+  flex: 1;
+  padding: 10px 14px;
+  background-color: var(--input-bg, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  color: var(--text-primary, #24292f);
+  font-size: 14px;
+}
+
+.path-input:focus {
+  outline: none;
+  border-color: var(--accent-blue, #0969da);
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+}
+
+.path-input::placeholder {
+  color: var(--text-muted, #8c959f);
 }
 
 .unit {
@@ -873,19 +923,20 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 6px;
   padding: 12px;
-  background-color: var(--bg-primary, #0f172a);
-  border-radius: 8px;
+  background-color: var(--bg-tertiary, #f6f8fa);
+  border-radius: .375rem;
+  border: 1px solid var(--border-color, #d0d7de);
 }
 
 .info-label {
   font-size: 12px;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, #8c959f);
   font-weight: 500;
 }
 
 .info-value {
   font-size: 15px;
-  color: var(--text-primary, #f1f5f9);
+  color: var(--text-primary, #24292f);
   font-weight: 600;
 }
 
@@ -894,22 +945,23 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   padding: 10px 12px;
-  background-color: var(--bg-primary, #0f172a);
-  border-radius: 6px;
+  background-color: var(--bg-tertiary, #f6f8fa);
+  border-radius: .375rem;
+  border: 1px solid var(--border-color, #d0d7de);
   font-size: 12px;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--text-secondary, #57606a);
 }
 
 .refresh-tip i {
   font-size: 14px;
-  color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue, #0969da);
 }
 
 .toggle-btn {
   position: relative;
   width: 48px;
   height: 26px;
-  background-color: var(--border-color, rgba(255, 255, 255, 0.2));
+  background-color: var(--border-color, #d0d7de);
   border: none;
   border-radius: 13px;
   cursor: pointer;
@@ -917,7 +969,7 @@ onUnmounted(() => {
 }
 
 .toggle-btn.active {
-  background-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue, #0969da);
 }
 
 .toggle-slider {
@@ -929,6 +981,7 @@ onUnmounted(() => {
   background-color: white;
   border-radius: 50%;
   transition: transform 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-btn.active .toggle-slider {
@@ -936,25 +989,57 @@ onUnmounted(() => {
 }
 
 .setting-value {
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, #8c959f);
   font-size: 14px;
 }
 
-.setting-value.status-online {
-  color: #22c55e;
+.behavior-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  background-color: var(--bg-tertiary, #f6f8fa);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-primary, #24292f);
+  font-size: 14px;
 }
 
-.setting-value.status-offline {
-  color: #ef4444;
+.behavior-option i {
+  font-size: 24px;
+  color: var(--text-muted, #8c959f);
+  transition: color 0.2s ease;
+}
+
+.behavior-option:hover {
+  border-color: var(--accent-blue, #0969da);
+  background-color: var(--selected-bg, #ddf4ff);
+}
+
+.behavior-option:hover i {
+  color: var(--accent-blue, #0969da);
+}
+
+.behavior-option.active {
+  border-color: var(--accent-blue, #0969da);
+  background-color: var(--selected-bg, #ddf4ff);
+}
+
+.behavior-option.active i {
+  color: var(--accent-blue, #0969da);
 }
 
 .action-btn {
   margin-top: 16px;
-  padding: 12px 24px;
-  background-color: var(--accent-blue, #3b82f6);
-  color: white;
-  border: none;
-  border-radius: 8px;
+  padding: 10px 20px;
+  background-color: var(--bg-secondary, #f6f8fa);
+  color: var(--text-primary, #24292f);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -962,31 +1047,33 @@ onUnmounted(() => {
 }
 
 .action-btn:hover {
-  background-color: #2563eb;
+  background-color: var(--hover-bg, #f3f4f6);
+  border-color: var(--text-muted, #8c959f);
 }
 
 .action-btn.secondary {
-  background-color: var(--bg-secondary, #1e293b);
-  color: var(--text-secondary, #94a3b8);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: var(--bg-secondary, #f6f8fa);
+  color: var(--text-primary, #24292f);
+  border: 1px solid var(--border-color, #d0d7de);
 }
 
-
-
 .action-btn.danger {
-  background-color: rgba(220, 53, 69, 0.2);
-  color: #f87171;
-  border: 1px solid rgba(220, 53, 69, 0.3);
+  background-color: var(--danger-bg, #ffebe9);
+  color: var(--accent-red, #cf222e);
+  border: 1px solid rgba(207, 34, 46, 0.2);
 }
 
 .action-btn.danger:hover {
-  background-color: rgba(220, 53, 69, 0.3);
+  background-color: var(--accent-red, #cf222e);
+  color: white;
+  border-color: var(--accent-red, #cf222e);
 }
 
 .action-btn.small {
   margin-top: 0;
-  padding: 8px 16px;
+  padding: 6px 14px;
   font-size: 13px;
+  border-radius: .375rem;
 }
 
 .path-control {
@@ -1001,7 +1088,7 @@ onUnmounted(() => {
   padding: 10px 14px;
   background-color: var(--bg-primary, #0f172a);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-primary, #f1f5f9);
   font-size: 14px;
 }
@@ -1043,7 +1130,7 @@ onUnmounted(() => {
   padding: 16px;
   background-color: var(--bg-primary, #0f172a);
   border: 2px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-primary, #f1f5f9);
@@ -1089,15 +1176,15 @@ onUnmounted(() => {
 .storage-bar {
   height: 8px;
   background-color: var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 4px;
+  border-radius: .375rem;
   overflow: hidden;
   margin-bottom: 8px;
 }
 
 .storage-used {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent-blue, #3b82f6), #60a5fa);
-  border-radius: 4px;
+  background: var(--accent-blue, #3178c6);
+  border-radius: .375rem;
 }
 
 .storage-text {
@@ -1109,32 +1196,28 @@ onUnmounted(() => {
 .about-info {
   text-align: center;
   padding: 32px;
-  background-color: var(--bg-secondary, #1e293b);
-  border-radius: 12px;
+  background-color: var(--bg-secondary, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
   margin-bottom: 24px;
-}
-
-.app-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
 }
 
 .about-info h4 {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary, #f1f5f9);
+  color: var(--text-primary, #24292f);
   margin: 0 0 8px 0;
 }
 
 .about-info .version {
-  color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue, #0969da);
   font-size: 14px;
   font-weight: 500;
   margin: 0 0 8px 0;
 }
 
 .about-info .desc {
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, #8c959f);
   font-size: 14px;
   margin: 0;
 }
@@ -1151,7 +1234,7 @@ onUnmounted(() => {
 .iframe-container {
   width: 100%;
   height: calc(100% - 40px);
-  border-radius: 12px;
+  border-radius: .375rem;
   overflow: hidden;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
 }
@@ -1222,15 +1305,16 @@ onUnmounted(() => {
   width: 60vw;
   max-width: 90vw;
   height: 100vh;
-  background-color: var(--bg-primary, #0f172a);
+  background-color: var(--bg-primary, #ffffff);
   box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
+  border-left: 1px solid var(--border-color, #d0d7de);
 }
 
 /* 亮色模式 */
 .faq-panel.light-mode {
-  background-color: var(--bg-primary, #f8fafc);
+  background-color: var(--bg-primary, #ffffff);
 }
 
 .faq-header {
@@ -1238,14 +1322,14 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-bottom: 1px solid var(--border-color, #d0d7de);
 }
 
 .faq-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary, #f8fafc);
+  color: var(--text-primary, #24292f);
 }
 
 .close-btn {
@@ -1258,19 +1342,13 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary, #cbd5e1);
+  color: var(--text-secondary, #57606a);
   transition: all 0.2s;
 }
 
 .close-btn:hover {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
-  color: var(--text-primary, #f8fafc);
-}
-
-/* 亮色模式下的按钮样式 */
-.faq-panel.light-mode .close-btn:hover {
-  background-color: var(--hover-bg, rgba(0, 0, 0, 0.05));
-  color: var(--text-primary, #0f172a);
+  background-color: var(--hover-bg, #f3f4f6);
+  color: var(--text-primary, #24292f);
 }
 
 .faq-body {

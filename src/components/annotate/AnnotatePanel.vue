@@ -175,7 +175,7 @@ const tools = [
 // 颜色定义 - 5 种常见颜色
 const colors = [
   { value: '#ef4444', name: '红色' },
-  { value: '#3b82f6', name: '蓝色' },
+  { value: '#3178c6', name: '蓝色' },
   { value: '#10b981', name: '绿色' },
   { value: '#f59e0b', name: '黄色' },
   { value: '#8b5cf6', name: '紫色' }
@@ -424,7 +424,7 @@ const drawText = (annotation) => {
 
 // 绘制选中框
 const drawSelectionBox = (annotation) => {
-  ctx.strokeStyle = '#3b82f6'
+  ctx.strokeStyle = '#3178c6'
   ctx.lineWidth = 1
   ctx.setLineDash([5, 5])
   
@@ -695,7 +695,7 @@ const showTextInput = (x, y) => {
   input.style.left = x + 'px'
   input.style.top = y + 'px'
   input.style.padding = '4px 8px'
-  input.style.border = '2px solid #3b82f6'
+  input.style.border = '2px solid #3178c6'
   input.style.borderRadius = '4px'
   input.style.fontSize = '14px'
   input.style.outline = 'none'
@@ -972,7 +972,7 @@ watch(() => props.imageData, () => {
   height: 40px;
   background-color: transparent;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   color: var(--text-primary, #f1f5f9);
   font-size: 20px;
   cursor: pointer;
@@ -981,12 +981,12 @@ watch(() => props.imageData, () => {
 
 .tool-btn:hover {
   background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-  border-color: var(--accent-blue, #3b82f6);
+  border-color: var(--accent-blue, #3178c6);
 }
 
 .tool-btn.active {
-  background-color: var(--accent-blue, #3b82f6);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
   color: #fff;
 }
 
@@ -1032,7 +1032,7 @@ watch(() => props.imageData, () => {
 .stroke-btn {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: .375rem;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   background-color: transparent;
   cursor: pointer;
@@ -1047,8 +1047,8 @@ watch(() => props.imageData, () => {
 }
 
 .stroke-btn.active {
-  border-color: var(--accent-blue, #3b82f6);
-  background-color: rgba(59, 130, 246, 0.1);
+  border-color: var(--accent-blue, #3178c6);
+  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
 }
 
 .stroke-preview {
@@ -1063,7 +1063,7 @@ watch(() => props.imageData, () => {
   height: 36px;
   background-color: var(--bg-primary, #0f172a);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   color: var(--text-primary, #f1f5f9);
   font-size: 18px;
   cursor: pointer;
@@ -1095,13 +1095,13 @@ watch(() => props.imageData, () => {
 }
 
 .action-btn.primary-btn {
-  background-color: var(--accent-blue, #3b82f6);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
   color: #fff;
 }
 
 .action-btn.primary-btn:hover {
-  background-color: #2563eb;
+  background-color: var(--accent-blue-bright, #1f6feb);
 }
 
 .action-btn.cancel-btn {

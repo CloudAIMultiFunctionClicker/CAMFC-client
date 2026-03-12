@@ -496,7 +496,7 @@ onUnmounted(() => {
                   <i class="ri-close-line"></i>
                 </button>
                 <button
-                  class="action-btn"
+                  class="action-btn delete-btn"
                   @click="deleteHistoryItem(item, 'upload')"
                   v-if="item.status === 'completed' || item.status === 'failed'"
                   title="删除"
@@ -590,7 +590,7 @@ onUnmounted(() => {
                   <i class="ri-close-line"></i>
                 </button>
                 <button
-                  class="action-btn"
+                  class="action-btn delete-btn"
                   @click="deleteHistoryItem(item, 'download')"
                   v-if="item.status === 'completed' || item.status === 'failed'"
                   title="删除"
@@ -660,7 +660,7 @@ onUnmounted(() => {
   color: var(--text-secondary);
   font-size: 15px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: .375rem;
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -679,7 +679,7 @@ onUnmounted(() => {
 .tab-count {
   background: rgba(255,255,255,0.2);
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: .375rem;
   font-size: 12px;
 }
 
@@ -690,7 +690,7 @@ onUnmounted(() => {
 
 .transfer-list {
   background: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   border: 1px solid var(--border-color);
   overflow: hidden;
 }
@@ -761,14 +761,14 @@ onUnmounted(() => {
 .progress-bar {
   height: 6px;
   background: var(--bg-primary);
-  border-radius: 3px;
+  border-radius: .375rem;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   background: var(--accent-blue);
-  border-radius: 3px;
+  border-radius: .375rem;
   transition: width 0.3s;
 }
 
@@ -786,15 +786,15 @@ onUnmounted(() => {
 .status-badge {
   display: inline-block;
   padding: 4px 10px;
-  border-radius: 4px;
+  border-radius: .375rem;
   font-size: 12px;
   font-weight: 500;
   width: fit-content;
 }
 
 .status-uploading, .status-downloading {
-  background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  background: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.2);
+  color: var(--accent-blue, #3178c6);
 }
 
 .status-paused {
@@ -832,7 +832,7 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 6px;
+  border-radius: .375rem;
   background: var(--bg-primary);
   color: var(--text-secondary);
   cursor: pointer;
@@ -856,6 +856,18 @@ onUnmounted(() => {
   background: #f59e0b;
 }
 
+.action-btn.delete-btn {
+  background-color: #212830;
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.4);
+}
+
+.action-btn.delete-btn:hover {
+  background-color: #f85149;
+  color: white;
+  border-color: #f85149;
+}
+
 .list-footer {
   padding: 12px 20px;
   border-top: 1px solid var(--border-color);
@@ -867,7 +879,7 @@ onUnmounted(() => {
   padding: 8px 16px;
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;

@@ -185,6 +185,9 @@ async function scanDevices() {
     
     if (cpenList.length === 0) {
       showToast('未发现 Cpen 设备')
+    } else if (cpenList.length === 1) {
+      showToast('发现 1 个 Cpen 设备，自动连接中...')
+      await selectDevice(cpenList[0])
     } else {
       showToast(`发现 ${cpenList.length} 个 Cpen 设备`)
     }
@@ -332,13 +335,13 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 40px;
-  background: var(--bg-secondary);
-  border-right: 1px solid var(--border-color);
+  background: var(--bg-secondary, #ffffff);
+  border-right: 1px solid var(--border-color, #d0d7de);
 }
 
 .left-content {
   text-align: center;
-  color: var(--text-primary);
+  color: var(--text-primary, #24292f);
   margin-top: -80px;
 }
 
@@ -346,24 +349,25 @@ onMounted(async () => {
   font-size: 42px;
   font-weight: 700;
   margin-bottom: 10px;
-  color: var(--text-primary);
+  color: var(--text-primary, #24292f);
 }
 
 .app-subtitle {
   font-size: 18px;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #57606a);
   margin-bottom: 40px;
 }
 
-.connection-status {
+.connection-status.status-bar {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
   margin-bottom: 30px;
   padding: 12px 24px;
-  background: var(--bg-primary);
-  border-radius: 25px;
+  background: var(--bg-tertiary, #f6f8fa);
+  border-radius: .375rem;
+  border: 1px solid var(--border-color, #d0d7de);
 }
 
 .status-indicator {
@@ -374,19 +378,19 @@ onMounted(async () => {
 }
 
 .status-indicator.connected {
-  background: #4ade80;
+  background: var(--accent-green, #2da44e);
 }
 
 .status-indicator.scanning {
-  background: #fbbf24;
+  background: var(--accent-yellow, #9a6700);
 }
 
 .status-indicator.error {
-  background: #f87171;
+  background: var(--accent-red, #cf222e);
 }
 
 .status-indicator.disconnected {
-  background: #9ca3af;
+  background: var(--text-muted, #8c959f);
 }
 
 @keyframes pulse {
@@ -397,7 +401,7 @@ onMounted(async () => {
 .status-text {
   font-size: 16px;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #57606a);
 }
 
 .connected-device {
@@ -406,36 +410,37 @@ onMounted(async () => {
   justify-content: center;
   gap: 10px;
   padding: 15px 25px;
-  background: rgba(16, 185, 129, 0.1);
-  border-radius: 12px;
+  background: rgba(45, 164, 78, 0.1);
+  border-radius: .375rem;
   margin-bottom: 30px;
-  border: 1px solid rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(45, 164, 78, 0.3);
 }
 
 .connected-device i {
   font-size: 24px;
-  color: #10b981;
+  color: var(--accent-green, #2da44e);
 }
 
 .connected-device span {
-  color: #10b981;
+  color: var(--accent-green, #2da44e);
   font-weight: 500;
 }
 
 .skip-btn {
   padding: 12px 30px;
-  background: var(--bg-primary);
-  border: 2px solid var(--border-color);
-  color: var(--text-secondary);
-  border-radius: 25px;
+  background: var(--bg-tertiary, #f6f8fa);
+  border: 1px solid var(--border-color, #d0d7de);
+  color: var(--text-secondary, #57606a);
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
 }
 
 .skip-btn:hover {
-  background: var(--hover-bg);
-  border-color: var(--text-muted);
+  background: var(--hover-bg, #f3f4f6);
+  border-color: var(--text-muted, #8c959f);
+  color: var(--text-primary, #24292f);
 }
 
 /* 右半部分 */
@@ -445,9 +450,9 @@ onMounted(async () => {
   flex-direction: column;
   padding: 30px;
   margin: 20px;
-  background: var(--bg-primary);
-  border-radius: 16px;
-  border: 1px solid var(--border-color);
+  background: var(--bg-primary, #ffffff);
+  border-radius: .375rem;
+  border: 1px solid var(--border-color, #d0d7de);
   overflow-y: auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
@@ -458,28 +463,19 @@ onMounted(async () => {
   align-items: center;
   margin-bottom: 0px;
   padding-bottom: 0px;
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color, #d0d7de);
 }
 
 .scanning-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--text-muted);
+  color: var(--text-muted, #8c959f);
   font-size: 14px;
 }
 
 .scanning-indicator i {
-  color: var(--accent-blue);
-}
-
-.right-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
-  border-bottom: 2px solid var(--border-color);
+  color: var(--accent-blue, #0969da);
 }
 
 .panel-title {
@@ -488,11 +484,11 @@ onMounted(async () => {
   gap: 10px;
   font-size: 22px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-primary, #24292f);
 }
 
 .panel-title i {
-  color: var(--accent-blue);
+  color: var(--accent-blue, #0969da);
   font-size: 26px;
 }
 
@@ -501,8 +497,8 @@ onMounted(async () => {
   height: 40px;
   border-radius: 50%;
   border: none;
-  background: var(--bg-secondary);
-  color: var(--text-muted);
+  background: var(--bg-tertiary, #f6f8fa);
+  color: var(--text-muted, #8c959f);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -511,8 +507,8 @@ onMounted(async () => {
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: var(--hover-bg);
-  color: var(--accent-blue);
+  background: var(--hover-bg, #f3f4f6);
+  color: var(--accent-blue, #0969da);
 }
 
 .refresh-btn.spinning i {
@@ -547,32 +543,76 @@ onMounted(async () => {
 
 /* 设备列表 */
 .device-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 16px 0;
 }
 
 .device-card {
+  background: var(--bg-secondary, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  padding: 16px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 16px 20px;
-  background: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s ease;
+}
+
+.device-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--accent-blue, #0969da);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .device-card:hover {
-  border-color: var(--accent-blue);
-  box-shadow: 0 4px 12px rgba(var(--accent-blue-rgb), 0.15);
+  border-color: var(--accent-blue, #0969da);
+  box-shadow: 0 4px 12px rgba(9, 105, 218, 0.15);
   transform: translateY(-2px);
+}
+
+.device-card:hover::before {
+  opacity: 1;
 }
 
 .device-card.connecting {
   opacity: 0.7;
   pointer-events: none;
+}
+
+.device-card.selected {
+  background: var(--selected-bg, #ddf4ff);
+  border-color: var(--accent-blue, #0969da);
+}
+
+.device-card.selected::before {
+  opacity: 1;
+}
+
+.device-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  color: var(--text-muted, #8c959f);
+  transition: all 0.3s ease;
+}
+
+.device-card:hover .device-icon {
+  color: var(--accent-blue, #0969da);
+  transform: scale(1.1);
+}
+
+.device-card.selected .device-icon {
+  color: var(--accent-blue, #0969da);
 }
 
 .device-info {
@@ -582,24 +622,58 @@ onMounted(async () => {
   gap: 4px;
 }
 
+.device-info h3 {
+  margin: 0 0 6px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #24292f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.device-info p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted, #8c959f);
+}
+
 .device-name {
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: var(--text-primary, #24292f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .device-address {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-muted, #8c959f);
 }
 
 .device-action {
   font-size: 20px;
-  color: var(--text-muted);
+  color: var(--text-muted, #8c959f);
+  transition: all 0.3s ease;
 }
 
 .device-card:hover .device-action {
-  color: var(--accent-blue);
+  color: var(--accent-blue, #0969da);
+  transform: translateX(4px);
+}
+
+.empty-message {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted, #8c959f);
+  font-size: 15px;
+}
+
+.empty-message i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
 }
 
 .spinning {
@@ -633,7 +707,7 @@ onMounted(async () => {
   background: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
   transition: background 0.3s ease;
@@ -661,7 +735,7 @@ onMounted(async () => {
 .countdown-modal {
   background: var(--bg-secondary);
   padding: 40px;
-  border-radius: 20px;
+  border-radius: .375rem;
   text-align: center;
   min-width: 300px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -699,15 +773,15 @@ onMounted(async () => {
   width: 100%;
   height: 6px;
   background: var(--bg-primary);
-  border-radius: 3px;
+  border-radius: .375rem;
   overflow: hidden;
   margin-bottom: 20px;
 }
 
 .countdown-progress {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent-blue), #8b5cf6);
-  border-radius: 3px;
+  background: var(--accent-blue, #3178c6);
+  border-radius: .375rem;
   transition: width 0.3s ease;
 }
 
@@ -716,14 +790,13 @@ onMounted(async () => {
   background: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 25px;
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .skip-countdown-btn:hover {
-  transform: scale(1.05);
   filter: brightness(1.1);
 }
 
@@ -738,7 +811,7 @@ onMounted(async () => {
   padding: 10px 16px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 25px;
+  border-radius: .375rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: all 0.3s ease;
@@ -747,7 +820,6 @@ onMounted(async () => {
 
 .help-corner:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transform: translateY(-2px);
 }
 
 .help-icon {
@@ -778,7 +850,7 @@ onMounted(async () => {
   padding: 12px 16px;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 13px;
   line-height: 1.6;
   white-space: nowrap;

@@ -312,7 +312,7 @@ const showDevelopingToast = () => {
   width: 100%;
   height: 48px;
   flex-shrink: 0;
-  background: var(--bg-header, linear-gradient(135deg, #0f172a 0%, #1e293b 100%));
+  background: var(--bg-header, #161b22);
   border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   position: relative;
   z-index: 1000;
@@ -366,7 +366,7 @@ const showDevelopingToast = () => {
   justify-content: center;
   transition: all 0.2s ease;
   font-size: 16px;
-  border-radius: 6px;
+  border-radius: .375rem;
   -webkit-app-region: no-drag;
 }
 
@@ -456,7 +456,7 @@ const showDevelopingToast = () => {
   position: absolute;
   width: 20px;
   height: 20px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, rgba(59, 130, 246, 0.15) 40%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--accent-blue-rgb, 49, 120, 198), 0.3) 0%, rgba(var(--accent-blue-rgb, 49, 120, 198), 0.15) 40%, transparent 70%);
   border-radius: 50%;
   transform: translate(-50%, -50%) scale(0);
   animation: closeRippleExpand 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
@@ -491,8 +491,8 @@ const showDevelopingToast = () => {
   right: 24px;
   width: 320px;
   height: 280px;
-  border-radius: 12px;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.12) 0%, transparent 70%);
+  border-radius: .375rem;
+  background: radial-gradient(circle, rgba(var(--accent-blue-rgb, 49, 120, 198), 0.12) 0%, transparent 70%);
   animation: rippleExpand 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   pointer-events: none;
 }
@@ -513,7 +513,7 @@ const showDevelopingToast = () => {
   top: 56px;
   right: 24px;
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   width: 320px;
   border: 1px solid var(--border-color);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -577,7 +577,7 @@ const showDevelopingToast = () => {
   padding: 16px;
   background-color: var(--bg-primary);
   border: 2px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: .375rem;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
@@ -586,7 +586,6 @@ const showDevelopingToast = () => {
 .option-btn:hover {
   border-color: var(--accent-blue);
   background-color: var(--hover-bg);
-  transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -598,7 +597,7 @@ const showDevelopingToast = () => {
   align-items: center;
   justify-content: center;
   background-color: var(--bg-secondary);
-  border-radius: 10px;
+  border-radius: .375rem;
   color: var(--accent-blue);
 }
 
@@ -643,7 +642,7 @@ const showDevelopingToast = () => {
   color: var(--text-primary);
   user-select: none;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: .375rem;
   transition: background-color 0.2s ease;
 }
 
@@ -657,7 +656,7 @@ const showDevelopingToast = () => {
   width: 18px;
   height: 18px;
   border: 2px solid var(--border-color);
-  border-radius: 4px;
+  border-radius: .375rem;
   background-color: var(--bg-primary);
   cursor: pointer;
   position: relative;
@@ -704,7 +703,7 @@ const showDevelopingToast = () => {
 .cancel-btn,
 .confirm-btn {
   padding: 10px 20px;
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

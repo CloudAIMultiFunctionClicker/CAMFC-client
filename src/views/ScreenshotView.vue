@@ -187,7 +187,7 @@ const processScreenshotData = (result) => {
 const setupScreenshotListener = async () => {
   // 先设置监听器，确保在组件挂载时就能接收事件
   unlistenScreenshotData = await listen('screenshot-data', (event) => {
-    console.log('📸 收到截图数据事件')
+    console.log('收到截图数据事件')
     const result = event.payload
     if (result.success) {
       processScreenshotData(result)
@@ -197,7 +197,7 @@ const setupScreenshotListener = async () => {
     }
   })
   
-  console.log('✅ 截图监听器已设置完成')
+  console.log('截图监听器已设置完成')
 }
 
 const captureScreenshot = async () => {
@@ -702,7 +702,7 @@ onUnmounted(() => {
   color: var(--text-secondary, #94a3b8);
   font-size: 14px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: .375rem;
   transition: all 0.2s;
 }
 
@@ -724,7 +724,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
@@ -735,12 +735,12 @@ onUnmounted(() => {
 }
 
 .action-btn.primary {
-  background-color: var(--accent-blue, #3b82f6);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
 }
 
 .action-btn.primary:hover {
-  background-color: #2563eb;
+  background-color: var(--accent-blue-bright, #1f6feb);
 }
 
 .screenshot-content {
@@ -783,7 +783,7 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border: 3px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-top-color: var(--accent-blue, #3b82f6);
+  border-top-color: var(--accent-blue, #3178c6);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
@@ -822,7 +822,7 @@ onUnmounted(() => {
 .image-wrapper {
   flex: 1;
   background-color: var(--bg-secondary, #1e293b);
-  border-radius: 12px;
+  border-radius: .375rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -847,7 +847,7 @@ onUnmounted(() => {
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: .375rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   cursor: grab;
   user-select: none;
@@ -876,7 +876,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 18px;
   cursor: pointer;
   transition: all 0.2s;
@@ -907,7 +907,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   font-weight: 500;
   min-width: 60px;
@@ -967,7 +967,7 @@ onUnmounted(() => {
   padding: 6px 12px;
   background-color: transparent;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-primary, #f1f5f9);
   font-size: 14px;
   cursor: pointer;
@@ -991,7 +991,7 @@ onUnmounted(() => {
   padding: 8px 16px;
   background-color: transparent;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-primary, #f1f5f9);
   font-size: 14px;
   cursor: pointer;
@@ -1003,12 +1003,12 @@ onUnmounted(() => {
 }
 
 .action-btn.primary {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
 }
 
 .action-btn.primary:hover {
-  background-color: #2563eb;
+  background-color: var(--accent-blue-bright, #1f6feb);
 }
 
 .action-btn i {
@@ -1046,8 +1046,8 @@ onUnmounted(() => {
 /* 裁切选框样式 */
 .crop-selection {
   position: absolute;
-  border: 2px solid #3b82f6;
-  background-color: rgba(59, 130, 246, 0.1);
+  border: 2px solid var(--accent-blue, #3178c6);
+  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
   cursor: move;
   z-index: 10;
   pointer-events: none;
@@ -1076,7 +1076,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 18px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1140,7 +1140,7 @@ onUnmounted(() => {
   background-color: rgba(0, 0, 0, 0.8);
   color: #fff;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: .375rem;
   font-size: 12px;
   white-space: nowrap;
   pointer-events: none;

@@ -109,7 +109,7 @@ function goToContact() {
 
 .placeholder-content {
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   padding: 40px 30px;
   border: 1px solid var(--border-color);
   margin-bottom: 30px;
@@ -142,7 +142,7 @@ function goToContact() {
   margin: 25px 0;
   padding: 20px;
   background-color: rgba(var(--accent-blue-rgb), 0.1);
-  border-radius: 8px;
+  border-radius: .375rem;
   border: 1px solid rgba(var(--accent-blue-rgb), 0.2);
 }
 
@@ -164,7 +164,7 @@ function goToContact() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -174,7 +174,6 @@ function goToContact() {
   }
   
   &:active {
-    transform: translateY(1px);
   }
 }
 
@@ -183,7 +182,7 @@ function goToContact() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -194,7 +193,6 @@ function goToContact() {
   }
   
   &:active {
-    transform: translateY(1px);
   }
 }
 

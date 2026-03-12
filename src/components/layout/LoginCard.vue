@@ -22,16 +22,16 @@ Email: admin@mc666.top
     }
     
     .card-container {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 12px 16px;
-        background: var(--bg-secondary);
-        border-bottom: 1px solid var(--border-color);
-        margin-bottom: 16px;
-        border-radius: 8px;
-        margin-top: -64px; /* 偏上64px */
-    }
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 16px;
+    background: var(--bg-secondary, #ffffff);
+    border-bottom: 1px solid var(--border-color, #d0d7de);
+    margin-bottom: 16px;
+    border-radius: .375rem;
+    margin-top: -64px; /* 偏上 64px */
+}
 </style>
 
 <script setup>

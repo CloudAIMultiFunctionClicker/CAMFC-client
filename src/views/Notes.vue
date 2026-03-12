@@ -55,7 +55,7 @@ Email: admin@mc666.top
       </div>
       
       <div v-else-if="notes.length === 0" class="empty-state">
-        <div class="empty-icon">📝</div>
+        <FileText :size="48" class="empty-icon" />
         <p class="empty-message">还没有笔记</p>
         <p class="empty-desc">点击上方按钮创建您的第一个笔记</p>
       </div>
@@ -324,6 +324,7 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl } from '../config/backend.js'
+import { FileText } from 'lucide-vue-next'
 
 const timeOut = 3000
 
@@ -805,7 +806,7 @@ function importNotes() {
 
 .page-title-icon {
   font-size: 28px;
-  color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue, #3178c6);
 }
 
 .add-btn {
@@ -816,15 +817,14 @@ function importNotes() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .add-btn:hover {
-  background-color: #4a8bd6;
-  transform: translateY(-1px);
+  background-color: var(--accent-blue-bright, #1f6feb);
 }
 
 .add-btn i {
@@ -844,7 +844,7 @@ function importNotes() {
   background-color: var(--bg-secondary);
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
@@ -870,7 +870,7 @@ function importNotes() {
   margin-top: 8px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: .375rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   min-width: 150px;
   z-index: 100;
@@ -916,7 +916,7 @@ function importNotes() {
   text-align: center;
   padding: 80px 20px;
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   border: 1px solid var(--border-color);
 }
 
@@ -939,7 +939,7 @@ function importNotes() {
   text-align: center;
   padding: 80px 20px;
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   border: 1px solid var(--border-color);
 }
 
@@ -962,7 +962,7 @@ function importNotes() {
   width: 40px;
   height: 40px;
   border: 3px solid var(--border-color);
-  border-top-color: var(--accent-blue, #3b82f6);
+  border-top-color: var(--accent-blue, #3178c6);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto;
@@ -991,7 +991,7 @@ function importNotes() {
   height: 36px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: .375rem;
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
@@ -999,7 +999,7 @@ function importNotes() {
 
 .page-btn:hover:not(:disabled) {
   background-color: var(--hover-bg);
-  border-color: var(--accent-blue, #3b82f6);
+  border-color: var(--accent-blue, #3178c6);
 }
 
 .page-btn:disabled {
@@ -1022,7 +1022,7 @@ function importNotes() {
   padding: 0 10px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: .375rem;
   color: var(--text-primary);
   font-size: 14px;
   cursor: pointer;
@@ -1034,8 +1034,8 @@ function importNotes() {
 }
 
 .page-num.active {
-  background-color: var(--accent-blue, #3b82f6);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
   color: white;
 }
 
@@ -1048,7 +1048,7 @@ function importNotes() {
 .note-card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: .375rem;
   padding: 20px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1056,7 +1056,6 @@ function importNotes() {
 
 .note-card:hover {
   border-color: var(--accent-blue);
-  transform: translateY(-2px);
 }
 
 .note-card.active {
@@ -1092,7 +1091,7 @@ function importNotes() {
   padding: 6px 10px;
   background-color: var(--bg-primary);
   border: 1px solid var(--accent-blue);
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-primary);
   outline: none;
   box-sizing: border-box;
@@ -1157,7 +1156,7 @@ function importNotes() {
 
 .note-modal-content {
   background-color: var(--bg-secondary);
-  border-radius: 16px;
+  border-radius: .375rem;
   width: 90%;
   max-width: 900px;
   max-height: 85vh;
@@ -1255,7 +1254,7 @@ function importNotes() {
   cursor: pointer;
   font-size: 20px;
   padding: 4px;
-  border-radius: 4px;
+  border-radius: .375rem;
   transition: all 0.2s;
 }
 
@@ -1276,13 +1275,13 @@ function importNotes() {
   cursor: pointer;
   font-size: 18px;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: .375rem;
   transition: all 0.2s;
 }
 
 .edit-btn:hover {
-  color: var(--accent-blue, #3b82f6);
-  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--accent-blue, #3178c6);
+  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
 }
 
 .save-btn {
@@ -1292,7 +1291,7 @@ function importNotes() {
   cursor: pointer;
   font-size: 18px;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: .375rem;
   transition: all 0.2s;
 }
 
@@ -1320,7 +1319,7 @@ function importNotes() {
 .preview-text :deep(code) {
   background-color: var(--bg-primary);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: .375rem;
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 14px;
 }
@@ -1336,7 +1335,7 @@ function importNotes() {
 
 .preview-text :deep(.markdown-image) {
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: .375rem;
   margin: 12px 0;
 }
 
@@ -1387,7 +1386,7 @@ function importNotes() {
   padding: 8px 12px;
   background-color: var(--bg-secondary, #1e293b);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 10px;
+  border-radius: .375rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   z-index: 10;
 }
@@ -1400,7 +1399,7 @@ function importNotes() {
   height: 32px;
   background: none;
   border: none;
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-secondary, #94a3b8);
   font-size: 16px;
   cursor: pointer;
@@ -1442,7 +1441,7 @@ function importNotes() {
   color: var(--text-primary, #f8fafc);
   font-size: 12px;
   white-space: nowrap;
-  border-radius: 6px;
+  border-radius: .375rem;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   opacity: 0;
@@ -1469,7 +1468,7 @@ function importNotes() {
   padding-top: 4px;
   border-top: 1px dashed var(--border-color, rgba(255, 255, 255, 0.2));
   font-family: 'Monaco', 'Menlo', monospace;
-  color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue, #3178c6);
   font-size: 11px;
 }
 
@@ -1506,7 +1505,7 @@ function importNotes() {
 
 .modal-content {
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   width: 90%;
   max-width: 500px;
   border: 1px solid var(--border-color);
@@ -1542,7 +1541,7 @@ function importNotes() {
   padding: 14px 16px;
   background: var(--bg-primary, #0f172a);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 10px;
+  border-radius: .375rem;
   color: var(--text-primary, #f8fafc);
   font-size: 15px;
   outline: none;
@@ -1555,8 +1554,8 @@ function importNotes() {
 }
 
 .input-wrapper .title-input:focus {
-  border-color: var(--accent-blue, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: var(--accent-blue, #3178c6);
+  box-shadow: 0 0 0 3px rgba(var(--accent-blue-rgb, 49, 120, 198), 0.2);
 }
 
 .modal-footer {
@@ -1572,7 +1571,7 @@ function importNotes() {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: .375rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1586,7 +1585,7 @@ function importNotes() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1600,7 +1599,7 @@ function importNotes() {
   background-color: #ef4444;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1628,7 +1627,7 @@ function importNotes() {
   color: var(--text-muted);
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: .375rem;
   font-size: 16px;
   transition: all 0.2s;
 }
@@ -1640,7 +1639,7 @@ function importNotes() {
 
 .more-menu-content {
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   width: 280px;
   border: 1px solid var(--border-color);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
@@ -1672,7 +1671,7 @@ function importNotes() {
   margin-bottom: 4px;
   background-color: var(--bg-primary);
   border: 1px solid var(--accent-blue);
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-primary);
   outline: none;
   box-sizing: border-box;
@@ -1701,7 +1700,7 @@ function importNotes() {
   padding: 12px 16px;
   background: none;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   color: var(--text-primary);
   cursor: pointer;
   font-size: 14px;

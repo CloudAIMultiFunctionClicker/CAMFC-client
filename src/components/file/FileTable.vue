@@ -296,7 +296,7 @@ const handleFileDoubleClick = async (item) => {
   
   // 如果是文件，下载并打开
   if (isFile && !loading) {
-    console.log('✓✓✓ 双击文件，开始下载并打开:', item.name)
+    console.log('开始下载并打开文件:', item.name)
     
     try {
       // 显示下载提示
@@ -316,7 +316,7 @@ const handleFileDoubleClick = async (item) => {
           console.log('准备打开文件:', result)
           // 打开文件
           await openFile(result)
-          console.log('✓ 文件已打开:', result)
+          console.log('文件已打开:', result)
         } catch (openError) {
           console.error('打开文件失败:', openError)
           showToast(`打开文件失败：${openError.message}`, '#ef4444')
@@ -328,7 +328,7 @@ const handleFileDoubleClick = async (item) => {
       // 错误提示已在 downloadFile 中显示
     }
   } else {
-    console.log('✗ 不是文件或正在加载中，isFile:', isFile, 'loading:', loading.value)
+    console.log('不是文件或正在加载中, isFile:', isFile, 'loading:', loading.value)
   }
 }
 
@@ -993,19 +993,19 @@ const isFileSelected = (itemPath) => {
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary, #ffffff);
+  border-bottom: 1px solid var(--border-color, #d0d7de);
   margin-bottom: 16px;
-  border-radius: 8px;
-  flex-shrink: 0; /* 防止被压缩 */
+  border-radius: .375rem;
+  flex-shrink: 0;
 }
 
 .nav-btn {
-  background: var(--accent-blue);
+  background: var(--accent-blue, #0969da);
   color: white;
   border: none;
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: .375rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1019,23 +1019,25 @@ const isFileSelected = (itemPath) => {
 }
 
 .nav-btn:not(:disabled):hover {
-  opacity: 0.9;
+  background: var(--accent-blue-bright, #0550ae);
 }
 
 .current-path {
-  color: var(--text-secondary);
+  color: var(--text-secondary, #57606a);
   font-size: 14px;
   flex: 1;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  /* 添加悬停效果，让用户知道可以点击 */
   transition: color 0.2s ease;
+  padding: 6px 12px;
+  border-radius: .375rem;
 }
 
 .current-path:hover {
-  color: var(--accent-blue);
+  background-color: var(--hover-bg, #f3f4f6);
+  color: var(--accent-blue, #0969da);
 }
 
 .edit-icon {
@@ -1059,18 +1061,18 @@ const isFileSelected = (itemPath) => {
 .path-input {
   flex: 1;
   padding: 6px 12px;
-  border: 1px solid var(--accent-blue);
-  border-radius: 4px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  background: var(--input-bg, #ffffff);
+  color: var(--text-primary, #24292f);
   font-size: 14px;
   outline: none;
   transition: border-color 0.2s ease;
 }
 
 .path-input:focus {
-  border-color: var(--accent-blue);
-  box-shadow: 0 0 0 2px rgba(var(--accent-blue-rgb), 0.2);
+  border-color: var(--accent-blue, #0969da);
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
 }
 
 .path-confirm-btn,
@@ -1078,7 +1080,7 @@ const isFileSelected = (itemPath) => {
   background: none;
   border: none;
   padding: 6px;
-  border-radius: 4px;
+  border-radius: .375rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1087,19 +1089,19 @@ const isFileSelected = (itemPath) => {
 }
 
 .path-confirm-btn {
-  color: var(--accent-blue);
+  color: var(--accent-blue, #0969da);
 }
 
 .path-confirm-btn:hover {
-  background: rgba(var(--accent-blue-rgb), 0.1);
+  background: var(--selected-bg, #ddf4ff);
 }
 
 .path-cancel-btn {
-  color: var(--text-muted);
+  color: var(--text-muted, #8c959f);
 }
 
 .path-cancel-btn:hover {
-  background: rgba(var(--text-muted), 0.1);
+  background: var(--hover-bg, #f3f4f6);
 }
 
 .spin {
@@ -1134,7 +1136,7 @@ const isFileSelected = (itemPath) => {
   color: white;
   border: none;
   padding: 6px 12px;
-  border-radius: 4px;
+  border-radius: .375rem;
   cursor: pointer;
 }
 
@@ -1142,21 +1144,21 @@ const isFileSelected = (itemPath) => {
 .file-table {
   flex: 1;
   overflow-y: auto;
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  /* 给整个表格添加淡入淡出效果，解决内容切换时的闪烁 */
+  background: var(--bg-secondary, #ffffff);
+  border-radius: .375rem;
+  border: 1px solid var(--border-color, #d0d7de);
   transition: opacity 0.3s ease;
-  min-height: 0; /* 关键：允许 flex 子项缩小到内容以下 */
+  min-height: 0;
 }
 
 .table-header {
   display: grid;
   grid-template-columns: 2fr 0.8fr 0.8fr 1.2fr;
   padding: 10px 16px;
-  background: var(--bg-sidebar);
-  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-tertiary, #f6f8fa);
+  border-bottom: 1px solid var(--border-color, #d0d7de);
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-secondary, #57606a);
   position: sticky;
   top: 0;
   z-index: 1;
@@ -1182,15 +1184,14 @@ const isFileSelected = (itemPath) => {
   display: grid;
   grid-template-columns: 2fr 0.8fr 0.8fr 1.2fr;
   padding: 10px 16px;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color, #d0d7de);
   align-items: center;
   cursor: default;
-  /* 给行添加背景色变化的渐变效果，让悬停更平滑 */
   transition: background-color 0.2s ease;
 }
 
 .table-row:hover {
-  background: var(--hover-bg);
+  background: var(--hover-bg, #f3f4f6);
 }
 
 .table-row.is-dir {
@@ -1199,12 +1200,12 @@ const isFileSelected = (itemPath) => {
 
 /* 选中状态 - 给选中的行添加明显的背景色 */
 .table-row.selected {
-  background: rgba(var(--accent-blue-rgb), 0.15) !important;
-  border-left: 3px solid var(--accent-blue);
+  background: var(--selected-bg, #ddf4ff) !important;
+  border-left: 3px solid var(--accent-blue, #0969da);
 }
 
 .table-row.selected:hover {
-  background: rgba(var(--accent-blue-rgb), 0.25) !important;
+  background: rgba(221, 244, 255, 0.6) !important;
 }
 
 .cell {
@@ -1244,18 +1245,18 @@ const isFileSelected = (itemPath) => {
 /* 类型徽章 */
 .type-badge {
   padding: 3px 8px;
-  border-radius: 12px;
+  border-radius: .375rem;
   font-size: 11px;
 }
 
 .dir-badge {
-  background: rgba(var(--accent-blue-rgb), 0.2);
-  color: var(--accent-blue);
+  background: rgba(9, 105, 218, 0.1);
+  color: var(--accent-blue, #0969da);
 }
 
 .file-badge {
-  background: rgba(var(--text-muted), 0.2);
-  color: var(--text-muted);
+  background: rgba(140, 149, 159, 0.1);
+  color: var(--text-muted, #8c959f);
 }
 
 /* 空状态 - 添加淡入动画 */
@@ -1265,9 +1266,8 @@ const isFileSelected = (itemPath) => {
   align-items: center;
   justify-content: center;
   padding: 60px 20px;
-  color: var(--text-muted);
+  color: var(--text-muted, #8c959f);
   text-align: center;
-  /* 空状态出现时的淡入效果 */
   animation: fadeIn 0.5s ease;
 }
 
@@ -1282,12 +1282,13 @@ const isFileSelected = (itemPath) => {
   display: flex;
   justify-content: space-between;
   padding: 12px 16px;
-  color: var(--text-muted);
+  color: var(--text-muted, #8c959f);
   font-size: 14px;
   margin-top: 16px;
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  flex-shrink: 0; /* 防止被压缩 */
+  background: var(--bg-secondary, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  flex-shrink: 0;
 }
 
 /* 操作按钮区域 */
@@ -1306,7 +1307,7 @@ const isFileSelected = (itemPath) => {
 .btn-new-folder,
 .btn-delete {
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   padding: 8px 16px;
   font-size: 14px;
   cursor: pointer;
@@ -1322,67 +1323,68 @@ const isFileSelected = (itemPath) => {
 
 /* 刷新按钮 - 中性色 */
 .btn-refresh {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
-  color: var(--text-secondary, #cbd5e1);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: var(--bg-secondary, #f6f8fa);
+  color: var(--text-primary, #24292f);
+  border: 1px solid var(--border-color, #d0d7de);
 }
 
 /* 上传按钮 - 主操作按钮 */
 .btn-upload {
-  background: linear-gradient(135deg, var(--accent-blue, #3b82f6) 0%, #1d4ed8 100%);
+  background: var(--accent-blue, #0969da);
   color: white;
-  border: none;
-  box-shadow: 0 2px 10px rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
+  border: 1px solid rgba(9, 105, 218, 0.5);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 /* 下载按钮 - 深蓝色 */
 .btn-download {
-  background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.2);
-  color: var(--text-secondary);
-  border: 1px solid rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
+  background-color: var(--bg-secondary, #f6f8fa);
+  color: var(--text-primary, #24292f);
+  border: 1px solid var(--border-color, #d0d7de);
 }
 
 /* 新建文件夹按钮 - 绿色 */
 .btn-new-folder {
-  background-color: rgba(var(--accent-green-rgb, 40, 167, 69), 0.2);
-  color: var(--text-secondary);
-  border: 1px solid rgba(var(--accent-green-rgb, 40, 167, 69), 0.3);
+  background-color: var(--bg-secondary, #f6f8fa);
+  color: var(--text-primary, #24292f);
+  border: 1px solid var(--border-color, #d0d7de);
 }
 
-/* 删除按钮 - 红色 */
+/* 删除按钮 - 红色危险样式 */
 .btn-delete {
-  background-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.8);
-  color: white;
-  border: 1px solid rgba(var(--accent-red-rgb, 220, 53, 69), 0.3);
-}
-
-/* 按钮hover效果 */
-.btn-refresh:hover {
-  background-color: var(--accent-blue, #3b82f6);
-  color: white;
-  border-color: var(--accent-blue, #3b82f6);
-}
-
-.btn-upload:hover {
-  background: linear-gradient(135deg, #4a94ff 0%, #2563eb 100%);
-  box-shadow: 0 4px 15px rgba(var(--accent-blue-rgb, 59, 130, 246), 0.4);
-}
-
-.btn-download:hover {
-  background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.3);
-  border-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.5);
-  color:white
-}
-
-.btn-new-folder:hover {
-  background-color: rgba(var(--accent-green-rgb, 40, 167, 69), 0.3);
-  border-color: rgba(var(--accent-green-rgb, 40, 167, 69), 0.5);
-  color:white
+  background-color: var(--danger-bg, #ffebe9);
+  color: var(--accent-red, #cf222e);
+  border: 1px solid rgba(207, 34, 46, 0.2);
 }
 
 .btn-delete:hover {
-  background-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.95);
-  border-color: rgba(var(--accent-red-rgb, 220, 53, 69), 0.5);
+  background-color: var(--accent-red, #cf222e);
+  color: white;
+  border-color: var(--accent-red, #cf222e);
+}
+
+/* 按钮 hover 效果 */
+.btn-refresh:hover {
+  background-color: var(--hover-bg, #f3f4f6);
+  border-color: var(--text-muted, #8c959f);
+}
+
+.btn-upload:hover {
+  background: var(--accent-blue-bright, #0550ae);
+  border-color: rgba(9, 105, 218, 0.8);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.btn-download:hover {
+  background-color: var(--hover-bg, #f3f4f6);
+  border-color: var(--text-muted, #8c959f);
+  color: var(--text-primary, #24292f);
+}
+
+.btn-new-folder:hover {
+  background-color: var(--hover-bg, #f3f4f6);
+  border-color: var(--text-muted, #8c959f);
+  color: var(--text-primary, #24292f);
 }
 
 /* 按钮文字 - 响应式隐藏 */
@@ -1407,7 +1409,7 @@ const isFileSelected = (itemPath) => {
   gap: 12px;
   color: var(--text-primary);
   z-index: 10;
-  border-radius: 8px;
+  border-radius: .375rem;
   flex-direction: column;
 }
 
@@ -1503,12 +1505,12 @@ const isFileSelected = (itemPath) => {
 }
 
 .upload-modal {
-  background: var(--bg-secondary, #1e293b);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 16px;
+  background: var(--bg-secondary, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
   width: 90%;
   max-width: 420px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
   animation: slideIn 0.3s ease;
 }
 
@@ -1517,37 +1519,37 @@ const isFileSelected = (itemPath) => {
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-bottom: 1px solid var(--border-color, #d0d7de);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-primary, #f8fafc);
+  color: var(--text-primary, #24292f);
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .modal-header h3 i {
-  color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue, #0969da);
   font-size: 22px;
 }
 
 .modal-close {
   background: none;
   border: none;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, #8c959f);
   cursor: pointer;
   padding: 8px;
-  border-radius: 8px;
+  border-radius: .375rem;
   transition: all 0.2s ease;
 }
 
 .modal-close:hover {
-  background: var(--hover-bg, rgba(255, 255, 255, 0.1));
-  color: var(--text-primary, #f8fafc);
+  background: var(--hover-bg, #f3f4f6);
+  color: var(--text-primary, #24292f);
 }
 
 .modal-close i {
@@ -1561,10 +1563,10 @@ const isFileSelected = (itemPath) => {
 .folder-input {
   width: 100%;
   padding: 14px 16px;
-  background: var(--bg-primary, #0f172a);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 10px;
-  color: var(--text-primary, #f8fafc);
+  background: var(--input-bg, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  color: var(--text-primary, #24292f);
   font-size: 15px;
   outline: none;
   transition: all 0.2s ease;
@@ -1572,36 +1574,36 @@ const isFileSelected = (itemPath) => {
 }
 
 .folder-input::placeholder {
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, #8c959f);
 }
 
 .folder-input:focus {
-  border-color: var(--accent-blue, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: var(--accent-blue, #0969da);
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
 }
 
 .delete-warning {
   font-size: 15px;
-  color: var(--text-primary, #f8fafc);
+  color: var(--text-primary, #24292f);
   margin: 0 0 8px 0;
 }
 
 .delete-warning strong {
-  color: #ef4444;
+  color: var(--accent-red, #cf222e);
 }
 
 .delete-hint {
   font-size: 13px;
-  color: var(--text-muted, #64748b);
+  color: var(--text-muted, #8c959f);
   margin: 0;
 }
 
 .btn-delete {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  border: none;
-  border-radius: 8px;
-  color: white;
+  background-color: #212830;
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.4);
+  border-radius: .375rem;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -1609,61 +1611,62 @@ const isFileSelected = (itemPath) => {
 }
 
 .btn-delete:hover {
-  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+  background-color: #f85149;
+  color: white;
+  border-color: #f85149;
 }
 
 /* 文件选择区域样式 */
 .upload-select-area {
   width: 100%;
   padding: 24px 16px;
-  border: 2px dashed var(--border-color, rgba(255, 255, 255, 0.2));
-  border-radius: 12px;
+  border: 2px dashed var(--border-color, #d0d7de);
+  border-radius: .375rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
-  background: var(--bg-primary, #0f172a);
+  background: var(--bg-tertiary, #f6f8fa);
   box-sizing: border-box;
   overflow: hidden;
 }
 
 .upload-select-area:hover {
-  border-color: var(--accent-blue, #3b82f6);
-  background: rgba(59, 130, 246, 0.05);
+  border-color: var(--accent-blue, #0969da);
+  background: var(--selected-bg, #ddf4ff);
 }
 
 .upload-select-area i {
   font-size: 32px;
-  color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue, #0969da);
   margin-bottom: 12px;
-  transition: transform 0.3s ease;
+  transition: all 0.3s ease;
 }
 
 .upload-select-area:hover i {
-  transform: scale(1.1);
+  color: var(--accent-blue-bright, #0550ae);
 }
 
 .upload-select-area p {
   margin: 0 0 6px 0;
-  color: var(--text-primary, #f8fafc);
+  color: var(--text-primary, #24292f);
   font-size: 14px;
   font-weight: 500;
 }
 
 .upload-select-area .upload-link {
-  color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue, #0969da);
   text-decoration: underline;
   font-weight: 600;
   cursor: pointer;
 }
 
 .upload-select-area .upload-link:hover {
-  color: #60a5fa;
+  color: var(--accent-blue-bright, #0550ae);
 }
 
 .upload-select-area .upload-hint {
   font-size: 12px;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, #8c959f);
   margin: 0;
 }
 
@@ -1675,9 +1678,10 @@ const isFileSelected = (itemPath) => {
 /* 文件列表样式 */
 .file-list-container {
   margin-top: 16px;
-  background: var(--bg-primary, #0f172a);
-  border-radius: 12px;
+  background: var(--bg-tertiary, #f6f8fa);
+  border-radius: .375rem;
   overflow: hidden;
+  border: 1px solid var(--border-color, #d0d7de);
 }
 
 .file-list-header {
@@ -1685,25 +1689,25 @@ const isFileSelected = (itemPath) => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: rgba(59, 130, 246, 0.1);
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background: var(--selected-bg, #ddf4ff);
+  border-bottom: 1px solid var(--border-color, #d0d7de);
 }
 
 .file-list-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-primary, #f8fafc);
+  color: var(--text-primary, #24292f);
 }
 
 .file-clear-all {
   font-size: 13px;
-  color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue, #0969da);
   cursor: pointer;
   transition: color 0.2s;
 }
 
 .file-clear-all:hover {
-  color: #60a5fa;
+  color: var(--accent-blue-bright, #0550ae);
 }
 
 .file-list {
@@ -1716,7 +1720,7 @@ const isFileSelected = (itemPath) => {
   align-items: center;
   padding: 12px 16px;
   gap: 12px;
-  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-bottom: 1px solid var(--border-color, #d0d7de);
 }
 
 .file-item:last-child {
@@ -1725,7 +1729,7 @@ const isFileSelected = (itemPath) => {
 
 .file-icon {
   font-size: 24px;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, #8c959f);
   flex-shrink: 0;
 }
 
@@ -1739,7 +1743,7 @@ const isFileSelected = (itemPath) => {
 
 .file-name {
   font-size: 14px;
-  color: var(--text-primary, #f8fafc);
+  color: var(--text-primary, #24292f);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1747,19 +1751,19 @@ const isFileSelected = (itemPath) => {
 
 .file-size {
   font-size: 12px;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, #8c959f);
 }
 
 .file-remove {
   font-size: 18px;
-  color: var(--text-muted, #94a3b8);
+  color: var(--text-muted, #8c959f);
   cursor: pointer;
   transition: color 0.2s;
   flex-shrink: 0;
 }
 
 .file-remove:hover {
-  color: #ef4444;
+  color: var(--accent-red, #cf222e);
 }
 
 .modal-footer {
@@ -1772,7 +1776,7 @@ const isFileSelected = (itemPath) => {
 .btn-cancel,
 .btn-confirm {
   padding: 10px 20px;
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -1780,25 +1784,25 @@ const isFileSelected = (itemPath) => {
 }
 
 .btn-cancel {
-  background: var(--hover-bg, rgba(255, 255, 255, 0.08));
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  color: var(--text-secondary, #cbd5e1);
+  background: var(--hover-bg, #f3f4f6);
+  border: 1px solid var(--border-color, #d0d7de);
+  color: var(--text-secondary, #57606a);
 }
 
 .btn-cancel:hover {
-  background: var(--hover-bg, rgba(255, 255, 255, 0.15));
-  color: var(--text-primary, #f8fafc);
+  background: var(--hover-bg, #f3f4f6);
+  color: var(--text-primary, #24292f);
 }
 
 .btn-confirm {
-  background: linear-gradient(135deg, var(--accent-blue, #3b82f6) 0%, #1d4ed8 100%);
+  background: var(--accent-blue, #0969da);
   border: none;
   color: white;
 }
 
 .btn-confirm:hover {
-  background: linear-gradient(135deg, #4a94ff 0%, #2563eb 100%);
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+  background: var(--accent-blue-bright, #0550ae);
+  box-shadow: 0 4px 15px rgba(9, 105, 218, 0.3);
 }
 
 @keyframes fadeIn {

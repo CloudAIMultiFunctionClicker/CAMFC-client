@@ -15,7 +15,7 @@ Email: admin@mc666.top
 -->
 
 <template>
-  <div class="float-container" @mousedown="startDrag">
+  <div class="float-container" @mousedown="startDrag" :style="themeVars">
     <span class="float-title">CAMFC Cloud</span>
     <span
       class="connection-status"
@@ -72,7 +72,7 @@ Email: admin@mc666.top
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow, Window } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
@@ -83,6 +83,27 @@ const isConnected = ref(false)
 const isMainWindowVisible = ref(true)
 const showConnectTip = ref(false)
 let connectTipTimer = null
+
+const getInitialTheme = () => {
+  const savedTheme = localStorage.getItem('theme-preference')
+  if (savedTheme === 'light') return true
+  if (savedTheme === 'dark') return false
+  return window.matchMedia('(prefers-color-scheme: light)').matches
+}
+
+const isLightMode = ref(getInitialTheme())
+
+const themeVars = computed(() => ({
+  '--float-bg': isLightMode.value ? '#f5f5f5' : '#1a1a2e',
+  '--float-text': isLightMode.value ? '#333' : '#e0e0e0',
+  '--float-btn-color': isLightMode.value ? '#666' : '#a0a0a0',
+  '--float-btn-hover-bg': isLightMode.value ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.1)',
+  '--float-btn-hover-color': isLightMode.value ? '#333' : '#fff',
+  '--float-menu-bg': isLightMode.value ? 'white' : '#2a2a3e',
+  '--float-menu-text': isLightMode.value ? '#333' : '#e0e0e0',
+  '--float-menu-border': isLightMode.value ? '#e5e5e5' : '#3a3a4e',
+  '--float-tip-bg': isLightMode.value ? '#ffffff' : '#2a2a3e',
+}))
 
 // 点击外部指令的处理函数
 let clickOutsideHandler = null
@@ -110,14 +131,40 @@ const hideWindowBeforeScreenshot = ref(true)
 
 let keepOnTopInterval = null
 let visibilityCheckInterval = null
+let themeCheckInterval = null
+let unlistenTheme = null
+let unlistenConnection = null
 
 onMounted(async () => {
   console.log('FloatView mounted')
 
-  const unlisten = await listen('connection-status', (event) => {
+  unlistenTheme = await listen('theme-changed', (event) => {
+    const newTheme = event.payload
+    isLightMode.value = newTheme === 'light'
+    localStorage.setItem('theme-preference', newTheme)
+  })
+
+  unlistenConnection = await listen('connection-status', (event) => {
     console.log('收到连接状态事件:', event.payload)
     isConnected.value = event.payload
   })
+
+  const checkMainWindowTheme = async () => {
+    try {
+      const mainWindow = await Window.getByLabel('main')
+      if (mainWindow) {
+        const webview = await WebviewWindow.getByLabel('main')
+        if (webview) {
+          await webview.emit('get-theme')
+        }
+      }
+    } catch (e) {
+      console.error('检查主窗口主题失败:', e)
+    }
+  }
+
+  checkMainWindowTheme()
+  themeCheckInterval = setInterval(checkMainWindowTheme, 2000)
 
   // 检查主窗口可见性状态
   const checkMainWindowVisibility = async () => {
@@ -153,12 +200,16 @@ onMounted(async () => {
   }, 5000)
 
   onUnmounted(() => {
-    unlisten()
+    if (unlistenTheme) unlistenTheme()
+    if (unlistenConnection) unlistenConnection()
     if (keepOnTopInterval) {
       clearInterval(keepOnTopInterval)
     }
     if (visibilityCheckInterval) {
       clearInterval(visibilityCheckInterval)
+    }
+    if (themeCheckInterval) {
+      clearInterval(themeCheckInterval)
     }
   })
 })
@@ -532,7 +583,7 @@ html, body {
   align-items: center;
   padding: 0 12px;
   gap: 8px;
-  background-color: #f5f5f5;
+  background-color: var(--float-bg, #f5f5f5);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   cursor: move;
   user-select: none;
@@ -541,7 +592,7 @@ html, body {
 .float-title {
   font-size: 13px;
   font-weight: 500;
-  color: #333;
+  color: var(--float-text, #333);
   white-space: nowrap;
   line-height: 1;
 }
@@ -549,7 +600,7 @@ html, body {
 .connection-status {
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: .375rem;
   background-color: #ff6b6b;
   color: white;
   cursor: pointer;
@@ -585,9 +636,9 @@ html, body {
   padding: 0 6px;
   font-size: 13px;
   background-color: transparent;
-  color: #666;
+  color: var(--float-btn-color, #666);
   border: none;
-  border-radius: 4px;
+  border-radius: .375rem;
   cursor: pointer;
   transition: all 0.2s;
   line-height: 1;
@@ -595,14 +646,14 @@ html, body {
 }
 
 .float-btn:hover {
-  background-color: rgba(0, 0, 0, 0.06);
-  color: #333;
+  background-color: var(--float-btn-hover-bg, rgba(0, 0, 0, 0.06));
+  color: var(--float-btn-hover-color, #333);
 }
 
 /* 笔记按钮激活状态 */
 .note-btn.active {
-  background-color: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
+  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.15);
+  color: var(--accent-blue, #3178c6);
 }
 
 /* 打开主窗口按钮 - 特殊样式 */
@@ -668,9 +719,9 @@ html, body {
   position: fixed;
   right: 8px;
   top: 50%;
-  transform: translateY(-50%);
-  background-color: white;
-  border-radius: 8px;
+  background-color: var(--float-menu-bg, white);
+  border: 1px solid var(--float-menu-border, #e5e5e5);
+  border-radius: .375rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   padding: 6px 8px;
   z-index: 1001;
@@ -680,14 +731,13 @@ html, body {
   animation: menu-slide-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
-/* 截图功能菜单 - 水平排布，从右到左滑入 */
 .screenshot-menu {
   position: fixed;
   right: 8px;
   top: 50%;
-  transform: translateY(-50%);
-  background-color: white;
-  border-radius: 8px;
+  background-color: var(--float-menu-bg, white);
+  border: 1px solid var(--float-menu-border, #e5e5e5);
+  border-radius: .375rem;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   padding: 6px 8px;
   z-index: 1001;
@@ -703,7 +753,7 @@ html, body {
 }
 
 .screenshot-menu .toggle-item:hover i {
-  color: #3b82f6;
+  color: var(--accent-blue, #3178c6);
 }
 
 @keyframes menu-slide-in {
@@ -724,16 +774,16 @@ html, body {
   justify-content: flex-start;
   gap: 6px;
   padding: 6px 10px;
-  border-radius: 6px;
+  border-radius: .375rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  color: #333;
+  color: var(--float-menu-text, #333);
   font-size: 11px;
   white-space: nowrap;
 }
 
 .menu-item:hover {
-  background-color: #f5f5f5;
+  background-color: var(--float-btn-hover-bg, rgba(0, 0, 0, 0.06));
 }
 
 .menu-item i {
@@ -743,12 +793,12 @@ html, body {
 }
 
 .menu-item:hover i {
-  color: #3b82f6;
+  color: var(--accent-blue, #3178c6);
 }
 
 .menu-item span {
   font-size: 11px;
-  color: #333;
+  color: var(--float-menu-text, #333);
 }
 
 .menu-item.back:hover {
@@ -759,15 +809,14 @@ html, body {
   color: #ef4444;
 }
 
-/* 未连接提示框 - 居中显示，白底黑字 */
+/* 未连接提示框 - 居中显示 */
 .connect-tip {
   position: fixed;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%);
-  background-color: #ffffff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
+  background-color: var(--float-tip-bg, #ffffff);
+  border: 1px solid var(--float-menu-border, #e5e5e5);
+  border-radius: .375rem;
   padding: 8px 12px 8px 16px;
   display: flex;
   align-items: center;

@@ -17,6 +17,7 @@ Email: admin@mc666.top
 <script setup>
 import { ref, provide, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 // 导入 Pinia store 来获取蓝牙状态
 import { useBluetoothStore } from './stores/bluetooth.js'
 
@@ -74,14 +75,21 @@ const getInitialTheme = () => {
 const isLightMode = ref(getInitialTheme())
 
 // 切换主题函数
-const toggleTheme = () => {
+const toggleTheme = async () => {
   isLightMode.value = !isLightMode.value
-  // 给body添加/移除类名，用于全局样式切换
   updateBodyClass()
   
-  // 保存用户选择到localStorage
-  // 存为字符串，方便下次读取
   localStorage.setItem('theme-preference', isLightMode.value ? 'light' : 'dark')
+  
+  try {
+    const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+    const floatWindow = await WebviewWindow.getByLabel('float')
+    if (floatWindow) {
+      await floatWindow.emit('theme-changed', isLightMode.value ? 'light' : 'dark')
+    }
+  } catch (e) {
+    console.log('发送主题变化事件失败:', e)
+  }
 }
 
 // 更新body类名的辅助函数
@@ -164,10 +172,10 @@ onMounted(async () => {
     
     // GPIO10 处理 -> 右箭头
     if (eventType === 'button_press') {
-      showToast('🔘 GPIO10 按下', '#3b82f6')
+      showToast('GPIO10 按下', '#3b82f6')
       window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: true } }))
     } else if (eventType === 'button_release') {
-      showToast('🔘 GPIO10 松开', '#10b981')
+      showToast('GPIO10 松开', '#10b981')
       window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: false } }))
       // 模拟右箭头键
       try {
@@ -181,10 +189,10 @@ onMounted(async () => {
     
     // GPIO9 处理 -> 左箭头
     else if (eventType === 'button_press_left') {
-      showToast('🔘 GPIO9 按下', '#8b5cf6')
+      showToast('GPIO9 按下', '#8b5cf6')
       window.dispatchEvent(new CustomEvent('button-state-left', { detail: { pressed: true } }))
     } else if (eventType === 'button_release_left') {
-      showToast('🔘 GPIO9 松开', '#f59e0b')
+      showToast('GPIO9 松开', '#f59e0b')
       window.dispatchEvent(new CustomEvent('button-state-left', { detail: { pressed: false } }))
       // 模拟左箭头键
       try {
@@ -241,7 +249,7 @@ onMounted(async () => {
   
   // 监听蓝牙断开事件（实时检测）
   bluetoothDisconnectUnlisten = await listen('bluetooth-disconnect', async () => {
-    console.log('🔴 收到蓝牙断开事件')
+    console.log('收到蓝牙断开事件')
     
     // 如果当前是已连接状态，显示提示
     if (bluetoothStore.isConnected()) {
@@ -303,14 +311,14 @@ onMounted(async () => {
         }
         
         .disconnect-dialog-content {
-          background-color: var(--bg-secondary, #1e293b);
-          border-radius: 16px;
-          padding: 32px;
-          max-width: 400px;
-          text-align: center;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-          border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-        }
+  background-color: var(--bg-secondary, #1e293b);
+  border-radius: .375rem;
+  padding: 32px;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
         
         .disconnect-dialog-content h3 {
           font-size: 20px;
@@ -333,7 +341,7 @@ onMounted(async () => {
         
         .disconnect-btn {
           padding: 10px 32px;
-          border-radius: 8px;
+          border-radius: .375rem;
           font-size: 14px;
           font-weight: 500;
           cursor: pointer;
@@ -399,6 +407,18 @@ onMounted(async () => {
     console.log('监听导航事件失败（非Tauri环境）:', e)
   }
   
+  // 监听悬浮窗发来的主题查询请求
+  try {
+    await listen('get-theme', async () => {
+      const floatWindow = await WebviewWindow.getByLabel('float')
+      if (floatWindow) {
+        await floatWindow.emit('theme-changed', isLightMode.value ? 'light' : 'dark')
+      }
+    })
+  } catch (e) {
+    console.log('监听主题查询事件失败:', e)
+  }
+  
   // 在组件卸载时清理监听器
   onUnmounted(() => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
@@ -443,22 +463,40 @@ setTimeout(() => {
 </template>
 
 <style>
-/* 全局主题样式 - 通过 body.light-mode 类切换 */
-/* 暗色主题（默认） */
+/* 全局主题样式 - 优化后的深色主题配色 */
 body {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-sidebar: #1e293b;
-  --bg-header: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --accent-blue: #3b82f6;
-  --accent-blue-rgb: 59, 130, 246;
-  --accent-red: #dc3545;
-  --accent-red-rgb: 220, 53, 69;
-  --hover-bg: rgba(255, 255, 255, 0.08);
+  /* 背景色 - 使用更深的蓝黑色系 */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-sidebar: #161b22;
+  --bg-header: #161b22;
+  --bg-tertiary: #21262d;
+  
+  /* 文字色 - 高可读性 */
+  --text-primary: #f0f6fc;
+  --text-secondary: #c9d1d9;
+  --text-muted: #8b949e;
+  
+  /* 边框色 - 低对比度 */
+  --border-color: #30363d;
+  
+  /* 强调色 - 根据图片配色 */
+  --accent-blue: #3178c6;
+  --accent-blue-rgb: 49, 120, 198;
+  --accent-blue-bright: #1f6feb;
+  --accent-blue-dark: #3572a5;
+  --accent-green: #3fb950;
+  --accent-green-rgb: 63, 185, 80;
+  --accent-red: #f85149;
+  --accent-red-rgb: 248, 81, 73;
+  --accent-purple: #bc8cff;
+  --accent-yellow: #d29922;
+  
+  /* 交互色 */
+  --hover-bg: rgba(240, 246, 252, 0.1);
+  --selected-bg: rgba(56, 139, 253, 0.15);
+  --input-bg: #0d1117;
+  
   transition: background-color 0.3s ease, color 0.3s ease;
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -473,21 +511,32 @@ input, textarea, [contenteditable="true"] {
   user-select: text;
 }
 
-/* 亮色主题 */
+/* 亮色主题（GitHub 风格） */
 body.light-mode {
-  --bg-primary: #f8fafc;
+  --bg-primary: #ffffff;
   --bg-secondary: #ffffff;
   --bg-sidebar: #ffffff;
-  --bg-header: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
-  --border-color: rgba(0, 0, 0, 0.1);
-  --accent-blue: #2563eb;
-  --accent-blue-rgb: 37, 99, 235; /* 亮色模式下的 RGB 值 */
-  --accent-red: #dc2626;
-  --accent-red-rgb: 220, 38, 38; /* 亮色模式下的 RGB 值 */
-  --hover-bg: rgba(0, 0, 0, 0.05);
+  --bg-header: #f6f8fa;
+  --bg-tertiary: #f6f8fa;
+  --text-primary: #24292f;
+  --text-secondary: #57606a;
+  --text-muted: #8c959f;
+  --border-color: #d0d7de;
+  --accent-blue: #0969da;
+  --accent-blue-rgb: 9, 105, 218;
+  --accent-blue-bright: #0550ae;
+  --accent-blue-dark: #0a3069;
+  --accent-green: #2da44e;
+  --accent-green-rgb: 45, 164, 78;
+  --accent-red: #cf222e;
+  --accent-red-rgb: 207, 34, 46;
+  --accent-purple: #8250df;
+  --accent-yellow: #9a6700;
+  --hover-bg: #f3f4f6;
+  --selected-bg: #ddf4ff;
+  --input-bg: #ffffff;
+  --danger-bg: #ffebe9;
+  --danger-border: #ffcccc;
 }
 
 /* 应用基础样式 */
@@ -520,15 +569,15 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--bg-secondary, #161b22);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
-  border-radius: 4px;
+  background: var(--border-color, #30363d);
+  border-radius: .375rem;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--text-muted, #8b949e);
 }
 </style>

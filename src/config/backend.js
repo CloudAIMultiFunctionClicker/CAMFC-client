@@ -49,7 +49,7 @@ export async function initBackendConfig() {
     
     // 在 console 输出配置信息
     console.log('='.repeat(50))
-    console.log('🎯 后端配置信息')
+    console.log('后端配置信息')
     console.log('='.repeat(50))
     console.log('Base URL:', backendConfig.value.base_url)
     console.log('Port:', backendConfig.value.port)

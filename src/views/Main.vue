@@ -23,19 +23,19 @@ Email: admin@mc666.top
     <div class="nav-grid">
       <!-- 云盘按钮 -->
       <button class="nav-card file-manager" @click="goToFileView">
-        <div class="card-icon">☁️</div>
+        <Cloud :size="48" class="card-icon" />
         <h3 class="card-title">云盘</h3>
       </button>
       
       <!-- 笔记按钮 -->
       <button class="nav-card notes" @click="goToNotes">
-        <div class="card-icon">📝</div>
+        <FileText :size="48" class="card-icon" />
         <h3 class="card-title">笔记</h3>
       </button>
       
       <!-- 设置按钮 -->
       <button class="nav-card settings" @click="goToSettings">
-        <div class="card-icon">⚙️</div>
+        <Settings :size="48" class="card-icon" />
         <h3 class="card-title">设置</h3>
       </button>
     </div>
@@ -48,6 +48,7 @@ Email: admin@mc666.top
 // 后续可以加动画效果，但现在先保证基本功能能用
 
 import { useRouter } from 'vue-router'
+import { Cloud, FileText, Settings } from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -79,7 +80,7 @@ function goToNotes() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 100px); /* 减去header和一些padding */
+  min-height: calc(100vh - 100px);
   padding: 40px 20px;
   text-align: center;
 }
@@ -87,8 +88,7 @@ function goToNotes() {
 .dashboard-title {
   font-size: 28px;
   margin-bottom: 40px;
-  color: var(--text-primary);
-  /* 加个渐变效果？先简单点，用纯色 */
+  color: var(--text-primary, #f0f6fc);
 }
 
 /* 导航网格布局 */
@@ -99,71 +99,59 @@ function goToNotes() {
   max-width: 1000px;
   width: 100%;
   margin-bottom: 40px;
-  
-  /* 思考：这里用auto-fit还是固定2x2？auto-fit更响应式
-     但用户要求四个居中，可能希望固定2x2？先这样吧，看起来还行 */
 }
 
 /* 导航卡片样式 */
 .nav-card {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
+  background-color: var(--bg-secondary, #161b22);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: .375rem;
   padding: 25px 20px;
   cursor: pointer;
   transition: all 0.3s ease;
   text-align: center;
   
-  /* 去掉button默认样式 */
+  /* 去掉 button 默认样式 */
   outline: none;
   font-family: inherit;
   
   /* 悬停效果 */
   &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    border-color: var(--accent-blue);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    border-color: var(--accent-blue, #3178c6);
   }
   
   &:active {
-    transform: translateY(-2px);
   }
 }
 
 /* 文件管理卡片特殊样式 */
-.file-manager {
-  /* 文件管理是主要功能 */
-  &:hover {
-    box-shadow: 0 8px 20px rgba(var(--accent-blue-rgb), 0.2);
-  }
+.file-manager:hover {
+  box-shadow: 0 8px 20px rgba(var(--accent-blue-rgb, 49, 120, 198), 0.2);
 }
 
 /* 设置卡片特殊样式 */
-.settings {
-  &:hover {
-    box-shadow: 0 8px 20px rgba(var(--accent-green-rgb), 0.2);
-  }
+.settings:hover {
+  box-shadow: 0 8px 20px rgba(var(--accent-green-rgb, 63, 185, 80), 0.2);
 }
 
 /* 笔记卡片特殊样式 */
-.notes {
-  &:hover {
-    box-shadow: 0 8px 20px rgba(var(--accent-purple-rgb), 0.2);
-  }
+.notes:hover {
+  box-shadow: 0 8px 20px rgba(var(--accent-purple-rgb, 188, 140, 255), 0.2);
 }
 
 /* 卡片图标 */
 .card-icon {
   font-size: 48px;
   margin-bottom: 15px;
-  /* 图标颜色不用特别设置，用系统默认 */
+  color: #f0f6fc !important;
 }
 
 /* 卡片标题 */
 .card-title {
   font-size: 20px;
   margin-bottom: 10px;
-  color: var(--text-primary);
+  color: var(--text-primary, #f0f6fc);
 }
 
 /* 卡片描述 */
