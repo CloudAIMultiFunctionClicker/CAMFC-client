@@ -339,6 +339,7 @@ onMounted(async () => {
 .left-content {
   text-align: center;
   color: var(--text-primary);
+  margin-top: -80px;
 }
 
 .app-title {

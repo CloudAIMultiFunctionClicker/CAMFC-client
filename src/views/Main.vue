@@ -132,9 +132,7 @@ function goToNotes() {
 
 /* 文件管理卡片特殊样式 */
 .file-manager {
-  /* 文件管理是主要功能，给个特殊颜色提示 */
-  border-color: var(--accent-blue);
-  
+  /* 文件管理是主要功能 */
   &:hover {
     box-shadow: 0 8px 20px rgba(var(--accent-blue-rgb), 0.2);
   }
@@ -142,8 +140,6 @@ function goToNotes() {
 
 /* 设置卡片特殊样式 */
 .settings {
-  border-color: var(--accent-green);
-  
   &:hover {
     box-shadow: 0 8px 20px rgba(var(--accent-green-rgb), 0.2);
   }
@@ -151,8 +147,6 @@ function goToNotes() {
 
 /* 笔记卡片特殊样式 */
 .notes {
-  border-color: var(--accent-purple);
-  
   &:hover {
     box-shadow: 0 8px 20px rgba(var(--accent-purple-rgb), 0.2);
   }

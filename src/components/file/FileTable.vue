@@ -997,6 +997,7 @@ const isFileSelected = (itemPath) => {
   border-bottom: 1px solid var(--border-color);
   margin-bottom: 16px;
   border-radius: 8px;
+  flex-shrink: 0; /* 防止被压缩 */
 }
 
 .nav-btn {
@@ -1145,12 +1146,13 @@ const isFileSelected = (itemPath) => {
   border-radius: 8px;
   /* 给整个表格添加淡入淡出效果，解决内容切换时的闪烁 */
   transition: opacity 0.3s ease;
+  min-height: 0; /* 关键：允许 flex 子项缩小到内容以下 */
 }
 
 .table-header {
   display: grid;
-  grid-template-columns: 3fr 1fr 1fr 1fr;
-  padding: 12px 16px;
+  grid-template-columns: 2fr 0.8fr 0.8fr 1.2fr;
+  padding: 10px 16px;
   background: var(--bg-sidebar);
   border-bottom: 1px solid var(--border-color);
   font-weight: 600;
@@ -1178,8 +1180,8 @@ const isFileSelected = (itemPath) => {
 
 .table-row {
   display: grid;
-  grid-template-columns: 3fr 1fr 1fr 1fr;
-  padding: 12px 16px;
+  grid-template-columns: 2fr 0.8fr 0.8fr 1.2fr;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border-color);
   align-items: center;
   cursor: default;
@@ -1206,7 +1208,7 @@ const isFileSelected = (itemPath) => {
 }
 
 .cell {
-  padding: 8px;
+  padding: 4px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1241,9 +1243,9 @@ const isFileSelected = (itemPath) => {
 
 /* 类型徽章 */
 .type-badge {
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .dir-badge {
@@ -1285,6 +1287,7 @@ const isFileSelected = (itemPath) => {
   margin-top: 16px;
   background: var(--bg-secondary);
   border-radius: 8px;
+  flex-shrink: 0; /* 防止被压缩 */
 }
 
 /* 操作按钮区域 */

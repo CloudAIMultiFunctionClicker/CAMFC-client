@@ -160,13 +160,7 @@ Email: admin@mc666.top
               </button>
             </div>
           </div>
-          <div class="setting-item">
-            <button class="action-btn secondary" @click="clearCloseBehavior">
-              <i class="ri-delete-bin-line"></i>
-              清除关闭偏好
-            </button>
-            <p class="setting-hint">清除后，下次点击关闭按钮时会重新询问</p>
-          </div>
+
         </div>
       </div>
 
@@ -356,9 +350,6 @@ const toggleFollowSystemTheme = async () => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     mediaQuery.removeEventListener('change', handleSystemThemeChange)
   }
-  
-  const status = storageSettings.value.followSystemTheme ? '已启用' : '已禁用'
-  showToast(`跟随系统主题：${status}`, '#3b82f6')
 }
 
 const handleSystemThemeChange = (e) => {
