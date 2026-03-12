@@ -26,19 +26,16 @@ Email: admin@mc666.top
     
     <!-- 右半部分 - 蓝牙设备列表 -->
     <div class="right-panel">
-      <div class="right-header">
+      <!-- 顶栏 -->
+      <div class="panel-header">
         <h2 class="panel-title">
-          <i class="ri-bluetooth-line"></i>
-          蓝牙设备
+          <i class="ri-smartphone-line"></i>
+          Cpen 设备
         </h2>
-        <button 
-          class="refresh-btn" 
-          @click="rescanDevices" 
-          :disabled="isScanning"
-          :class="{ 'spinning': isScanning }"
-        >
-          <i class="ri-refresh-line"></i>
-        </button>
+        <div v-if="isScanning" class="scanning-indicator">
+          <i class="ri-loader-4-line spinning"></i>
+          <span>扫描中...</span>
+        </div>
       </div>
       
       <!-- Cpen 设备列表 -->
@@ -66,7 +63,7 @@ Email: admin@mc666.top
       <!-- 空状态 -->
       <div v-if="!isScanning && cpenDevices.length === 0" class="empty-state">
         <i class="ri-bluetooth-off-line"></i>
-        <p>未发现蓝牙设备</p>
+        <p>未发现 cpen 设备</p>
         <button class="retry-btn" @click="rescanDevices">
           重新扫描
         </button>
@@ -96,8 +93,8 @@ Email: admin@mc666.top
       <div class="help-tooltip">
         <div class="tooltip-content">
           <p>① 确定设备处于配对状态</p>
-          <p>② 确定电脑的蓝牙版本需要5.0及以上</p>
-          <p>③ 其他问题请通过 GitHub Issue 提交</p>
+          <p>② 确定电脑的蓝牙版本需要 5.0 及以上</p>
+          <p>③ 其他问题请<a href="https://github.com/CloudAIMultiFunctionClicker/CAMFC-client/issues" target="_blank" rel="noopener noreferrer">向我们反馈</a></p>
         </div>
       </div>
     </div>
@@ -446,8 +443,33 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   padding: 30px;
+  margin: 20px;
   background: var(--bg-primary);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
   overflow-y: auto;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0px;
+  padding-bottom: 0px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.scanning-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.scanning-indicator i {
+  color: var(--accent-blue);
 }
 
 .right-header {
@@ -785,5 +807,15 @@ onMounted(async () => {
 .tooltip-content p {
   margin: 0;
   padding: 4px 0;
+}
+
+.tooltip-content a {
+  color: var(--accent-blue);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.tooltip-content a:hover {
+  text-decoration: underline;
 }
 </style>
