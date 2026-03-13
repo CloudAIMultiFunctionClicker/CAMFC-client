@@ -205,6 +205,67 @@ onMounted(async () => {
     }
   })
   
+  // 监听截图命令（0x12）- 只在非悬浮窗页面显示 toast
+  const screenshotUnlisten = await listen('screenshot-command', async () => {
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到截图命令（0x12）')
+    showToast('触发截图', '#3b82f6')
+  })
+  
+  // 监听显示主窗口 + note 页面命令（0x10）
+  const showNoteUnlisten = await listen('show-note-command', async () => {
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到显示主窗口 + note 命令（0x10）')
+    showToast('打开笔记', '#10b981')
+    // 显示主窗口并导航到 note 页面
+    try {
+      const { Window } = await import('@tauri-apps/api/window')
+      const mainWindow = await Window.getByLabel('main')
+      if (mainWindow) {
+        await mainWindow.show()
+        await mainWindow.unminimize()
+        await mainWindow.setFocus()
+      }
+      // 发送导航事件
+      const webview = await WebviewWindow.getByLabel('main')
+      if (webview) {
+        await webview.emit('navigate', '/notes')
+      }
+    } catch (e) {
+      console.error('打开 note 页面失败:', e)
+    }
+  })
+  
+  // 监听打开云盘页面命令（0x08）
+  const openCloudUnlisten = await listen('open-cloud-command', async () => {
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到打开云盘命令（0x08）')
+    showToast('打开云盘', '#8b5cf6')
+    // 显示主窗口并导航到云盘页面
+    try {
+      const { Window } = await import('@tauri-apps/api/window')
+      const mainWindow = await Window.getByLabel('main')
+      if (mainWindow) {
+        await mainWindow.show()
+        await mainWindow.unminimize()
+        await mainWindow.setFocus()
+      }
+      // 发送导航事件
+      const webview = await WebviewWindow.getByLabel('main')
+      if (webview) {
+        await webview.emit('navigate', '/fileView')
+      }
+    } catch (e) {
+      console.error('打开云盘页面失败:', e)
+    }
+  })
+  
   // 定时检查蓝牙连接状态（每 10 秒）
   let connectionCheckInterval = null
   
@@ -433,6 +494,15 @@ onMounted(async () => {
     }
     if (navigateEventUnlisten) {
       navigateEventUnlisten()
+    }
+    if (screenshotUnlisten) {
+      screenshotUnlisten()
+    }
+    if (showNoteUnlisten) {
+      showNoteUnlisten()
+    }
+    if (openCloudUnlisten) {
+      openCloudUnlisten()
     }
   })
   

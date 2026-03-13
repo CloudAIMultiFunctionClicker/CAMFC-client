@@ -42,6 +42,30 @@ pub fn emit_button_event(event_type: &str) {
     }
 }
 
+/// 发射截图命令事件
+pub fn emit_screenshot_command() {
+    if let Some(handle) = get_app_handle() {
+        println!("[EVENT] 发射截图命令事件");
+        let _ = handle.emit("screenshot-command", ());
+    }
+}
+
+/// 发射显示主窗口 + note 页面事件
+pub fn emit_show_note_command() {
+    if let Some(handle) = get_app_handle() {
+        println!("[EVENT] 发射显示主窗口 + note 命令事件");
+        let _ = handle.emit("show-note-command", ());
+    }
+}
+
+/// 发射打开云盘页面事件
+pub fn emit_open_cloud_command() {
+    if let Some(handle) = get_app_handle() {
+        println!("[EVENT] 发射打开云盘命令事件");
+        let _ = handle.emit("open-cloud-command", ());
+    }
+}
+
 /// 发射蓝牙断开事件
 pub fn emit_bluetooth_disconnect() {
     if let Some(handle) = get_app_handle() {

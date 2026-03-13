@@ -595,6 +595,10 @@ impl BluetoothManager {
                             // 检测按钮事件
                             // GPIO10: 0xAA = 按下，0xAB = 松开
                             // GPIO9:  0xAC = 按下，0xAD = 松开
+                            // 新增功能按键：
+                            // 0x12: 截图按钮
+                            // 0x10: 显示主窗口 + 打开 note 页面
+                            // 0x08: 打开云盘文件页面
                             if notif.value.len() >= 1 {
                                 let first_byte = notif.value[0];
                                 
@@ -634,6 +638,23 @@ impl BluetoothManager {
                                         });
                                     }
                                 }
+                                // 新增功能按键处理
+                                else if first_byte == 0x12 {
+                                    println!("[BLUETOOTH] 收到截图命令（0x12）");
+                                    tokio::spawn(async move {
+                                        crate::event_emitter::emit_screenshot_command();
+                                    });
+                                } else if first_byte == 0x10 {
+                                    println!("[BLUETOOTH] 收到显示主窗口 + note 命令（0x10）");
+                                    tokio::spawn(async move {
+                                        crate::event_emitter::emit_show_note_command();
+                                    });
+                                } else if first_byte == 0x08 {
+                                    println!("[BLUETOOTH] 收到打开云盘命令（0x08）");
+                                    tokio::spawn(async move {
+                                        crate::event_emitter::emit_open_cloud_command();
+                                    });
+                                }
                             }
                             
                             // 带背压的发送：缓冲区满时丢弃旧数据
@@ -671,8 +692,10 @@ impl BluetoothManager {
                     Ok(Some(data)) => {
                         // 检查是否是按钮事件包，如果是则跳过
                         // GPIO10: 0xAA/0xAB, GPIO9: 0xAC/0xAD
+                        // 新增功能按键：0x12（截图）, 0x10（显示主窗口 +note）, 0x08（云盘）
                         let is_button_event = data.len() >= 1 && 
-                            (data[0] == 0xAA || data[0] == 0xAB || data[0] == 0xAC || data[0] == 0xAD);
+                            (data[0] == 0xAA || data[0] == 0xAB || data[0] == 0xAC || data[0] == 0xAD ||
+                             data[0] == 0x12 || data[0] == 0x10 || data[0] == 0x08);
                         
                         if is_button_event {
                             let data_hex = data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");

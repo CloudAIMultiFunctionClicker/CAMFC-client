@@ -149,6 +149,13 @@ onMounted(async () => {
     isConnected.value = event.payload
   })
 
+  // 监听截图命令（来自 0x12 按键）
+  const unlistenScreenshot = await listen('screenshot-command', async () => {
+    console.log('悬浮窗收到截图命令（0x12）')
+    // 直接触发截图
+    await handleScreenshot()
+  })
+
   const checkMainWindowTheme = async () => {
     try {
       const mainWindow = await Window.getByLabel('main')
@@ -202,6 +209,7 @@ onMounted(async () => {
   onUnmounted(() => {
     if (unlistenTheme) unlistenTheme()
     if (unlistenConnection) unlistenConnection()
+    if (unlistenScreenshot) unlistenScreenshot()
     if (keepOnTopInterval) {
       clearInterval(keepOnTopInterval)
     }
