@@ -1,4 +1,6 @@
 <!--
+保留所有权利
+
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
 Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
@@ -10,19 +12,6 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <template>
@@ -66,7 +55,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       </div>
       
       <div v-else-if="notes.length === 0" class="empty-state">
-        <div class="empty-icon">📝</div>
+        <FileText :size="48" class="empty-icon" />
         <p class="empty-message">还没有笔记</p>
         <p class="empty-desc">点击上方按钮创建您的第一个笔记</p>
       </div>
@@ -84,7 +73,24 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
             :class="{ active: selectedNote?.uuid === note.uuid }"
             @click="selectNote(note)"
           >
-            <div class="note-title">{{ note.title }}</div>
+            <div class="note-title-wrapper">
+              <input
+                v-if="editingCardNote === note.uuid"
+                ref="cardTitleInput"
+                v-model="note.title"
+                class="card-title-edit-input"
+                @blur="saveCardTitleEdit(note)"
+                @keyup.enter="saveCardTitleEdit(note)"
+                @keyup.escape="cancelCardTitleEdit"
+                @click.stop
+              />
+              <span 
+                v-else 
+                class="note-title"
+                @dblclick.stop="startCardTitleEdit(note)"
+                title="双击编辑标题"
+              >{{ note.title }}</span>
+            </div>
             <div class="note-preview">{{ (note.content || '').substring(0, 50) }}...</div>
             <div class="note-meta">
               <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
@@ -143,14 +149,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
               <div v-if="selectedNote.content" class="preview-text" v-html="renderMarkdown(selectedNote.content)"></div>
               <div v-else class="preview-text empty">暂无内容</div>
             </div>
-            <div v-else class="editor-container">
-              <textarea
+            <div v-else class="editor-container" :class="{ 'dragging-over': isDraggingOver }" @paste="handlePaste" @dragenter="handleDragEnter" @dragleave="handleDragLeave" @drop="handleDrop">
+              <div
                 ref="editorTextarea"
-                v-model="selectedNote.content"
-                class="note-editor-textarea"
-                placeholder="使用 Markdown 格式书写..."
-                @input="saveNote"
-              ></textarea>
+                class="note-editor-content"
+                contenteditable="true"
+                placeholder="使用 Markdown 格式书写... 支持 Ctrl+V 粘贴图片、拖拽图片到此处"
+                @input="handleEditorInput"
+                @keydown="handleEditorKeydown"
+              ></div>
             </div>
           </div>
           <div v-if="isEditing" class="editor-toolbar">
@@ -204,10 +211,10 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
               <span class="tooltip">列表<span class="tooltip-syntax">语法: - 项目</span></span>
             </div>
             <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="insertMarkdown('image')">
+              <button class="toolbar-btn" @click="handleImageClick">
                 <i class="ri-image-line"></i>
               </button>
-              <span class="tooltip">图片<span class="tooltip-syntax">语法: ![描述](地址)</span></span>
+              <span class="tooltip">图片<span class="tooltip-syntax">Ctrl+V 粘贴或拖拽图片</span></span>
             </div>
           </div>
         </div>
@@ -265,45 +272,27 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
       <div v-if="showMoreMenu" class="modal-overlay" @click="closeMoreMenu">
         <div class="more-menu-content" @click.stop>
           <div class="more-menu-header">
-            <span class="more-menu-title">{{ moreMenuNote?.title }}</span>
+            <input
+              v-if="editingNote === moreMenuNote?.uuid"
+              ref="titleInput"
+              v-model="moreMenuNote.title"
+              class="more-menu-title-input"
+              @blur="saveTitleEdit"
+              @keyup.enter="saveTitleEdit"
+              @keyup.escape="cancelTitleEdit"
+            />
+            <span v-else class="more-menu-title">{{ moreMenuNote?.title }}</span>
             <span class="more-menu-date">{{ moreMenuNote ? formatDate(moreMenuNote.updatedAt) : '' }}</span>
           </div>
           <div class="more-menu-actions">
-            <button class="more-menu-item" @click="openRenameModal">
+            <button class="more-menu-item" @click="startTitleEdit">
               <i class="ri-edit-line"></i>
               <span>重命名</span>
             </button>
-            <button class="more-menu-item danger" @click="openDeleteFromMenu">
-              <i class="ri-delete-bin-line"></i>
-              <span>删除</span>
+            <button class="more-menu-item danger" :class="{ 'confirming': isConfirmingDelete }" @click="handleDeleteClick">
+              <i :class="isConfirmingDelete ? 'ri-question-line' : 'ri-delete-bin-line'"></i>
+              <span>{{ isConfirmingDelete ? '确认删除' : '删除' }}</span>
             </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
-
-    <Transition name="modal">
-      <div v-if="showRenameModal" class="modal-overlay" @click="cancelRename">
-        <div class="modal-content" @click.stop>
-          <div class="modal-header">
-            <h3><i class="ri-pencil-line"></i> 重命名笔记</h3>
-            <button class="close-btn" @click="cancelRename">
-              <i class="ri-close-line"></i>
-            </button>
-          </div>
-          <div class="modal-body">
-            <div class="input-wrapper">
-              <input
-                v-model="newNoteName"
-                class="title-input"
-                placeholder="请输入新名称"
-                @keyup.enter="confirmRename"
-              >
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button class="cancel-btn" @click="cancelRename">取消</button>
-            <button class="confirm-btn" @click="confirmRename">确定</button>
           </div>
         </div>
       </div>
@@ -336,6 +325,7 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl } from '../config/backend.js'
+import { FileText } from 'lucide-vue-next'
 
 const timeOut = 3000
 
@@ -369,9 +359,15 @@ const moreMenuNote = ref(null)
 const showRenameModal = ref(false)
 const renameNote = ref(null)
 const newNoteName = ref('')
+const editingNote = ref(null)
+const editingCardNote = ref(null)
+const titleInput = ref(null)
+const cardTitleInput = ref(null)
 const isEditing = ref(false)
 const showSaveConfirmModal = ref(false)
 const showImportExportMenu = ref(false)
+const isConfirmingDelete = ref(false)
+const isDraggingOver = ref(false)
 let originalContent = ''
 
 const pageSize = 9
@@ -521,39 +517,69 @@ function openMoreMenu(note, event) {
 function closeMoreMenu() {
   showMoreMenu.value = false
   moreMenuNote.value = null
+  isConfirmingDelete.value = false
 }
 
-function openRenameModal() {
+function startTitleEdit() {
   if (moreMenuNote.value) {
-    renameNote.value = moreMenuNote.value
-    newNoteName.value = moreMenuNote.value.title
-    showRenameModal.value = true
-    closeMoreMenu()
+    editingNote.value = moreMenuNote.value.uuid
+    setTimeout(() => {
+      if (titleInput.value) {
+        titleInput.value.focus()
+        titleInput.value.select()
+      }
+    }, 100)
   }
 }
 
-async function confirmRename() {
-  if (renameNote.value && newNoteName.value.trim()) {
-    renameNote.value.title = newNoteName.value.trim()
-    renameNote.value.updatedAt = new Date().toISOString()
-    await syncNoteToCloud(renameNote.value)
-    showRenameModal.value = false
-    renameNote.value = null
-    newNoteName.value = ''
+function saveTitleEdit() {
+  if (moreMenuNote.value && moreMenuNote.value.title.trim()) {
+    moreMenuNote.value.title = moreMenuNote.value.title.trim()
+    moreMenuNote.value.updatedAt = new Date().toISOString()
+    syncNoteToCloud(moreMenuNote.value)
   }
+  editingNote.value = null
 }
 
-function cancelRename() {
-  showRenameModal.value = false
-  renameNote.value = null
-  newNoteName.value = ''
+function cancelTitleEdit() {
+  editingNote.value = null
 }
 
-function openDeleteFromMenu() {
-  if (moreMenuNote.value) {
-    noteToDelete.value = moreMenuNote.value.uuid
-    showDeleteModal.value = true
-    closeMoreMenu()
+function startCardTitleEdit(note) {
+  editingCardNote.value = note.uuid
+  setTimeout(() => {
+    if (cardTitleInput.value) {
+      cardTitleInput.value.focus()
+      cardTitleInput.value.select()
+    }
+  }, 100)
+}
+
+function saveCardTitleEdit(note) {
+  if (note && note.title.trim()) {
+    note.title = note.title.trim()
+    note.updatedAt = new Date().toISOString()
+    syncNoteToCloud(note)
+  }
+  editingCardNote.value = null
+}
+
+function cancelCardTitleEdit() {
+  editingCardNote.value = null
+}
+
+function handleDeleteClick() {
+  if (isConfirmingDelete.value) {
+    // 确认删除，执行删除操作
+    if (moreMenuNote.value) {
+      noteToDelete.value = moreMenuNote.value.uuid
+      confirmDelete()
+      isConfirmingDelete.value = false
+      closeMoreMenu()
+    }
+  } else {
+    // 第一次点击，进入确认状态
+    isConfirmingDelete.value = true
   }
 }
 
@@ -562,6 +588,9 @@ function startEditing() {
     originalContent = selectedNote.value.content
   }
   isEditing.value = true
+  setTimeout(() => {
+    initEditorContent()
+  }, 100)
 }
 
 function handleCloseNote() {
@@ -579,12 +608,18 @@ function handleCloseNote() {
 }
 
 async function saveAndClose() {
+  if (editorTextarea.value) {
+    selectedNote.value.content = convertHtmlToMarkdown(editorTextarea.value.innerHTML)
+  }
   await syncNoteToCloud(selectedNote.value)
   selectedNote.value = null
   isEditing.value = false
 }
 
 async function confirmSave() {
+  if (editorTextarea.value) {
+    selectedNote.value.content = convertHtmlToMarkdown(editorTextarea.value.innerHTML)
+  }
   await syncNoteToCloud(selectedNote.value)
   showSaveConfirmModal.value = false
   selectedNote.value = null
@@ -616,7 +651,7 @@ function renderMarkdown(text) {
     .replace(/~~(.*)~~/gim, '<del>$1</del>')
     .replace(/`([^`]+)`/gim, '<code>$1</code>')
     .replace(/^- (.*$)/gim, '<li>$1</li>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<img src="$2" alt="$1" class="markdown-image" onerror="this.style.display=\'none\'">')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<div class="markdown-image-wrapper"><img src="$2" alt="$1" class="markdown-image" onerror="this.style.display=\'none\'; this.nextSibling && (this.nextSibling.style.display=\'flex\')"></div><div class="markdown-image-error" style="display:none"><i class="ri-image-line"></i><span>图片加载失败</span></div>')
     .replace(/\n/gim, '<br>')
   
   return html
@@ -643,59 +678,224 @@ async function syncNoteToCloud(note) {
 
 const editorTextarea = ref(null)
 
+const initEditorContent = () => {
+  if (editorTextarea.value && selectedNote.value) {
+    editorTextarea.value.innerHTML = renderMarkdown(selectedNote.value.content || '')
+  }
+}
+
+const handleEditorInput = () => {
+  if (editorTextarea.value) {
+    const html = editorTextarea.value.innerHTML
+    selectedNote.value.content = convertHtmlToMarkdown(html)
+    saveNote()
+  }
+}
+
+const handleEditorKeydown = (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    const selection = window.getSelection()
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const container = range.startContainer
+      if (container.nodeType === Node.TEXT_NODE && container.textContent.startsWith('#')) {
+        e.preventDefault()
+        document.execCommand('insertHTML', false, '<div><br></div>')
+      }
+    }
+  }
+}
+
+const convertHtmlToMarkdown = (html) => {
+  let text = html
+    .replace(/<div><br><\/div>/g, '\n')
+    .replace(/<div>(.*?)<\/div>/g, '$1\n')
+    .replace(/<h1>(.*?)<\/h1>/g, '# $1\n')
+    .replace(/<h2>(.*?)<\/h2>/g, '## $1\n')
+    .replace(/<h3>(.*?)<\/h3>/g, '### $1\n')
+    .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
+    .replace(/<b>(.*?)<\/b>/g, '**$1**')
+    .replace(/<em>(.*?)<\/em>/g, '*$1*')
+    .replace(/<i>(.*?)<\/i>/g, '*$1*')
+    .replace(/<del>(.*?)<\/del>/g, '~~$1~~')
+    .replace(/<code>(.*?)<\/code>/g, '`$1`')
+    .replace(/<li>(.*?)<\/li>/g, '- $1\n')
+    .replace(/<ul>|<\/ul>|<ol>|<\/ol>/g, '')
+    .replace(/<br\s*\/?>/g, '\n')
+    .replace(/<img src="([^"]*)" alt="([^"]*)"[^>]*>/g, '![$2]($1)')
+    .replace(/<span class="markdown-image-wrapper">/g, '')
+    .replace(/<div class="markdown-image-error"[^>]*>.*?<\/div>/g, '')
+    .replace(/<div class="img-error">.*?<\/div>/g, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+  return text.trim()
+}
+
+const handlePaste = async (event) => {
+  if (!isEditing.value) return
+
+  const clipboardData = event.clipboardData
+  if (!clipboardData) return
+
+  const items = clipboardData.items
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.startsWith('image/')) {
+      event.preventDefault()
+      const blob = items[i].getAsFile()
+      if (blob) {
+        await insertImageFromBlob(blob)
+      }
+      return
+    }
+  }
+}
+
+const insertImageFromBlob = (blob) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const base64 = e.target.result
+      insertMarkdownImage(base64)
+      resolve()
+    }
+    reader.readAsDataURL(blob)
+  })
+}
+
+const insertMarkdownImage = (imageData) => {
+  const editor = editorTextarea.value
+  if (!editor) return
+
+  const imgHtml = `<div class="markdown-image-wrapper"><img src="${imageData}" alt="截图_${Date.now()}" class="markdown-image" onerror="this.style.display='none'; this.nextSibling && (this.nextSibling.style.display='flex')"></div><div class="markdown-image-error" style="display:none"><i class="ri-image-line"></i><span>图片加载失败</span></div><div><br></div>`
+
+  const selection = window.getSelection()
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0)
+    range.deleteContents()
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = imgHtml
+    range.insertNode(tempDiv)
+    range.collapse(false)
+  } else {
+    editor.innerHTML += imgHtml
+  }
+
+  selectedNote.value.content = convertHtmlToMarkdown(editor.innerHTML)
+  saveNote()
+  showToast('图片已插入', '#10b981')
+}
+
+const handleDragEnter = (e) => {
+  e.preventDefault()
+  isDraggingOver.value = true
+}
+
+const handleDragLeave = (e) => {
+  e.preventDefault()
+  isDraggingOver.value = false
+}
+
+const handleDrop = async (e) => {
+  e.preventDefault()
+  isDraggingOver.value = false
+
+  if (!isEditing.value) return
+
+  const files = e.dataTransfer.files
+  if (files.length === 0) return
+
+  const file = files[0]
+  if (!file.type.startsWith('image/')) {
+    showToast('仅支持图片文件', '#f59e0b')
+    return
+  }
+
+  await insertImageFromBlob(file)
+}
+
+const handleImageClick = () => {
+  navigator.clipboard.read().then(items => {
+    for (const item of items) {
+      if (item.types.some(type => type.startsWith('image/'))) {
+        item.getType('image/').then(blob => {
+          insertImageFromBlob(blob)
+        })
+        return
+      }
+    }
+    showToast('剪贴板无图片，可直接 Ctrl+V 粘贴或拖拽图片', '#f59e0b')
+  }).catch(() => {
+    showToast('可直接 Ctrl+V 粘贴或拖拽图片到编辑器', '#f59e0b')
+  })
+}
+
 function insertMarkdown(type) {
-  if (!editorTextarea.value) return
-  
-  const textarea = editorTextarea.value
-  const start = textarea.selectionStart
-  const end = textarea.selectionEnd
-  const text = selectedNote.value.content || ''
-  const before = text.substring(0, start)
-  const selected = text.substring(start, end)
-  const after = text.substring(end)
-  
+  const editor = editorTextarea.value
+  if (!editor) return
+
+  const selection = window.getSelection()
+  let selectedText = ''
+  if (selection.rangeCount > 0) {
+    selectedText = selection.toString()
+  }
+
   let insert = ''
   switch (type) {
     case 'h1':
-      insert = selected ? `# ${selected}` : '# 标题'
+      insert = selectedText ? `<h1>${selectedText}</h1>` : '<h1>标题</h1>'
       break
     case 'h2':
-      insert = selected ? `## ${selected}` : '## 标题'
+      insert = selectedText ? `<h2>${selectedText}</h2>` : '<h2>标题</h2>'
       break
     case 'h3':
-      insert = selected ? `### ${selected}` : '### 标题'
+      insert = selectedText ? `<h3>${selectedText}</h3>` : '<h3>标题</h3>'
       break
     case 'bold':
-      insert = selected ? `**${selected}**` : '**加粗文本**'
+      insert = selectedText ? `<strong>${selectedText}</strong>` : '<strong>加粗文本</strong>'
       break
     case 'italic':
-      insert = selected ? `*${selected}*` : '*斜体文本*'
+      insert = selectedText ? `<em>${selectedText}</em>` : '<em>斜体文本</em>'
       break
     case 'strike':
-      insert = selected ? `~~${selected}~~` : '~~删除线~~'
+      insert = selectedText ? `<del>${selectedText}</del>` : '<del>删除线</del>'
       break
     case 'code':
-      insert = selected ? `\`${selected}\`` : '`代码`'
+      insert = selectedText ? `<code>${selectedText}</code>` : '<code>代码</code>'
       break
     case 'list':
-      insert = selected ? `- ${selected}` : '- 列表项'
+      insert = selectedText ? `<li>${selectedText}</li>` : '<li>列表项</li>'
       break
     case 'image':
-      insert = '![图片描述](图片地址)'
-      break
+      showToast('请使用 Ctrl+V 粘贴或拖拽图片', '#f59e0b')
+      return
   }
-  
-  selectedNote.value.content = before + insert + after
+
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0)
+    range.deleteContents()
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = insert
+    range.insertNode(tempDiv)
+    range.collapse(false)
+  } else {
+    editor.innerHTML += insert
+  }
+
+  selectedNote.value.content = convertHtmlToMarkdown(editor.innerHTML)
   saveNote()
-  
-  setTimeout(() => {
-    const newCursor = start + insert.length
-    textarea.setSelectionRange(newCursor, newCursor)
-  }, 0)
 }
 
 function formatDate(dateStr) {
+  if (!dateStr) {
+    return ''
+  }
   const date = new Date(dateStr)
+  if (isNaN(date.getTime())) {
+    return ''
+  }
   return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
@@ -776,7 +976,7 @@ function importNotes() {
 
 .page-title-icon {
   font-size: 28px;
-  color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue, #3178c6);
 }
 
 .add-btn {
@@ -787,15 +987,14 @@ function importNotes() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .add-btn:hover {
-  background-color: #4a8bd6;
-  transform: translateY(-1px);
+  background-color: var(--accent-blue-bright, #1f6feb);
 }
 
 .add-btn i {
@@ -815,7 +1014,7 @@ function importNotes() {
   background-color: var(--bg-secondary);
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
@@ -841,7 +1040,7 @@ function importNotes() {
   margin-top: 8px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: .375rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   min-width: 150px;
   z-index: 100;
@@ -887,7 +1086,7 @@ function importNotes() {
   text-align: center;
   padding: 80px 20px;
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   border: 1px solid var(--border-color);
 }
 
@@ -910,7 +1109,7 @@ function importNotes() {
   text-align: center;
   padding: 80px 20px;
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   border: 1px solid var(--border-color);
 }
 
@@ -933,7 +1132,7 @@ function importNotes() {
   width: 40px;
   height: 40px;
   border: 3px solid var(--border-color);
-  border-top-color: var(--accent-blue, #3b82f6);
+  border-top-color: var(--accent-blue, #3178c6);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto;
@@ -962,7 +1161,7 @@ function importNotes() {
   height: 36px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: .375rem;
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
@@ -970,7 +1169,7 @@ function importNotes() {
 
 .page-btn:hover:not(:disabled) {
   background-color: var(--hover-bg);
-  border-color: var(--accent-blue, #3b82f6);
+  border-color: var(--accent-blue, #3178c6);
 }
 
 .page-btn:disabled {
@@ -993,7 +1192,7 @@ function importNotes() {
   padding: 0 10px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: .375rem;
   color: var(--text-primary);
   font-size: 14px;
   cursor: pointer;
@@ -1005,8 +1204,8 @@ function importNotes() {
 }
 
 .page-num.active {
-  background-color: var(--accent-blue, #3b82f6);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
   color: white;
 }
 
@@ -1019,7 +1218,7 @@ function importNotes() {
 .note-card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: .375rem;
   padding: 20px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1027,12 +1226,16 @@ function importNotes() {
 
 .note-card:hover {
   border-color: var(--accent-blue);
-  transform: translateY(-2px);
 }
 
 .note-card.active {
   border-color: var(--accent-blue);
   box-shadow: 0 4px 12px rgba(var(--accent-blue-rgb), 0.15);
+}
+
+.note-title-wrapper {
+  margin-bottom: 10px;
+  position: relative;
 }
 
 .note-title {
@@ -1043,6 +1246,30 @@ function importNotes() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.note-title:hover {
+  color: var(--accent-blue);
+}
+
+.card-title-edit-input {
+  width: 100%;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 6px 10px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--accent-blue);
+  border-radius: .375rem;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.card-title-edit-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
 }
 
 .note-preview {
@@ -1051,6 +1278,12 @@ function importNotes() {
   margin-bottom: 15px;
   line-height: 1.5;
   min-height: 42px;
+  max-height: 63px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 .note-meta {
@@ -1093,7 +1326,7 @@ function importNotes() {
 
 .note-modal-content {
   background-color: var(--bg-secondary);
-  border-radius: 16px;
+  border-radius: .375rem;
   width: 90%;
   max-width: 900px;
   max-height: 85vh;
@@ -1191,7 +1424,7 @@ function importNotes() {
   cursor: pointer;
   font-size: 20px;
   padding: 4px;
-  border-radius: 4px;
+  border-radius: .375rem;
   transition: all 0.2s;
 }
 
@@ -1212,13 +1445,13 @@ function importNotes() {
   cursor: pointer;
   font-size: 18px;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: .375rem;
   transition: all 0.2s;
 }
 
 .edit-btn:hover {
-  color: var(--accent-blue, #3b82f6);
-  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--accent-blue, #3178c6);
+  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
 }
 
 .save-btn {
@@ -1228,7 +1461,7 @@ function importNotes() {
   cursor: pointer;
   font-size: 18px;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: .375rem;
   transition: all 0.2s;
 }
 
@@ -1256,7 +1489,7 @@ function importNotes() {
 .preview-text :deep(code) {
   background-color: var(--bg-primary);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: .375rem;
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 14px;
 }
@@ -1272,11 +1505,32 @@ function importNotes() {
 
 .preview-text :deep(.markdown-image) {
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: .375rem;
   margin: 12px 0;
 }
 
-.note-editor-textarea {
+.preview-text :deep(.markdown-image-wrapper) {
+  display: inline-block;
+  width: 100%;
+}
+
+.preview-text :deep(.markdown-image-error) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  color: var(--text-muted);
+  margin: 12px 0;
+}
+
+.preview-text :deep(.markdown-image-error i) {
+  font-size: 20px;
+}
+
+.note-editor-content {
   width: 100%;
   height: 100%;
   min-height: 400px;
@@ -1288,10 +1542,66 @@ function importNotes() {
   resize: none;
   outline: none;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
-.note-editor-textarea::placeholder {
+.note-editor-content:empty::before {
+  content: attr(placeholder);
   color: var(--text-muted);
+  pointer-events: none;
+  display: block;
+}
+
+.note-editor-content :deep(h1),
+.note-editor-content :deep(h2),
+.note-editor-content :deep(h3) {
+  margin: 16px 0 10px;
+  color: var(--text-primary);
+}
+
+.note-editor-content :deep(code) {
+  background-color: var(--bg-primary);
+  padding: 2px 6px;
+  border-radius: .375rem;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 14px;
+}
+
+.note-editor-content :deep(strong) {
+  font-weight: 600;
+}
+
+.note-editor-content :deep(del) {
+  color: var(--text-muted);
+}
+
+.note-editor-content :deep(li) {
+  margin-left: 20px;
+  margin-bottom: 4px;
+}
+
+.note-editor-content :deep(.markdown-image) {
+  max-width: 100%;
+  border-radius: .375rem;
+  margin: 12px 0;
+}
+
+.note-editor-content :deep(.markdown-image-wrapper) {
+  display: inline-block;
+  width: 100%;
+}
+
+.note-editor-content :deep(.markdown-image-error) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  color: var(--text-muted);
+  margin: 12px 0;
 }
 
 .editor-container {
@@ -1299,6 +1609,12 @@ function importNotes() {
   min-height: 400px;
 }
 
+.editor-container.dragging-over {
+  border: 2px dashed var(--accent-blue);
+  background-color: rgba(59, 130, 246, 0.1);
+  border-radius: .375rem;
+}
+
 .note-editor-textarea {
   width: 100%;
   height: 100%;
@@ -1311,6 +1627,15 @@ function importNotes() {
   resize: none;
   outline: none;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.note-editor-textarea:empty::before {
+  content: attr(placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+  display: block;
 }
 
 .editor-toolbar {
@@ -1323,7 +1648,7 @@ function importNotes() {
   padding: 8px 12px;
   background-color: var(--bg-secondary, #1e293b);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 10px;
+  border-radius: .375rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   z-index: 10;
 }
@@ -1336,7 +1661,7 @@ function importNotes() {
   height: 32px;
   background: none;
   border: none;
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-secondary, #94a3b8);
   font-size: 16px;
   cursor: pointer;
@@ -1378,7 +1703,7 @@ function importNotes() {
   color: var(--text-primary, #f8fafc);
   font-size: 12px;
   white-space: nowrap;
-  border-radius: 6px;
+  border-radius: .375rem;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   opacity: 0;
@@ -1405,7 +1730,7 @@ function importNotes() {
   padding-top: 4px;
   border-top: 1px dashed var(--border-color, rgba(255, 255, 255, 0.2));
   font-family: 'Monaco', 'Menlo', monospace;
-  color: var(--accent-blue, #3b82f6);
+  color: var(--accent-blue, #3178c6);
   font-size: 11px;
 }
 
@@ -1442,7 +1767,7 @@ function importNotes() {
 
 .modal-content {
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   width: 90%;
   max-width: 500px;
   border: 1px solid var(--border-color);
@@ -1478,7 +1803,7 @@ function importNotes() {
   padding: 14px 16px;
   background: var(--bg-primary, #0f172a);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 10px;
+  border-radius: .375rem;
   color: var(--text-primary, #f8fafc);
   font-size: 15px;
   outline: none;
@@ -1491,8 +1816,8 @@ function importNotes() {
 }
 
 .input-wrapper .title-input:focus {
-  border-color: var(--accent-blue, #3b82f6);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  border-color: var(--accent-blue, #3178c6);
+  box-shadow: 0 0 0 3px rgba(var(--accent-blue-rgb, 49, 120, 198), 0.2);
 }
 
 .modal-footer {
@@ -1508,7 +1833,7 @@ function importNotes() {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: .375rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1522,7 +1847,7 @@ function importNotes() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1536,7 +1861,7 @@ function importNotes() {
   background-color: #ef4444;
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1564,7 +1889,7 @@ function importNotes() {
   color: var(--text-muted);
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: .375rem;
   font-size: 16px;
   transition: all 0.2s;
 }
@@ -1576,7 +1901,7 @@ function importNotes() {
 
 .more-menu-content {
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   width: 280px;
   border: 1px solid var(--border-color);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
@@ -1599,6 +1924,26 @@ function importNotes() {
   white-space: nowrap;
 }
 
+.more-menu-title-input {
+  display: block;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 10px;
+  margin-bottom: 4px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--accent-blue);
+  border-radius: .375rem;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.more-menu-title-input:focus {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
 .more-menu-date {
   display: block;
   font-size: 12px;
@@ -1617,7 +1962,7 @@ function importNotes() {
   padding: 12px 16px;
   background: none;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   color: var(--text-primary);
   cursor: pointer;
   font-size: 14px;
@@ -1634,6 +1979,21 @@ function importNotes() {
 
 .more-menu-item.danger:hover {
   background-color: rgba(239, 68, 68, 0.1);
+}
+
+.more-menu-item.danger.confirming {
+  background-color: rgba(239, 68, 68, 0.2);
+  border: 1px solid #ef4444;
+  animation: pulse-confirm 1s ease-in-out infinite;
+}
+
+@keyframes pulse-confirm {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.2);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.35);
+  }
 }
 
 @media (max-width: 768px) {

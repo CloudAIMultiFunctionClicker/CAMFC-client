@@ -1,3 +1,17 @@
+// 保留所有权利
+//
+// Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+// Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+//
+// Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+// Email: abc.cxh2009@foxmail.com
+//
+// Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+// Email: 1220594170@qq.com
+//
+// Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+// Email: admin@mc666.top
+
 //! Cpen设备管理器
 //!
 //! 这个模块负责处理Cpen蓝牙设备的完整业务逻辑：
@@ -226,13 +240,20 @@ impl CpenDeviceManager {
         self.current_device = Some(target_device.clone());
         self.connection_status = "connected".to_string();
         
-        println!("[CPEN] 成功连接到Cpen设备: {} ({})", 
+        println!("[CPEN] 成功连接到 Cpen 设备：{} ({})", 
                  target_device.name, target_device.address);
         
         // 连接后等待一小会儿，让设备稳定
         sleep(Duration::from_millis(500)).await;
         
-        println!("[CPEN] 设备连接成功，TOTP刷新策略已启用（提前5秒刷新）");
+        // 确保服务已发现并准备好
+        println!("[CPEN] 等待设备服务准备就绪...");
+        match self.bluetooth_manager.ensure_services_ready().await {
+            Ok(_) => println!("[CPEN] 设备服务已就绪"),
+            Err(e) => println!("[CPEN] 等待设备服务就绪失败：{}，继续尝试", e),
+        }
+        
+        println!("[CPEN] 设备连接成功，TOTP 刷新策略已启用（提前 5 秒刷新）");
         
         Ok(())
     }
@@ -310,14 +331,60 @@ impl CpenDeviceManager {
         
         Ok(cpen_devices)
     }
-    
+
+    /// 扫描所有蓝牙设备（包括Cpen和其他设备）
+    ///
+    /// 这个方法会：
+    /// 1. 确保蓝牙已开启
+    /// 2. 扫描蓝牙设备
+    /// 3. 返回所有发现的设备（不连接）
+    ///
+    /// 返回：所有发现的蓝牙设备列表
+    pub async fn scan_all_bluetooth_devices(&mut self) -> Result<Vec<DeviceInfo>, CpenError> {
+        println!("开始扫描所有蓝牙设备...");
+
+        // 1. 确保蓝牙已开启
+        match self.bluetooth_manager.enable_bluetooth() {
+            Ok(_) => {
+                println!("✅ 蓝牙状态检查通过（Windows API）");
+            }
+            Err(e) => {
+                println!("⚠️ Windows蓝牙API检查失败，尝试用btleplug检测: {}", e);
+                match self.bluetooth_manager.check_bluetooth_via_btleplug().await {
+                    Ok(_) => {
+                        println!("✅ 蓝牙状态检查通过（btleplug fallback）");
+                    }
+                    Err(btleplug_err) => {
+                        let err_msg = format!("蓝牙检测失败: {}, {}", e, btleplug_err);
+                        println!("❌ {}", err_msg);
+                        return Err(err_msg);
+                    }
+                }
+            }
+        }
+
+        // 2. 扫描设备
+        println!("开始扫描蓝牙设备...");
+        let devices = self.bluetooth_manager.scan_devices(SCAN_DURATION_MS).await
+            .map_err(|e| format!("扫描设备失败: {}", e))?;
+
+        println!("扫描完成，发现 {} 个设备", devices.len());
+
+        // 3. 返回所有设备（不过滤）
+        for (i, dev) in devices.iter().enumerate() {
+            println!("  蓝牙设备[{}]: {} - {}", i, dev.name, dev.address);
+        }
+
+        Ok(devices)
+    }
+
     /// 连接到指定的Cpen设备
-    /// 
+    ///
     /// 这个方法会：
     /// 1. 断开当前连接（如果有）
     /// 2. 连接到指定地址的设备
     /// 3. 记录连接状态
-    /// 
+    ///
     /// 参数：设备地址（Bluetooth address）
     pub async fn connect_to_device(&mut self, address: &str) -> Result<DeviceInfo, CpenError> {
         println!("开始连接到指定Cpen设备: {}", address);
@@ -493,7 +560,7 @@ impl CpenDeviceManager {
         Err("获取TOTP重试次数用尽".to_string())
     }
     
-    /// 单次TOTP获取尝试（内部方法）
+    /// 单次 TOTP 获取尝试（内部方法）
     async fn get_totp_once(&mut self) -> Result<String, CpenError> {
         // 检查是否已有连接
         let was_already_connected = self.connected_address.is_some();
@@ -529,25 +596,14 @@ impl CpenDeviceManager {
             char_uuid, 
             set_time_command.as_bytes()
         ).await
-        .map_err(|e| format!("发送setTime命令失败: {}", e))?;
+        .map_err(|e| format!("发送 setTime 命令失败：{}", e))?;
         
-        sleep(Duration::from_millis(100)).await;
-        
-        // 尝试读取setTime的响应（设备可能不响应）
-        match tokio::time::timeout(
-            Duration::from_millis(500), 
-            self.bluetooth_manager.recv(service_uuid, char_uuid)
-        ).await {
-            Ok(Ok(response)) => {
-                let response_str = String::from_utf8_lossy(&response);
-                println!("[CPEN] 收到setTime响应: {}", response_str);
-            }
-            _ => {
-                println!("[CPEN] setTime无响应（可能正常）");
-            }
-        }
-        
-        // 发送getTotp命令
+        // 读取并丢弃 setTime 的响应，避免它干扰后续 getTotp 的读取
+        let _set_time_response = self.bluetooth_manager.recv(service_uuid, char_uuid).await
+            .map_err(|e| format!("接收 setTime 响应失败: {}", e))?;
+        println!("[CPEN] setTime 响应已处理");
+
+        // 发送 getTotp 命令
         println!("[CPEN] 发送getTotp命令");
         self.bluetooth_manager.send(
             service_uuid, 
@@ -698,6 +754,25 @@ impl CpenDeviceManager {
         }
     }
     
+    /// 获取本地蓝牙版本
+    pub async fn get_local_bluetooth_version(&mut self) -> Result<String, CpenError> {
+        self.bluetooth_manager.get_local_bluetooth_info().await
+    }
+
+    /// 获取 Cpen 设备的蓝牙版本
+    pub async fn get_cpen_bluetooth_version(&mut self) -> Result<String, CpenError> {
+        self.bluetooth_manager.get_cpen_bluetooth_version().await
+    }
+
+    /// 发送蓝牙保活心跳包
+    pub async fn send_keep_alive(&mut self) -> Result<(), CpenError> {
+        // Cpen 设备的 UUID
+        let service_uuid = "d816e4c6-1b99-4da7-bcd5-7c37cc2642c4";
+        let char_uuid = "d816e4c7-1b99-4da7-bcd5-7c37cc2642c4";
+        
+        self.bluetooth_manager.send_keep_alive(service_uuid, char_uuid).await
+    }
+
     /// 获取当前连接的设备信息（调试用）
     pub fn get_current_device_info(&self) -> Option<String> {
         self.current_device.as_ref().map(|dev| {

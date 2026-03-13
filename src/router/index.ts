@@ -1,6 +1,8 @@
 /**
  * CAMFC Client - 路由配置
- * 
+ *
+ * 保留所有权利
+ *
  * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
  * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
  *
@@ -12,19 +14,6 @@
  *
  * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
  * Email: admin@mc666.top
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
@@ -76,19 +65,6 @@ const router = createRouter({
       component: () => import('../views/Settings.vue')
     },
     // 新增仪表板相关路由
-    {
-      path: '/hardware-settings',
-      name: 'hardwareSettings',
-      // 硬件设置占位页面
-      // TODO: 这个页面还没具体功能，先放个占位
-      component: () => import('../views/HardwareSettings.vue')
-    },
-    {
-      path: '/software-settings',
-      name: 'softwareSettings',
-      // 软件设置占位页面
-      component: () => import('../views/SoftwareSettings.vue')
-    },
     {
       path: '/more-info',
       name: 'moreInfo',
@@ -144,15 +120,24 @@ router.beforeEach((to, _from, next) => {
     return
   }
 
-  // 获取蓝牙store
+  // 笔记页面不需要蓝牙连接，直接放行
+  if (to.path === '/notes') {
+    next()
+    return
+  }
+
+  // 获取蓝牙 store
   const bluetoothStore = useBluetoothStore()
 
   // 检查蓝牙是否已连接
-  if (bluetoothStore.isConnected()) {
+  const connected = bluetoothStore.isConnected()
+  console.log(`[路由守卫] 目标：${to.path}, 蓝牙状态：${bluetoothStore.bluetoothStatus}, 连接：${connected}`)
+  
+  if (connected) {
     next()
   } else {
     // 未连接，强制跳回首页
-    console.warn('蓝牙未连接，阻止跳转到:', to.path)
+    console.warn('[路由守卫] 蓝牙未连接，阻止跳转到:', to.path)
     next('/')
   }
 })

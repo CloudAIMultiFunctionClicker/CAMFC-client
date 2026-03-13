@@ -1,126 +1,110 @@
+<!--
+保留所有权利
+
+Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+
+Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+Email: abc.cxh2009@foxmail.com
+
+Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+Email: 1220594170@qq.com
+
+Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+Email: admin@mc666.top
+-->
+
 <template>
-  <div class="screenshot-page">
-    <header class="screenshot-header">
-      <button class="back-btn" @click="goBack">
-        <i class="ri-delete-bin-line"></i>
-        删除
-      </button>
-      <h1>屏幕截图</h1>
-      <div class="header-actions">
-        <button class="action-btn primary" @click="saveScreenshot" :disabled="!screenshotData">
-          <i class="ri-download-line"></i>
-          保存
-        </button>
-      </div>
-    </header>
-
-    <main class="screenshot-content">
-      <div v-if="loading" class="loading-state">
-        <div class="spinner"></div>
-        <p>正在截取屏幕...</p>
-      </div>
-
-      <div v-else-if="error" class="error-state">
-        <i class="ri-error-warning-line"></i>
-        <p>{{ error }}</p>
-        <button class="action-btn" @click="retakeScreenshot">重试</button>
-      </div>
-
-      <div v-else-if="screenshotData" class="preview-container">
-        <!-- 标注模式覆盖层 -->
-        <div v-if="isAnnotateMode" class="annotate-overlay">
-          <AnnotatePanel 
-            :imageData="screenshotData"
-            :imageWidth="width"
-            :imageHeight="height"
-            @complete="handleAnnotateComplete"
-            @cancel="handleAnnotateCancel"
-          />
-        </div>
-        
-        <!-- 裁切模式覆盖层 -->
-        <div v-else-if="isCropMode" class="crop-overlay">
-          <!-- 裁切提示栏 -->
-          <div class="crop-mode-header">
-            <span class="crop-mode-tip">拖动鼠标选择裁切区域，或点击取消返回</span>
-            <button class="crop-cancel-btn" @click="cancelCrop">
+  <div class="screenshot-container">
+    <main class="screenshot-main">
+      <!-- 裁切模式 -->
+      <div v-if="isCropMode" class="crop-image-wrapper" ref="cropImageWrapper" @mousedown="startDrawCrop" @mousemove="onDrawing" @mouseup="endDrawCrop" @mouseleave="endDrawCrop">
+        <img :src="screenshotData" alt="裁切预览" class="crop-base-image" />
+        <!-- 裁切选框 -->
+        <div 
+          v-if="cropBox.width > 0 && cropBox.height > 0"
+          class="crop-selection"
+          :style="{
+            left: cropBox.x + 'px',
+            top: cropBox.y + 'px',
+            width: cropBox.width + 'px',
+            height: cropBox.height + 'px'
+          }"
+        >
+          <!-- 八个调整大小的手柄 -->
+          <div class="crop-handle crop-handle-nw" @mousedown.stop="startResize('nw')"></div>
+          <div class="crop-handle crop-handle-n" @mousedown.stop="startResize('n')"></div>
+          <div class="crop-handle crop-handle-ne" @mousedown.stop="startResize('ne')"></div>
+          <div class="crop-handle crop-handle-e" @mousedown.stop="startResize('e')"></div>
+          <div class="crop-handle crop-handle-se" @mousedown.stop="startResize('se')"></div>
+          <div class="crop-handle crop-handle-s" @mousedown.stop="startResize('s')"></div>
+          <div class="crop-handle crop-handle-sw" @mousedown.stop="startResize('sw')"></div>
+          <div class="crop-handle crop-handle-w" @mousedown.stop="startResize('w')"></div>
+          <!-- 裁切区域尺寸显示 -->
+          <div class="crop-size-label">
+            {{ Math.round(cropBox.width) }} x {{ Math.round(cropBox.height) }}
+          </div>
+          <!-- 裁切操作按钮 -->
+          <div class="crop-selection-actions" @mousedown.stop @mousemove.stop @mouseup.stop>
+            <button class="crop-action-btn cancel" @mousedown.stop @click="cancelCrop" title="取消">
               <i class="ri-close-line"></i>
-              取消
+            </button>
+            <button class="crop-action-btn apply" @mousedown.stop @click="applyCrop" title="应用">
+              <i class="ri-check-line"></i>
             </button>
           </div>
-          <div class="crop-image-wrapper" ref="cropImageWrapper" @mousedown="startDrawCrop" @mousemove="onDrawing" @mouseup="endDrawCrop" @mouseleave="endDrawCrop">
-            <img :src="screenshotData" alt="裁切预览" class="crop-base-image" />
-            <!-- 裁切选框 -->
-            <div 
-              v-if="cropBox.width > 0 && cropBox.height > 0"
-              class="crop-selection"
-              :style="{
-                left: cropBox.x + 'px',
-                top: cropBox.y + 'px',
-                width: cropBox.width + 'px',
-                height: cropBox.height + 'px'
-              }"
-            >
-              <!-- 八个调整大小的手柄 -->
-              <div class="crop-handle crop-handle-nw" @mousedown.stop="startResize('nw')"></div>
-              <div class="crop-handle crop-handle-n" @mousedown.stop="startResize('n')"></div>
-              <div class="crop-handle crop-handle-ne" @mousedown.stop="startResize('ne')"></div>
-              <div class="crop-handle crop-handle-e" @mousedown.stop="startResize('e')"></div>
-              <div class="crop-handle crop-handle-se" @mousedown.stop="startResize('se')"></div>
-              <div class="crop-handle crop-handle-s" @mousedown.stop="startResize('s')"></div>
-              <div class="crop-handle crop-handle-sw" @mousedown.stop="startResize('sw')"></div>
-              <div class="crop-handle crop-handle-w" @mousedown.stop="startResize('w')"></div>
-              <!-- 裁切区域尺寸显示 -->
-              <div class="crop-size-label">
-                {{ Math.round(cropBox.width) }} x {{ Math.round(cropBox.height) }}
-              </div>
-              <!-- 裁切操作按钮 -->
-              <div class="crop-selection-actions">
-                <button class="crop-action-btn cancel" @click="cancelCrop" title="取消">
-                  <i class="ri-close-line"></i>
-                </button>
-                <button class="crop-action-btn apply" @click="applyCrop" title="应用">
-                  <i class="ri-check-line"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 正常预览模式 -->
-        <div v-else class="image-wrapper" ref="imageWrapper" @wheel="handleWheel">
-          <div 
-            class="image-drag-container" 
-            :style="{ transform: `translate(${translateX}px, ${translateY}px) scale(${scale})` }"
-            @mousedown="startDrag"
-            @mousemove="drag"
-            @mouseup="endDrag"
-            @mouseleave="endDrag"
-          >
-            <img :src="screenshotData" alt="屏幕截图" class="screenshot-image" draggable="false" />
-          </div>
-        </div>
-        <div class="zoom-controls" v-show="!isCropMode && !isAnnotateMode">
-          <button class="zoom-btn" @click="zoomOut" :disabled="scale <= 0.1">
-            <i class="ri-zoom-out-line"></i>
-          </button>
-          <button class="zoom-scale-btn" @click="resetZoom">
-            {{ Math.round(scale * 100) }}%
-          </button>
-          <button class="zoom-btn" @click="zoomIn" :disabled="scale >= 3">
-            <i class="ri-zoom-in-line"></i>
-          </button>
-          <div class="control-divider"></div>
-          <button class="zoom-btn" @click="handleAnnotate" title="标注">
-            <i class="ri-edit-line"></i>
-          </button>
-          <button class="zoom-btn" @click="handleCrop" title="裁切">
-            <i class="ri-crop-line"></i>
-          </button>
         </div>
       </div>
 
-
+      <!-- 正常预览模式 -->
+      <div v-else class="image-wrapper" ref="imageWrapper" @wheel="handleWheel">
+        <div 
+          class="image-drag-container" 
+          :style="{ transform: `translate(${translateX}px, ${translateY}px) scale(${scale})` }"
+          @mousedown="startDrag"
+          @mousemove="drag"
+          @mouseup="endDrag"
+          @mouseleave="endDrag"
+        >
+          <img :src="screenshotData" alt="屏幕截图" class="screenshot-image" draggable="false" />
+        </div>
+      </div>
+      <div class="zoom-controls" v-show="!isCropMode && !isAnnotateMode">
+        <button class="zoom-btn" @click="zoomOut" :disabled="scale <= 0.1">
+          <i class="ri-zoom-out-line"></i>
+        </button>
+        <button class="zoom-scale-btn" @click="resetZoom">
+          {{ Math.round(scale * 100) }}%
+        </button>
+        <button class="zoom-btn" @click="zoomIn" :disabled="scale >= 3">
+          <i class="ri-zoom-in-line"></i>
+        </button>
+        <div class="control-divider"></div>
+        <button class="zoom-btn" @click="saveToNotes" title="保存到笔记">
+          <i class="ri-sticky-note-line"></i>
+        </button>
+        <button class="zoom-btn" @click="saveScreenshot" title="保存">
+          <i class="ri-save-line"></i>
+        </button>
+        <button class="zoom-btn" @click="handleAnnotate" title="标注">
+          <i class="ri-edit-line"></i>
+        </button>
+        <button class="zoom-btn" @click="handleCrop" title="裁切">
+          <i class="ri-crop-line"></i>
+        </button>
+      </div>
+      
+      <!-- 标注模式 -->
+      <div v-if="isAnnotateMode" class="annotate-overlay">
+        <AnnotatePanel
+          :image-data="screenshotData"
+          :image-width="width"
+          :image-height="height"
+          :existing-annotations="hasExistingAnnotations ? loadAnnotations(currentImageId)?.annotations : null"
+          @complete="handleAnnotateComplete"
+          @cancel="handleAnnotateCancel"
+        />
+      </div>
     </main>
   </div>
 </template>
@@ -209,7 +193,7 @@ const processScreenshotData = (result) => {
 const setupScreenshotListener = async () => {
   // 先设置监听器，确保在组件挂载时就能接收事件
   unlistenScreenshotData = await listen('screenshot-data', (event) => {
-    console.log('📸 收到截图数据事件')
+    console.log('收到截图数据事件')
     const result = event.payload
     if (result.success) {
       processScreenshotData(result)
@@ -219,7 +203,7 @@ const setupScreenshotListener = async () => {
     }
   })
   
-  console.log('✅ 截图监听器已设置完成')
+  console.log('截图监听器已设置完成')
 }
 
 const captureScreenshot = async () => {
@@ -280,7 +264,17 @@ const handleCrop = () => {
 }
 
 const handleAnnotate = () => {
-  if (!screenshotData.value) return
+  if (!screenshotData.value) {
+    console.error('[ScreenshotView] screenshotData 为空，无法进入标注模式')
+    return
+  }
+  
+  console.log('[ScreenshotView] 进入标注模式', {
+    hasData: !!screenshotData.value,
+    dataLength: screenshotData.value?.length,
+    width: width.value,
+    height: height.value
+  })
   
   // 生成或获取图片 ID
   if (!currentImageId.value) {
@@ -301,6 +295,16 @@ const handleAnnotate = () => {
 const handleAnnotateComplete = (data) => {
   annotatedImageData.value = data.imageData
   screenshotData.value = data.imageData
+  
+  // 更新宽高为标注后的图片尺寸
+  // 创建临时 Image 对象获取新图片的宽高
+  const img = new Image()
+  img.onload = () => {
+    width.value = img.width
+    height.value = img.height
+    console.log('[ScreenshotView] 标注完成，图片尺寸更新为:', img.width, 'x', img.height)
+  }
+  img.src = data.imageData
   
   // 保存标注数据
   if (currentImageId.value) {
@@ -470,6 +474,9 @@ const applyCrop = () => {
     isCropMode.value = false
     cropBox.value = { x: 0, y: 0, width: 0, height: 0 }
     
+    // 重置缩放和平移状态
+    resetZoom()
+    
     showToast('裁切成功', '#10b981')
   }
   
@@ -522,6 +529,69 @@ const saveScreenshot = async () => {
   } catch (error) {
     console.error('保存图片失败:', error)
     showToast('保存失败', '#ef4444')
+  }
+}
+
+const saveToNotes = async () => {
+  if (!screenshotData.value) {
+    showToast('没有可保存的图片', '#f59e0b')
+    return
+  }
+  
+  try {
+    // 获取后端 URL
+    const { getBackendUrl } = await import('../config/backend.js')
+    
+    // 获取认证信息
+    const { getDeviceId, getTotp } = await import('../components/data/bluetooth.js')
+    const deviceId = await getDeviceId()
+    const currentTotp = await getTotp()
+    const authHeader = { "Id": deviceId, "Totp": currentTotp }
+    
+    // 生成笔记标题
+    const now = new Date()
+    const timeStr = `${now.getMonth() + 1}月${now.getDate()}日 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const noteTitle = `截图笔记_${timeStr}`
+    const uuid = crypto.randomUUID()
+    
+    // 创建笔记
+    const createResponse = await fetch(getBackendUrl() + '/note/add', {
+      method: 'POST',
+      headers: { ...authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uuid, title: noteTitle })
+    })
+    
+    if (!createResponse.ok) {
+      throw new Error('创建笔记失败')
+    }
+    
+    // 更新笔记内容，插入图片
+    const markdownContent = `# ${noteTitle}\n\n![截图](${screenshotData.value})\n`
+    
+    const updateResponse = await fetch(getBackendUrl() + '/note/update', {
+      method: 'POST',
+      headers: { ...authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        uuid, 
+        title: noteTitle,
+        content: markdownContent 
+      })
+    })
+    
+    if (!updateResponse.ok) {
+      throw new Error('更新笔记内容失败')
+    }
+    
+    showToast('截图已保存到笔记', '#10b981')
+    
+    // 延迟跳转到笔记页面
+    setTimeout(() => {
+      window.location.href = '#/notes'
+    }, 500)
+    
+  } catch (error) {
+    console.error('保存到笔记失败:', error)
+    showToast('保存失败：' + (error.message || '网络错误'), '#ef4444')
   }
 }
 
@@ -701,7 +771,7 @@ onUnmounted(() => {
   color: var(--text-secondary, #94a3b8);
   font-size: 14px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: .375rem;
   transition: all 0.2s;
 }
 
@@ -723,7 +793,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
@@ -734,17 +804,34 @@ onUnmounted(() => {
 }
 
 .action-btn.primary {
-  background-color: var(--accent-blue, #3b82f6);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
 }
 
 .action-btn.primary:hover {
-  background-color: #2563eb;
+  background-color: var(--accent-blue-bright, #1f6feb);
 }
 
 .screenshot-content {
   flex: 1;
-  padding: 24px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 截图页面容器 - 占满整个窗口 */
+.screenshot-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 主内容区域 */
+.screenshot-main {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -765,7 +852,7 @@ onUnmounted(() => {
   width: 40px;
   height: 40px;
   border: 3px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-top-color: var(--accent-blue, #3b82f6);
+  border-top-color: var(--accent-blue, #3178c6);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
@@ -787,9 +874,10 @@ onUnmounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   position: relative;
   overflow: hidden;
+  min-height: 0;
 }
 
 .screenshot-info {
@@ -797,17 +885,19 @@ onUnmounted(() => {
   gap: 24px;
   color: var(--text-muted, #64748b);
   font-size: 14px;
+  flex-shrink: 0;
 }
 
 .image-wrapper {
   flex: 1;
   background-color: var(--bg-secondary, #1e293b);
-  border-radius: 12px;
+  border-radius: .375rem;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   position: relative;
+  min-height: 0;
 }
 
 .image-drag-container {
@@ -826,7 +916,7 @@ onUnmounted(() => {
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: .375rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   cursor: grab;
   user-select: none;
@@ -841,7 +931,7 @@ onUnmounted(() => {
   display: flex;
   gap: 8px;
   position: absolute;
-  bottom: 16px;
+  bottom: 32px;
   right: 16px;
   z-index: 10;
 }
@@ -855,7 +945,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 18px;
   cursor: pointer;
   transition: all 0.2s;
@@ -886,7 +976,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 14px;
   font-weight: 500;
   min-width: 60px;
@@ -900,13 +990,13 @@ onUnmounted(() => {
 
 /* 标注模式样式 */
 .annotate-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.95);
-  z-index: 100;
+  z-index: 1000;
   overflow: hidden;
 }
 
@@ -946,7 +1036,7 @@ onUnmounted(() => {
   padding: 6px 12px;
   background-color: transparent;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-primary, #f1f5f9);
   font-size: 14px;
   cursor: pointer;
@@ -970,7 +1060,7 @@ onUnmounted(() => {
   padding: 8px 16px;
   background-color: transparent;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-primary, #f1f5f9);
   font-size: 14px;
   cursor: pointer;
@@ -982,12 +1072,12 @@ onUnmounted(() => {
 }
 
 .action-btn.primary {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
 }
 
 .action-btn.primary:hover {
-  background-color: #2563eb;
+  background-color: var(--accent-blue-bright, #1f6feb);
 }
 
 .action-btn i {
@@ -1007,6 +1097,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   background-color: transparent;
+  max-height: calc(100vh - 100px);
+  min-height: 0;
 }
 
 .crop-base-image {
@@ -1015,6 +1107,7 @@ onUnmounted(() => {
   max-height: 100%;
   width: auto;
   height: auto;
+  object-fit: contain;
   user-select: none;
   pointer-events: none;
 }
@@ -1022,53 +1115,71 @@ onUnmounted(() => {
 /* 裁切选框样式 */
 .crop-selection {
   position: absolute;
-  border: 2px solid #3b82f6;
-  background-color: rgba(59, 130, 246, 0.1);
+  border: 2px solid var(--accent-blue, #3178c6);
+  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
   cursor: move;
   z-index: 10;
   pointer-events: none;
 }
 
 .crop-selection-actions {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 8px;
+  position: fixed;
+  bottom: 32px;
+  right: 16px;
   display: flex;
   gap: 8px;
-  pointer-events: auto;
-  z-index: 20;
+  pointer-events: auto !important;
+  z-index: 1000;
+}
+
+.crop-selection-actions button {
+  pointer-events: auto !important;
 }
 
 .crop-action-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: var(--bg-secondary, #1e293b);
+  color: var(--text-primary, #f1f5f9);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: .375rem;
+  font-size: 18px;
   cursor: pointer;
   transition: all 0.2s;
-  font-size: 18px;
-  color: #fff;
+}
+
+.crop-action-btn:hover:not(:disabled) {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
+}
+
+.crop-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .crop-action-btn.cancel {
-  background-color: #ef4444;
+  background-color: var(--bg-secondary, #1e293b);
+  color: var(--text-primary, #f1f5f9);
 }
 
 .crop-action-btn.cancel:hover {
-  background-color: #dc2626;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: #ef4444;
 }
 
 .crop-action-btn.apply {
-  background-color: #10b981;
+  background-color: var(--bg-secondary, #1e293b);
+  color: var(--text-primary, #f1f5f9);
 }
 
 .crop-action-btn.apply:hover {
-  background-color: #059669;
+  background-color: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: #10b981;
 }
 
 .crop-handle {
@@ -1098,7 +1209,7 @@ onUnmounted(() => {
   background-color: rgba(0, 0, 0, 0.8);
   color: #fff;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: .375rem;
   font-size: 12px;
   white-space: nowrap;
   pointer-events: none;

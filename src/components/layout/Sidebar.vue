@@ -1,4 +1,6 @@
 <!--
+保留所有权利
+
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
 Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
@@ -10,19 +12,6 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <!--
@@ -123,22 +112,7 @@ const toggleCollapse = () => {
             </ul>
         </nav>
 
-        <!-- 底部区域 -->
-        <div class="sidebar-footer">
-            <!-- 移除底部的折叠按钮，因为现在有悬浮按钮了 -->
-            <!-- 简单放几个底部按钮 -->
-            <button class="footer-btn">
-                <i class="ri-settings-3-line"></i>
-                <span>设置</span>
-            </button>
 
-            <button class="footer-btn">
-                <i class="ri-question-line"></i>
-                <span>帮助</span>
-            </button>
-
-            <!-- TODO: 这里以后可以放用户信息 -->
-        </div>
     </aside>
 </template>
 
@@ -149,26 +123,16 @@ const toggleCollapse = () => {
 .sidebar {
     width: 240px;
     height: calc(100vh - 65px);
-    /* 全高 */
-    background: var(
-        --bg-sidebar,
-        linear-gradient(135deg, #1e293b 0%, #334155 100%)
-    );
-    border-right: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
-    /* 主题化边框 */
+    background: var(--bg-sidebar, #161b22);
+    border-right: 1px solid var(--border-color, #30363d);
     display: flex;
     flex-direction: column;
-    /* 垂直布局 */
     padding: 20px 0;
-    /* 上下有内边距 */
     box-sizing: border-box;
     position: relative;
     z-index: 900;
-    /* 在头部下面 */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    /* 使用贝塞尔曲线让动画更自然，包含所有属性的过渡 */
     overflow-y: auto;
-    /* 内容超出时可滚动 */
 }
 
 /* 自定义滚动条样式 */
@@ -181,12 +145,12 @@ const toggleCollapse = () => {
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-    background: var(--border-color, rgba(255, 255, 255, 0.2));
-    border-radius: 3px;
+    background: var(--border-color, #30363d);
+    border-radius: .375rem;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted, #64748b);
+    background: var(--text-muted, #8b949e);
 }
 
 /* 折叠状态 - 侧边栏向左滑出屏幕 */
@@ -206,33 +170,31 @@ const toggleCollapse = () => {
 .float-collapse-btn {
     position: fixed;
     left: 16px;
-    top: 80px; /* 在头部下方一点 */
-    background: var(--bg-sidebar, #1e293b);
-    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+    top: 80px;
+    background: var(--bg-sidebar, #ffffff);
+    border: 1px solid var(--border-color, #d0d7de);
     width: 36px;
     height: 36px;
-    border-radius: 8px; /* 改为圆角矩形，更符合设计 */
-    color: var(--text-secondary, #cbd5e1);
+    border-radius: .375rem;
+    color: var(--text-secondary, #57606a);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000; /* 确保在最上层 */
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     opacity: 0.9;
 }
 
 .float-collapse-btn:hover {
-    background: var(--hover-bg, rgba(255, 255, 255, 0.1));
-    color: var(--text-primary, #f8fafc);
-    transform: translateY(-1px); /* 轻微上浮效果 */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    background: var(--hover-bg, #f3f4f6);
+    color: var(--text-primary, #24292f);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     opacity: 1;
 }
 
 .float-collapse-btn:active {
-    transform: translateY(0); /* 点击时恢复位置 */
 }
 
 .float-collapse-btn i {
@@ -256,27 +218,24 @@ const toggleCollapse = () => {
     }
 }
 
-/* Logo区域样式 */
+/* Logo 区域样式 */
 .logo-area {
     padding: 0 20px 20px;
-    /* 左右内边距，底部有间距 */
-    border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
+    border-bottom: 1px solid var(--border-color, #d0d7de);
     margin-bottom: 20px;
     position: relative;
-    /* 为折叠按钮定位 */
 }
 
-/* 折叠按钮样式（侧边栏内的） */
 .collapse-btn {
     position: absolute;
     right: 12px;
     top: 12px;
-    background: var(--hover-bg, rgba(255, 255, 255, 0.1));
+    background: var(--hover-bg, #f3f4f6);
     border: none;
     width: 28px;
     height: 28px;
-    border-radius: 6px; /* 与悬浮按钮保持一致 */
-    color: var(--text-secondary, #cbd5e1);
+    border-radius: .375rem;
+    color: var(--text-secondary, #57606a);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -285,9 +244,9 @@ const toggleCollapse = () => {
 }
 
 .collapse-btn:hover {
-    background: var(--hover-bg, rgba(255, 255, 255, 0.15));
-    color: var(--text-primary, #f8fafc);
-    transform: rotate(15deg); /* 轻微旋转效果 */
+    background: var(--hover-bg, #f3f4f6);
+    color: var(--text-primary, #24292f);
+    transform: rotate(15deg);
 }
 
 .collapse-btn i {
@@ -306,7 +265,7 @@ const toggleCollapse = () => {
 
 .logo-area h2 {
     margin: 0;
-    color: var(--text-primary, #f8fafc);
+    color: var(--text-primary, #24292f);
     font-size: 1.25rem;
     font-weight: 600;
     display: flex;
@@ -317,13 +276,12 @@ const toggleCollapse = () => {
 
 .logo-area h2 i {
     font-size: 1.5rem;
-    color: var(--accent-blue, #3b82f6);
-    /* 使用主题蓝色 */
+    color: var(--accent-blue, #0969da);
 }
 
 .subtitle {
     margin: 0;
-    color: var(--text-muted, #94a3b8);
+    color: var(--text-muted, #8c959f);
     font-size: 0.875rem;
     line-height: 1.4;
 }
@@ -339,34 +297,30 @@ const toggleCollapse = () => {
     align-items: center;
     margin-bottom: 8px;
     font-size: 12px;
-    color: var(--text-muted, #94a3b8);
+    color: var(--text-muted, #8c959f);
 }
 
 .usage-text {
-    color: var(--accent-blue, #3b82f6);
+    color: var(--accent-blue, #0969da);
     font-weight: 500;
 }
 
 .usage-bar {
     height: 6px;
-    background: var(--bg-primary, #0f172a);
-    border-radius: 3px;
+    background: var(--bg-tertiary, #f6f8fa);
+    border-radius: .375rem;
     overflow: hidden;
 }
 
 .usage-progress {
     height: 100%;
-    border-radius: 3px;
+    border-radius: .375rem;
     transition: width 0.3s ease;
 }
 
 .usage-progress.unlimited {
     width: 100%;
-    background: linear-gradient(90deg, 
-        var(--accent-blue, #3b82f6) 0%, 
-        #10b981 50%, 
-        var(--accent-green, #22c55e) 100%
-    );
+    background: var(--accent-green, #2da44e);
 }
 
 /* 菜单通用样式 */
@@ -378,11 +332,10 @@ const toggleCollapse = () => {
 
 .menu-title {
     margin: 0 0 12px 0;
-    color: var(--text-secondary, #cbd5e1);
+    color: var(--text-secondary, #57606a);
     font-size: 0.875rem;
     font-weight: 500;
     text-transform: uppercase;
-    /* 大写字母，看起来像标题 */
     letter-spacing: 0.05em;
     display: flex;
     align-items: center;
@@ -402,82 +355,40 @@ const toggleCollapse = () => {
 
 .menu-item {
     margin-bottom: 4px;
-    /* 菜单项之间的间距 */
 }
 
-/* 菜单链接样式 */
 .menu-link {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    color: var(--text-secondary, #cbd5e1);
+    color: var(--text-secondary, #57606a);
     text-decoration: none;
-    border-radius: 8px;
-    /* 跟按钮一样的圆角 */
+    border-radius: .375rem;
     transition: all 0.2s ease;
-    /* 过渡效果 */
     font-size: 0.9375rem;
 }
 
 .menu-link i {
     font-size: 1.125rem;
     width: 24px;
-    /* 固定图标宽度，对齐好看 */
     display: flex;
     justify-content: center;
 }
 
 .menu-link:hover {
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
-    color: var(--text-primary, #f1f5f9);
+    background-color: var(--hover-bg, #f3f4f6);
+    color: var(--text-primary, #24292f);
 }
 
-/* 路由链接激活状态 - 先写个样式，等有script了再用 */
-/* TODO: 这里需要router-link-active类来高亮当前页面 */
 .menu-link.router-link-active {
-    background-color: rgba(var(--accent-blue-rgb, 59, 130, 246), 0.15);
-    color: var(--accent-blue, #3b82f6);
+    background-color: var(--selected-bg, #ddf4ff);
+    color: var(--accent-blue, #0969da);
     font-weight: 500;
 }
 
 .menu-link.router-link-active i {
-    color: var(--accent-blue, #3b82f6);
-}
-
-/* 底部区域样式 */
-.sidebar-footer {
-    margin-top: auto;
-    /* 推到最底部 */
-    padding: 20px 20px 0;
-    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.05));
-}
-
-.footer-btn {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    padding: 10px 12px;
-    background: none;
-    border: none;
-    color: var(--text-muted, #94a3b8);
-    text-align: left;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.9375rem;
-    margin-bottom: 8px;
-    /* 按钮之间的间距 */
-}
-
-.footer-btn i {
-    font-size: 1.125rem;
-}
-
-.footer-btn:hover {
-    background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-    color: var(--text-secondary, #cbd5e1);
+    color: var(--accent-blue, #0969da);
 }
 
 /* 响应式设计 - 小屏幕时可能需要调整 */
@@ -505,4 +416,3 @@ const toggleCollapse = () => {
     }
 }
 </style>
-.footer-btn i {

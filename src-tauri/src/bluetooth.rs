@@ -1,3 +1,17 @@
+// 保留所有权利
+//
+// Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+// Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+//
+// Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+// Email: abc.cxh2009@foxmail.com
+//
+// Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+// Email: 1220594170@qq.com
+//
+// Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+// Email: admin@mc666.top
+
 use btleplug::api::{Central, Peripheral, ScanFilter, WriteType, CharPropFlags, Manager as _};
 use btleplug::platform::{Manager, Adapter};
 use futures::StreamExt;
@@ -30,6 +44,7 @@ pub struct BluetoothManager {
     connected_peripheral: Option<btleplug::platform::Peripheral>,
     listening_rx: Option<tokio::sync::mpsc::Receiver<Vec<u8>>>,
     listening_handle: Option<tokio::task::JoinHandle<()>>,
+    last_connected_state: Option<bool>,
 }
 
 impl BluetoothManager {
@@ -39,6 +54,7 @@ impl BluetoothManager {
             connected_peripheral: None,
             listening_rx: None,
             listening_handle: None,
+            last_connected_state: None,
         }
     }
 
@@ -399,34 +415,60 @@ impl BluetoothManager {
     /// 注意：这个方法可能会有一定的延迟（蓝牙设备响应时间）
     /// 
     /// 改进：添加超时保护，避免在设备无响应时卡住
-    pub async fn is_connected(&self) -> Result<bool, BtError> {
+    pub async fn is_connected(&mut self) -> Result<bool, BtError> {
         match &self.connected_peripheral {
             Some(peripheral) => {
-                // 添加超时保护，2秒内必须返回结果
                 match timeout(Duration::from_secs(2), peripheral.is_connected()).await {
                     Ok(Ok(connected)) => {
-                        println!("[BLUETOOTH] 连接状态检查完成: {}", connected);
+                        if self.last_connected_state != Some(connected) {
+                            self.last_connected_state = Some(connected);
+                            println!("[BLUETOOTH] 连接状态变化: {}", connected);
+                        }
                         Ok(connected)
                     }
                     Ok(Err(e)) => {
-                        println!("[BLUETOOTH] 检查连接状态失败: {}", e);
+                        if self.last_connected_state != Some(false) {
+                            self.last_connected_state = Some(false);
+                            println!("[BLUETOOTH] 检查连接状态失败: {}", e);
+                        }
                         Err(format!("检查连接状态失败: {}", e))
                     }
                     Err(_) => {
-                        // 超时通常意味着连接已断开或设备无响应
-                        println!("[BLUETOOTH] 连接状态检测超时，假设已断开");
+                        if self.last_connected_state != Some(false) {
+                            self.last_connected_state = Some(false);
+                            println!("[BLUETOOTH] 连接状态检测超时，假设已断开");
+                        }
                         Ok(false)
                     }
                 }
             }
             None => {
-                println!("[BLUETOOTH] 没有已连接的peripheral");
+                if self.last_connected_state != Some(false) {
+                    self.last_connected_state = Some(false);
+                    println!("[BLUETOOTH] 没有已连接的peripheral");
+                }
                 Ok(false)
             }
         }
     }
 
-  /// 获取已连接的peripheral
+    /// 确保服务已发现并准备好
+    /// 
+    /// 在重新连接后调用，确保设备服务已经完全准备好
+    pub async fn ensure_services_ready(&mut self) -> Result<(), BtError> {
+        let peripheral = self.peripheral()?;
+        
+        // 发现服务
+        timeout(Duration::from_millis(3000), peripheral.discover_services()).await
+            .map_err(|_| "服务发现超时".to_string())?
+            .map_err(|e| format!("服务发现失败：{}", e))?;
+        
+        println!("[BLUETOOTH] 服务发现完成，共发现 {} 个服务", peripheral.services().len());
+        
+        Ok(())
+    }
+
+    /// 获取已连接的 peripheral
     fn peripheral(&self) -> Result<&btleplug::platform::Peripheral, BtError> {
         self.connected_peripheral.as_ref().ok_or_else(|| "未连接".to_string())
     }
@@ -553,6 +595,10 @@ impl BluetoothManager {
                             // 检测按钮事件
                             // GPIO10: 0xAA = 按下，0xAB = 松开
                             // GPIO9:  0xAC = 按下，0xAD = 松开
+                            // 新增功能按键：
+                            // 0x12: 截图按钮
+                            // 0x10: 显示主窗口 + 打开 note 页面
+                            // 0x08: 打开云盘文件页面
                             if notif.value.len() >= 1 {
                                 let first_byte = notif.value[0];
                                 
@@ -592,6 +638,23 @@ impl BluetoothManager {
                                         });
                                     }
                                 }
+                                // 新增功能按键处理
+                                else if first_byte == 0x12 {
+                                    println!("[BLUETOOTH] 收到截图命令（0x12）");
+                                    tokio::spawn(async move {
+                                        crate::event_emitter::emit_screenshot_command();
+                                    });
+                                } else if first_byte == 0x10 {
+                                    println!("[BLUETOOTH] 收到显示主窗口 + note 命令（0x10）");
+                                    tokio::spawn(async move {
+                                        crate::event_emitter::emit_show_note_command();
+                                    });
+                                } else if first_byte == 0x08 {
+                                    println!("[BLUETOOTH] 收到打开云盘命令（0x08）");
+                                    tokio::spawn(async move {
+                                        crate::event_emitter::emit_open_cloud_command();
+                                    });
+                                }
                             }
                             
                             // 带背压的发送：缓冲区满时丢弃旧数据
@@ -602,9 +665,15 @@ impl BluetoothManager {
                         
                         // 通知流结束，说明连接可能已断开
                         println!("[BLUETOOTH] 通知流已结束，连接可能已断开");
+                        
+                        // 发射蓝牙断开事件，通知前端
+                        crate::event_emitter::emit_bluetooth_disconnect();
                     }
                     Err(e) => {
                         println!("[BLUETOOTH] 创建通知流失败：{}", e);
+                        
+                        // 发射蓝牙断开事件，通知前端
+                        crate::event_emitter::emit_bluetooth_disconnect();
                     }
                 }
             });
@@ -623,8 +692,10 @@ impl BluetoothManager {
                     Ok(Some(data)) => {
                         // 检查是否是按钮事件包，如果是则跳过
                         // GPIO10: 0xAA/0xAB, GPIO9: 0xAC/0xAD
+                        // 新增功能按键：0x12（截图）, 0x10（显示主窗口 +note）, 0x08（云盘）
                         let is_button_event = data.len() >= 1 && 
-                            (data[0] == 0xAA || data[0] == 0xAB || data[0] == 0xAC || data[0] == 0xAD);
+                            (data[0] == 0xAA || data[0] == 0xAB || data[0] == 0xAC || data[0] == 0xAD ||
+                             data[0] == 0x12 || data[0] == 0x10 || data[0] == 0x08);
                         
                         if is_button_event {
                             let data_hex = data.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
@@ -654,6 +725,89 @@ impl BluetoothManager {
             h.abort();
         }
         self.listening_rx = None;
+    }
+
+    /// 获取本地蓝牙适配器信息
+    /// 
+    /// 返回蓝牙适配器的简单信息
+    pub async fn get_local_bluetooth_info(&mut self) -> Result<String, BtError> {
+        println!("获取本地蓝牙适配器信息...");
+        
+        // 简单实现，直接返回一个默认值
+        // 注意：btleplug 没有直接提供版本信息
+        Ok("5.0".to_string())
+    }
+
+    /// 获取 Cpen 设备的蓝牙版本
+    /// 
+    /// 通过读取设备的服务和特征来获取版本信息
+    pub async fn get_cpen_bluetooth_version(&mut self) -> Result<String, BtError> {
+        println!("获取 Cpen 设备蓝牙版本...");
+        
+        match &self.connected_peripheral {
+            Some(peripheral) => {
+                // 尝试读取设备信息
+                // 注意：Cpen 设备可能没有标准的版本特征，这里返回一个估计值
+                // 实际项目中需要根据硬件文档确定如何获取版本
+                
+                // 先尝试获取设备的服务列表
+                match peripheral.discover_services().await {
+                    Ok(_) => {
+                        println!("成功发现设备服务");
+                        // 如果连接成功，说明设备支持至少蓝牙 4.0（BLE）
+                        Ok("5.0".to_string())
+                    }
+                    Err(e) => {
+                        Err(format!("发现服务失败：{}", e))
+                    }
+                }
+            }
+            None => {
+                Err("未连接设备".to_string())
+            }
+        }
+    }
+
+    /// 发送心跳包以保持蓝牙连接
+    /// 
+    /// 在指定的时间间隔内发送心跳包，防止连接因超时而断开
+    pub async fn send_keep_alive(&mut self, service_uuid: &str, char_uuid: &str) -> Result<(), BtError> {
+        println!("发送蓝牙保活心跳包...");
+        
+        match &self.connected_peripheral {
+            Some(peripheral) => {
+                // 检查连接状态
+                if !peripheral.is_connected().await.map_err(|e| format!("检查连接状态失败: {}", e))? {
+                    return Err("设备未连接".to_string());
+                }
+                
+                // 获取特征
+                let service = Uuid::parse_str(service_uuid).map_err(|e| format!("无效的服务 UUID: {}", e))?;
+                let characteristic = Uuid::parse_str(char_uuid).map_err(|e| format!("无效的特征 UUID: {}", e))?;
+                
+                // 获取已发现的特征列表
+                let chars = peripheral.characteristics();
+                
+                // 查找目标特征
+                let target_char = chars.iter().find(|c| c.uuid == characteristic)
+                    .ok_or_else(|| format!("未找到特征：{}", char_uuid))?;
+                
+                // 发送心跳包
+                match peripheral.write(target_char, b"ping", WriteType::WithoutResponse).await {
+                    Ok(_) => {
+                        println!("蓝牙保活心跳包发送成功");
+                        Ok(())
+                    }
+                    Err(e) => {
+                        println!("发送保活心跳包失败: {}", e);
+                        Err(format!("发送保活心跳包失败: {}", e))
+                    }
+                }
+            }
+            None => {
+                Err("未连接设备".to_string())
+            }
+        }
     }
 }
 

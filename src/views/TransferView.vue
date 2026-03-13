@@ -1,4 +1,6 @@
 <!--
+保留所有权利
+
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
 Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
@@ -10,19 +12,6 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <script setup>
@@ -30,7 +19,7 @@ import Sidebar from '../components/layout/Sidebar.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import { getUploadProgress, pauseUpload, resumeUpload } from '../components/data/upload.js'
 import { getDownloadProgress, pauseDownload, resumeDownload } from '../components/data/download.js'
-import { getActiveUploads, setActiveUploads, getActiveDownloads, setActiveDownloads, openFile, openFolder } from '../components/data/storage.js'
+import { getActiveUploads, setActiveUploads, getActiveDownloads, setActiveDownloads, openFile, openFolder, getUploadHistory, saveUploadHistory, getDownloadHistory, saveDownloadHistory } from '../components/data/storage.js'
 import { invoke } from '@tauri-apps/api/core'
 
 const isSidebarCollapsed = ref(false)
@@ -43,6 +32,8 @@ const activeTab = ref('upload')
 
 const uploadList = ref([])
 const downloadList = ref([])
+const uploadHistory = ref([])
+const downloadHistory = ref([])
 let pollTimer = null
 
 const formatSize = (bytes) => {
@@ -66,7 +57,7 @@ const refreshUploads = async () => {
     for (const id of uploadIds) {
       try {
         const progress = await getUploadProgress(id)
-        if (progress && progress.status !== 'Error') {
+        if (progress && progress.status !== 'Error' && progress.status !== 'Pending') {
           validIds.push(id)
           newList.push({
             id: progress.upload_id,
@@ -108,7 +99,7 @@ const refreshDownloads = async () => {
     for (const id of fileIds) {
       try {
         const progress = await getDownloadProgress(id)
-        if (progress && progress.status !== 'Error') {
+        if (progress && progress.status !== 'Error' && progress.status !== 'Pending') {
           validIds.push(id)
           newList.push({
             id: progress.file_id,
@@ -150,6 +141,83 @@ const mapStatus = (status) => {
 
 const refreshAll = async () => {
   await Promise.all([refreshUploads(), refreshDownloads()])
+  await checkAndSaveCompleted()
+}
+
+const loadHistory = async () => {
+  uploadHistory.value = await getUploadHistory()
+  downloadHistory.value = await getDownloadHistory()
+}
+
+const saveToHistory = async (item, type) => {
+  if (type === 'upload') {
+    const history = await getUploadHistory()
+    const newHistory = [
+      {
+        id: item.id,
+        name: item.name,
+        size: item.size,
+        status: item.status,
+        speed: item.speed,
+        completedTime: Date.now()
+      },
+      ...history
+    ].slice(0, 100)
+    await saveUploadHistory(newHistory)
+    uploadHistory.value = newHistory
+  } else {
+    const history = await getDownloadHistory()
+    const newHistory = [
+      {
+        id: item.id,
+        name: item.name,
+        size: item.size,
+        status: item.status,
+        speed: item.speed,
+        completedTime: Date.now(),
+        fileId: item.fileId || item.id
+      },
+      ...history
+    ].slice(0, 100)
+    await saveDownloadHistory(newHistory)
+    downloadHistory.value = newHistory
+  }
+}
+
+let previousUploadStatus = {}
+let previousDownloadStatus = {}
+
+const checkAndSaveCompleted = async () => {
+  for (const item of uploadList.value) {
+    const prevStatus = previousUploadStatus[item.id]
+    if ((item.status === 'completed' || item.status === 'failed') && prevStatus && prevStatus !== 'completed' && prevStatus !== 'failed') {
+      await saveToHistory(item, 'upload')
+      await removeFromActiveList(item.id, 'upload')
+    }
+    previousUploadStatus[item.id] = item.status
+  }
+  for (const item of downloadList.value) {
+    const prevStatus = previousDownloadStatus[item.id]
+    if ((item.status === 'completed' || item.status === 'failed') && prevStatus && prevStatus !== 'completed' && prevStatus !== 'failed') {
+      await saveToHistory(item, 'download')
+      await removeFromActiveList(item.id, 'download')
+    }
+    previousDownloadStatus[item.id] = item.status
+  }
+}
+
+const removeFromActiveList = async (id, type) => {
+  if (type === 'upload') {
+    const stored = await getActiveUploads()
+    const newList = stored.filter(sid => sid !== id)
+    await setActiveUploads(newList)
+    uploadList.value = uploadList.value.filter(i => i.id !== id)
+  } else {
+    const stored = await getActiveDownloads()
+    const newList = stored.filter(sid => sid !== id)
+    await setActiveDownloads(newList)
+    downloadList.value = downloadList.value.filter(i => i.id !== id)
+  }
 }
 
 const handlePause = async (item, type) => {
@@ -195,9 +263,48 @@ const handleRetry = (item, type) => {
   item.progress = 0
 }
 
+const deleteHistoryItem = async (item, type) => {
+  if (item.completedTime) {
+    // 这是历史记录，从历史记录中删除
+    if (type === 'upload') {
+      const history = await getUploadHistory()
+      const newHistory = history.filter(h => !(h.id === item.id && h.completedTime === item.completedTime))
+      await saveUploadHistory(newHistory)
+      uploadHistory.value = newHistory
+    } else {
+      const history = await getDownloadHistory()
+      const newHistory = history.filter(h => !(h.id === item.id && h.completedTime === item.completedTime))
+      await saveDownloadHistory(newHistory)
+      downloadHistory.value = newHistory
+    }
+  } else {
+    // 这是活跃任务，从活跃列表中删除
+    if (type === 'upload') {
+      const stored = await getActiveUploads()
+      const newList = stored.filter(id => id !== item.id)
+      await setActiveUploads(newList)
+      uploadList.value = uploadList.value.filter(i => i.id !== item.id)
+    } else {
+      const stored = await getActiveDownloads()
+      const newList = stored.filter(id => id !== item.id)
+      await setActiveDownloads(newList)
+      downloadList.value = downloadList.value.filter(i => i.id !== item.id)
+    }
+  }
+}
+
+const clearHistory = async () => {
+  await saveUploadHistory([])
+  await saveDownloadHistory([])
+  uploadHistory.value = []
+  downloadHistory.value = []
+}
+
 const handleOpenFile = async (item) => {
   try {
-    const filePath = await invoke('get_download_file_path', { fileId: item.fileId })
+    const fileId = item.fileId || item.id
+    console.log('打开文件，fileId:', fileId)
+    const filePath = await invoke('get_download_file_path', { fileId })
     await openFile(filePath)
   } catch (error) {
     console.error('打开文件失败:', error)
@@ -206,7 +313,9 @@ const handleOpenFile = async (item) => {
 
 const handleOpenFolder = async (item) => {
   try {
-    const filePath = await invoke('get_download_file_path', { fileId: item.fileId })
+    const fileId = item.fileId || item.id
+    console.log('打开文件夹，fileId:', fileId)
+    const filePath = await invoke('get_download_file_path', { fileId })
     await openFolder(filePath)
   } catch (error) {
     console.error('打开文件夹失败:', error)
@@ -215,20 +324,46 @@ const handleOpenFolder = async (item) => {
 
 const clearCompleted = async (type) => {
   if (type === 'upload') {
-    const completedIds = uploadList.value
-      .filter(i => i.status === 'completed' || i.status === 'failed')
-      .map(i => i.id)
+    const completedItems = uploadList.value.filter(i => i.status === 'completed' || i.status === 'failed')
+    const completedIds = completedItems.map(i => i.id)
     if (completedIds.length > 0) {
+      const history = await getUploadHistory()
+      const newHistory = [
+        ...completedItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          size: item.size,
+          status: item.status,
+          speed: item.speed,
+          completedTime: Date.now()
+        })),
+        ...history
+      ].slice(0, 100)
+      await saveUploadHistory(newHistory)
+      
       const stored = await getActiveUploads()
       const newList = stored.filter(id => !completedIds.includes(id))
       await setActiveUploads(newList)
     }
     uploadList.value = uploadList.value.filter(i => i.status !== 'completed' && i.status !== 'failed')
   } else {
-    const completedIds = downloadList.value
-      .filter(i => i.status === 'completed' || i.status === 'failed')
-      .map(i => i.id)
+    const completedItems = downloadList.value.filter(i => i.status === 'completed' || i.status === 'failed')
+    const completedIds = completedItems.map(i => i.id)
     if (completedIds.length > 0) {
+      const history = await getDownloadHistory()
+      const newHistory = [
+        ...completedItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          size: item.size,
+          status: item.status,
+          speed: item.speed,
+          completedTime: Date.now()
+        })),
+        ...history
+      ].slice(0, 100)
+      await saveDownloadHistory(newHistory)
+      
       const stored = await getActiveDownloads()
       const newList = stored.filter(id => !completedIds.includes(id))
       await setActiveDownloads(newList)
@@ -261,6 +396,7 @@ const getStatusClass = (status) => {
 }
 
 onMounted(() => {
+  loadHistory()
   refreshAll()
   pollTimer = setInterval(refreshAll, 500)
 })
@@ -310,23 +446,23 @@ onUnmounted(() => {
 
           <div class="list-content">
             <div
-              v-for="item in uploadList"
-              :key="item.id"
+              v-for="item in [...uploadList, ...uploadHistory]"
+              :key="item.id + (item.completedTime || '')"
               class="transfer-item"
             >
               <div class="item-name">
-                <span class="file-icon">📄</span>
+                <span class="file-icon"><i class="ri-file-text-line"></i></span>
                 <span class="file-name">{{ item.name }}</span>
               </div>
               <div class="item-size">{{ item.size }}</div>
               <div class="item-progress">
-                <div class="progress-bar">
+                <div class="progress-bar" v-if="item.status !== 'completed' && item.status !== 'failed'">
                   <div
                     class="progress-fill"
                     :style="{ width: item.progress + '%' }"
                   ></div>
                 </div>
-                <span class="progress-text">{{ item.uploaded }} / {{ item.total }}</span>
+                <span class="progress-text" v-if="item.status !== 'completed' && item.status !== 'failed'">{{ item.uploaded }} / {{ item.total }}</span>
               </div>
               <div class="item-status">
                 <span class="status-badge" :class="getStatusClass(item.status)">
@@ -341,7 +477,7 @@ onUnmounted(() => {
                   v-if="item.status !== 'completed' && item.status !== 'failed'"
                   :title="item.status === 'paused' ? '继续' : '暂停'"
                 >
-                  {{ item.status === 'paused' ? '▶' : '⏸' }}
+                  <i :class="item.status === 'paused' ? 'ri-play-fill' : 'ri-pause-fill'"></i>
                 </button>
                 <button
                   class="action-btn retry"
@@ -349,7 +485,7 @@ onUnmounted(() => {
                   v-if="item.status === 'failed'"
                   title="重试"
                 >
-                  ↻
+                  <i class="ri-restart-line"></i>
                 </button>
                 <button
                   class="action-btn cancel"
@@ -357,21 +493,23 @@ onUnmounted(() => {
                   v-if="item.status !== 'completed'"
                   title="取消"
                 >
-                  ✕
+                  <i class="ri-close-line"></i>
+                </button>
+                <button
+                  class="action-btn delete-btn"
+                  @click="deleteHistoryItem(item, 'upload')"
+                  v-if="item.status === 'completed' || item.status === 'failed'"
+                  title="删除"
+                >
+                  <i class="ri-delete-bin-line"></i>
                 </button>
               </div>
             </div>
 
             <div class="empty-state" v-if="uploadList.length === 0">
-              <span class="empty-icon">📤</span>
+              <span class="empty-icon"><i class="ri-upload-cloud-2-line"></i></span>
               <p>暂无上传任务</p>
             </div>
-          </div>
-
-          <div class="list-footer" v-if="uploadList.length > 0">
-            <button class="clear-btn" @click="clearCompleted('upload')">
-              清除已完成
-            </button>
           </div>
         </div>
 
@@ -386,23 +524,23 @@ onUnmounted(() => {
 
           <div class="list-content">
             <div
-              v-for="item in downloadList"
-              :key="item.id"
+              v-for="item in [...downloadList, ...downloadHistory]"
+              :key="item.id + (item.completedTime || '')"
               class="transfer-item"
             >
               <div class="item-name">
-                <span class="file-icon">📄</span>
+                <span class="file-icon"><i class="ri-file-text-line"></i></span>
                 <span class="file-name">{{ item.name }}</span>
               </div>
               <div class="item-size">{{ item.size }}</div>
               <div class="item-progress">
-                <div class="progress-bar">
+                <div class="progress-bar" v-if="item.status !== 'completed' && item.status !== 'failed'">
                   <div
                     class="progress-fill"
                     :style="{ width: item.progress + '%' }"
                   ></div>
                 </div>
-                <span class="progress-text">{{ item.downloaded }} / {{ item.total }}</span>
+                <span class="progress-text" v-if="item.status !== 'completed' && item.status !== 'failed'">{{ item.downloaded }} / {{ item.total }}</span>
               </div>
               <div class="item-status">
                 <span class="status-badge" :class="getStatusClass(item.status)">
@@ -417,7 +555,7 @@ onUnmounted(() => {
                   v-if="item.status === 'completed'"
                   title="打开文件夹"
                 >
-                  📁
+                  <i class="ri-folder-open-line"></i>
                 </button>
                 <button
                   class="action-btn"
@@ -425,7 +563,7 @@ onUnmounted(() => {
                   v-if="item.status === 'completed'"
                   title="打开文件"
                 >
-                  📄
+                  <i class="ri-file-text-line"></i>
                 </button>
                 <button
                   class="action-btn"
@@ -433,7 +571,7 @@ onUnmounted(() => {
                   v-if="item.status !== 'completed' && item.status !== 'failed'"
                   :title="item.status === 'paused' ? '继续' : '暂停'"
                 >
-                  {{ item.status === 'paused' ? '▶' : '⏸' }}
+                  <i :class="item.status === 'paused' ? 'ri-play-fill' : 'ri-pause-fill'"></i>
                 </button>
                 <button
                   class="action-btn retry"
@@ -441,7 +579,7 @@ onUnmounted(() => {
                   v-if="item.status === 'failed'"
                   title="重试"
                 >
-                  ↻
+                  <i class="ri-restart-line"></i>
                 </button>
                 <button
                   class="action-btn cancel"
@@ -449,23 +587,26 @@ onUnmounted(() => {
                   v-if="item.status !== 'completed'"
                   title="取消"
                 >
-                  ✕
+                  <i class="ri-close-line"></i>
+                </button>
+                <button
+                  class="action-btn delete-btn"
+                  @click="deleteHistoryItem(item, 'download')"
+                  v-if="item.status === 'completed' || item.status === 'failed'"
+                  title="删除"
+                >
+                  <i class="ri-delete-bin-line"></i>
                 </button>
               </div>
             </div>
 
             <div class="empty-state" v-if="downloadList.length === 0">
-              <span class="empty-icon">📥</span>
+              <span class="empty-icon"><i class="ri-download-cloud-2-line"></i></span>
               <p>暂无下载任务</p>
             </div>
           </div>
-
-          <div class="list-footer" v-if="downloadList.length > 0">
-            <button class="clear-btn" @click="clearCompleted('download')">
-              清除已完成
-            </button>
-          </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -519,7 +660,7 @@ onUnmounted(() => {
   color: var(--text-secondary);
   font-size: 15px;
   cursor: pointer;
-  border-radius: 8px;
+  border-radius: .375rem;
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -538,7 +679,7 @@ onUnmounted(() => {
 .tab-count {
   background: rgba(255,255,255,0.2);
   padding: 2px 8px;
-  border-radius: 10px;
+  border-radius: .375rem;
   font-size: 12px;
 }
 
@@ -549,7 +690,7 @@ onUnmounted(() => {
 
 .transfer-list {
   background: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   border: 1px solid var(--border-color);
   overflow: hidden;
 }
@@ -620,14 +761,14 @@ onUnmounted(() => {
 .progress-bar {
   height: 6px;
   background: var(--bg-primary);
-  border-radius: 3px;
+  border-radius: .375rem;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   background: var(--accent-blue);
-  border-radius: 3px;
+  border-radius: .375rem;
   transition: width 0.3s;
 }
 
@@ -645,15 +786,15 @@ onUnmounted(() => {
 .status-badge {
   display: inline-block;
   padding: 4px 10px;
-  border-radius: 4px;
+  border-radius: .375rem;
   font-size: 12px;
   font-weight: 500;
   width: fit-content;
 }
 
 .status-uploading, .status-downloading {
-  background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  background: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.2);
+  color: var(--accent-blue, #3178c6);
 }
 
 .status-paused {
@@ -691,7 +832,7 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: 6px;
+  border-radius: .375rem;
   background: var(--bg-primary);
   color: var(--text-secondary);
   cursor: pointer;
@@ -715,6 +856,18 @@ onUnmounted(() => {
   background: #f59e0b;
 }
 
+.action-btn.delete-btn {
+  background-color: #212830;
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.4);
+}
+
+.action-btn.delete-btn:hover {
+  background-color: #f85149;
+  color: white;
+  border-color: #f85149;
+}
+
 .list-footer {
   padding: 12px 20px;
   border-top: 1px solid var(--border-color);
@@ -726,7 +879,7 @@ onUnmounted(() => {
   padding: 8px 16px;
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: .375rem;
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
@@ -745,7 +898,7 @@ onUnmounted(() => {
 }
 
 .empty-icon {
-  font-size: 48px;
+  font-size: clamp(48px, 8vw, 96px);
   display: block;
   margin-bottom: 16px;
   opacity: 0.5;
@@ -773,5 +926,21 @@ onUnmounted(() => {
   .item-progress, .item-status, .item-action {
     padding-left: 30px;
   }
+}
+
+.history-section {
+  border-top: 1px solid var(--border-color);
+}
+
+.history-header {
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(0,0,0,0.1);
+}
+
+.history-item {
+  opacity: 0.8;
 }
 </style>

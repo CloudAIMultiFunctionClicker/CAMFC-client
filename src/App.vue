@@ -1,4 +1,6 @@
 <!--
+保留所有权利
+
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
 Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
@@ -10,36 +12,22 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <script setup>
 import { ref, provide, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-// 导入Pinia store来获取蓝牙状态
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
+// 导入 Pinia store 来获取蓝牙状态
 import { useBluetoothStore } from './stores/bluetooth.js'
 
 import {showToast} from './components/layout/showToast.js'
+import TitleBar from './components/layout/TitleBar.vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const isFloatPage = computed(() => route.path === '/float')
-
-// 导入应用头部组件
-import AppHeader from './components/layout/AppHeader.vue'
 
 // 导入后端配置初始化函数
 import { initBackendConfig } from './config/backend.js'
@@ -87,14 +75,21 @@ const getInitialTheme = () => {
 const isLightMode = ref(getInitialTheme())
 
 // 切换主题函数
-const toggleTheme = () => {
+const toggleTheme = async () => {
   isLightMode.value = !isLightMode.value
-  // 给body添加/移除类名，用于全局样式切换
   updateBodyClass()
   
-  // 保存用户选择到localStorage
-  // 存为字符串，方便下次读取
   localStorage.setItem('theme-preference', isLightMode.value ? 'light' : 'dark')
+  
+  try {
+    const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+    const floatWindow = await WebviewWindow.getByLabel('float')
+    if (floatWindow) {
+      await floatWindow.emit('theme-changed', isLightMode.value ? 'light' : 'dark')
+    }
+  } catch (e) {
+    console.log('发送主题变化事件失败:', e)
+  }
 }
 
 // 更新body类名的辅助函数
@@ -150,11 +145,17 @@ onMounted(async () => {
   // 初始时确保body有正确的类
   updateBodyClass()
   
-  // 初始化后端配置（只会在应用启动时调用一次）
-  await initBackendConfig()
+  // 先显示窗口，再异步检测服务器
+  // 使用setTimeout延迟执行，让窗口先渲染出来
+  setTimeout(async () => {
+    await initBackendConfig()
+  }, 100)
   
   // 蓝牙按键事件监听器引用
   let buttonEventUnlisten = null
+  
+  // 蓝牙断开事件监听器引用
+  let bluetoothDisconnectUnlisten = null
   
   // 导航事件监听器引用
   let navigateEventUnlisten = null
@@ -171,10 +172,10 @@ onMounted(async () => {
     
     // GPIO10 处理 -> 右箭头
     if (eventType === 'button_press') {
-      showToast('🔘 GPIO10 按下', '#3b82f6')
+      showToast('GPIO10 按下', '#3b82f6')
       window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: true } }))
     } else if (eventType === 'button_release') {
-      showToast('🔘 GPIO10 松开', '#10b981')
+      showToast('GPIO10 松开', '#10b981')
       window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: false } }))
       // 模拟右箭头键
       try {
@@ -188,10 +189,10 @@ onMounted(async () => {
     
     // GPIO9 处理 -> 左箭头
     else if (eventType === 'button_press_left') {
-      showToast('🔘 GPIO9 按下', '#8b5cf6')
+      showToast('GPIO9 按下', '#8b5cf6')
       window.dispatchEvent(new CustomEvent('button-state-left', { detail: { pressed: true } }))
     } else if (eventType === 'button_release_left') {
-      showToast('🔘 GPIO9 松开', '#f59e0b')
+      showToast('GPIO9 松开', '#f59e0b')
       window.dispatchEvent(new CustomEvent('button-state-left', { detail: { pressed: false } }))
       // 模拟左箭头键
       try {
@@ -201,6 +202,67 @@ onMounted(async () => {
       } catch (e) {
         console.error('左箭头键模拟失败:', e)
       }
+    }
+  })
+  
+  // 监听截图命令（0x12）- 只在非悬浮窗页面显示 toast
+  const screenshotUnlisten = await listen('screenshot-command', async () => {
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到截图命令（0x12）')
+    showToast('触发截图', '#3b82f6')
+  })
+  
+  // 监听显示主窗口 + note 页面命令（0x10）
+  const showNoteUnlisten = await listen('show-note-command', async () => {
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到显示主窗口 + note 命令（0x10）')
+    showToast('打开笔记', '#10b981')
+    // 显示主窗口并导航到 note 页面
+    try {
+      const { Window } = await import('@tauri-apps/api/window')
+      const mainWindow = await Window.getByLabel('main')
+      if (mainWindow) {
+        await mainWindow.show()
+        await mainWindow.unminimize()
+        await mainWindow.setFocus()
+      }
+      // 发送导航事件
+      const webview = await WebviewWindow.getByLabel('main')
+      if (webview) {
+        await webview.emit('navigate', '/notes')
+      }
+    } catch (e) {
+      console.error('打开 note 页面失败:', e)
+    }
+  })
+  
+  // 监听打开云盘页面命令（0x08）
+  const openCloudUnlisten = await listen('open-cloud-command', async () => {
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到打开云盘命令（0x08）')
+    showToast('打开云盘', '#8b5cf6')
+    // 显示主窗口并导航到云盘页面
+    try {
+      const { Window } = await import('@tauri-apps/api/window')
+      const mainWindow = await Window.getByLabel('main')
+      if (mainWindow) {
+        await mainWindow.show()
+        await mainWindow.unminimize()
+        await mainWindow.setFocus()
+      }
+      // 发送导航事件
+      const webview = await WebviewWindow.getByLabel('main')
+      if (webview) {
+        await webview.emit('navigate', '/fileView')
+      }
+    } catch (e) {
+      console.error('打开云盘页面失败:', e)
     }
   })
   
@@ -246,6 +308,36 @@ onMounted(async () => {
     }
   }
   
+  // 监听蓝牙断开事件（实时检测）
+  bluetoothDisconnectUnlisten = await listen('bluetooth-disconnect', async () => {
+    console.log('收到蓝牙断开事件')
+    
+    // 如果当前是已连接状态，显示提示
+    if (bluetoothStore.isConnected()) {
+      console.log('蓝牙设备已断开，准备显示提示')
+      
+      // 避免重复显示对话框
+      if (isShowingDisconnectDialog) {
+        console.log('对话框已在显示中，跳过')
+        return
+      }
+      
+      isShowingDisconnectDialog = true
+      
+      // 重置状态
+      bluetoothStore.reset()
+      
+      // 显示确认对话框
+      const userConfirmed = await showDisconnectConfirm()
+      
+      if (userConfirmed) {
+        console.log('用户确认断开，刷新页面')
+        // 刷新整个页面
+        window.location.reload()
+      }
+    }
+  })
+  
   // 显示蓝牙断开确认对话框
   const showDisconnectConfirm = async () => {
     return new Promise((resolve) => {
@@ -254,7 +346,6 @@ onMounted(async () => {
       dialog.className = 'disconnect-dialog'
       dialog.innerHTML = `
         <div class="disconnect-dialog-content">
-          <div class="disconnect-dialog-icon">⚠️</div>
           <h3>设备已断开连接</h3>
           <p>当前蓝牙设备已断开，点击确认后重新连接</p>
           <div class="disconnect-dialog-actions">
@@ -281,19 +372,14 @@ onMounted(async () => {
         }
         
         .disconnect-dialog-content {
-          background-color: var(--bg-secondary, #1e293b);
-          border-radius: 16px;
-          padding: 32px;
-          max-width: 400px;
-          text-align: center;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-          border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-        }
-        
-        .disconnect-dialog-icon {
-          font-size: 48px;
-          margin-bottom: 16px;
-        }
+  background-color: var(--bg-secondary, #1e293b);
+  border-radius: .375rem;
+  padding: 32px;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
         
         .disconnect-dialog-content h3 {
           font-size: 20px;
@@ -316,7 +402,7 @@ onMounted(async () => {
         
         .disconnect-btn {
           padding: 10px 32px;
-          border-radius: 8px;
+          border-radius: .375rem;
           font-size: 14px;
           font-weight: 500;
           cursor: pointer;
@@ -352,8 +438,8 @@ onMounted(async () => {
     })
   }
   
-  // 开始定时检查（每10秒，减少刷屏）
-  connectionCheckInterval = setInterval(checkConnectionStatus, 10000)
+  // 开始定时检查（每 2 秒，快速响应断开）
+  connectionCheckInterval = setInterval(checkConnectionStatus, 2000)
   
   // 监听系统主题变化，如果用户没有手动设置过，就跟着系统变
   const lightMediaQuery = window.matchMedia('(prefers-color-scheme: light)')
@@ -382,6 +468,18 @@ onMounted(async () => {
     console.log('监听导航事件失败（非Tauri环境）:', e)
   }
   
+  // 监听悬浮窗发来的主题查询请求
+  try {
+    await listen('get-theme', async () => {
+      const floatWindow = await WebviewWindow.getByLabel('float')
+      if (floatWindow) {
+        await floatWindow.emit('theme-changed', isLightMode.value ? 'light' : 'dark')
+      }
+    })
+  } catch (e) {
+    console.log('监听主题查询事件失败:', e)
+  }
+  
   // 在组件卸载时清理监听器
   onUnmounted(() => {
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
@@ -391,8 +489,20 @@ onMounted(async () => {
     if (buttonEventUnlisten) {
       buttonEventUnlisten()
     }
+    if (bluetoothDisconnectUnlisten) {
+      bluetoothDisconnectUnlisten()
+    }
     if (navigateEventUnlisten) {
       navigateEventUnlisten()
+    }
+    if (screenshotUnlisten) {
+      screenshotUnlisten()
+    }
+    if (showNoteUnlisten) {
+      showNoteUnlisten()
+    }
+    if (openCloudUnlisten) {
+      openCloudUnlisten()
     }
   })
   
@@ -410,31 +520,53 @@ setTimeout(() => {
 </script>
 
 <template>
-  <!-- router-view用来显示路由组件 -->
-  <!-- 整个应用的主题通过body类名控制 -->
-  <AppHeader v-if="!isFloatPage"/>
-
-    <router-view></router-view>
-
+  <!-- router-view 用来显示路由组件 -->
+  <!-- 整个应用的主题通过 body 类名控制 -->
+  <div class="app-container" v-if="!isFloatPage">
+    <!-- 自定义顶栏 -->
+    <TitleBar />
+    <div class="main-content">
+      <router-view></router-view>
+    </div>
+  </div>
+  <router-view v-else></router-view>
 </template>
 
 <style>
-/* 全局主题样式 - 通过body.light-mode类切换 */
-/* 暗色主题（默认） */
+/* 全局主题样式 - 优化后的深色主题配色 */
 body {
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-sidebar: #1e293b;
-  --bg-header: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --text-primary: #f8fafc;
-  --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --accent-blue: #3b82f6;
-  --accent-blue-rgb: 59, 130, 246;
-  --accent-red: #dc3545;
-  --accent-red-rgb: 220, 53, 69;
-  --hover-bg: rgba(255, 255, 255, 0.08);
+  /* 背景色 - 使用更深的蓝黑色系 */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-sidebar: #161b22;
+  --bg-header: #161b22;
+  --bg-tertiary: #21262d;
+  
+  /* 文字色 - 高可读性 */
+  --text-primary: #f0f6fc;
+  --text-secondary: #c9d1d9;
+  --text-muted: #8b949e;
+  
+  /* 边框色 - 低对比度 */
+  --border-color: #30363d;
+  
+  /* 强调色 - 根据图片配色 */
+  --accent-blue: #3178c6;
+  --accent-blue-rgb: 49, 120, 198;
+  --accent-blue-bright: #1f6feb;
+  --accent-blue-dark: #3572a5;
+  --accent-green: #3fb950;
+  --accent-green-rgb: 63, 185, 80;
+  --accent-red: #f85149;
+  --accent-red-rgb: 248, 81, 73;
+  --accent-purple: #bc8cff;
+  --accent-yellow: #d29922;
+  
+  /* 交互色 */
+  --hover-bg: rgba(240, 246, 252, 0.1);
+  --selected-bg: rgba(56, 139, 253, 0.15);
+  --input-bg: #0d1117;
+  
   transition: background-color 0.3s ease, color 0.3s ease;
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -449,21 +581,32 @@ input, textarea, [contenteditable="true"] {
   user-select: text;
 }
 
-/* 亮色主题 */
+/* 亮色主题（GitHub 风格） */
 body.light-mode {
-  --bg-primary: #f8fafc;
+  --bg-primary: #ffffff;
   --bg-secondary: #ffffff;
   --bg-sidebar: #ffffff;
-  --bg-header: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
-  --border-color: rgba(0, 0, 0, 0.1);
-  --accent-blue: #2563eb;
-  --accent-blue-rgb: 37, 99, 235; /* 亮色模式下的RGB值 */
-  --accent-red: #dc2626;
-  --accent-red-rgb: 220, 38, 38; /* 亮色模式下的RGB值 */
-  --hover-bg: rgba(0, 0, 0, 0.05);
+  --bg-header: #f6f8fa;
+  --bg-tertiary: #f6f8fa;
+  --text-primary: #24292f;
+  --text-secondary: #57606a;
+  --text-muted: #8c959f;
+  --border-color: #d0d7de;
+  --accent-blue: #0969da;
+  --accent-blue-rgb: 9, 105, 218;
+  --accent-blue-bright: #0550ae;
+  --accent-blue-dark: #0a3069;
+  --accent-green: #2da44e;
+  --accent-green-rgb: 45, 164, 78;
+  --accent-red: #cf222e;
+  --accent-red-rgb: 207, 34, 46;
+  --accent-purple: #8250df;
+  --accent-yellow: #9a6700;
+  --hover-bg: #f3f4f6;
+  --selected-bg: #ddf4ff;
+  --input-bg: #ffffff;
+  --danger-bg: #ffebe9;
+  --danger-border: #ffcccc;
 }
 
 /* 应用基础样式 */
@@ -473,6 +616,21 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  overflow: hidden; /* 防止出现滚动条 */
+}
+
+/* 应用容器布局 */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* 主内容区域 */
+.main-content {
+  flex: 1;
+  overflow: hidden;
 }
 
 /* 全局滚动条样式 */
@@ -481,15 +639,15 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+  background: var(--bg-secondary, #161b22);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--text-muted);
-  border-radius: 4px;
+  background: var(--border-color, #30363d);
+  border-radius: .375rem;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--text-muted, #8b949e);
 }
 </style>

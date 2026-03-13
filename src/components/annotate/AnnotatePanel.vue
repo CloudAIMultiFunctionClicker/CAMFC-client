@@ -1,3 +1,19 @@
+<!--
+保留所有权利
+
+Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+
+Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+Email: abc.cxh2009@foxmail.com
+
+Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+Email: 1220594170@qq.com
+
+Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+Email: admin@mc666.top
+-->
+
 <template>
   <div class="annotate-panel">
     <!-- 标注画布 -->
@@ -159,7 +175,7 @@ const tools = [
 // 颜色定义 - 5 种常见颜色
 const colors = [
   { value: '#ef4444', name: '红色' },
-  { value: '#3b82f6', name: '蓝色' },
+  { value: '#3178c6', name: '蓝色' },
   { value: '#10b981', name: '绿色' },
   { value: '#f59e0b', name: '黄色' },
   { value: '#8b5cf6', name: '紫色' }
@@ -219,6 +235,19 @@ onUnmounted(() => {
 const initCanvas = () => {
   if (!canvasWrapper.value || !annotateCanvas.value) return
   
+  console.log('[AnnotatePanel] initCanvas 调用', {
+    hasImageData: !!props.imageData,
+    imageDataLength: props.imageData?.length,
+    imageWidth: props.imageWidth,
+    imageHeight: props.imageHeight
+  })
+  
+  if (!props.imageData) {
+    console.error('[AnnotatePanel] imageData 为空，无法初始化')
+    showToast('图片数据加载失败', '#ef4444')
+    return
+  }
+  
   const wrapper = canvasWrapper.value
   
   // 使用图片原始分辨率作为 canvas 尺寸，避免模糊
@@ -238,8 +267,14 @@ const initCanvas = () => {
   img.src = props.imageData
   
   img.onload = () => {
+    console.log('[AnnotatePanel] 图片加载成功', img.width, img.height)
     drawBackground(img)
     redrawAnnotations()
+  }
+  
+  img.onerror = (err) => {
+    console.error('[AnnotatePanel] 图片加载失败', err)
+    showToast('图片加载失败', '#ef4444')
   }
 }
 
@@ -389,7 +424,7 @@ const drawText = (annotation) => {
 
 // 绘制选中框
 const drawSelectionBox = (annotation) => {
-  ctx.strokeStyle = '#3b82f6'
+  ctx.strokeStyle = '#3178c6'
   ctx.lineWidth = 1
   ctx.setLineDash([5, 5])
   
@@ -660,7 +695,7 @@ const showTextInput = (x, y) => {
   input.style.left = x + 'px'
   input.style.top = y + 'px'
   input.style.padding = '4px 8px'
-  input.style.border = '2px solid #3b82f6'
+  input.style.border = '2px solid #3178c6'
   input.style.borderRadius = '4px'
   input.style.fontSize = '14px'
   input.style.outline = 'none'
@@ -803,11 +838,6 @@ const handleKeyDown = (e) => {
 
 // 完成标注
 const completeAnnotate = () => {
-  if (annotations.value.length === 0) {
-    showToast('没有标注内容', '#f59e0b')
-    return
-  }
-  
   // 将标注绘制到 canvas 上并导出
   const canvas = document.createElement('canvas')
   canvas.width = annotateCanvas.value.width
@@ -843,7 +873,9 @@ const completeAnnotate = () => {
       imageData: annotatedData,
       annotations: annotations.value
     })
-    showToast('标注已保存', '#10b981')
+    if (annotations.value.length > 0) {
+      showToast('标注已保存', '#10b981')
+    }
   }
 }
 
@@ -898,10 +930,11 @@ watch(() => props.imageData, () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
+  padding: 16px 16px;
   background-color: var(--bg-secondary, #1e293b);
   border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   gap: 16px;
+  margin-bottom: 16px;
 }
 
 .annotate-toolbar {
@@ -939,7 +972,7 @@ watch(() => props.imageData, () => {
   height: 40px;
   background-color: transparent;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   color: var(--text-primary, #f1f5f9);
   font-size: 20px;
   cursor: pointer;
@@ -948,12 +981,12 @@ watch(() => props.imageData, () => {
 
 .tool-btn:hover {
   background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-  border-color: var(--accent-blue, #3b82f6);
+  border-color: var(--accent-blue, #3178c6);
 }
 
 .tool-btn.active {
-  background-color: var(--accent-blue, #3b82f6);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
   color: #fff;
 }
 
@@ -999,7 +1032,7 @@ watch(() => props.imageData, () => {
 .stroke-btn {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: .375rem;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   background-color: transparent;
   cursor: pointer;
@@ -1014,8 +1047,8 @@ watch(() => props.imageData, () => {
 }
 
 .stroke-btn.active {
-  border-color: var(--accent-blue, #3b82f6);
-  background-color: rgba(59, 130, 246, 0.1);
+  border-color: var(--accent-blue, #3178c6);
+  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
 }
 
 .stroke-preview {
@@ -1030,7 +1063,7 @@ watch(() => props.imageData, () => {
   height: 36px;
   background-color: var(--bg-primary, #0f172a);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: .375rem;
   color: var(--text-primary, #f1f5f9);
   font-size: 18px;
   cursor: pointer;
@@ -1062,13 +1095,13 @@ watch(() => props.imageData, () => {
 }
 
 .action-btn.primary-btn {
-  background-color: var(--accent-blue, #3b82f6);
-  border-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
   color: #fff;
 }
 
 .action-btn.primary-btn:hover {
-  background-color: #2563eb;
+  background-color: var(--accent-blue-bright, #1f6feb);
 }
 
 .action-btn.cancel-btn {

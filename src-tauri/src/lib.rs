@@ -1,3 +1,17 @@
+// 保留所有权利
+//
+// Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
+// Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
+//
+// Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
+// Email: abc.cxh2009@foxmail.com
+//
+// Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
+// Email: 1220594170@qq.com
+//
+// Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
+// Email: admin@mc666.top
+
 // 蓝牙模块导入
 mod bluetooth;
 mod cpen_device_manager;
@@ -25,7 +39,7 @@ use cpen_device_manager::CpenDeviceManager;
 use bluetooth::DeviceInfo;
 use download::{DownloadTask, AuthInfo, get_app_data_dir};
 use upload::UploadTask;
-use storage::{load_app_data, save_app_data, get_download_file_path};
+use storage::{load_app_data, save_app_data, get_download_file_path, get_custom_download_path, set_custom_download_path, open_file, open_folder, load_download_path_to_cache};
 use event_emitter::set_app_handle;
 
 // 导入同步原语
@@ -49,10 +63,23 @@ fn greet(name: &str) -> String {
 /// 退出应用程序
 ///
 /// 前端调用这个命令来完全退出应用
-/// 会清理所有资源并关闭应用
+/// 会先断开蓝牙连接，再关闭应用
 #[tauri::command]
 fn exit_app(app_handle: tauri::AppHandle) {
     println!("前端请求退出应用...");
+    
+    // 退出前先断开蓝牙连接
+    let rt = tokio::runtime::Runtime::new().expect("创建运行时失败");
+    rt.block_on(async {
+        if let Some(manager) = CPEN_DEVICE_MANAGER.get() {
+            if let Err(e) = manager.lock().await.disconnect().await {
+                eprintln!("断开蓝牙连接失败: {}", e);
+            } else {
+                println!("蓝牙连接已断开");
+            }
+        }
+    });
+    
     app_handle.exit(0);
 }
 
@@ -203,6 +230,30 @@ async fn scan_cpen_devices() -> Result<Vec<DeviceInfo>, String> {
     }
 }
 
+/// 扫描并返回所有蓝牙设备（包括Cpen和其他设备）
+/// 
+/// 前端调用这个命令获取所有可发现的蓝牙设备。
+/// 不会自动连接，只返回设备列表供用户选择。
+/// 
+/// 返回值：设备列表（包含name和address）
+#[tauri::command]
+async fn scan_all_bluetooth_devices() -> Result<Vec<DeviceInfo>, String> {
+    println!("前端调用scan_all_bluetooth_devices命令...");
+    
+    let mut manager = get_cpen_device_manager()?.lock().await;
+    
+    match manager.scan_all_bluetooth_devices().await {
+        Ok(devices) => {
+            println!("扫描成功，找到 {} 个蓝牙设备", devices.len());
+            Ok(devices)
+        }
+        Err(e) => {
+            println!("扫描失败: {}", e);
+            Err(format!("扫描失败: {}", e))
+        }
+    }
+}
+
 /// 连接到指定的Cpen设备
 /// 
 /// 前端调用这个命令连接用户选择的设备。
@@ -298,6 +349,9 @@ async fn cleanup() -> Result<(), String> {
 async fn download_file(file_id: String) -> Result<String, String> {
     println!("前端调用download_file命令，文件路径: {}", file_id);
     
+    // 初始化下载路径缓存
+    let _ = load_download_path_to_cache().await;
+    
     // 先获取设备ID和TOTP
     let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
     let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
@@ -310,7 +364,6 @@ async fn download_file(file_id: String) -> Result<String, String> {
     
     // 获取下载目录
     let download_dir = get_app_data_dir()
-        .await
         .map_err(|e| format!("获取下载目录失败: {}", e))?;
     
     // 保持用户原始的目录结构
@@ -1094,9 +1147,76 @@ fn press_win_key() -> Result<(), String> {
     Ok(())
 }
 
+/// 获取本地蓝牙版本
+/// 
+/// 返回本地计算机的蓝牙适配器版本
+#[tauri::command]
+async fn get_local_bluetooth_version() -> Result<String, String> {
+    println!("获取本地蓝牙版本...");
+    
+    let manager = get_cpen_device_manager()?;
+    let mut device_manager = manager.lock().await;
+    
+    match device_manager.get_local_bluetooth_version().await {
+        Ok(version) => {
+            println!("本地蓝牙版本：{}", version);
+            Ok(version)
+        }
+        Err(e) => {
+            println!("获取本地蓝牙版本失败：{}", e);
+            Err(format!("获取失败：{}", e))
+        }
+    }
+}
+
+/// 获取 Cpen 设备蓝牙版本
+/// 
+/// 返回已连接 Cpen 设备的蓝牙版本
+/// 需要先连接设备才能获取
+#[tauri::command]
+async fn get_cpen_bluetooth_version() -> Result<String, String> {
+    println!("获取 Cpen 设备蓝牙版本...");
+    
+    let manager = get_cpen_device_manager()?;
+    let mut device_manager = manager.lock().await;
+    
+    match device_manager.get_cpen_bluetooth_version().await {
+        Ok(version) => {
+            println!("Cpen 设备蓝牙版本：{}", version);
+            Ok(version)
+        }
+        Err(e) => {
+            println!("获取 Cpen 设备蓝牙版本失败：{}", e);
+            Err(format!("获取失败：{}", e))
+        }
+    }
+}
+
+/// 发送蓝牙保活心跳包
+/// 
+/// 手动发送一次心跳包以保持连接
+#[tauri::command]
+async fn send_keep_alive() -> Result<String, String> {
+    println!("发送蓝牙保活心跳包...");
+    
+    let manager = get_cpen_device_manager()?;
+    let mut device_manager = manager.lock().await;
+    
+    match device_manager.send_keep_alive().await {
+        Ok(_) => {
+            println!("保活心跳包发送成功");
+            Ok("发送成功".to_string())
+        }
+        Err(e) => {
+            println!("发送保活心跳包失败：{}", e);
+            Err(format!("发送失败：{}", e))
+        }
+    }
+}
+
 /// 模拟按下并松开左箭头键
 /// 
-/// GPIO9按钮松开时调用，模拟按下左箭头键
+/// GPIO9 按钮松开时调用，模拟按下左箭头键
 #[tauri::command]
 fn press_left_key() -> Result<(), String> {
     use windows::Win32::UI::Input::KeyboardAndMouse::{
@@ -1185,6 +1305,18 @@ pub fn run() {
                             }
                         }
                         "quit" => {
+                            // 退出应用前先断开蓝牙连接
+                            println!("退出应用，先断开蓝牙连接...");
+                            let rt = tokio::runtime::Runtime::new().expect("创建运行时失败");
+                            rt.block_on(async {
+                                if let Some(manager) = CPEN_DEVICE_MANAGER.get() {
+                                    if let Err(e) = manager.lock().await.disconnect().await {
+                                        eprintln!("断开蓝牙连接失败: {}", e);
+                                    } else {
+                                        println!("蓝牙连接已断开");
+                                    }
+                                }
+                            });
                             // 退出应用
                             app.exit(0);
                         }
@@ -1235,6 +1367,7 @@ pub fn run() {
             get_backend_config,  // 获取后端配置
             get_totp,           // 主要功能：获取TOTP
             scan_cpen_devices,  // 扫描Cpen设备列表
+            scan_all_bluetooth_devices, // 扫描所有蓝牙设备
             connect_cpen_device, // 连接指定的Cpen设备
             get_device_id,      // 获取设备ID
             get_connection_status, // 获取连接状态
@@ -1260,12 +1393,21 @@ pub fn run() {
             load_app_data,
             save_app_data,
             get_download_file_path,
+            get_custom_download_path,
+            set_custom_download_path,
+            open_file,
+            open_folder,
             // 截图命令
             capture_screen,
             get_monitors,
             // 键盘模拟命令
             press_win_key,
             press_left_key,
+            // 蓝牙版本信息命令
+            get_local_bluetooth_version,
+            get_cpen_bluetooth_version,
+            // 蓝牙保活命令
+            send_keep_alive,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,6 +1,8 @@
 /**
  * CAMFC Client - 存储管理模块
- * 
+ *
+ * 保留所有权利
+ *
  * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
  * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
  *
@@ -12,27 +14,15 @@
  *
  * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
  * Email: admin@mc666.top
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 import { invoke } from '@tauri-apps/api/core'
-import { openPath } from '@tauri-apps/plugin-opener'
 
 export async function openFile(filePath) {
   try {
-    await openPath(filePath)
+    console.log('打开文件:', filePath)
+    await invoke('open_file', { filePath })
+    console.log('文件打开命令已发送')
     return true
   } catch (error) {
     console.error('打开文件失败:', error)
@@ -42,8 +32,9 @@ export async function openFile(filePath) {
 
 export async function openFolder(filePath) {
   try {
-    const folderPath = filePath.substring(0, filePath.lastIndexOf('\\')) || filePath.substring(0, filePath.lastIndexOf('/'))
-    await openPath(folderPath)
+    console.log('打开文件夹:', filePath)
+    await invoke('open_folder', { folderPath: filePath })
+    console.log('文件夹打开命令已发送')
     return true
   } catch (error) {
     console.error('打开文件夹失败:', error)
@@ -121,4 +112,30 @@ export async function getTheme() {
 
 export async function setTheme(theme) {
   return saveAppData('theme', theme)
+}
+
+export async function getUploadHistory() {
+  const value = await loadAppData('upload_history')
+  try {
+    return JSON.parse(value || '[]')
+  } catch {
+    return []
+  }
+}
+
+export async function saveUploadHistory(history) {
+  return saveAppData('upload_history', JSON.stringify(history))
+}
+
+export async function getDownloadHistory() {
+  const value = await loadAppData('download_history')
+  try {
+    return JSON.parse(value || '[]')
+  } catch {
+    return []
+  }
+}
+
+export async function saveDownloadHistory(history) {
+  return saveAppData('download_history', JSON.stringify(history))
 }

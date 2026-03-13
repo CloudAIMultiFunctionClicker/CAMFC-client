@@ -1,4 +1,6 @@
 <!--
+保留所有权利
+
 Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
 Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
 
@@ -10,19 +12,6 @@ Email: 1220594170@qq.com
 
 Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 Email: admin@mc666.top
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
 -->
 
 <template>
@@ -120,7 +109,7 @@ function goToContact() {
 
 .placeholder-content {
   background-color: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: .375rem;
   padding: 40px 30px;
   border: 1px solid var(--border-color);
   margin-bottom: 30px;
@@ -153,7 +142,7 @@ function goToContact() {
   margin: 25px 0;
   padding: 20px;
   background-color: rgba(var(--accent-blue-rgb), 0.1);
-  border-radius: 8px;
+  border-radius: .375rem;
   border: 1px solid rgba(var(--accent-blue-rgb), 0.2);
 }
 
@@ -175,7 +164,7 @@ function goToContact() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: .375rem;
   font-size: 14px;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -185,7 +174,6 @@ function goToContact() {
   }
   
   &:active {
-    transform: translateY(1px);
   }
 }
 
@@ -194,7 +182,7 @@ function goToContact() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: .375rem;
   font-size: 16px;
   cursor: pointer;
   transition: background-color 0.2s;
@@ -205,7 +193,6 @@ function goToContact() {
   }
   
   &:active {
-    transform: translateY(1px);
   }
 }
 
