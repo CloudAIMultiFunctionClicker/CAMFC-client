@@ -80,6 +80,12 @@ Email: admin@mc666.top
           <i class="ri-zoom-in-line"></i>
         </button>
         <div class="control-divider"></div>
+        <button class="zoom-btn" @click="saveToNotes" title="保存到笔记">
+          <i class="ri-sticky-note-line"></i>
+        </button>
+        <button class="zoom-btn" @click="saveScreenshot" title="保存">
+          <i class="ri-save-line"></i>
+        </button>
         <button class="zoom-btn" @click="handleAnnotate" title="标注">
           <i class="ri-edit-line"></i>
         </button>
@@ -523,6 +529,69 @@ const saveScreenshot = async () => {
   } catch (error) {
     console.error('保存图片失败:', error)
     showToast('保存失败', '#ef4444')
+  }
+}
+
+const saveToNotes = async () => {
+  if (!screenshotData.value) {
+    showToast('没有可保存的图片', '#f59e0b')
+    return
+  }
+  
+  try {
+    // 获取后端 URL
+    const { getBackendUrl } = await import('../config/backend.js')
+    
+    // 获取认证信息
+    const { getDeviceId, getTotp } = await import('../components/data/bluetooth.js')
+    const deviceId = await getDeviceId()
+    const currentTotp = await getTotp()
+    const authHeader = { "Id": deviceId, "Totp": currentTotp }
+    
+    // 生成笔记标题
+    const now = new Date()
+    const timeStr = `${now.getMonth() + 1}月${now.getDate()}日 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    const noteTitle = `截图笔记_${timeStr}`
+    const uuid = crypto.randomUUID()
+    
+    // 创建笔记
+    const createResponse = await fetch(getBackendUrl() + '/note/add', {
+      method: 'POST',
+      headers: { ...authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uuid, title: noteTitle })
+    })
+    
+    if (!createResponse.ok) {
+      throw new Error('创建笔记失败')
+    }
+    
+    // 更新笔记内容，插入图片
+    const markdownContent = `# ${noteTitle}\n\n![截图](${screenshotData.value})\n`
+    
+    const updateResponse = await fetch(getBackendUrl() + '/note/update', {
+      method: 'POST',
+      headers: { ...authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        uuid, 
+        title: noteTitle,
+        content: markdownContent 
+      })
+    })
+    
+    if (!updateResponse.ok) {
+      throw new Error('更新笔记内容失败')
+    }
+    
+    showToast('截图已保存到笔记', '#10b981')
+    
+    // 延迟跳转到笔记页面
+    setTimeout(() => {
+      window.location.href = '#/notes'
+    }, 500)
+    
+  } catch (error) {
+    console.error('保存到笔记失败:', error)
+    showToast('保存失败：' + (error.message || '网络错误'), '#ef4444')
   }
 }
 

@@ -149,14 +149,15 @@ Email: admin@mc666.top
               <div v-if="selectedNote.content" class="preview-text" v-html="renderMarkdown(selectedNote.content)"></div>
               <div v-else class="preview-text empty">暂无内容</div>
             </div>
-            <div v-else class="editor-container">
-              <textarea
+            <div v-else class="editor-container" :class="{ 'dragging-over': isDraggingOver }" @paste="handlePaste" @dragenter="handleDragEnter" @dragleave="handleDragLeave" @drop="handleDrop">
+              <div
                 ref="editorTextarea"
-                v-model="selectedNote.content"
-                class="note-editor-textarea"
-                placeholder="使用 Markdown 格式书写..."
-                @input="saveNote"
-              ></textarea>
+                class="note-editor-content"
+                contenteditable="true"
+                placeholder="使用 Markdown 格式书写... 支持 Ctrl+V 粘贴图片、拖拽图片到此处"
+                @input="handleEditorInput"
+                @keydown="handleEditorKeydown"
+              ></div>
             </div>
           </div>
           <div v-if="isEditing" class="editor-toolbar">
@@ -210,10 +211,10 @@ Email: admin@mc666.top
               <span class="tooltip">列表<span class="tooltip-syntax">语法: - 项目</span></span>
             </div>
             <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="insertMarkdown('image')">
+              <button class="toolbar-btn" @click="handleImageClick">
                 <i class="ri-image-line"></i>
               </button>
-              <span class="tooltip">图片<span class="tooltip-syntax">语法: ![描述](地址)</span></span>
+              <span class="tooltip">图片<span class="tooltip-syntax">Ctrl+V 粘贴或拖拽图片</span></span>
             </div>
           </div>
         </div>
@@ -366,6 +367,7 @@ const isEditing = ref(false)
 const showSaveConfirmModal = ref(false)
 const showImportExportMenu = ref(false)
 const isConfirmingDelete = ref(false)
+const isDraggingOver = ref(false)
 let originalContent = ''
 
 const pageSize = 9
@@ -586,6 +588,9 @@ function startEditing() {
     originalContent = selectedNote.value.content
   }
   isEditing.value = true
+  setTimeout(() => {
+    initEditorContent()
+  }, 100)
 }
 
 function handleCloseNote() {
@@ -603,12 +608,18 @@ function handleCloseNote() {
 }
 
 async function saveAndClose() {
+  if (editorTextarea.value) {
+    selectedNote.value.content = convertHtmlToMarkdown(editorTextarea.value.innerHTML)
+  }
   await syncNoteToCloud(selectedNote.value)
   selectedNote.value = null
   isEditing.value = false
 }
 
 async function confirmSave() {
+  if (editorTextarea.value) {
+    selectedNote.value.content = convertHtmlToMarkdown(editorTextarea.value.innerHTML)
+  }
   await syncNoteToCloud(selectedNote.value)
   showSaveConfirmModal.value = false
   selectedNote.value = null
@@ -640,7 +651,7 @@ function renderMarkdown(text) {
     .replace(/~~(.*)~~/gim, '<del>$1</del>')
     .replace(/`([^`]+)`/gim, '<code>$1</code>')
     .replace(/^- (.*$)/gim, '<li>$1</li>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<img src="$2" alt="$1" class="markdown-image" onerror="this.style.display=\'none\'">')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<div class="markdown-image-wrapper"><img src="$2" alt="$1" class="markdown-image" onerror="this.style.display=\'none\'; this.nextSibling && (this.nextSibling.style.display=\'flex\')"></div><div class="markdown-image-error" style="display:none"><i class="ri-image-line"></i><span>图片加载失败</span></div>')
     .replace(/\n/gim, '<br>')
   
   return html
@@ -667,55 +678,214 @@ async function syncNoteToCloud(note) {
 
 const editorTextarea = ref(null)
 
+const initEditorContent = () => {
+  if (editorTextarea.value && selectedNote.value) {
+    editorTextarea.value.innerHTML = renderMarkdown(selectedNote.value.content || '')
+  }
+}
+
+const handleEditorInput = () => {
+  if (editorTextarea.value) {
+    const html = editorTextarea.value.innerHTML
+    selectedNote.value.content = convertHtmlToMarkdown(html)
+    saveNote()
+  }
+}
+
+const handleEditorKeydown = (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    const selection = window.getSelection()
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const container = range.startContainer
+      if (container.nodeType === Node.TEXT_NODE && container.textContent.startsWith('#')) {
+        e.preventDefault()
+        document.execCommand('insertHTML', false, '<div><br></div>')
+      }
+    }
+  }
+}
+
+const convertHtmlToMarkdown = (html) => {
+  let text = html
+    .replace(/<div><br><\/div>/g, '\n')
+    .replace(/<div>(.*?)<\/div>/g, '$1\n')
+    .replace(/<h1>(.*?)<\/h1>/g, '# $1\n')
+    .replace(/<h2>(.*?)<\/h2>/g, '## $1\n')
+    .replace(/<h3>(.*?)<\/h3>/g, '### $1\n')
+    .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
+    .replace(/<b>(.*?)<\/b>/g, '**$1**')
+    .replace(/<em>(.*?)<\/em>/g, '*$1*')
+    .replace(/<i>(.*?)<\/i>/g, '*$1*')
+    .replace(/<del>(.*?)<\/del>/g, '~~$1~~')
+    .replace(/<code>(.*?)<\/code>/g, '`$1`')
+    .replace(/<li>(.*?)<\/li>/g, '- $1\n')
+    .replace(/<ul>|<\/ul>|<ol>|<\/ol>/g, '')
+    .replace(/<br\s*\/?>/g, '\n')
+    .replace(/<img src="([^"]*)" alt="([^"]*)"[^>]*>/g, '![$2]($1)')
+    .replace(/<span class="markdown-image-wrapper">/g, '')
+    .replace(/<div class="markdown-image-error"[^>]*>.*?<\/div>/g, '')
+    .replace(/<div class="img-error">.*?<\/div>/g, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+  return text.trim()
+}
+
+const handlePaste = async (event) => {
+  if (!isEditing.value) return
+
+  const clipboardData = event.clipboardData
+  if (!clipboardData) return
+
+  const items = clipboardData.items
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.startsWith('image/')) {
+      event.preventDefault()
+      const blob = items[i].getAsFile()
+      if (blob) {
+        await insertImageFromBlob(blob)
+      }
+      return
+    }
+  }
+}
+
+const insertImageFromBlob = (blob) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const base64 = e.target.result
+      insertMarkdownImage(base64)
+      resolve()
+    }
+    reader.readAsDataURL(blob)
+  })
+}
+
+const insertMarkdownImage = (imageData) => {
+  const editor = editorTextarea.value
+  if (!editor) return
+
+  const imgHtml = `<div class="markdown-image-wrapper"><img src="${imageData}" alt="截图_${Date.now()}" class="markdown-image" onerror="this.style.display='none'; this.nextSibling && (this.nextSibling.style.display='flex')"></div><div class="markdown-image-error" style="display:none"><i class="ri-image-line"></i><span>图片加载失败</span></div><div><br></div>`
+
+  const selection = window.getSelection()
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0)
+    range.deleteContents()
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = imgHtml
+    range.insertNode(tempDiv)
+    range.collapse(false)
+  } else {
+    editor.innerHTML += imgHtml
+  }
+
+  selectedNote.value.content = convertHtmlToMarkdown(editor.innerHTML)
+  saveNote()
+  showToast('图片已插入', '#10b981')
+}
+
+const handleDragEnter = (e) => {
+  e.preventDefault()
+  isDraggingOver.value = true
+}
+
+const handleDragLeave = (e) => {
+  e.preventDefault()
+  isDraggingOver.value = false
+}
+
+const handleDrop = async (e) => {
+  e.preventDefault()
+  isDraggingOver.value = false
+
+  if (!isEditing.value) return
+
+  const files = e.dataTransfer.files
+  if (files.length === 0) return
+
+  const file = files[0]
+  if (!file.type.startsWith('image/')) {
+    showToast('仅支持图片文件', '#f59e0b')
+    return
+  }
+
+  await insertImageFromBlob(file)
+}
+
+const handleImageClick = () => {
+  navigator.clipboard.read().then(items => {
+    for (const item of items) {
+      if (item.types.some(type => type.startsWith('image/'))) {
+        item.getType('image/').then(blob => {
+          insertImageFromBlob(blob)
+        })
+        return
+      }
+    }
+    showToast('剪贴板无图片，可直接 Ctrl+V 粘贴或拖拽图片', '#f59e0b')
+  }).catch(() => {
+    showToast('可直接 Ctrl+V 粘贴或拖拽图片到编辑器', '#f59e0b')
+  })
+}
+
 function insertMarkdown(type) {
-  if (!editorTextarea.value) return
-  
-  const textarea = editorTextarea.value
-  const start = textarea.selectionStart
-  const end = textarea.selectionEnd
-  const text = selectedNote.value.content || ''
-  const before = text.substring(0, start)
-  const selected = text.substring(start, end)
-  const after = text.substring(end)
-  
+  const editor = editorTextarea.value
+  if (!editor) return
+
+  const selection = window.getSelection()
+  let selectedText = ''
+  if (selection.rangeCount > 0) {
+    selectedText = selection.toString()
+  }
+
   let insert = ''
   switch (type) {
     case 'h1':
-      insert = selected ? `# ${selected}` : '# 标题'
+      insert = selectedText ? `<h1>${selectedText}</h1>` : '<h1>标题</h1>'
       break
     case 'h2':
-      insert = selected ? `## ${selected}` : '## 标题'
+      insert = selectedText ? `<h2>${selectedText}</h2>` : '<h2>标题</h2>'
       break
     case 'h3':
-      insert = selected ? `### ${selected}` : '### 标题'
+      insert = selectedText ? `<h3>${selectedText}</h3>` : '<h3>标题</h3>'
       break
     case 'bold':
-      insert = selected ? `**${selected}**` : '**加粗文本**'
+      insert = selectedText ? `<strong>${selectedText}</strong>` : '<strong>加粗文本</strong>'
       break
     case 'italic':
-      insert = selected ? `*${selected}*` : '*斜体文本*'
+      insert = selectedText ? `<em>${selectedText}</em>` : '<em>斜体文本</em>'
       break
     case 'strike':
-      insert = selected ? `~~${selected}~~` : '~~删除线~~'
+      insert = selectedText ? `<del>${selectedText}</del>` : '<del>删除线</del>'
       break
     case 'code':
-      insert = selected ? `\`${selected}\`` : '`代码`'
+      insert = selectedText ? `<code>${selectedText}</code>` : '<code>代码</code>'
       break
     case 'list':
-      insert = selected ? `- ${selected}` : '- 列表项'
+      insert = selectedText ? `<li>${selectedText}</li>` : '<li>列表项</li>'
       break
     case 'image':
-      insert = '![图片描述](图片地址)'
-      break
+      showToast('请使用 Ctrl+V 粘贴或拖拽图片', '#f59e0b')
+      return
   }
-  
-  selectedNote.value.content = before + insert + after
+
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0)
+    range.deleteContents()
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = insert
+    range.insertNode(tempDiv)
+    range.collapse(false)
+  } else {
+    editor.innerHTML += insert
+  }
+
+  selectedNote.value.content = convertHtmlToMarkdown(editor.innerHTML)
   saveNote()
-  
-  setTimeout(() => {
-    const newCursor = start + insert.length
-    textarea.setSelectionRange(newCursor, newCursor)
-  }, 0)
 }
 
 function formatDate(dateStr) {
@@ -1339,7 +1509,28 @@ function importNotes() {
   margin: 12px 0;
 }
 
-.note-editor-textarea {
+.preview-text :deep(.markdown-image-wrapper) {
+  display: inline-block;
+  width: 100%;
+}
+
+.preview-text :deep(.markdown-image-error) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  color: var(--text-muted);
+  margin: 12px 0;
+}
+
+.preview-text :deep(.markdown-image-error i) {
+  font-size: 20px;
+}
+
+.note-editor-content {
   width: 100%;
   height: 100%;
   min-height: 400px;
@@ -1351,10 +1542,66 @@ function importNotes() {
   resize: none;
   outline: none;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
-.note-editor-textarea::placeholder {
+.note-editor-content:empty::before {
+  content: attr(placeholder);
   color: var(--text-muted);
+  pointer-events: none;
+  display: block;
+}
+
+.note-editor-content :deep(h1),
+.note-editor-content :deep(h2),
+.note-editor-content :deep(h3) {
+  margin: 16px 0 10px;
+  color: var(--text-primary);
+}
+
+.note-editor-content :deep(code) {
+  background-color: var(--bg-primary);
+  padding: 2px 6px;
+  border-radius: .375rem;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 14px;
+}
+
+.note-editor-content :deep(strong) {
+  font-weight: 600;
+}
+
+.note-editor-content :deep(del) {
+  color: var(--text-muted);
+}
+
+.note-editor-content :deep(li) {
+  margin-left: 20px;
+  margin-bottom: 4px;
+}
+
+.note-editor-content :deep(.markdown-image) {
+  max-width: 100%;
+  border-radius: .375rem;
+  margin: 12px 0;
+}
+
+.note-editor-content :deep(.markdown-image-wrapper) {
+  display: inline-block;
+  width: 100%;
+}
+
+.note-editor-content :deep(.markdown-image-error) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  color: var(--text-muted);
+  margin: 12px 0;
 }
 
 .editor-container {
@@ -1362,6 +1609,12 @@ function importNotes() {
   min-height: 400px;
 }
 
+.editor-container.dragging-over {
+  border: 2px dashed var(--accent-blue);
+  background-color: rgba(59, 130, 246, 0.1);
+  border-radius: .375rem;
+}
+
 .note-editor-textarea {
   width: 100%;
   height: 100%;
@@ -1374,6 +1627,15 @@ function importNotes() {
   resize: none;
   outline: none;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.note-editor-textarea:empty::before {
+  content: attr(placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+  display: block;
 }
 
 .editor-toolbar {

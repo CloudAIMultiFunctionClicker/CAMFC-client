@@ -1058,15 +1058,15 @@ onUnmounted(() => {
 }
 
 .action-btn.danger {
-  background-color: var(--danger-bg, #ffebe9);
-  color: var(--accent-red, #cf222e);
-  border: 1px solid rgba(207, 34, 46, 0.2);
+  background-color: #212830;
+  color: #f85149;
+  border: 1px solid rgba(248, 81, 73, 0.4);
 }
 
 .action-btn.danger:hover {
-  background-color: var(--accent-red, #cf222e);
+  background-color: #f85149;
   color: white;
-  border-color: var(--accent-red, #cf222e);
+  border-color: #f85149;
 }
 
 .action-btn.small {

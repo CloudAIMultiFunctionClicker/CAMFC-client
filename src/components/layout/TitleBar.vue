@@ -315,7 +315,7 @@ const showDevelopingToast = () => {
   background: var(--bg-header, #161b22);
   border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   position: relative;
-  z-index: 1000;
+  z-index: 10000;
   transition: background 0.3s ease, border-color 0.3s ease;
   -webkit-app-region: drag;
 }
