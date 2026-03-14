@@ -327,15 +327,21 @@ a:hover {
 
 /* 删除按钮 - 红色警告色 */
 .btn-delete {
-  background-color: #212830;
-  color: #f85149;
-  border: 1px solid rgba(248, 81, 73, 0.4);
+  background-color: var(--danger-btn-bg, #212830);
+  color: var(--danger-btn-text, #f85149);
+  border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
 }
 
 .btn-delete:hover {
-  background-color: #f85149;
-  color: white;
-  border-color: #f85149;
+  background-color: var(--danger-btn-hover-bg, #f85149);
+  color: var(--danger-btn-hover-text, white);
+  border-color: var(--danger-btn-hover-border, #f85149);
+}
+
+/* 删除按钮图标 - 继承按钮颜色 */
+.btn-delete i,
+.btn-delete svg {
+  color: inherit;
 }
 
 /* 头像按钮 - 圆形 */

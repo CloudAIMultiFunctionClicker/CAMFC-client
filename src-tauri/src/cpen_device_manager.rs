@@ -26,7 +26,7 @@
 //! 另外，保证单设备连接也是用户明确要求的。
 
 use std::time::{SystemTime, Duration};
-use crate::bluetooth::{BluetoothManager, DeviceInfo};
+use crate::bluetooth::{BluetoothManager, DeviceInfo, ResponseType};
 use tokio::time::sleep;
 use totp_rs::{TOTP, Secret};
 
@@ -431,7 +431,8 @@ impl CpenDeviceManager {
     /// 思考：缓存时间30秒是计划的吗？原代码是50000ms，应该是吧。
     /// 
     /// 修改：现在这个方法只是检查，真正的刷新逻辑在get_totp中实现
-    fn get_cached_totp(&self) -> Option<String> {
+    /// 新增：校验TOTP是否为6位数字，如果不是则更新缓存
+    fn get_cached_totp(&mut self) -> Option<String> {
         match &self.totp_cache {
             Some((totp, cache_time)) => {
                 let elapsed = SystemTime::now()
@@ -439,8 +440,14 @@ impl CpenDeviceManager {
                     .unwrap_or(Duration::from_secs(0));
                 
                 if elapsed.as_secs() < TOTP_CACHE_DURATION_SECONDS {
-                    println!("使用缓存的TOTP（{}秒前获取的）", elapsed.as_secs());
-                    Some(totp.clone())
+                    // 校验TOTP是否为6位数字
+                    if Self::is_valid_totp(totp) {
+                        println!("使用缓存的TOTP（{}秒前获取的）", elapsed.as_secs());
+                        Some(totp.clone())
+                    } else {
+                        println!("缓存的TOTP无效（{}），需要刷新", totp);
+                        None
+                    }
                 } else {
                     println!("TOTP缓存已过期（{}秒）", elapsed.as_secs());
                     None
@@ -451,6 +458,11 @@ impl CpenDeviceManager {
                 None
             }
         }
+    }
+    
+    /// 校验TOTP是否为6位数字
+    fn is_valid_totp(totp: &str) -> bool {
+        totp.len() == 6 && totp.chars().all(|c| c.is_ascii_digit())
     }
     
     /// 检查TOTP缓存是否需要刷新（提前5秒刷新）
@@ -500,6 +512,7 @@ impl CpenDeviceManager {
             if let Some((_, key)) = Self::get_debug_config() {
                 match Self::generate_totp_locally(&key) {
                     Ok(totp) => {
+                        println!("请求TOTP! 使用的totp：{}", totp);
                         println!("[CPEN] DEBUG模式TOTP生成成功: {}", totp);
                         println!("[CPEN] ===== TOTP获取结束（DEBUG模式） =====");
                         return Ok(totp);
@@ -521,7 +534,7 @@ impl CpenDeviceManager {
         if !need_refresh {
             if let Some(cached_totp) = self.get_cached_totp() {
                 println!("[CPEN] 使用缓存的TOTP");
-                println!("[CPEN] 当前TOTP值: {}", cached_totp);
+                println!("请求TOTP! 使用的totp：{}", cached_totp);
                 println!("[CPEN] ===== TOTP获取结束（缓存） =====");
                 return Ok(cached_totp);
             }
@@ -541,6 +554,7 @@ impl CpenDeviceManager {
             
             match self.get_totp_once().await {
                 Ok(totp) => {
+                    println!("请求TOTP! 使用的totp：{}", totp);
                     println!("[CPEN] ===== TOTP获取成功 =====");
                     return Ok(totp);
                 }
@@ -599,12 +613,15 @@ impl CpenDeviceManager {
         .map_err(|e| format!("发送 setTime 命令失败：{}", e))?;
         
         // 读取并丢弃 setTime 的响应，避免它干扰后续 getTotp 的读取
-        let _set_time_response = self.bluetooth_manager.recv(service_uuid, char_uuid).await
+        let _set_time_response = self.bluetooth_manager.recv(service_uuid, char_uuid, ResponseType::SetTime).await
             .map_err(|e| format!("接收 setTime 响应失败: {}", e))?;
         println!("[CPEN] setTime 响应已处理");
 
         // 发送 getTotp 命令
         println!("[CPEN] 发送getTotp命令");
+        
+        sleep(Duration::from_millis(200)).await;
+        
         self.bluetooth_manager.send(
             service_uuid, 
             char_uuid, 
@@ -613,7 +630,7 @@ impl CpenDeviceManager {
         .map_err(|e| format!("发送getTotp命令失败: {}", e))?;
         
         // 接收TOTP响应
-        let response = self.bluetooth_manager.recv(service_uuid, char_uuid).await
+        let response = self.bluetooth_manager.recv(service_uuid, char_uuid, ResponseType::GetTotp).await
             .map_err(|e| format!("接收TOTP失败: {}", e))?;
         
         let totp = String::from_utf8(response)
@@ -670,7 +687,7 @@ impl CpenDeviceManager {
         .map_err(|e| format!("发送getId命令失败: {}", e))?;
         
         // 4. 接收设备ID响应
-        let response = self.bluetooth_manager.recv(service_uuid, char_uuid).await
+        let response = self.bluetooth_manager.recv(service_uuid, char_uuid, ResponseType::GetId).await
             .map_err(|e| format!("接收设备ID失败: {}", e))?;
         
         let device_id = String::from_utf8(response)

@@ -247,21 +247,6 @@ const handleDownloadClick = async () => {
       console.error('下载失败的文件:', errorFiles)
     }
     
-    // 延迟检查下载状态，因为下载是异步的
-    setTimeout(async () => {
-      for (const fileId of fileIds) {
-        try {
-          const progress = await getDownloadProgress(fileId)
-          if (progress.status === 'Error') {
-            console.error(`下载失败: ${fileId}, 状态: ${progress.status}`)
-            showToast(`文件下载失败: ${fileId}`, '#ef4444')
-          }
-        } catch (error) {
-          console.error(`检查下载状态失败: ${fileId}`, error)
-        }
-      }
-    }, 2000) // 2 秒后检查状态
-    
   } catch (error) {
     console.error('下载过程中出错:', error)
     showToast(`下载出错：${error.message}`, '#ef4444')
@@ -307,7 +292,37 @@ const handleFileDoubleClick = async (item) => {
       const result = await downloadFile(item.path)
       
       console.log('downloadFile 返回结果:', result)
-      // 显示下载成功
+      
+      // 延迟检查下载进度，等待文件完全下载并校验
+      let downloadComplete = false
+      let checkCount = 0
+      const maxChecks = 30 // 最多检查 30 次（约 15 秒）
+      
+      while (!downloadComplete && checkCount < maxChecks) {
+        await new Promise(resolve => setTimeout(resolve, 500)) // 每 500ms 检查一次
+        const progress = await getDownloadProgress(item.path)
+        
+        console.log(`检查下载进度 #${checkCount + 1}:`, progress.status, `进度：${progress.progress_percentage}%`)
+        
+        // 检查下载是否完成（状态为 Completed 且进度 100%）
+        if (progress.status === 'Completed' && progress.progress_percentage >= 100) {
+          downloadComplete = true
+          console.log('下载完成并校验通过')
+        } else if (progress.status === 'Error') {
+          // 下载出错
+          showToast(`${item.name} 下载失败：${progress.status}`, '#ef4444')
+          return
+        }
+        
+        checkCount++
+      }
+      
+      if (!downloadComplete) {
+        showToast(`${item.name} 下载超时，请检查网络`, '#f59e0b')
+        return
+      }
+      
+      // 确认下载完成后再显示成功提示
       showToast(`${item.name} 下载成功`, '#10b981')
       
       // 延迟一下再打开文件，确保文件已完全写入
@@ -1352,15 +1367,21 @@ const isFileSelected = (itemPath) => {
 
 /* 删除按钮 - 红色危险样式 */
 .btn-delete {
-  background-color: #212830;
-  color: #f85149;
-  border: 1px solid rgba(248, 81, 73, 0.4);
+  background-color: var(--danger-btn-bg, #212830);
+  color: var(--danger-btn-text, #f85149);
+  border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
 }
 
 .btn-delete:hover {
-  background-color: #f85149;
-  color: white;
-  border-color: #f85149;
+  background-color: var(--danger-btn-hover-bg, #f85149);
+  color: var(--danger-btn-hover-text, white);
+  border-color: var(--danger-btn-hover-border, #f85149);
+}
+
+/* 删除按钮图标 - 继承按钮颜色 */
+.btn-delete i,
+.btn-delete svg {
+  color: inherit;
 }
 
 /* 按钮 hover 效果 */
@@ -1600,9 +1621,9 @@ const isFileSelected = (itemPath) => {
 
 .btn-delete {
   padding: 10px 20px;
-  background-color: #212830;
-  color: #f85149;
-  border: 1px solid rgba(248, 81, 73, 0.4);
+  background-color: var(--danger-btn-bg, #212830);
+  color: var(--danger-btn-text, #f85149);
+  border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
   border-radius: .375rem;
   font-size: 14px;
   font-weight: 500;
@@ -1611,9 +1632,9 @@ const isFileSelected = (itemPath) => {
 }
 
 .btn-delete:hover {
-  background-color: #f85149;
-  color: white;
-  border-color: #f85149;
+  background-color: var(--danger-btn-hover-bg, #f85149);
+  color: var(--danger-btn-hover-text, white);
+  border-color: var(--danger-btn-hover-border, #f85149);
 }
 
 /* 文件选择区域样式 */

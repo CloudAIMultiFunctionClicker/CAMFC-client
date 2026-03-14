@@ -1858,8 +1858,8 @@ function importNotes() {
 
 .delete-confirm-btn {
   padding: 10px 20px;
-  background-color: #ef4444;
-  color: white;
+  background-color: var(--danger-btn-hover-bg, #ef4444);
+  color: var(--danger-btn-hover-text, white);
   border: none;
   border-radius: .375rem;
   cursor: pointer;
@@ -1867,7 +1867,14 @@ function importNotes() {
 }
 
 .delete-confirm-btn:hover {
-  background-color: #dc2626;
+  background-color: var(--danger-btn-hover-bg, #dc2626);
+  opacity: 0.9;
+}
+
+/* 删除确认按钮图标 */
+.delete-confirm-btn i,
+.delete-confirm-btn svg {
+  color: inherit;
 }
 
 .delete-modal-body {
@@ -1974,25 +1981,33 @@ function importNotes() {
 }
 
 .more-menu-item.danger {
-  color: #ef4444;
+  color: var(--danger-btn-text, #ef4444);
 }
 
 .more-menu-item.danger:hover {
-  background-color: rgba(239, 68, 68, 0.1);
+  background-color: var(--danger-btn-hover-bg, rgba(239, 68, 68, 0.1));
+  color: var(--danger-btn-hover-text, #ffffff);
 }
 
 .more-menu-item.danger.confirming {
-  background-color: rgba(239, 68, 68, 0.2);
-  border: 1px solid #ef4444;
+  background-color: var(--danger-btn-hover-bg, rgba(239, 68, 68, 0.2));
+  border: 1px solid var(--danger-btn-hover-border, #ef4444);
+  color: var(--danger-btn-hover-text, #ffffff);
   animation: pulse-confirm 1s ease-in-out infinite;
+}
+
+/* 更多菜单危险项图标 - 继承颜色 */
+.more-menu-item.danger i,
+.more-menu-item.danger svg {
+  color: inherit;
 }
 
 @keyframes pulse-confirm {
   0%, 100% {
-    background-color: rgba(239, 68, 68, 0.2);
+    background-color: var(--danger-btn-hover-bg, rgba(239, 68, 68, 0.2));
   }
   50% {
-    background-color: rgba(239, 68, 68, 0.35);
+    background-color: var(--danger-btn-hover-bg, rgba(239, 68, 68, 0.35));
   }
 }
 

@@ -567,6 +567,14 @@ body {
   --selected-bg: rgba(56, 139, 253, 0.15);
   --input-bg: #0d1117;
   
+  /* 警告按钮配色（暗色模式） */
+  --danger-btn-bg: #212830;
+  --danger-btn-text: #f85149;
+  --danger-btn-border: rgba(248, 81, 73, 0.4);
+  --danger-btn-hover-bg: #f85149;
+  --danger-btn-hover-text: #ffffff;
+  --danger-btn-hover-border: #f85149;
+  
   transition: background-color 0.3s ease, color 0.3s ease;
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -607,6 +615,14 @@ body.light-mode {
   --input-bg: #ffffff;
   --danger-bg: #ffebe9;
   --danger-border: #ffcccc;
+  
+  /* 警告按钮配色（亮色模式） */
+  --danger-btn-bg: #f6f8fa;
+  --danger-btn-text: #cf222e;
+  --danger-btn-border: rgba(207, 34, 46, 0.4);
+  --danger-btn-hover-bg: #cf222e;
+  --danger-btn-hover-text: #ffffff;
+  --danger-btn-hover-border: #cf222e;
 }
 
 /* 应用基础样式 */
@@ -649,5 +665,38 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted, #8b949e);
+}
+
+/* 全局警告按钮样式 - GitHub 风格 */
+.btn-danger {
+  background-color: var(--danger-btn-bg, #212830);
+  color: var(--danger-btn-text, #f85149);
+  border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btn-danger:hover {
+  background-color: var(--danger-btn-hover-bg, #f85149);
+  color: var(--danger-btn-hover-text, #ffffff);
+  border-color: var(--danger-btn-hover-border, #f85149);
+}
+
+.btn-danger:active {
+  transform: scale(0.98);
+}
+
+/* 警告按钮内的图标 - 确保对比度 */
+.btn-danger i,
+.btn-danger svg {
+  color: inherit;
 }
 </style>
