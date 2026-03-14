@@ -25,12 +25,29 @@
 - 实时显示连接状态
 - 手动断开/重新连接
 
-### 4. 主题切换
-- 支持亮色/暗色主题
-- 自动跟随系统主题（如果用户没手动设置过）
-- 用户偏好保存到 localStorage
+### 4. 文件管理（云端）
+- 云端文件浏览（和本地资源管理器差不多）
+- 支持目录切换、新建文件夹
+- 文件批量下载（勾选想要的就能下）
+- 单文件上传（支持拖拽）
 
-### 5. 屏幕截图与标注
+### 5. 传输任务管理
+- 上传/下载任务实时进度显示
+- 断点续传（暂停后继续不重新来）
+- 传输历史记录（方便找之前传过啥）
+- 同时管理多个传输任务
+
+### 6. 笔记功能
+- 从云端获取笔记列表
+- 笔记内容在线查看
+
+### 7. 悬浮窗模式
+- 迷你悬浮窗口（点击图标就能调出）
+- 随时查看TOTP和连接状态
+- 不影响其他操作
+
+### 8. 屏幕截图与标注
+- 支持多显示器选择
 - 一键截取屏幕
 - 支持 5 种标注颜色（红、蓝、绿、黄、紫）
 - 提供 5 种标注工具：
@@ -43,6 +60,16 @@
 - 支持撤销/重做操作
 - 标注数据自动保存和加载
 - 图片裁切功能
+
+### 9. 主题切换
+- 支持亮色/暗色主题
+- 自动跟随系统主题（如果用户没手动设置过）
+- 用户偏好保存到本地
+
+### 10. 系统集成
+- Windows键模拟（快捷键调用某些功能）
+- 文件和文件夹直接打开
+- 自定义下载路径
 
 ## 技术栈
 
@@ -62,6 +89,7 @@
 - **CSS 变量** - 主题切换全靠这个
 - **Normalize.css** - 重置浏览器默认样式
 - **Remix Icon** - 图标库
+- **Lucide Vue Next** - 另一个图标库（有些页面用这个）
 
 ## 安装和运行
 
@@ -97,24 +125,34 @@ npm run tauri build
 ## 项目结构说明
 
 ```
-h:/dev/CAMFC-client/
+CAMFC-client/
 ├── src/                    # 前端源代码
 │   ├── components/        # Vue 组件
-│   │   ├── data/         # 数据相关（蓝牙、文件系统）
+│   │   ├── annotate/     # 截图标注相关
+│   │   ├── data/         # 数据相关（蓝牙、文件系统、传输）
 │   │   ├── file/         # 文件管理组件
 │   │   └── layout/       # 布局组件（头部、侧边栏等）
 │   ├── composables/      # Vue 组合式函数
+│   ├── config/           # 前端配置
 │   ├── stores/           # Pinia 状态存储
 │   ├── router/           # 路由配置
+│   ├── utils/           # 工具函数
 │   └── views/            # 页面视图
 ├── src-tauri/            # Rust 后端代码
 │   ├── src/
 │   │   ├── bluetooth.rs          # 蓝牙底层操作
 │   │   ├── cpen_device_manager.rs # 业务逻辑管理器
-│   │   └── lib.rs                # Tauri 命令入口
-│   └── tauri.conf.json           # Tauri 配置文件
-├── public/               # 静态资源
-└── 各种配置文件          # package.json, vite.config.ts 等
+│   │   ├── download.rs           # 下载模块（断点续传）
+│   │   ├── upload.rs            # 上传模块（断点续传）
+│   │   ├── storage.rs           # 本地存储管理
+│   │   ├── screenshot.rs        # 截图功能
+│   │   ├── event_emitter.rs     # 事件发射器
+│   │   ├── config.rs            # 后端配置
+│   │   ├── lib.rs               # Tauri 命令入口
+│   │   └── main.rs              # 程序入口
+│   └── tauri.conf.json          # Tauri 配置文件
+├── public/                # 静态资源
+└── 各种配置文件           # package.json, vite.config.ts 等
 ```
 
 ## 代码特点（或者说，我们遇到的坑）
@@ -156,9 +194,10 @@ h:/dev/CAMFC-client/
 
 ## 贡献者
 
-- **许嘉乐** ([@ant-cave](https://github.com/ant-cave)) - 项目发起，主要 Rust 开发
+- **许嘉乐** ([@ant-cave](https://github.com/ant-cave))
 - **陈欣航** ([@cxh09](https://github.com/cxh09))
 - **温子墨** ([@lusamaqq](https://github.com/lusamaqq))
+- **曾楷彬** ([@Waple1145](https://github.com/Waple1145))
 
 ## 问题反馈
 
