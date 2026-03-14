@@ -580,6 +580,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: transparent;
 }
 </style>
 
@@ -592,9 +593,11 @@ html, body {
   padding: 0 12px;
   gap: 8px;
   background-color: var(--float-bg, #f5f5f5);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: .375rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   cursor: move;
   user-select: none;
+  overflow: hidden;
 }
 
 .float-title {

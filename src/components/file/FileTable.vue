@@ -247,21 +247,6 @@ const handleDownloadClick = async () => {
       console.error('下载失败的文件:', errorFiles)
     }
     
-    // 延迟检查下载状态，因为下载是异步的
-    setTimeout(async () => {
-      for (const fileId of fileIds) {
-        try {
-          const progress = await getDownloadProgress(fileId)
-          if (progress.status === 'Error') {
-            console.error(`下载失败: ${fileId}, 状态: ${progress.status}`)
-            showToast(`文件下载失败: ${fileId}`, '#ef4444')
-          }
-        } catch (error) {
-          console.error(`检查下载状态失败: ${fileId}`, error)
-        }
-      }
-    }, 2000) // 2 秒后检查状态
-    
   } catch (error) {
     console.error('下载过程中出错:', error)
     showToast(`下载出错：${error.message}`, '#ef4444')
@@ -307,7 +292,37 @@ const handleFileDoubleClick = async (item) => {
       const result = await downloadFile(item.path)
       
       console.log('downloadFile 返回结果:', result)
-      // 显示下载成功
+      
+      // 延迟检查下载进度，等待文件完全下载并校验
+      let downloadComplete = false
+      let checkCount = 0
+      const maxChecks = 30 // 最多检查 30 次（约 15 秒）
+      
+      while (!downloadComplete && checkCount < maxChecks) {
+        await new Promise(resolve => setTimeout(resolve, 500)) // 每 500ms 检查一次
+        const progress = await getDownloadProgress(item.path)
+        
+        console.log(`检查下载进度 #${checkCount + 1}:`, progress.status, `进度：${progress.progress_percentage}%`)
+        
+        // 检查下载是否完成（状态为 Completed 且进度 100%）
+        if (progress.status === 'Completed' && progress.progress_percentage >= 100) {
+          downloadComplete = true
+          console.log('下载完成并校验通过')
+        } else if (progress.status === 'Error') {
+          // 下载出错
+          showToast(`${item.name} 下载失败：${progress.status}`, '#ef4444')
+          return
+        }
+        
+        checkCount++
+      }
+      
+      if (!downloadComplete) {
+        showToast(`${item.name} 下载超时，请检查网络`, '#f59e0b')
+        return
+      }
+      
+      // 确认下载完成后再显示成功提示
       showToast(`${item.name} 下载成功`, '#10b981')
       
       // 延迟一下再打开文件，确保文件已完全写入
@@ -690,20 +705,29 @@ const formatTime = (timeStr) => {
   return timeStr.split('T')[0]
 }
 
-// 文件选择逻辑 - 处理三种情况：普通点击、Ctrl+点击、Shift+点击
+// 文件选择逻辑 - 处理三种情况：普通点击、Ctrl+ 点击、Shift+ 点击
 const handleFileClick = (item, index, event) => {
   if (loading.value) return // 加载时不能点击
   if (event) event.stopPropagation() // 阻止事件冒泡
   
   const itemPath = item.path
+  const isDir = item.is_dir || item.type === 'dir' || item.type === 'folder'
   
-  // 处理Shift+点击（连续选择）
+  // 如果是文件夹，且是普通点击（没有按 Ctrl 或 Shift），直接进入文件夹
+  // 这样可以实现点击整个文件框进入文件夹
+  if (isDir && !ctrlPressed.value && !shiftPressed.value) {
+    console.log('单击文件夹，直接进入:', itemPath)
+    enterFolder(itemPath)
+    return
+  }
+  
+  // 处理 Shift+ 点击（连续选择）
   if (shiftPressed.value && lastSelectedIndex.value !== -1) {
     // 找到开始和结束索引（从小到大）
     const start = Math.min(lastSelectedIndex.value, index)
     const end = Math.max(lastSelectedIndex.value, index)
     
-    // 清除选择（除非按着Ctrl，但Shift+Ctrl组合比较复杂，先不处理）
+    // 清除选择（除非按着 Ctrl，但 Shift+Ctrl 组合比较复杂，先不处理）
     if (!ctrlPressed.value) {
       selectedFiles.value.clear()
     }
@@ -720,13 +744,13 @@ const handleFileClick = (item, index, event) => {
     return
   }
   
-  // 处理Ctrl+点击（多选/取消选择）
+  // 处理 Ctrl+ 点击（多选/取消选择）
   if (ctrlPressed.value) {
     if (selectedFiles.value.has(itemPath)) {
       // 已经选中了，就取消选择
       selectedFiles.value.delete(itemPath)
-      // 这里有个问题：如果取消了最后一个选中的，lastSelectedIndex不好处理
-      // 先简单设为-1，后面可能会出bug
+      // 这里有个问题：如果取消了最后一个选中的，lastSelectedIndex 不好处理
+      // 先简单设为 -1，后面可能会出 bug
       if (selectedFiles.value.size === 0) {
         lastSelectedIndex.value = -1
       }
@@ -738,7 +762,7 @@ const handleFileClick = (item, index, event) => {
     return
   }
   
-  // 普通点击（单选）
+  // 普通点击（单选）- 只有文件才会走到这里，文件夹已经在上面处理了
   selectedFiles.value.clear()
   selectedFiles.value.add(itemPath)
   lastSelectedIndex.value = index
@@ -939,17 +963,7 @@ const isFileSelected = (itemPath) => {
         >
           <div class="cell name">
             <i :class="item.is_dir ? 'ri-folder-line' : getFileIcon(item.name)"></i>
-            <span class="file-name">{{ item.name }}</span>
-            <!-- 如果是文件夹，可以点击 -->
-            <button 
-              v-if="item.is_dir" 
-              @click="!loading && enterFolder(item.path)"
-              class="enter-btn"
-              title="进入文件夹"
-              :disabled="loading"
-            >
-              <i class="ri-arrow-right-s-line"></i>
-            </button>
+            <span class="file-name" :title="item.name">{{ item.name }}</span>
           </div>
           
           <div class="cell type">
@@ -1191,7 +1205,7 @@ const isFileSelected = (itemPath) => {
 }
 
 .table-row:hover {
-  background: var(--hover-bg, #f3f4f6);
+  background: var(--hover-bg);
 }
 
 .table-row.is-dir {
@@ -1205,7 +1219,7 @@ const isFileSelected = (itemPath) => {
 }
 
 .table-row.selected:hover {
-  background: rgba(221, 244, 255, 0.6) !important;
+  background: var(--selected-bg) !important;
 }
 
 .cell {
@@ -1219,10 +1233,16 @@ const isFileSelected = (itemPath) => {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .file-name {
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .enter-btn {
@@ -1352,15 +1372,21 @@ const isFileSelected = (itemPath) => {
 
 /* 删除按钮 - 红色危险样式 */
 .btn-delete {
-  background-color: #212830;
-  color: #f85149;
-  border: 1px solid rgba(248, 81, 73, 0.4);
+  background-color: var(--danger-btn-bg, #212830);
+  color: var(--danger-btn-text, #f85149);
+  border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
 }
 
 .btn-delete:hover {
-  background-color: #f85149;
-  color: white;
-  border-color: #f85149;
+  background-color: var(--danger-btn-hover-bg, #f85149);
+  color: var(--danger-btn-hover-text, white);
+  border-color: var(--danger-btn-hover-border, #f85149);
+}
+
+/* 删除按钮图标 - 继承按钮颜色 */
+.btn-delete i,
+.btn-delete svg {
+  color: inherit;
 }
 
 /* 按钮 hover 效果 */
@@ -1600,9 +1626,9 @@ const isFileSelected = (itemPath) => {
 
 .btn-delete {
   padding: 10px 20px;
-  background-color: #212830;
-  color: #f85149;
-  border: 1px solid rgba(248, 81, 73, 0.4);
+  background-color: var(--danger-btn-bg, #212830);
+  color: var(--danger-btn-text, #f85149);
+  border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
   border-radius: .375rem;
   font-size: 14px;
   font-weight: 500;
@@ -1611,9 +1637,9 @@ const isFileSelected = (itemPath) => {
 }
 
 .btn-delete:hover {
-  background-color: #f85149;
-  color: white;
-  border-color: #f85149;
+  background-color: var(--danger-btn-hover-bg, #f85149);
+  color: var(--danger-btn-hover-text, white);
+  border-color: var(--danger-btn-hover-border, #f85149);
 }
 
 /* 文件选择区域样式 */

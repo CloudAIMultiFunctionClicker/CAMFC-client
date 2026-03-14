@@ -857,15 +857,15 @@ onUnmounted(() => {
 }
 
 .action-btn.delete-btn {
-  background-color: #212830;
-  color: #f85149;
-  border: 1px solid rgba(248, 81, 73, 0.4);
+  background-color: var(--bg-primary, #ffffff);
+  color: var(--accent-red, #ef4444);
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .action-btn.delete-btn:hover {
-  background-color: #f85149;
+  background-color: var(--accent-red, #ef4444);
   color: white;
-  border-color: #f85149;
+  border-color: var(--accent-red, #ef4444);
 }
 
 .list-footer {

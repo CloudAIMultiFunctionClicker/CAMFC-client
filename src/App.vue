@@ -15,7 +15,7 @@ Email: admin@mc666.top
 -->
 
 <script setup>
-import { ref, provide, onMounted, onUnmounted, computed } from 'vue'
+import { ref, provide, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 // 导入 Pinia store 来获取蓝牙状态
@@ -28,6 +28,10 @@ const route = useRoute()
 const router = useRouter()
 
 const isFloatPage = computed(() => route.path === '/float')
+
+// TOTP定时刷新
+let totpRefreshInterval = null
+const TOTP_REFRESH_INTERVAL = 30000
 
 // 导入后端配置初始化函数
 import { initBackendConfig } from './config/backend.js'
@@ -138,6 +142,44 @@ const scanBluetooth = async () => {
 provide('theme', {
   isLightMode,
   toggleTheme
+})
+
+// TOTP定时刷新函数
+const startTotpRefresh = async () => {
+  if (totpRefreshInterval) {
+    clearInterval(totpRefreshInterval)
+  }
+
+  totpRefreshInterval = setInterval(async () => {
+    try {
+      const { getTotp } = await import('./components/data/bluetooth')
+      await getTotp()
+      console.log('[TOTP] 后台TOTP缓存刷新成功')
+    } catch (error) {
+      console.warn('[TOTP] TOTP缓存刷新失败:', error.message)
+    }
+  }, TOTP_REFRESH_INTERVAL)
+
+  console.log(`[TOTP] 已启动定时刷新，每${TOTP_REFRESH_INTERVAL / 1000}秒刷新一次`)
+}
+
+const stopTotpRefresh = () => {
+  if (totpRefreshInterval) {
+    clearInterval(totpRefreshInterval)
+    totpRefreshInterval = null
+    console.log('[TOTP] 已停止TOTP定时刷新')
+  }
+}
+
+// 监听蓝牙连接状态，启动/停止TOTP刷新
+watch(() => bluetoothStore.isConnected(), (connected) => {
+  if (connected) {
+    console.log('[TOTP] 设备已连接，启动TOTP定时刷新')
+    startTotpRefresh()
+  } else {
+    console.log('[TOTP] 设备已断开，停止TOTP定时刷新')
+    stopTotpRefresh()
+  }
 })
 
 // 在组件挂载时设置初始主题
@@ -482,6 +524,9 @@ onMounted(async () => {
   
   // 在组件卸载时清理监听器
   onUnmounted(() => {
+    // 停止TOTP定时刷新
+    stopTotpRefresh()
+    
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
     if (connectionCheckInterval) {
       clearInterval(connectionCheckInterval)
@@ -567,6 +612,14 @@ body {
   --selected-bg: rgba(56, 139, 253, 0.15);
   --input-bg: #0d1117;
   
+  /* 警告按钮配色（暗色模式） */
+  --danger-btn-bg: #212830;
+  --danger-btn-text: #f85149;
+  --danger-btn-border: rgba(248, 81, 73, 0.4);
+  --danger-btn-hover-bg: #f85149;
+  --danger-btn-hover-text: #ffffff;
+  --danger-btn-hover-border: #f85149;
+  
   transition: background-color 0.3s ease, color 0.3s ease;
   -webkit-user-select: none;
   -moz-user-select: none;
@@ -607,6 +660,14 @@ body.light-mode {
   --input-bg: #ffffff;
   --danger-bg: #ffebe9;
   --danger-border: #ffcccc;
+  
+  /* 警告按钮配色（亮色模式） */
+  --danger-btn-bg: #f6f8fa;
+  --danger-btn-text: #cf222e;
+  --danger-btn-border: rgba(207, 34, 46, 0.4);
+  --danger-btn-hover-bg: #cf222e;
+  --danger-btn-hover-text: #ffffff;
+  --danger-btn-hover-border: #cf222e;
 }
 
 /* 应用基础样式 */
@@ -649,5 +710,38 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted, #8b949e);
+}
+
+/* 全局警告按钮样式 - GitHub 风格 */
+.btn-danger {
+  background-color: var(--danger-btn-bg, #212830);
+  color: var(--danger-btn-text, #f85149);
+  border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.btn-danger:hover {
+  background-color: var(--danger-btn-hover-bg, #f85149);
+  color: var(--danger-btn-hover-text, #ffffff);
+  border-color: var(--danger-btn-hover-border, #f85149);
+}
+
+.btn-danger:active {
+  transform: scale(0.98);
+}
+
+/* 警告按钮内的图标 - 确保对比度 */
+.btn-danger i,
+.btn-danger svg {
+  color: inherit;
 }
 </style>

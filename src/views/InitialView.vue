@@ -105,7 +105,7 @@ Email: admin@mc666.top
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBluetoothStore } from '../stores/bluetooth.js'
-import { 
+import {
   scanCpenDevices,
   connectCpenDevice
 } from '../components/data/bluetooth.js'
@@ -229,7 +229,7 @@ async function selectDevice(device) {
     
     bluetoothStore.setStatus('connected')
     showToast('设备连接成功！')
-    
+
     // 保存设备地址
     try {
       const savedCpen = await loadAppData('settings_cpen')
@@ -240,8 +240,9 @@ async function selectDevice(device) {
       console.warn('保存设备地址失败:', e)
     }
     
-    // 连接成功直接跳转
-    jumpToMain()
+    // 连接成功，先等待一小段时间让状态同步
+    // 然后开始倒计时跳转
+    startCountdown()
   } catch (error) {
     console.error('连接设备失败:', error)
     bluetoothStore.setError('连接失败')
@@ -289,7 +290,17 @@ function skipCountdown() {
  */
 function jumpToMain() {
   showCountdown.value = false
-  router.push('/main')
+  // 确保蓝牙状态已设置为已连接
+  // 这样路由守卫才会放行
+  if (!bluetoothStore.isConnected()) {
+    console.log('强制设置蓝牙状态为已连接')
+    bluetoothStore.setStatus('connected')
+  }
+  // 稍微延迟一下再跳转，给状态更新时间
+  setTimeout(() => {
+    console.log('执行路由跳转，目标：/main')
+    router.push('/main')
+  }, 100)
 }
 
 /**
@@ -310,10 +321,10 @@ function showConnectionHelp() {
 // 组件挂载时自动扫描
 onMounted(async () => {
   console.log('InitialView mounted，开始自动扫描')
-  
+
   // 重置状态
   bluetoothStore.reset()
-  
+
   // 立即开始扫描
   await scanDevices()
 })
@@ -470,12 +481,12 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--text-muted, #8c959f);
+  color: var(--text-secondary, #57606a);
   font-size: 14px;
 }
 
 .scanning-indicator i {
-  color: var(--accent-blue, #0969da);
+  color: var(--accent-blue-dark, #0a3069);
 }
 
 .panel-title {
@@ -488,7 +499,7 @@ onMounted(async () => {
 }
 
 .panel-title i {
-  color: var(--accent-blue, #0969da);
+  color: var(--accent-blue-dark, #0a3069);
   font-size: 26px;
 }
 
@@ -498,7 +509,7 @@ onMounted(async () => {
   border-radius: 50%;
   border: none;
   background: var(--bg-tertiary, #f6f8fa);
-  color: var(--text-muted, #8c959f);
+  color: var(--text-secondary, #57606a);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -508,7 +519,7 @@ onMounted(async () => {
 
 .refresh-btn:hover:not(:disabled) {
   background: var(--hover-bg, #f3f4f6);
-  color: var(--accent-blue, #0969da);
+  color: var(--accent-blue-dark, #0a3069);
 }
 
 .refresh-btn.spinning i {
@@ -531,14 +542,14 @@ onMounted(async () => {
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--text-secondary, #57606a);
   margin-bottom: 12px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .section-title i {
-  color: var(--accent-blue);
+  color: var(--accent-blue-dark, #0a3069);
 }
 
 /* 设备列表 */
@@ -602,17 +613,17 @@ onMounted(async () => {
 .device-icon {
   font-size: 32px;
   margin-bottom: 12px;
-  color: var(--text-muted, #8c959f);
+  color: var(--text-secondary, #57606a);
   transition: all 0.3s ease;
 }
 
 .device-card:hover .device-icon {
-  color: var(--accent-blue, #0969da);
+  color: var(--accent-blue-dark, #0a3069);
   transform: scale(1.1);
 }
 
 .device-card.selected .device-icon {
-  color: var(--accent-blue, #0969da);
+  color: var(--accent-blue-dark, #0a3069);
 }
 
 .device-info {
@@ -635,7 +646,7 @@ onMounted(async () => {
 .device-info p {
   margin: 0;
   font-size: 13px;
-  color: var(--text-muted, #8c959f);
+  color: var(--text-secondary, #57606a);
 }
 
 .device-name {
@@ -649,31 +660,31 @@ onMounted(async () => {
 
 .device-address {
   font-size: 12px;
-  color: var(--text-muted, #8c959f);
+  color: var(--text-secondary, #57606a);
 }
 
 .device-action {
   font-size: 20px;
-  color: var(--text-muted, #8c959f);
+  color: var(--text-secondary, #57606a);
   transition: all 0.3s ease;
 }
 
 .device-card:hover .device-action {
-  color: var(--accent-blue, #0969da);
+  color: var(--accent-blue-dark, #0a3069);
   transform: translateX(4px);
 }
 
 .empty-message {
   text-align: center;
   padding: 60px 20px;
-  color: var(--text-muted, #8c959f);
+  color: var(--text-secondary, #57606a);
   font-size: 15px;
 }
 
 .empty-message i {
   font-size: 48px;
   margin-bottom: 16px;
-  opacity: 0.5;
+  opacity: 0.7;
 }
 
 .spinning {
@@ -688,13 +699,13 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 80px 20px;
-  color: var(--text-muted);
+  color: var(--text-secondary, #57606a);
 }
 
 .empty-state i {
   font-size: 64px;
   margin-bottom: 20px;
-  opacity: 0.5;
+  opacity: 0.7;
 }
 
 .empty-state p {
@@ -827,7 +838,7 @@ onMounted(async () => {
   height: 24px;
   border-radius: 50%;
   background: var(--bg-primary);
-  color: var(--text-muted);
+  color: var(--text-secondary, #57606a);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -837,7 +848,7 @@ onMounted(async () => {
 
 .help-text {
   font-size: 14px;
-  color: var(--text-muted);
+  color: var(--text-secondary, #57606a);
   font-weight: 500;
 }
 

@@ -196,6 +196,30 @@ export async function batchDownloadFiles(fileIds) {
       showToast(`下载中：${fileId}`, '#3b82f6')
       
       const result = await downloadFile(fileId)
+      
+      // 等待下载完成并校验
+      let downloadComplete = false
+      let checkCount = 0
+      const maxChecks = 30 // 最多检查 30 次（约 15 秒）
+      
+      while (!downloadComplete && checkCount < maxChecks) {
+        await new Promise(resolve => setTimeout(resolve, 500))
+        const progress = await getDownloadProgress(fileId)
+        
+        if (progress.status === 'Completed' && progress.progress_percentage >= 100) {
+          downloadComplete = true
+          console.info(`文件 ${fileId} 下载完成并校验通过`)
+        } else if (progress.status === 'Error') {
+          throw new Error(`下载失败：${progress.status}`)
+        }
+        
+        checkCount++
+      }
+      
+      if (!downloadComplete) {
+        throw new Error('下载超时')
+      }
+      
       results.push({ fileId, success: true, result })
       successCount++
       
@@ -206,7 +230,7 @@ export async function batchDownloadFiles(fileIds) {
     }
   }
   
-  // 显示最终结果
+  // 显示最终结果 - 此时所有文件都已校验完毕
   const message = successCount > 0 
     ? `下载完成：${successCount} 个成功，${errorCount} 个失败`
     : '所有文件下载失败'

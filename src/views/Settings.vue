@@ -1058,15 +1058,21 @@ onUnmounted(() => {
 }
 
 .action-btn.danger {
-  background-color: #212830;
-  color: #f85149;
-  border: 1px solid rgba(248, 81, 73, 0.4);
+  background-color: var(--danger-btn-bg, #212830);
+  color: var(--danger-btn-text, #f85149);
+  border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
 }
 
 .action-btn.danger:hover {
-  background-color: #f85149;
-  color: white;
-  border-color: #f85149;
+  background-color: var(--danger-btn-hover-bg, #f85149);
+  color: var(--danger-btn-hover-text, white);
+  border-color: var(--danger-btn-hover-border, #f85149);
+}
+
+/* 危险按钮图标 - 继承按钮颜色 */
+.action-btn.danger i,
+.action-btn.danger svg {
+  color: inherit;
 }
 
 .action-btn.small {

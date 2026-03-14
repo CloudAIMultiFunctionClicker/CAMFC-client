@@ -144,7 +144,7 @@ function goToNotes() {
 .card-icon {
   font-size: 48px;
   margin-bottom: 15px;
-  color: #f0f6fc !important;
+  color: var(--text-primary, #24292f) !important;
 }
 
 /* 卡片标题 */
