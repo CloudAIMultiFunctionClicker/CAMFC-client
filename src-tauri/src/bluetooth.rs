@@ -640,34 +640,34 @@ impl BluetoothManager {
                                 
                                 if first_byte == 0xAA {
                                     if last_button_state.as_ref().map_or(true, |s| s != "press") {
-                                        println!("[BLUETOOTH] GPIO10 按下（0xAA）");
+                                        println!("[BLUETOOTH] 上一页（GPIO10 按下 0xAA）");
                                         last_button_state = Some("press".to_string());
-                                        tokio::spawn(async move {
-                                            emit_button_event("button_press");
-                                        });
-                                    }
-                                } else if first_byte == 0xAB {
-                                    if last_button_state.as_ref().map_or(true, |s| s != "release") {
-                                        println!("[BLUETOOTH] GPIO10 松开（0xAB）");
-                                        last_button_state = Some("release".to_string());
-                                        tokio::spawn(async move {
-                                            emit_button_event("button_release");
-                                        });
-                                    }
-                                } else if first_byte == 0xAC {
-                                    if last_button_state.as_ref().map_or(true, |s| s != "press_left") {
-                                        println!("[BLUETOOTH] GPIO9 按下（0xAC）");
-                                        last_button_state = Some("press_left".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_press_left");
                                         });
                                     }
-                                } else if first_byte == 0xAD {
-                                    if last_button_state.as_ref().map_or(true, |s| s != "release_left") {
-                                        println!("[BLUETOOTH] GPIO9 松开（0xAD）");
-                                        last_button_state = Some("release_left".to_string());
+                                } else if first_byte == 0xAB {
+                                    if last_button_state.as_ref().map_or(true, |s| s != "release") {
+                                        println!("[BLUETOOTH] 上一页松开（GPIO10 松开 0xAB）");
+                                        last_button_state = Some("release".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_release_left");
+                                        });
+                                    }
+                                } else if first_byte == 0xAC {
+                                    if last_button_state.as_ref().map_or(true, |s| s != "press_left") {
+                                        println!("[BLUETOOTH] 下一页（GPIO9 按下 0xAC）");
+                                        last_button_state = Some("press_left".to_string());
+                                        tokio::spawn(async move {
+                                            emit_button_event("button_press");
+                                        });
+                                    }
+                                } else if first_byte == 0xAD {
+                                    if last_button_state.as_ref().map_or(true, |s| s != "release_left") {
+                                        println!("[BLUETOOTH] 下一页松开（GPIO9 松开 0xAD）");
+                                        last_button_state = Some("release_left".to_string());
+                                        tokio::spawn(async move {
+                                            emit_button_event("button_release");
                                         });
                                     }
                                 } else if first_byte == 0x12 {

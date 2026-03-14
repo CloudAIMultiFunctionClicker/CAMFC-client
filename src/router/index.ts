@@ -134,11 +134,29 @@ router.beforeEach((to, _from, next) => {
   console.log(`[路由守卫] 目标：${to.path}, 蓝牙状态：${bluetoothStore.bluetoothStatus}, 连接：${connected}`)
   
   if (connected) {
+    console.log('[路由守卫] 蓝牙已连接，允许跳转')
     next()
   } else {
-    // 未连接，强制跳回首页
-    console.warn('[路由守卫] 蓝牙未连接，阻止跳转到:', to.path)
-    next('/')
+    // 未连接，但有可能是状态同步延迟
+    // 检查是否是从连接页面跳转过来的
+    if (_from.path === '/' && bluetoothStore.bluetoothStatus === 'connected') {
+      console.log('[路由守卫] 检测到状态同步延迟，等待 200ms 后重试')
+      // 等待一小段时间让状态同步完成
+      setTimeout(() => {
+        const retryConnected = bluetoothStore.isConnected()
+        if (retryConnected) {
+          console.log('[路由守卫] 重试成功，蓝牙已连接，允许跳转')
+          next()
+        } else {
+          console.warn('[路由守卫] 重试失败，蓝牙未连接，阻止跳转到:', to.path)
+          next('/')
+        }
+      }, 200)
+    } else {
+      // 未连接，强制跳回首页
+      console.warn('[路由守卫] 蓝牙未连接，阻止跳转到:', to.path)
+      next('/')
+    }
   }
 })
 

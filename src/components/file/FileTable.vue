@@ -705,20 +705,29 @@ const formatTime = (timeStr) => {
   return timeStr.split('T')[0]
 }
 
-// 文件选择逻辑 - 处理三种情况：普通点击、Ctrl+点击、Shift+点击
+// 文件选择逻辑 - 处理三种情况：普通点击、Ctrl+ 点击、Shift+ 点击
 const handleFileClick = (item, index, event) => {
   if (loading.value) return // 加载时不能点击
   if (event) event.stopPropagation() // 阻止事件冒泡
   
   const itemPath = item.path
+  const isDir = item.is_dir || item.type === 'dir' || item.type === 'folder'
   
-  // 处理Shift+点击（连续选择）
+  // 如果是文件夹，且是普通点击（没有按 Ctrl 或 Shift），直接进入文件夹
+  // 这样可以实现点击整个文件框进入文件夹
+  if (isDir && !ctrlPressed.value && !shiftPressed.value) {
+    console.log('单击文件夹，直接进入:', itemPath)
+    enterFolder(itemPath)
+    return
+  }
+  
+  // 处理 Shift+ 点击（连续选择）
   if (shiftPressed.value && lastSelectedIndex.value !== -1) {
     // 找到开始和结束索引（从小到大）
     const start = Math.min(lastSelectedIndex.value, index)
     const end = Math.max(lastSelectedIndex.value, index)
     
-    // 清除选择（除非按着Ctrl，但Shift+Ctrl组合比较复杂，先不处理）
+    // 清除选择（除非按着 Ctrl，但 Shift+Ctrl 组合比较复杂，先不处理）
     if (!ctrlPressed.value) {
       selectedFiles.value.clear()
     }
@@ -735,13 +744,13 @@ const handleFileClick = (item, index, event) => {
     return
   }
   
-  // 处理Ctrl+点击（多选/取消选择）
+  // 处理 Ctrl+ 点击（多选/取消选择）
   if (ctrlPressed.value) {
     if (selectedFiles.value.has(itemPath)) {
       // 已经选中了，就取消选择
       selectedFiles.value.delete(itemPath)
-      // 这里有个问题：如果取消了最后一个选中的，lastSelectedIndex不好处理
-      // 先简单设为-1，后面可能会出bug
+      // 这里有个问题：如果取消了最后一个选中的，lastSelectedIndex 不好处理
+      // 先简单设为 -1，后面可能会出 bug
       if (selectedFiles.value.size === 0) {
         lastSelectedIndex.value = -1
       }
@@ -753,7 +762,7 @@ const handleFileClick = (item, index, event) => {
     return
   }
   
-  // 普通点击（单选）
+  // 普通点击（单选）- 只有文件才会走到这里，文件夹已经在上面处理了
   selectedFiles.value.clear()
   selectedFiles.value.add(itemPath)
   lastSelectedIndex.value = index
@@ -954,17 +963,7 @@ const isFileSelected = (itemPath) => {
         >
           <div class="cell name">
             <i :class="item.is_dir ? 'ri-folder-line' : getFileIcon(item.name)"></i>
-            <span class="file-name">{{ item.name }}</span>
-            <!-- 如果是文件夹，可以点击 -->
-            <button 
-              v-if="item.is_dir" 
-              @click="!loading && enterFolder(item.path)"
-              class="enter-btn"
-              title="进入文件夹"
-              :disabled="loading"
-            >
-              <i class="ri-arrow-right-s-line"></i>
-            </button>
+            <span class="file-name" :title="item.name">{{ item.name }}</span>
           </div>
           
           <div class="cell type">
@@ -1206,7 +1205,7 @@ const isFileSelected = (itemPath) => {
 }
 
 .table-row:hover {
-  background: var(--hover-bg, #f3f4f6);
+  background: var(--hover-bg);
 }
 
 .table-row.is-dir {
@@ -1220,7 +1219,7 @@ const isFileSelected = (itemPath) => {
 }
 
 .table-row.selected:hover {
-  background: rgba(221, 244, 255, 0.6) !important;
+  background: var(--selected-bg) !important;
 }
 
 .cell {
@@ -1234,10 +1233,16 @@ const isFileSelected = (itemPath) => {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .file-name {
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 
 .enter-btn {

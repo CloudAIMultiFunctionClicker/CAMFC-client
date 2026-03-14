@@ -58,7 +58,7 @@ export function useToast() {
 
         #${CONTAINER_ID} {
           position: fixed;
-          top: 20px;
+          top: 80px;
           right: 20px;
           z-index: 10000;
           display: flex;

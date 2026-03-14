@@ -105,7 +105,7 @@ Email: admin@mc666.top
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useBluetoothStore } from '../stores/bluetooth.js'
-import { 
+import {
   scanCpenDevices,
   connectCpenDevice
 } from '../components/data/bluetooth.js'
@@ -229,7 +229,7 @@ async function selectDevice(device) {
     
     bluetoothStore.setStatus('connected')
     showToast('设备连接成功！')
-    
+
     // 保存设备地址
     try {
       const savedCpen = await loadAppData('settings_cpen')
@@ -240,8 +240,9 @@ async function selectDevice(device) {
       console.warn('保存设备地址失败:', e)
     }
     
-    // 连接成功直接跳转
-    jumpToMain()
+    // 连接成功，先等待一小段时间让状态同步
+    // 然后开始倒计时跳转
+    startCountdown()
   } catch (error) {
     console.error('连接设备失败:', error)
     bluetoothStore.setError('连接失败')
@@ -289,7 +290,17 @@ function skipCountdown() {
  */
 function jumpToMain() {
   showCountdown.value = false
-  router.push('/main')
+  // 确保蓝牙状态已设置为已连接
+  // 这样路由守卫才会放行
+  if (!bluetoothStore.isConnected()) {
+    console.log('强制设置蓝牙状态为已连接')
+    bluetoothStore.setStatus('connected')
+  }
+  // 稍微延迟一下再跳转，给状态更新时间
+  setTimeout(() => {
+    console.log('执行路由跳转，目标：/main')
+    router.push('/main')
+  }, 100)
 }
 
 /**
@@ -310,10 +321,10 @@ function showConnectionHelp() {
 // 组件挂载时自动扫描
 onMounted(async () => {
   console.log('InitialView mounted，开始自动扫描')
-  
+
   // 重置状态
   bluetoothStore.reset()
-  
+
   // 立即开始扫描
   await scanDevices()
 })
