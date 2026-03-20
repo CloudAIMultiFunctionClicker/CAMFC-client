@@ -473,6 +473,7 @@ name = "camfc-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "base64 0.22.1",
  "btleplug",
  "bytes",
@@ -493,6 +494,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-opener",
  "tempfile",
+ "thiserror 1.0.69",
  "tokio",
  "totp-rs",
  "urlencoding",

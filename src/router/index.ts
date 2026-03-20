@@ -17,8 +17,8 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
-// @ts-ignore
-import { useBluetoothStore } from '../stores/bluetooth.js'
+import { useBluetoothStore } from '../presentation/stores'
+import { ConnectionState } from '../core'
 
 /**
  * 应用路由配置
@@ -130,8 +130,8 @@ router.beforeEach((to, _from, next) => {
   const bluetoothStore = useBluetoothStore()
 
   // 检查蓝牙是否已连接
-  const connected = bluetoothStore.isConnected()
-  console.log(`[路由守卫] 目标：${to.path}, 蓝牙状态：${bluetoothStore.bluetoothStatus}, 连接：${connected}`)
+  const connected = bluetoothStore.isConnected
+  console.log(`[路由守卫] 目标：${to.path}, 蓝牙状态：${bluetoothStore.connectionState}, 连接：${connected}`)
   
   if (connected) {
     console.log('[路由守卫] 蓝牙已连接，允许跳转')
@@ -139,11 +139,11 @@ router.beforeEach((to, _from, next) => {
   } else {
     // 未连接，但有可能是状态同步延迟
     // 检查是否是从连接页面跳转过来的
-    if (_from.path === '/' && bluetoothStore.bluetoothStatus === 'connected') {
+    if (_from.path === '/' && bluetoothStore.connectionState === ConnectionState.Connected) {
       console.log('[路由守卫] 检测到状态同步延迟，等待 200ms 后重试')
       // 等待一小段时间让状态同步完成
       setTimeout(() => {
-        const retryConnected = bluetoothStore.isConnected()
+        const retryConnected = bluetoothStore.isConnected
         if (retryConnected) {
           console.log('[路由守卫] 重试成功，蓝牙已连接，允许跳转')
           next()
