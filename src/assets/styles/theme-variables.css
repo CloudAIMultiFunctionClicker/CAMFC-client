@@ -1,0 +1,151 @@
+/* 统一主题变量 - GitHub Primer 风格配色 */
+:root {
+  /* 暗色模式（默认） */
+  --camfc-bg-primary: #0d1117;
+  --camfc-bg-secondary: #161b22;
+  --camfc-bg-sidebar: #161b22;
+  --camfc-bg-header: #161b22;
+  --camfc-bg-tertiary: #21262d;
+
+  --camfc-text-primary: #f0f6fc;
+  --camfc-text-secondary: #c9d1d9;
+  --camfc-text-muted: #8b949e;
+
+  --camfc-border-color: #30363d;
+
+  --camfc-accent-blue: #3178c6;
+  --camfc-accent-blue-rgb: 49, 120, 198;
+  --camfc-accent-blue-bright: #1f6feb;
+  --camfc-accent-blue-dark: #3572a5;
+  --camfc-accent-green: #3fb950;
+  --camfc-accent-green-rgb: 63, 185, 80;
+  --camfc-accent-red: #f85149;
+  --camfc-accent-red-rgb: 248, 81, 73;
+  --camfc-accent-purple: #bc8cff;
+  --camfc-accent-yellow: #d29922;
+
+  --camfc-hover-bg: rgba(240, 246, 252, 0.1);
+  --camfc-selected-bg: rgba(56, 139, 253, 0.15);
+  --camfc-input-bg: #0d1117;
+
+  --camfc-danger-btn-bg: #212830;
+  --camfc-danger-btn-text: #f85149;
+  --camfc-danger-btn-border: rgba(248, 81, 73, 0.4);
+  --camfc-danger-btn-hover-bg: #f85149;
+  --camfc-danger-btn-hover-text: #ffffff;
+  --camfc-danger-btn-hover-border: #f85149;
+
+  /* 兼容性别名 */
+  --bg-primary: var(--camfc-bg-primary);
+  --bg-secondary: var(--camfc-bg-secondary);
+  --bg-tertiary: var(--camfc-bg-tertiary);
+  --text-primary: var(--camfc-text-primary);
+  --text-secondary: var(--camfc-text-secondary);
+  --text-muted: var(--camfc-text-muted);
+  --border-color: var(--camfc-border-color);
+  --accent-blue: var(--camfc-accent-blue);
+  --accent-blue-rgb: var(--camfc-accent-blue-rgb);
+  --accent-blue-bright: var(--camfc-accent-blue-bright);
+  --accent-green: var(--camfc-accent-green);
+  --accent-green-rgb: var(--camfc-accent-green-rgb);
+  --accent-red: var(--camfc-accent-red);
+  --accent-red-rgb: var(--camfc-accent-red-rgb);
+  --accent-purple: var(--camfc-accent-purple);
+  --accent-yellow: var(--camfc-accent-yellow);
+  --hover-bg: var(--camfc-hover-bg);
+  --selected-bg: var(--camfc-selected-bg);
+  --input-bg: var(--camfc-input-bg);
+  --bg-header: var(--camfc-bg-header);
+  --bg-sidebar: var(--camfc-bg-sidebar);
+}
+
+/* 亮色模式 */
+body.light-mode {
+  --camfc-bg-primary: #ffffff;
+  --camfc-bg-secondary: #ffffff;
+  --camfc-bg-sidebar: #ffffff;
+  --camfc-bg-header: #f6f8fa;
+  --camfc-bg-tertiary: #f6f8fa;
+
+  --camfc-text-primary: #24292f;
+  --camfc-text-secondary: #57606a;
+  --camfc-text-muted: #8c959f;
+
+  --camfc-border-color: #d0d7de;
+
+  --camfc-accent-blue: #0969da;
+  --camfc-accent-blue-rgb: 9, 105, 218;
+  --camfc-accent-blue-bright: #0550ae;
+  --camfc-accent-blue-dark: #0a3069;
+  --camfc-accent-green: #2da44e;
+  --camfc-accent-green-rgb: 45, 164, 78;
+  --camfc-accent-red: #cf222e;
+  --camfc-accent-red-rgb: 207, 34, 46;
+  --camfc-accent-purple: #8250df;
+  --camfc-accent-yellow: #9a6700;
+
+  --camfc-hover-bg: #f3f4f6;
+  --camfc-selected-bg: #ddf4ff;
+  --camfc-input-bg: #ffffff;
+
+  --camfc-danger-btn-bg: #f6f8fa;
+  --camfc-danger-btn-text: #cf222e;
+  --camfc-danger-btn-border: rgba(207, 34, 46, 0.4);
+  --camfc-danger-btn-hover-bg: #cf222e;
+  --camfc-danger-btn-hover-text: #ffffff;
+  --camfc-danger-btn-hover-border: #cf222e;
+}
+
+/* 响应式布局变量 */
+:root {
+  --camfc-titlebar-height: 48px;
+  --camfc-sidebar-width: 256px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --camfc-titlebar-height: 36px;
+    --camfc-sidebar-width: 200px;
+  }
+}
+
+/* 竖屏模式 */
+@media (orientation: portrait) {
+  :root {
+    --camfc-layout-mode: portrait;
+  }
+}
+
+/* 横屏模式 */
+@media (orientation: landscape) {
+  :root {
+    --camfc-layout-mode: landscape;
+  }
+}
+
+/* 全局 body 样式 */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-primary, #0d1117);
+  color: var(--text-primary, #f0f6fc);
+  overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+body.light-mode {
+  background-color: var(--bg-primary, #ffffff);
+  color: var(--text-primary, #24292f);
+}
+
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}

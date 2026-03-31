@@ -263,11 +263,6 @@ const showDevelopingToast = () => {
     </div>
   </header>
   
-  <!-- 窗口关闭扩散波纹 -->
-  <Transition name="ripple-fade">
-    <div v-if="showCloseRipple" class="close-ripple" :style="closeRippleStyle"></div>
-  </Transition>
-  
   <Transition name="confirm">
     <div v-if="showConfirmDialog" class="confirm-container" @click="cancelClose">
       <div class="ripple-effect" @click.stop></div>
