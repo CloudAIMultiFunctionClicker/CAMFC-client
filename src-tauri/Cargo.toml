@@ -21,7 +21,7 @@ serde_json = "1"
 btleplug = "^0.11"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "net", "io-util", "macros"] }
 futures = "0.3"
-windows = { version = "0.53", features = [
+windows = { version = "0.58", features = [
     "Devices_Radios",
     "Foundation",
     "Foundation_Collections",
@@ -48,9 +48,12 @@ base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 
 [profile.release]
-panic = "abort"
+panic = "unwind"
 codegen-units = 1
-lto = true
+lto = "thin"
 opt-level = "z"
 strip = true
+debug = false
 
+[profile.dev]
+incremental = true
