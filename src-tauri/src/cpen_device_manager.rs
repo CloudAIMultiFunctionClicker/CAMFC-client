@@ -21,46 +21,49 @@
 //! 4. 实现TOTP缓存（30秒有效）
 //! 5. 管理设备ID缓存
 //!
-//! 思考：为啥要单独搞这个模块？
-//! 计划业务逻辑全在Rust，前端只调简单接口。这样前端代码能大幅简化。
-//! 另外，保证单设备连接也是用户明确要求的。
+//! 设计思路：
+//! - 业务逻辑全在Rust端实现，前端只调用简单接口
+//! - 保证单设备连接，避免多设备冲突
+//! - 使用缓存机制提高性能，减少蓝牙通信
 
-use std::time::{SystemTime, Duration};
 use crate::bluetooth::{BluetoothManager, DeviceInfo, ResponseType};
+use crate::utils::bluetooth::{
+    is_cpen_device, CPEN_CHARACTERISTIC_UUID, CPEN_SERVICE_UUID, SCAN_DURATION_MS,
+};
+use std::time::{Duration, SystemTime};
 use tokio::time::sleep;
-use totp_rs::{TOTP, Secret};
+use totp_rs::{Secret, TOTP};
 
-// 错误类型别名，简单点就用String
+// 错误类型别名
 type CpenError = String;
 
-// 缓存时间常量
-const TOTP_CACHE_DURATION_SECONDS: u64 = 30;
-const SCAN_DURATION_MS: u64 = 5000; // 扫描3秒
+// 常量定义
+const TOTP_CACHE_DURATION_SECONDS: u64 = 30; // TOTP缓存时间
+const TOTP_REFRESH_THRESHOLD_SECONDS: u64 = 25; // TOTP提前刷新阈值
+const MAX_RETRIES: u32 = 2; // 操作重试次数
 
 /// Cpen设备管理器
-/// 
+///
 /// 核心设计：保证全局只连接一个Cpen设备！
 /// 用connected_address记录当前连接的设备地址，确保不会连接第二个。
 pub struct CpenDeviceManager {
     /// 底层蓝牙管理器
     bluetooth_manager: BluetoothManager,
-    
+
     /// 当前连接的设备地址（None表示未连接）
     /// 重要：这是保证单设备连接的关键！
     connected_address: Option<String>,
-    
+
     /// 当前连接的设备信息（缓存起来，避免重复获取）
     current_device: Option<DeviceInfo>,
-    
+
     /// TOTP缓存（值 + 缓存时间）
-    /// 思考：要不要用更精细的缓存结构？先简单搞吧
     totp_cache: Option<(String, SystemTime)>,
-    
+
     /// 设备ID缓存（设备UUID）
     device_id_cache: Option<String>,
-    
+
     /// 连接状态标记，用来给前端返回状态信息
-    /// 简化：就用字符串表示状态吧
     connection_status: String,
 }
 
@@ -103,10 +106,12 @@ impl CpenDeviceManager {
 
     /// 本地生成TOTP
     fn generate_totp_locally(secret: &str) -> Result<String, CpenError> {
+        // 转换密钥为字节
         let secret_bytes = Secret::Encoded(secret.to_string())
             .to_bytes()
             .map_err(|e| format!("密钥格式错误: {}", e))?;
-        
+
+        // 创建TOTP实例
         let totp = TOTP::new(
             totp_rs::Algorithm::SHA1,
             6,
@@ -115,53 +120,31 @@ impl CpenDeviceManager {
             secret_bytes,
             None,
             "CAMFC".to_string(),
-        ).map_err(|e| format!("创建TOTP失败: {}", e))?;
-        
+        )
+        .map_err(|e| format!("创建TOTP失败: {}", e))?;
+
+        // 获取当前时间戳
         let timestamp = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|e| format!("获取时间戳失败: {}", e))?
             .as_secs();
-        
+
         Ok(totp.generate(timestamp))
     }
-    
-    /// 彻底清理连接状态
-    /// 
-    /// 当检测到连接已断开或需要重新连接时调用
-    /// 清理所有缓存和状态，确保下次连接从干净状态开始
-    fn cleanup_connection_state(&mut self) {
-        self.connected_address = None;
-        self.current_device = None;
-        self.totp_cache = None;
-        self.device_id_cache = None;
-        self.connection_status = "disconnected".to_string();
-        println!("[CPEN] 连接状态已彻底清理");
-    }
-    
-    /// 确保连接到一个Cpen设备（单设备保证的核心！）
-    /// 
-    /// 这个函数实现了完整的连接逻辑：
-    /// 1. 在一切最开始，检查蓝牙是否开启，如果没开就尝试开启
-    /// 2. 如果已经连接了设备，直接返回成功（复用连接）
-    /// 3. 如果没有连接，扫描设备
-    /// 4. 从扫描结果中找出Cpen设备
-    /// 5. 如果有多个Cpen设备，只连接第一个（单设备保证）
-    /// 6. 连接设备并记录状态
-    /// 
-    /// 改进：检测到连接断开时彻底清理状态
-    pub async fn ensure_connected(&mut self) -> Result<(), CpenError> {
-        println!("[CPEN] 开始Cpen设备连接流程...");
-        
-        // 检查蓝牙状态
+
+    /// 检查蓝牙状态
+    ///
+    /// 尝试通过Windows API和btleplug两种方式检查蓝牙状态
+    async fn check_bluetooth_status(&mut self) -> Result<(), CpenError> {
         println!("[CPEN] === 蓝牙状态检查开始 ===");
-        
+
         match self.bluetooth_manager.enable_bluetooth() {
             Ok(_) => {
                 println!("[CPEN] 蓝牙状态检查通过（Windows API）");
             }
             Err(e) => {
                 println!("[CPEN] Windows蓝牙API检查失败，尝试用btleplug检测: {}", e);
-                
+
                 match self.bluetooth_manager.check_bluetooth_via_btleplug().await {
                     Ok(_) => {
                         println!("[CPEN] 蓝牙状态检查通过（btleplug fallback）");
@@ -174,9 +157,39 @@ impl CpenDeviceManager {
                 }
             }
         }
-        
+
         println!("[CPEN] === 蓝牙状态检查完成 ===");
-        
+        Ok(())
+    }
+
+    /// 彻底清理连接状态
+    ///
+    /// 当检测到连接已断开或需要重新连接时调用
+    /// 清理所有缓存和状态，确保下次连接从干净状态开始
+    fn cleanup_connection_state(&mut self) {
+        self.connected_address = None;
+        self.current_device = None;
+        self.totp_cache = None;
+        self.device_id_cache = None;
+        self.connection_status = "disconnected".to_string();
+        println!("[CPEN] 连接状态已彻底清理");
+    }
+
+    /// 确保连接到一个Cpen设备（单设备保证的核心！）
+    ///
+    /// 这个函数实现了完整的连接逻辑：
+    /// 1. 检查蓝牙是否开启
+    /// 2. 如果已经连接了设备，直接返回成功（复用连接）
+    /// 3. 如果没有连接，扫描设备
+    /// 4. 从扫描结果中找出Cpen设备
+    /// 5. 如果有多个Cpen设备，只连接第一个（单设备保证）
+    /// 6. 连接设备并记录状态
+    pub async fn ensure_connected(&mut self) -> Result<(), CpenError> {
+        println!("[CPEN] 开始Cpen设备连接流程...");
+
+        // 检查蓝牙状态
+        self.check_bluetooth_status().await?;
+
         // 检查是否已经连接
         if self.connected_address.is_some() {
             // 检查连接是否真的还活着
@@ -198,137 +211,133 @@ impl CpenDeviceManager {
                 }
             }
         }
-        
+
         // 更新状态为连接中
         self.connection_status = "connecting".to_string();
         println!("[CPEN] 开始扫描并连接Cpen设备...");
-        
+
         // 扫描设备
         println!("[CPEN] 开始扫描蓝牙设备（蓝牙状态已确认）...");
-        let devices = self.bluetooth_manager.scan_devices(SCAN_DURATION_MS).await
+        let devices = self
+            .bluetooth_manager
+            .scan_devices(SCAN_DURATION_MS)
+            .await
             .map_err(|e| format!("扫描设备失败: {}", e))?;
-        
+
         println!("[CPEN] 扫描完成，发现 {} 个设备", devices.len());
-        
+
         // 找出Cpen设备
         let cpen_devices = Self::filter_cpen_devices(&devices);
-        
+
         if cpen_devices.is_empty() {
             self.connection_status = "disconnected".to_string();
             return Err("没有找到Cpen设备（设备名需以'Cpen'开头）".to_string());
         }
-        
+
         println!("[CPEN] 找到 {} 个Cpen设备，连接第一个", cpen_devices.len());
-        
+
         // 连接第一个Cpen设备
         let target_device = &cpen_devices[0];
-        
+
         if cpen_devices.len() > 1 {
-            println!("[CPEN] 注意：有 {} 个Cpen设备，但只连接第一个: {}", 
-                     cpen_devices.len(), target_device.name);
+            println!(
+                "[CPEN] 注意：有 {} 个Cpen设备，但只连接第一个: {}",
+                cpen_devices.len(),
+                target_device.name
+            );
             for (i, dev) in cpen_devices.iter().enumerate().skip(1) {
                 println!("[CPEN]   其他设备[{}]: {} - {}", i, dev.name, dev.address);
             }
         }
-        
+
         // 连接设备（bluetooth_manager.connect 已有重试机制）
-        self.bluetooth_manager.connect(&target_device.address).await
+        self.bluetooth_manager
+            .connect(&target_device.address)
+            .await
             .map_err(|e| format!("连接设备失败: {}", e))?;
-        
+
         // 记录连接状态
         self.connected_address = Some(target_device.address.clone());
         self.current_device = Some(target_device.clone());
         self.connection_status = "connected".to_string();
-        
-        println!("[CPEN] 成功连接到 Cpen 设备：{} ({})", 
-                 target_device.name, target_device.address);
-        
+
+        println!(
+            "[CPEN] 成功连接到 Cpen 设备：{} ({})",
+            target_device.name, target_device.address
+        );
+
         // 连接后等待一小会儿，让设备稳定
         sleep(Duration::from_millis(500)).await;
-        
+
         // 确保服务已发现并准备好
         println!("[CPEN] 等待设备服务准备就绪...");
         match self.bluetooth_manager.ensure_services_ready().await {
             Ok(_) => println!("[CPEN] 设备服务已就绪"),
             Err(e) => println!("[CPEN] 等待设备服务就绪失败：{}，继续尝试", e),
         }
-        
+
         println!("[CPEN] 设备连接成功，TOTP 刷新策略已启用（提前 5 秒刷新）");
-        
+
         Ok(())
     }
-    
+
     /// 过滤出Cpen设备
-    /// 
-    /// 根据设备名前缀判断是否为Cpen设备。
-    /// 原JavaScript代码检查前4个字符是否为'cpen'（不区分大小写）。
-    /// 这里需要正确处理UTF-8字符串，使用字符迭代而不是字节切片。
+    ///
+    /// 根据设备名前缀判断是否为Cpen设备
+    /// 使用工具函数检查设备名是否为Cpen设备
+    ///
+    /// 参数：
+    /// - devices: 设备列表
+    ///
+    /// 返回：
+    /// - Cpen设备列表
     fn filter_cpen_devices(devices: &[DeviceInfo]) -> Vec<DeviceInfo> {
         let mut cpen_devices = Vec::new();
-        
+
         for device in devices {
-            // 先检查设备名长度是否足够
-            if device.name.chars().count() >= 4 {
-                // 获取前4个字符并转换为小写进行比较
-                let prefix: String = device.name.chars().take(4).collect();
-                if prefix.to_lowercase() == "cpen" {
-                    cpen_devices.push(device.clone());
-                    println!("识别为Cpen设备: {} - {}", device.name, device.address);
-                }
+            if is_cpen_device(&device.name) {
+                cpen_devices.push(device.clone());
+                println!("识别为Cpen设备: {} - {}", device.name, device.address);
             }
         }
-        
+
         cpen_devices
     }
-    
+
     /// 扫描并返回所有Cpen设备列表（不自动连接）
-    /// 
+    ///
     /// 这个方法会：
     /// 1. 确保蓝牙已开启
     /// 2. 扫描蓝牙设备
     /// 3. 过滤出所有Cpen设备（不连接）
-    /// 
+    ///
     /// 返回：所有发现的Cpen设备列表
     pub async fn scan_cpen_devices(&mut self) -> Result<Vec<DeviceInfo>, CpenError> {
         println!("开始扫描Cpen设备列表...");
-        
+
         // 1. 确保蓝牙已开启
-        match self.bluetooth_manager.enable_bluetooth() {
-            Ok(_) => {
-                println!("✅ 蓝牙状态检查通过（Windows API）");
-            }
-            Err(e) => {
-                println!("⚠️ Windows蓝牙API检查失败，尝试用btleplug检测: {}", e);
-                match self.bluetooth_manager.check_bluetooth_via_btleplug().await {
-                    Ok(_) => {
-                        println!("✅ 蓝牙状态检查通过（btleplug fallback）");
-                    }
-                    Err(btleplug_err) => {
-                        let err_msg = format!("蓝牙检测失败: {}, {}", e, btleplug_err);
-                        println!("❌ {}", err_msg);
-                        return Err(err_msg);
-                    }
-                }
-            }
-        }
-        
+        self.check_bluetooth_status().await?;
+
         // 2. 扫描设备
         println!("开始扫描蓝牙设备...");
-        let devices = self.bluetooth_manager.scan_devices(SCAN_DURATION_MS).await
+        let devices = self
+            .bluetooth_manager
+            .scan_devices(SCAN_DURATION_MS)
+            .await
             .map_err(|e| format!("扫描设备失败: {}", e))?;
-        
+
         println!("扫描完成，发现 {} 个设备", devices.len());
-        
+
         // 3. 过滤出Cpen设备
         let cpen_devices = Self::filter_cpen_devices(&devices);
-        
+
         println!("找到 {} 个Cpen设备", cpen_devices.len());
-        
+
         // 记录所有发现的设备
         for (i, dev) in cpen_devices.iter().enumerate() {
             println!("  Cpen设备[{}]: {} - {}", i, dev.name, dev.address);
         }
-        
+
         Ok(cpen_devices)
     }
 
@@ -344,28 +353,14 @@ impl CpenDeviceManager {
         println!("开始扫描所有蓝牙设备...");
 
         // 1. 确保蓝牙已开启
-        match self.bluetooth_manager.enable_bluetooth() {
-            Ok(_) => {
-                println!("✅ 蓝牙状态检查通过（Windows API）");
-            }
-            Err(e) => {
-                println!("⚠️ Windows蓝牙API检查失败，尝试用btleplug检测: {}", e);
-                match self.bluetooth_manager.check_bluetooth_via_btleplug().await {
-                    Ok(_) => {
-                        println!("✅ 蓝牙状态检查通过（btleplug fallback）");
-                    }
-                    Err(btleplug_err) => {
-                        let err_msg = format!("蓝牙检测失败: {}, {}", e, btleplug_err);
-                        println!("❌ {}", err_msg);
-                        return Err(err_msg);
-                    }
-                }
-            }
-        }
+        self.check_bluetooth_status().await?;
 
         // 2. 扫描设备
         println!("开始扫描蓝牙设备...");
-        let devices = self.bluetooth_manager.scan_devices(SCAN_DURATION_MS).await
+        let devices = self
+            .bluetooth_manager
+            .scan_devices(SCAN_DURATION_MS)
+            .await
             .map_err(|e| format!("扫描设备失败: {}", e))?;
 
         println!("扫描完成，发现 {} 个设备", devices.len());
@@ -388,7 +383,7 @@ impl CpenDeviceManager {
     /// 参数：设备地址（Bluetooth address）
     pub async fn connect_to_device(&mut self, address: &str) -> Result<DeviceInfo, CpenError> {
         println!("开始连接到指定Cpen设备: {}", address);
-        
+
         // 1. 如果已经连接，先断开
         if self.connected_address.is_some() {
             println!("断开当前连接...");
@@ -396,14 +391,16 @@ impl CpenDeviceManager {
             self.connected_address = None;
             self.current_device = None;
         }
-        
+
         // 2. 更新状态
         self.connection_status = "connecting".to_string();
-        
+
         // 3. 连接到指定设备
-        self.bluetooth_manager.connect(address).await
+        self.bluetooth_manager
+            .connect(address)
+            .await
             .map_err(|e| format!("连接设备失败: {}", e))?;
-        
+
         // 4. 获取设备信息（需要从扫描结果中获取，或者重新扫描）
         // 这里简化处理：使用地址作为设备名
         let device_info = DeviceInfo {
@@ -411,34 +408,35 @@ impl CpenDeviceManager {
             address: address.to_string(),
             services: vec![],
         };
-        
+
         // 5. 记录连接状态
         self.connected_address = Some(address.to_string());
         self.current_device = Some(device_info.clone());
         self.connection_status = "connected".to_string();
-        
+
         println!("成功连接到Cpen设备: {} ({})", device_info.name, address);
-        
+
         // 6. 连接后等待一小会儿
         sleep(Duration::from_millis(500)).await;
-        
+
         Ok(device_info)
     }
-    
+
     /// 获取缓存的TOTP（如果30秒内获取过）
-    /// 
-    /// 原来JavaScript端有这个缓存逻辑，现在移到Rust端。
-    /// 思考：缓存时间30秒是计划的吗？原代码是50000ms，应该是吧。
-    /// 
-    /// 修改：现在这个方法只是检查，真正的刷新逻辑在get_totp中实现
-    /// 新增：校验TOTP是否为6位数字，如果不是则更新缓存
+    ///
+    /// 检查TOTP缓存是否有效：
+    /// 1. 检查缓存是否存在
+    /// 2. 检查缓存是否过期（30秒内有效）
+    /// 3. 验证TOTP是否为6位数字
+    ///
+    /// 返回：如果缓存有效则返回TOTP，否则返回None
     fn get_cached_totp(&mut self) -> Option<String> {
         match &self.totp_cache {
             Some((totp, cache_time)) => {
                 let elapsed = SystemTime::now()
                     .duration_since(*cache_time)
                     .unwrap_or(Duration::from_secs(0));
-                
+
                 if elapsed.as_secs() < TOTP_CACHE_DURATION_SECONDS {
                     // 校验TOTP是否为6位数字
                     if Self::is_valid_totp(totp) {
@@ -459,24 +457,25 @@ impl CpenDeviceManager {
             }
         }
     }
-    
+
     /// 校验TOTP是否为6位数字
     fn is_valid_totp(totp: &str) -> bool {
         totp.len() == 6 && totp.chars().all(|c| c.is_ascii_digit())
     }
-    
-    /// 检查TOTP缓存是否需要刷新（提前5秒刷新）
-    /// 
-    /// 照逻辑：每30秒重新请求TOTP
+
+    /// 检查TOTP缓存是否需要刷新（提前5秒刷新策略）
+    ///
     /// 策略：当缓存还有5秒过期时，就认为需要刷新
-    /// 这样get_totp调用时缓存总是新鲜的
+    /// 这样get_totp调用时返回的TOTP总是新鲜的（最多25秒内的）
+    ///
+    /// 返回：是否需要刷新TOTP
     fn should_refresh_totp(&self) -> bool {
         match &self.totp_cache {
             Some((_, cache_time)) => {
                 let elapsed = SystemTime::now()
                     .duration_since(*cache_time)
                     .unwrap_or(Duration::from_secs(0));
-                
+
                 // 如果已经过去25秒（还剩5秒过期），就需要刷新
                 elapsed.as_secs() >= 25
             }
@@ -486,26 +485,31 @@ impl CpenDeviceManager {
             }
         }
     }
-    
+
     /// 更新TOTP缓存
+    ///
+    /// 将新获取的TOTP值和当前时间存储到缓存中
+    /// 缓存有效期为30秒
     fn update_totp_cache(&mut self, totp: String) {
         self.totp_cache = Some((totp.clone(), SystemTime::now()));
         println!("TOTP已缓存，30秒内有效");
     }
-    
+
     /// 获取TOTP（主要业务逻辑！）
-    /// 
+    ///
     /// 这个函数实现了完整的TOTP获取流程：
-    /// 1. 检查TOTP缓存是否需要刷新（提前5秒刷新策略）
-    /// 2. 如果需要刷新，重新获取TOTP
-    /// 3. 如果不需要刷新，返回缓存的TOTP
-    /// 4. 确保设备已连接（单设备保证）
-    /// 5. 发送setTime和getTotp命令
-    /// 
-    /// 改进：添加重试机制，提高获取成功率
+    /// 1. 检查是否为DEBUG模式，如果是则本地生成TOTP
+    /// 2. 检查TOTP缓存是否需要刷新（提前5秒刷新策略）
+    /// 3. 如果有有效缓存且不需要刷新，直接返回缓存的TOTP
+    /// 4. 如果需要刷新，尝试获取新的TOTP（最多重试2次）
+    /// 5. 在获取过程中确保设备已连接
+    /// 6. 发送setTime和getTotp命令获取新的TOTP
+    /// 7. 更新TOTP缓存
+    ///
+    /// 返回：获取到的TOTP值
     pub async fn get_totp(&mut self) -> Result<String, CpenError> {
         println!("[CPEN] ===== TOTP获取开始 =====");
-        
+
         // DEBUG模式：直接从环境变量读取密钥，本地生成TOTP
         if Self::is_debug_mode() {
             println!("[CPEN] DEBUG模式：从环境变量获取TOTP");
@@ -526,10 +530,10 @@ impl CpenDeviceManager {
                 return Err("DEBUG模式需要设置CAMFC_KEY环境变量".to_string());
             }
         }
-        
+
         // 检查是否需要刷新TOTP
         let need_refresh = self.should_refresh_totp();
-        
+
         // 如果有缓存且不需要刷新，直接返回
         if !need_refresh {
             if let Some(cached_totp) = self.get_cached_totp() {
@@ -539,19 +543,19 @@ impl CpenDeviceManager {
                 return Ok(cached_totp);
             }
         }
-        
+
         // 记录刷新原因
         if need_refresh {
             println!("[CPEN] TOTP刷新触发：缓存即将过期");
         } else {
             println!("[CPEN] TOTP刷新触发：没有缓存");
         }
-        
+
         // 添加重试机制
         const MAX_RETRIES: u32 = 2;
         for attempt in 1..=MAX_RETRIES {
             println!("[CPEN] TOTP获取尝试 {}/{}", attempt, MAX_RETRIES);
-            
+
             match self.get_totp_once().await {
                 Ok(totp) => {
                     println!("请求TOTP! 使用的totp：{}", totp);
@@ -570,15 +574,24 @@ impl CpenDeviceManager {
                 }
             }
         }
-        
+
         Err("获取TOTP重试次数用尽".to_string())
     }
-    
+
     /// 单次 TOTP 获取尝试（内部方法）
+    ///
+    /// 执行单次TOTP获取尝试：
+    /// 1. 检查现有连接状态，如果已断开则重新连接
+    /// 2. 发送setTime命令同步时间
+    /// 3. 发送getTotp命令获取TOTP
+    /// 4. 接收并处理TOTP响应
+    /// 5. 更新TOTP缓存
+    ///
+    /// 返回：获取到的TOTP值
     async fn get_totp_once(&mut self) -> Result<String, CpenError> {
         // 检查是否已有连接
         let was_already_connected = self.connected_address.is_some();
-        
+
         if was_already_connected {
             println!("[CPEN] 复用现有蓝牙连接");
             match self.bluetooth_manager.is_connected().await {
@@ -595,65 +608,80 @@ impl CpenDeviceManager {
             println!("[CPEN] 没有现有连接，开始连接设备");
             self.ensure_connected().await?;
         }
-        
+
         // 发送setTime命令
         let timestamp = chrono::Utc::now().timestamp().to_string();
         let set_time_command = format!("setTime:{}", timestamp);
-        
+
         println!("[CPEN] 发送setTime命令: {}", set_time_command);
-        
-        let service_uuid = "d816e4c6-1b99-4da7-bcd5-7c37cc2642c4";
-        let char_uuid = "d816e4c7-1b99-4da7-bcd5-7c37cc2642c4";
-        
-        self.bluetooth_manager.send(
-            service_uuid, 
-            char_uuid, 
-            set_time_command.as_bytes()
-        ).await
-        .map_err(|e| format!("发送 setTime 命令失败：{}", e))?;
-        
+
+        self.bluetooth_manager
+            .send(
+                CPEN_SERVICE_UUID,
+                CPEN_CHARACTERISTIC_UUID,
+                set_time_command.as_bytes(),
+            )
+            .await
+            .map_err(|e| format!("发送 setTime 命令失败：{}", e))?;
+
         // 读取并丢弃 setTime 的响应，避免它干扰后续 getTotp 的读取
-        let _set_time_response = self.bluetooth_manager.recv(service_uuid, char_uuid, ResponseType::SetTime).await
+        let _set_time_response = self
+            .bluetooth_manager
+            .recv(
+                CPEN_SERVICE_UUID,
+                CPEN_CHARACTERISTIC_UUID,
+                ResponseType::SetTime,
+            )
+            .await
             .map_err(|e| format!("接收 setTime 响应失败: {}", e))?;
         println!("[CPEN] setTime 响应已处理");
 
         // 发送 getTotp 命令
         println!("[CPEN] 发送getTotp命令");
-        
+
         sleep(Duration::from_millis(200)).await;
-        
-        self.bluetooth_manager.send(
-            service_uuid, 
-            char_uuid, 
-            b"getTotp"
-        ).await
-        .map_err(|e| format!("发送getTotp命令失败: {}", e))?;
-        
+
+        self.bluetooth_manager
+            .send(CPEN_SERVICE_UUID, CPEN_CHARACTERISTIC_UUID, b"getTotp")
+            .await
+            .map_err(|e| format!("发送getTotp命令失败: {}", e))?;
+
         // 接收TOTP响应
-        let response = self.bluetooth_manager.recv(service_uuid, char_uuid, ResponseType::GetTotp).await
+        let response = self
+            .bluetooth_manager
+            .recv(
+                CPEN_SERVICE_UUID,
+                CPEN_CHARACTERISTIC_UUID,
+                ResponseType::GetTotp,
+            )
+            .await
             .map_err(|e| format!("接收TOTP失败: {}", e))?;
-        
-        let totp = String::from_utf8(response)
-            .map_err(|e| format!("TOTP响应不是有效UTF-8: {}", e))?;
-        
+
+        let totp =
+            String::from_utf8(response).map_err(|e| format!("TOTP响应不是有效UTF-8: {}", e))?;
+
         // 更新缓存
         self.update_totp_cache(totp.clone());
-        
+
         println!("[CPEN] TOTP获取成功: {}", totp);
-        
+
         Ok(totp)
     }
-    
+
     /// 获取设备ID（设备UUID）
-    /// 
-    /// 流程：
-    /// 1. 检查设备ID缓存
-    /// 2. 确保设备已连接
-    /// 3. 发送getId命令
-    /// 4. 接收并缓存设备ID
+    ///
+    /// 执行设备ID获取流程：
+    /// 1. 检查是否为DEBUG模式，如果是则从环境变量获取
+    /// 2. 检查设备ID缓存，如果有则直接返回
+    /// 3. 确保设备已连接
+    /// 4. 发送getId命令获取设备ID
+    /// 5. 接收并处理设备ID响应
+    /// 6. 更新设备ID缓存
+    ///
+    /// 返回：获取到的设备ID
     pub async fn get_device_id(&mut self) -> Result<String, CpenError> {
         println!("开始获取设备ID...");
-        
+
         // DEBUG模式：直接从环境变量读取ID
         if Self::is_debug_mode() {
             println!("🔧 DEBUG模式：从环境变量获取设备ID");
@@ -664,76 +692,72 @@ impl CpenDeviceManager {
                 return Err("DEBUG模式需要设置CAMFC_ID环境变量".to_string());
             }
         }
-        
+
         // 1. 检查缓存
         if let Some(cached_id) = &self.device_id_cache {
             println!("使用缓存的设备ID: {}", cached_id);
             return Ok(cached_id.clone());
         }
-        
+
         // 2. 确保设备已连接
         self.ensure_connected().await?;
-        
+
         // 3. 发送getId命令
-        let service_uuid = "d816e4c6-1b99-4da7-bcd5-7c37cc2642c4";
-        let char_uuid = "d816e4c7-1b99-4da7-bcd5-7c37cc2642c4";
-        
         println!("发送getId命令...");
-        self.bluetooth_manager.send(
-            service_uuid, 
-            char_uuid, 
-            b"getId"
-        ).await
-        .map_err(|e| format!("发送getId命令失败: {}", e))?;
-        
+        self.bluetooth_manager
+            .send(CPEN_SERVICE_UUID, CPEN_CHARACTERISTIC_UUID, b"getId")
+            .await
+            .map_err(|e| format!("发送getId命令失败: {}", e))?;
+
         // 4. 接收设备ID响应
-        let response = self.bluetooth_manager.recv(service_uuid, char_uuid, ResponseType::GetId).await
+        let response = self
+            .bluetooth_manager
+            .recv(
+                CPEN_SERVICE_UUID,
+                CPEN_CHARACTERISTIC_UUID,
+                ResponseType::GetId,
+            )
+            .await
             .map_err(|e| format!("接收设备ID失败: {}", e))?;
-        
-        let device_id = String::from_utf8(response)
-            .map_err(|e| format!("设备ID响应不是有效UTF-8: {}", e))?;
-        
+
+        let device_id =
+            String::from_utf8(response).map_err(|e| format!("设备ID响应不是有效UTF-8: {}", e))?;
+
         // 5. 更新缓存
         self.device_id_cache = Some(device_id.clone());
-        
+
         println!("成功获取设备ID: {}", device_id);
-        
+
         Ok(device_id)
     }
-    
+
     /// 获取连接状态
-    /// 
+    ///
     /// 返回格式化的状态字符串，包含：
     /// - 连接状态（disconnected/connecting/connected/error）
     /// - 设备信息（如果已连接）
-    /// 
+    ///
     /// 思考：这个要给前端用，所以要包含足够信息但不要太复杂。
     pub fn get_connection_status(&self) -> String {
         match (&self.connection_status[..], &self.current_device) {
             ("connected", Some(device)) => {
                 format!("已连接到设备: {} ({})", device.name, device.address)
             }
-            ("connected", None) => {
-                "已连接（设备信息未知）".to_string()
-            }
-            ("connecting", _) => {
-                "正在连接设备...".to_string()
-            }
-            ("disconnected", _) => {
-                "未连接设备".to_string()
-            }
+            ("connected", None) => "已连接（设备信息未知）".to_string(),
+            ("connecting", _) => "正在连接设备...".to_string(),
+            ("disconnected", _) => "未连接设备".to_string(),
             (status, _) => {
                 format!("状态: {}", status)
             }
         }
     }
-    
+
     /// 断开连接并清理资源
-    /// 
+    ///
     /// 改进：使用cleanup_connection_state彻底清理状态
     pub async fn disconnect(&mut self) -> Result<(), CpenError> {
         println!("[CPEN] 断开Cpen设备连接...");
-        
+
         // 断开蓝牙连接（如果有的话）
         if self.connected_address.is_some() {
             match self.bluetooth_manager.disconnect().await {
@@ -741,24 +765,24 @@ impl CpenDeviceManager {
                 Err(e) => println!("[CPEN] 断开蓝牙连接时出错: {}（继续清理状态）", e),
             }
         }
-        
+
         // 彻底清理状态
         self.cleanup_connection_state();
-        
+
         println!("[CPEN] Cpen设备管理器状态已重置");
-        
+
         Ok(())
     }
-    
+
     /// 检查是否已建立稳定连接
-    /// 
+    ///
     /// 这个方法会实际检查蓝牙物理连接状态，而不是仅仅检查内存中的记录
     /// 可以用来验证连接是否真的还活着，避免使用过期的连接
     pub async fn is_connected(&mut self) -> Result<bool, CpenError> {
         if self.connected_address.is_none() {
             return Ok(false);
         }
-        
+
         match self.bluetooth_manager.is_connected().await {
             Ok(true) => Ok(true),
             Ok(false) => {
@@ -767,10 +791,10 @@ impl CpenDeviceManager {
                 self.current_device = None;
                 Ok(false)
             }
-            Err(e) => Err(format!("检查连接状态失败: {}", e))
+            Err(e) => Err(format!("检查连接状态失败: {}", e)),
         }
     }
-    
+
     /// 获取本地蓝牙版本
     pub async fn get_local_bluetooth_version(&mut self) -> Result<String, CpenError> {
         self.bluetooth_manager.get_local_bluetooth_info().await
@@ -783,20 +807,18 @@ impl CpenDeviceManager {
 
     /// 发送蓝牙保活心跳包
     pub async fn send_keep_alive(&mut self) -> Result<(), CpenError> {
-        // Cpen 设备的 UUID
-        let service_uuid = "d816e4c6-1b99-4da7-bcd5-7c37cc2642c4";
-        let char_uuid = "d816e4c7-1b99-4da7-bcd5-7c37cc2642c4";
-        
-        self.bluetooth_manager.send_keep_alive(service_uuid, char_uuid).await
+        self.bluetooth_manager
+            .send_keep_alive(CPEN_SERVICE_UUID, CPEN_CHARACTERISTIC_UUID)
+            .await
     }
 
     /// 获取当前连接的设备信息（调试用）
     pub fn get_current_device_info(&self) -> Option<String> {
-        self.current_device.as_ref().map(|dev| {
-            format!("{} - {}", dev.name, dev.address)
-        })
+        self.current_device
+            .as_ref()
+            .map(|dev| format!("{} - {}", dev.name, dev.address))
     }
-    
+
     // 注意：移除了复杂的后台任务实现
     // 改为简单的"提前5秒刷新"策略，这样更简单可靠
     // 照逻辑每30秒重新请求TOTP，我们的策略是在缓存还有5秒过期时就刷新

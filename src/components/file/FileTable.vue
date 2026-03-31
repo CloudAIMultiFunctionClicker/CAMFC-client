@@ -1320,7 +1320,7 @@ const isFileSelected = (itemPath) => {
   flex-wrap: nowrap;
 }
 
-/* 按钮基础样式 - 参考AppHeader的样式 */
+/* 按钮基础样式 */
 .btn-refresh,
 .btn-upload,
 .btn-download,
@@ -1338,39 +1338,62 @@ const isFileSelected = (itemPath) => {
   font-weight: 500;
   transition: all 0.2s ease;
   height: 40px;
-  white-space: nowrap; /* 防止文字换行 */
+  white-space: nowrap;
 }
 
-/* 刷新按钮 - 中性色 */
+/* 刷新按钮 - 次要按钮 */
 .btn-refresh {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
 }
 
-/* 上传按钮 - 主操作按钮 */
+.btn-refresh:hover {
+  background-color: var(--hover-bg, #f3f4f6);
+  border-color: var(--text-muted, #8c959f);
+}
+
+/* 上传按钮 - 主操作按钮，绿色 */
 .btn-upload {
-  background: var(--accent-blue, #0969da);
+  background-color: var(--accent-green, #2da44e);
   color: white;
-  border: 1px solid rgba(9, 105, 218, 0.5);
+  border: 1px solid rgba(45, 164, 78, 0.5);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* 下载按钮 - 深蓝色 */
+.btn-upload:hover {
+  background-color: var(--accent-green-bright, #2c974b);
+  border-color: rgba(45, 164, 78, 0.8);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+/* 下载按钮 - 次要按钮 */
 .btn-download {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
 }
 
-/* 新建文件夹按钮 - 绿色 */
+.btn-download:hover {
+  background-color: var(--hover-bg, #f3f4f6);
+  border-color: var(--text-muted, #8c959f);
+  color: var(--text-primary, #24292f);
+}
+
+/* 新建文件夹按钮 - 次要按钮 */
 .btn-new-folder {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
 }
 
-/* 删除按钮 - 红色危险样式 */
+.btn-new-folder:hover {
+  background-color: var(--hover-bg, #f3f4f6);
+  border-color: var(--text-muted, #8c959f);
+  color: var(--text-primary, #24292f);
+}
+
+/* 删除按钮 - 危险按钮 */
 .btn-delete {
   background-color: var(--danger-btn-bg, #212830);
   color: var(--danger-btn-text, #f85149);
@@ -1387,30 +1410,6 @@ const isFileSelected = (itemPath) => {
 .btn-delete i,
 .btn-delete svg {
   color: inherit;
-}
-
-/* 按钮 hover 效果 */
-.btn-refresh:hover {
-  background-color: var(--hover-bg, #f3f4f6);
-  border-color: var(--text-muted, #8c959f);
-}
-
-.btn-upload:hover {
-  background: var(--accent-blue-bright, #0550ae);
-  border-color: rgba(9, 105, 218, 0.8);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-}
-
-.btn-download:hover {
-  background-color: var(--hover-bg, #f3f4f6);
-  border-color: var(--text-muted, #8c959f);
-  color: var(--text-primary, #24292f);
-}
-
-.btn-new-folder:hover {
-  background-color: var(--hover-bg, #f3f4f6);
-  border-color: var(--text-muted, #8c959f);
-  color: var(--text-primary, #24292f);
 }
 
 /* 按钮文字 - 响应式隐藏 */

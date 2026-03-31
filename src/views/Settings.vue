@@ -1069,12 +1069,6 @@ onUnmounted(() => {
   border-color: var(--danger-btn-hover-border, #f85149);
 }
 
-/* 危险按钮图标 - 继承按钮颜色 */
-.action-btn.danger i,
-.action-btn.danger svg {
-  color: inherit;
-}
-
 .action-btn.small {
   margin-top: 0;
   padding: 6px 14px;

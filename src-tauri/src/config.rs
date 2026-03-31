@@ -20,9 +20,9 @@
 // 2. 远程配置 https://me.011420.xyz/api/camfc/data.json
 // 3. 默认值 http://localhost:8005
 
-use std::sync::OnceLock;
+use anyhow::{Context, Result};
 use serde::Deserialize;
-use anyhow::{Result, Context};
+use std::sync::OnceLock;
 
 // 远程配置响应结构
 #[derive(Debug, Deserialize)]
@@ -50,29 +50,31 @@ static BACKEND_CONFIG: OnceLock<BackendConfig> = OnceLock::new();
 // 初始化配置
 pub async fn init_config() -> Result<()> {
     println!("开始初始化后端配置...");
-    
+
     // 1. 先尝试从环境变量读取
     if let Some(config) = try_load_from_env() {
         println!("从环境变量加载配置: {}", config.get_full_url());
-        
+
         // 检测环境变量指定的服务器是否可用
         println!("检测环境变量指定的服务器是否可用...");
         if check_env_backend_available(&config).await {
             println!("环境变量指定的服务器可用");
-            BACKEND_CONFIG.set(config)
+            BACKEND_CONFIG
+                .set(config)
                 .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
             return Ok(());
         } else {
             println!("环境变量指定的服务器不可用，继续尝试其他配置源...");
         }
     }
-    
+
     // 2. 环境变量不存在或不可用，尝试从远程 API 获取
     println!("尝试从远程 API 获取配置...");
     match try_load_from_remote().await {
         Ok(config) => {
             println!("从远程 API 加载配置: {}", config.get_full_url());
-            BACKEND_CONFIG.set(config)
+            BACKEND_CONFIG
+                .set(config)
                 .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
             Ok(())
         }
@@ -84,7 +86,8 @@ pub async fn init_config() -> Result<()> {
                 port: 8005,
             };
             println!("使用默认配置: {}", default_config.get_full_url());
-            BACKEND_CONFIG.set(default_config)
+            BACKEND_CONFIG
+                .set(default_config)
                 .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
             Ok(())
         }
@@ -95,7 +98,7 @@ pub async fn init_config() -> Result<()> {
 async fn check_env_backend_available(config: &BackendConfig) -> bool {
     let test_url = format!("{}:{}/test", config.base_url, config.port);
     println!("检测后端可用性: {}", test_url);
-    
+
     let client = match reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .build()
@@ -106,7 +109,7 @@ async fn check_env_backend_available(config: &BackendConfig) -> bool {
             return false;
         }
     };
-    
+
     match client.get(&test_url).send().await {
         Ok(response) => {
             if response.status().is_success() {
@@ -141,22 +144,19 @@ async fn check_env_backend_available(config: &BackendConfig) -> bool {
 fn try_load_from_env() -> Option<BackendConfig> {
     // 尝试从 .env 文件加载环境变量
     dotenv::dotenv().ok();
-    
+
     let base_url = std::env::var("CAMFC_BASE").ok()?;
     let port_str = std::env::var("CAMFC_PORT").ok()?;
-    
+
     let port = port_str.parse::<u16>().ok()?;
-    
+
     let base_url = if base_url.starts_with("http://") || base_url.starts_with("https://") {
         base_url
     } else {
         format!("http://{}", base_url)
     };
-    
-    Some(BackendConfig {
-        base_url,
-        port,
-    })
+
+    Some(BackendConfig { base_url, port })
 }
 
 // 尝试从远程 API 加载配置
@@ -165,71 +165,70 @@ async fn try_load_from_remote() -> Result<BackendConfig> {
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .context("创建HTTP客户端失败")?;
-    
+
     let url = "https://me.011420.xyz/api/camfc/data.json";
     println!("请求远程配置: {}", url);
-    
-    let response = client
-        .get(url)
-        .send()
-        .await
-        .context("请求远程配置失败")?;
-    
+
+    let response = client.get(url).send().await.context("请求远程配置失败")?;
+
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response.text().await.unwrap_or_default();
         return Err(anyhow::anyhow!(
-            "远程配置请求失败: {} - {}", 
-            status, 
+            "远程配置请求失败: {} - {}",
+            status,
             error_text
         ));
     }
-    
-    let remote_config: RemoteConfig = response
-        .json()
-        .await
-        .context("解析远程配置失败")?;
-    
-    println!("远程配置解析成功，收到 {} 个候选地址", remote_config.base_url.len());
-    
+
+    let remote_config: RemoteConfig = response.json().await.context("解析远程配置失败")?;
+
+    println!(
+        "远程配置解析成功，收到 {} 个候选地址",
+        remote_config.base_url.len()
+    );
+
     // 依次检测每个候选地址的可用性
     for (index, candidate) in remote_config.base_url.iter().enumerate() {
-        println!("检测候选地址 [{}/{}]: {}", index + 1, remote_config.base_url.len(), candidate);
-        
+        println!(
+            "检测候选地址 [{}/{}]: {}",
+            index + 1,
+            remote_config.base_url.len(),
+            candidate
+        );
+
         if check_backend_available(&client, candidate).await {
             println!("候选地址可用: {}", candidate);
-            
+
             // 解析 base_url 和 port
             let (base_url, port) = parse_backend_url(candidate)?;
-            
-            return Ok(BackendConfig {
-                base_url,
-                port,
-            });
+
+            return Ok(BackendConfig { base_url, port });
         } else {
             println!("候选地址不可用: {}", candidate);
         }
     }
-    
+
     Err(anyhow::anyhow!("所有候选地址都不可用"))
 }
 
 // 解析后端 URL，返回 (base_url, port)
 fn parse_backend_url(url: &str) -> Result<(String, u16)> {
     let url = url.trim();
-    
+
     // 如果包含端口，则分离
     if let Some((host, port_str)) = url.split_once(':') {
-        let port = port_str.parse::<u16>()
+        let port = port_str
+            .parse::<u16>()
             .context(format!("无效的端口号: {}", port_str))?;
-        
+
         // 检查是否已经有协议前缀
         let base_url = if host.starts_with("http://") || host.starts_with("https://") {
             host.to_string()
         } else {
             format!("http://{}", host)
         };
-        
+
         Ok((base_url, port))
     } else {
         // 没有端口，默认使用 8005
@@ -238,7 +237,7 @@ fn parse_backend_url(url: &str) -> Result<(String, u16)> {
         } else {
             format!("http://{}", url)
         };
-        
+
         Ok((base_url, 8005))
     }
 }
@@ -252,10 +251,10 @@ async fn check_backend_available(client: &reqwest::Client, backend_url: &str) ->
             return false;
         }
     };
-    
+
     let test_url = format!("{}:{}/test", base_url, port);
     println!("检测后端可用性: {}", test_url);
-    
+
     match client
         .get(&test_url)
         .timeout(std::time::Duration::from_secs(5))
@@ -295,7 +294,8 @@ async fn check_backend_available(client: &reqwest::Client, backend_url: &str) ->
 
 // 获取后端配置（必须在 init_config 之后调用）
 pub fn get_backend_config() -> Result<&'static BackendConfig> {
-    BACKEND_CONFIG.get()
+    BACKEND_CONFIG
+        .get()
         .ok_or_else(|| anyhow::anyhow!("后端配置未初始化，请先调用 init_config"))
 }
 
