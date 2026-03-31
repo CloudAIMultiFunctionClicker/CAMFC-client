@@ -13,7 +13,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2.10", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
@@ -21,7 +21,7 @@ serde_json = "1"
 btleplug = "^0.11"
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "time", "net", "io-util", "macros"] }
 futures = "0.3"
-windows = { version = "0.58", features = [
+windows = { version = "0.53", features = [
     "Devices_Radios",
     "Foundation",
     "Foundation_Collections",
@@ -54,5 +54,3 @@ lto = true
 opt-level = "z"
 strip = true
 
-[profile.dev]
-incremental = true
