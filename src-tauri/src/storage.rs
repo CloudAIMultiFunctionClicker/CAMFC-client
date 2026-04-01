@@ -216,3 +216,13 @@ pub async fn set_custom_download_path(path: String) -> Result<(), String> {
     tracing::info!("[STORAGE] 自定义下载路径保存成功: {}", path);
     Ok(())
 }
+
+#[tauri::command]
+pub fn get_default_download_path() -> Result<String, String> {
+    let user_profile = std::env::var("USERPROFILE")
+        .map_err(|e| format!("获取用户目录失败: {}", e))?;
+    
+    let download_path = PathBuf::from(user_profile).join("Downloads");
+    
+    Ok(download_path.to_string_lossy().to_string())
+}

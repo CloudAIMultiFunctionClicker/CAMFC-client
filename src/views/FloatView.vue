@@ -183,8 +183,8 @@ onMounted(async () => {
       } else {
         console.log('[悬浮窗] 悬浮窗已启用，正在显示窗口...')
         const currentWindow = await getCurrentWindow()
-        await currentWindow.show()
         await currentWindow.center()
+        await currentWindow.show()
         console.log('[悬浮窗] 窗口已显示')
       }
     })

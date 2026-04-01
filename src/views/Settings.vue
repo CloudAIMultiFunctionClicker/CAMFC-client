@@ -212,8 +212,25 @@ Email: admin@mc666.top
 
       <div v-else-if="activeNav === 'help'" class="settings-panel help-panel">
         <h3>帮助与反馈</h3>
-        <button class="action-btn" @click="openIssue">提交问题或反馈</button>
-        <button class="action-btn" @click="showFaq = true">常见问题 (FAQ)</button>
+        <div class="setting-card">
+          <div class="feedback-container">
+            <div class="feedback-options" v-if="showFeedbackOptions">
+              <button class="action-btn" @click="openGitHubIssue">
+                <i class="ri-github-line"></i>
+                <span>GitHub Issue</span>
+              </button>
+              <button class="action-btn" @click="openEmail">
+                <i class="ri-mail-line"></i>
+                <span>发送邮件</span>
+              </button>
+            </div>
+            <div class="feedback-actions">
+              <button class="action-btn" @click="showFeedbackOptions = true" v-if="!showFeedbackOptions">提交问题或反馈</button>
+              <button class="action-btn cancel-btn" @click="showFeedbackOptions = false" v-else>返回</button>
+            </div>
+          </div>
+          <button class="action-btn" @click="showFaq">常见问题 (FAQ)</button>
+        </div>
       </div>
 
       <div v-else-if="activeNav === 'about'" class="settings-panel">
@@ -232,29 +249,6 @@ Email: admin@mc666.top
       </div>
     </main>
   </div>
-  
-  <!-- FAQ iframe 弹窗 -->
-  <Transition name="slide-right">
-    <div v-if="showFaq" class="faq-overlay" @click="showFaq = false">
-      <div class="faq-panel" :class="{ 'light-mode': isLightMode }" @click.stop>
-        <div class="faq-header">
-          <button class="close-btn" @click="showFaq = false">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-          </button>
-          <button class="close-btn" @click="openFaqInBrowser" title="在浏览器中打开">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" x2="22" y1="12" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          </button>
-        </div>
-        <div class="faq-body">
-          <iframe 
-            src="https://chatbot.weixin.qq.com/webapp/6h2QNMkoVgfSPjIqghfjRG17CxC9b7?isFloat=True&robotName=智能问答"
-            frameborder="0"
-            allowfullscreen
-          ></iframe>
-        </div>
-      </div>
-    </div>
-  </Transition>
 </template>
 
 <script setup>
@@ -297,11 +291,14 @@ const isFilesystemLoggedIn = ref(false)
 const cacheSize = ref(0)
 const downloadPath = ref('')
 const closeBehavior = ref('ask') // 'minimize' | 'exit' | 'ask'
-const showFaq = ref(false)
+const showFeedbackOptions = ref(false)
+const showFaq = () => {
+  // 功能已移除,按钮保留但无反应
+}
 const isLightMode = ref(false)
 const floatWindowEnabled = ref(true)
 
-// 监听主题变化，同步 FAQ 悬浮窗
+// 监听主题变化
 watch(() => theme?.isLightMode, (newVal) => {
   if (newVal !== undefined) {
     isLightMode.value = newVal
@@ -610,15 +607,6 @@ const logout = async () => {
   }, 500)
 }
 
-const openFaqInBrowser = async () => {
-  try {
-    await openUrl('https://chatbot.weixin.qq.com/webapp/6h2QNMkoVgfSPjIqghfjRG17CxC9b7?isFloat=True&robotName=智能问答')
-  } catch (error) {
-    console.error('在浏览器中打开 FAQ 失败:', error)
-    showToast('打开失败', '#ef4444')
-  }
-}
-
 const clearCache = async () => {
   showToast('正在清理缓存...', '#f59e0b')
   cacheSize.value = 0
@@ -633,8 +621,14 @@ const openChangelog = () => {
   openUrl('https://github.com/CloudAIMultiFunctionClicker/CAMFC-client/releases/')
 }
 
-const openIssue = () => {
+const openGitHubIssue = () => {
   openUrl('https://github.com/CloudAIMultiFunctionClicker/CAMFC-client/issues/')
+}
+
+const openEmail = () => {
+  const subject = encodeURIComponent('CAMFC Cloud 客户端反馈')
+  const body = encodeURIComponent('您好，我有一些反馈想与您分享：\n\n')
+  window.location.href = `mailto:abc.cxh2009@foxmail.com?subject=${subject}&body=${body}`
 }
 
 const selectDownloadPath = async () => {
@@ -675,10 +669,11 @@ const openDownloadFolder = async () => {
     let targetPath = downloadPath.value
     
     if (!targetPath) {
-      // 使用 Windows 的公共下载目录作为默认下载路径
-      if (navigator.platform.indexOf('Win') > -1) {
-        targetPath = 'C:\\Users\\Public\\Downloads'
-      } else {
+      // 使用系统默认的下载目录
+      try {
+        targetPath = await invoke('get_default_download_path')
+      } catch (e) {
+        console.error('获取默认下载路径失败:', e)
         showToast('无法确定下载目录', '#f59e0b')
         return
       }
@@ -1392,98 +1387,113 @@ onUnmounted(() => {
   }
 }
 
-/* FAQ 弹窗样式 */
-.faq-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: flex-end;
-  z-index: 9999;
-  backdrop-filter: blur(4px);
-}
-
-.faq-panel {
-  width: 60vw;
-  max-width: 90vw;
-  height: 100vh;
-  background-color: var(--bg-primary, #ffffff);
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+.feedback-container {
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--border-color, #d0d7de);
+  gap: 12px;
 }
 
-/* 亮色模式 */
-.faq-panel.light-mode {
-  background-color: var(--bg-primary, #ffffff);
-}
-
-.faq-header {
+.feedback-options {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color, #d0d7de);
+  flex-direction: row;
+  gap: 12px;
+  padding: 12px;
+  background-color: var(--bg-secondary, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  animation: fadeIn 0.3s ease-out;
 }
 
-.faq-header h3 {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary, #24292f);
-}
-
-.close-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  cursor: pointer;
+.feedback-options .action-btn {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary, #57606a);
+  gap: 6px;
+  padding: 8px 12px;
+  background-color: var(--bg-secondary, #ffffff);
+  color: var(--text-primary, #333);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  font-size: 13px;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
-.close-btn:hover {
-  background-color: var(--hover-bg, #f3f4f6);
-  color: var(--text-primary, #24292f);
+.feedback-options .action-btn:hover {
+  background-color: var(--hover-bg, #f5f5f5);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.faq-body {
-  flex: 1;
-  overflow: hidden;
+.feedback-options .action-btn i {
+  font-size: 14px;
 }
 
-.faq-body iframe {
+.cancel-btn {
   width: 100%;
-  height: 100%;
-  border: none;
+  background-color: transparent;
+  border: 1px solid var(--border-color, #ddd);
+  color: var(--text-secondary, #666);
+  margin-top: 8px;
 }
 
-/* 从右侧滑入动画 */
-.slide-right-enter-active {
-  transition: all 0.3s ease-out;
+.cancel-btn:hover {
+  background-color: var(--hover-bg, #f5f5f5);
+  color: var(--text-primary, #333);
 }
 
-.slide-right-leave-active {
-  transition: all 0.3s ease-in;
+.feedback-container .action-btn {
+  width: auto;
+  max-width: 200px;
 }
 
-.slide-right-enter-from,
-.slide-right-leave-to {
-  transform: translateX(100%);
-  opacity: 0;
+.feedback-actions {
+  display: flex;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-top: 0;
 }
 
-.slide-right-enter-from .faq-overlay,
-.slide-right-leave-to .faq-overlay {
-  opacity: 0;
+.feedback-actions .action-btn {
+  padding: 10px 20px;
+  background-color: var(--bg-secondary, #f6f8fa);
+  color: var(--text-primary, #24292f);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: auto;
+  max-width: none;
+  flex: none;
 }
+
+.feedback-actions .action-btn:hover {
+  background-color: var(--hover-bg, #f3f4f6);
+  border-color: var(--text-muted, #8c959f);
+}
+
+.feedback-actions .cancel-btn {
+  background-color: transparent;
+  color: var(--text-secondary, #666);
+}
+
+.feedback-actions .cancel-btn:hover {
+  background-color: var(--hover-bg, #f5f5f5);
+  color: var(--text-primary, #333);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 </style>
