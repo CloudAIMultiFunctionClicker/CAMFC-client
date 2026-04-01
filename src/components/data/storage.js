@@ -139,3 +139,12 @@ export async function getDownloadHistory() {
 export async function saveDownloadHistory(history) {
   return saveAppData('download_history', JSON.stringify(history))
 }
+
+export async function getFloatWindowEnabled() {
+  const value = await loadAppData('float_window_enabled')
+  return value !== 'false'
+}
+
+export async function setFloatWindowEnabled(enabled) {
+  return saveAppData('float_window_enabled', enabled.toString())
+}
