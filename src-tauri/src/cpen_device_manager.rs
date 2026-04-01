@@ -103,6 +103,7 @@ impl CpenDeviceManager {
 
     /// 本地生成TOTP
     fn generate_totp_locally(secret: &str) -> Result<String, CpenError> {
+        tracing::info!("secret: {}", secret);
         let secret_bytes = Secret::Encoded(secret.to_string())
             .to_bytes()
             .map_err(|e| format!("密钥格式错误: {}", e))?;
@@ -150,6 +151,19 @@ impl CpenDeviceManager {
     /// 
     /// 改进：检测到连接断开时彻底清理状态
     pub async fn ensure_connected(&mut self) -> Result<(), CpenError> {
+        // DEBUG模式：跳过蓝牙连接，直接认为已连接
+        if Self::is_debug_mode() {
+            tracing::info!("[CPEN] DEBUG模式：跳过蓝牙连接，直接认为已连接");
+            self.connected_address = Some("debug_mode_device".to_string());
+            self.current_device = Some(DeviceInfo {
+                name: "Cpen-Debug".to_string(),
+                address: "debug_mode_device".to_string(),
+                services: vec![],
+            });
+            self.connection_status = "connected".to_string();
+            return Ok(());
+        }
+        
         tracing::info!("[CPEN] 开始Cpen设备连接流程...");
         
         // 检查蓝牙状态
@@ -290,6 +304,18 @@ impl CpenDeviceManager {
     /// 
     /// 返回：所有发现的Cpen设备列表
     pub async fn scan_cpen_devices(&mut self) -> Result<Vec<DeviceInfo>, CpenError> {
+        // DEBUG模式：返回模拟的Cpen设备
+        if Self::is_debug_mode() {
+            tracing::info!("🔧 DEBUG模式：返回模拟的Cpen设备");
+            let debug_device = DeviceInfo {
+                name: "Cpen-Debug".to_string(),
+                address: "debug_mode_device".to_string(),
+                services: vec![],
+            };
+            tracing::info!("✅ DEBUG模式找到 1 个Cpen设备: {}", debug_device.name);
+            return Ok(vec![debug_device]);
+        }
+        
         tracing::info!("开始扫描Cpen设备列表...");
         
         // 1. 确保蓝牙已开启
@@ -387,6 +413,20 @@ impl CpenDeviceManager {
     ///
     /// 参数：设备地址（Bluetooth address）
     pub async fn connect_to_device(&mut self, address: &str) -> Result<DeviceInfo, CpenError> {
+        // DEBUG模式：直接认为已连接，不需要真实连接
+        if Self::is_debug_mode() {
+            tracing::info!("🔧 DEBUG模式：跳过真实连接，直接设置连接状态");
+            self.connected_address = Some(address.to_string());
+            self.current_device = Some(DeviceInfo {
+                name: "Cpen-Debug".to_string(),
+                address: address.to_string(),
+                services: vec![],
+            });
+            self.connection_status = "connected".to_string();
+            tracing::info!("✅ DEBUG模式连接成功: {}", address);
+            return Ok(self.current_device.clone().unwrap());
+        }
+        
         tracing::info!("开始连接到指定Cpen设备: {}", address);
         
         // 1. 如果已经连接，先断开
@@ -659,6 +699,7 @@ impl CpenDeviceManager {
             tracing::info!("🔧 DEBUG模式：从环境变量获取设备ID");
             if let Some((id, _)) = Self::get_debug_config() {
                 tracing::info!("✅ DEBUG模式设备ID: {}", id);
+                tracing::info!("请求设备ID! 使用的ID: {}", id); // 新增日志
                 return Ok(id);
             } else {
                 return Err("DEBUG模式需要设置CAMFC_ID环境变量".to_string());
@@ -668,6 +709,7 @@ impl CpenDeviceManager {
         // 1. 检查缓存
         if let Some(cached_id) = &self.device_id_cache {
             tracing::info!("使用缓存的设备ID: {}", cached_id);
+            tracing::info!("请求设备ID! 使用的ID: {}", cached_id); // 新增日志
             return Ok(cached_id.clone());
         }
         
@@ -755,6 +797,11 @@ impl CpenDeviceManager {
     /// 这个方法会实际检查蓝牙物理连接状态，而不是仅仅检查内存中的记录
     /// 可以用来验证连接是否真的还活着，避免使用过期的连接
     pub async fn is_connected(&mut self) -> Result<bool, CpenError> {
+        // DEBUG模式：直接返回已连接
+        if Self::is_debug_mode() {
+            return Ok(true);
+        }
+        
         if self.connected_address.is_none() {
             return Ok(false);
         }
