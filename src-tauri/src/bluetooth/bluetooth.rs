@@ -20,7 +20,7 @@ use tokio::time::{sleep, timeout};
 use std::error::Error;
 use uuid::Uuid;
 use serde::{Serialize, Deserialize};
-use crate::event_emitter::emit_button_event;
+use crate::events::emit_button_event;
 
 // Windows蓝牙API - 用来检测和开启蓝牙无线电
 // 注意：暂时只支持Windows平台，后面如果跨平台再考虑兼容
@@ -673,17 +673,17 @@ impl BluetoothManager {
                                 } else if first_byte == 0x12 {
                                     println!("[BLUETOOTH] 收到截图命令（0x12）");
                                     tokio::spawn(async move {
-                                        crate::event_emitter::emit_screenshot_command();
+                                        crate::events::emit_screenshot_command();
                                     });
                                 } else if first_byte == 0x10 {
                                     println!("[BLUETOOTH] 收到显示主窗口 + note 命令（0x10）");
                                     tokio::spawn(async move {
-                                        crate::event_emitter::emit_show_note_command();
+                                        crate::events::emit_show_note_command();
                                     });
                                 } else if first_byte == 0x08 {
                                     println!("[BLUETOOTH] 收到打开云盘命令（0x08）");
                                     tokio::spawn(async move {
-                                        crate::event_emitter::emit_open_cloud_command();
+                                        crate::events::emit_open_cloud_command();
                                     });
                                 }
                                 
@@ -707,11 +707,11 @@ impl BluetoothManager {
                         }
                         
                         println!("[BLUETOOTH] 通知流已结束，连接可能已断开");
-                        crate::event_emitter::emit_bluetooth_disconnect();
+                        crate::events::emit_bluetooth_disconnect();
                     }
                     Err(e) => {
                         println!("[BLUETOOTH] 创建通知流失败：{}", e);
-                        crate::event_emitter::emit_bluetooth_disconnect();
+                        crate::events::emit_bluetooth_disconnect();
                     }
                 }
             });

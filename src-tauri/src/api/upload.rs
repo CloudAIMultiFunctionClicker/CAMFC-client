@@ -32,8 +32,8 @@ use anyhow::{Result, Context};
 use serde::{Serialize, Deserialize};
 use reqwest::{Client, multipart};
 
-// 导入下载模块中的AuthInfo
-use crate::download::AuthInfo;
+// 导入下载模块中的 AuthInfo（同一模块内）
+use super::download::AuthInfo;
 // 导入配置模块
 use crate::config;
 

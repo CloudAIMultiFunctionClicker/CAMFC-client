@@ -18,164 +18,142 @@ import axios from "axios";
 import { ref, reactive } from "vue";
 import { getBackendUrl } from "../../config/backend.js";
 
+// 请求超时时间（毫秒）
 const timeOut = 3000;
 
-// 获取当前认证头信息
-// 直接从Rust命令获取设备ID和TOTP
+/**
+ * 获取认证头信息
+ * 从 bluetooth.js 动态导入并调用 Rust 命令获取设备 ID 和 TOTP
+ * @returns {Promise<Object>} 包含 Id 和 Totp 的对象，失败时返回空对象
+ */
 async function getAuthHeader() {
   try {
     // 动态导入避免循环依赖
     const { getDeviceId, getTotp } = await import('./bluetooth.js');
     
-    // 直接调用Rust命令获取实时数据
     const deviceId = await getDeviceId();
     const currentTotp = await getTotp();
     
     console.info({
-        "Id": deviceId,
-        "Totp": currentTotp
-      })
+      "Id": deviceId,
+      "Totp": currentTotp
+    })
 
     return {
       "Id": deviceId,
       "Totp": currentTotp
     };
   } catch (error) {
-    console.warn('无法获取设备ID或TOTP，使用空header:', error);
-    // 如果获取失败，返回空对象
+    console.warn('无法获取设备 ID 或 TOTP，使用空 header:', error);
     return {};
   }
 }
 
+/**
+ * 带超时控制的 API 请求封装
+ * 统一处理超时和认证头获取
+ * @param {Function} requestFn - 执行实际请求的函数
+ * @returns {Promise<any|null>} 请求成功返回响应数据，超时返回 null
+ */
+async function requestWithTimeout(requestFn) {
+  // 创建超时 Promise
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(new Error("Request timeout"));
+    }, timeOut);
+  });
 
+  // 获取认证头
+  const authHeader = await getAuthHeader();
+  
+  // 执行请求并与超时竞争
+  const requestPromise = requestFn(authHeader);
+  const response = await Promise.race([requestPromise, timeoutPromise]);
+  
+  return response.data;
+}
 
+/**
+ * 列出指定路径下的文件和目录
+ * @param {string} path - 要列出的目录路径（相对于 storage 目录）
+ * @returns {Promise<Object|null>} 成功返回文件列表，超时返回 null，其他错误抛出
+ */
 async function ls(path) {
-    try {
-        // 创建一个Promise，用于控制超时
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new Error("Request timeout"));
-            }, timeOut);
-        });
-
-        // 获取认证头信息
-        const authHeader = await getAuthHeader();
-        
-        // 使用Promise.race来竞争请求和超时
-        const requestPromise = axios.get(getBackendUrl() + "/files/?path=" + path, {
-            headers: authHeader,
-        });
-
-        const response = await Promise.race([requestPromise, timeoutPromise]);
-        console.log(response.data);
-
-        // 返回结果
-        return response.data;
-    } catch (error) {
-        if (error.message === "Request timeout") {
-            console.warn(`Request timed out after ${timeOut}ms`);
-
-            //  返回 null
-            return null;
-        } else {
-            throw error; // 如果不是超时错误，则重新抛出原始错误
-        }
+  try {
+    return await requestWithTimeout((authHeader) => {
+      return axios.get(getBackendUrl() + "/files/?path=" + path, {
+        headers: authHeader,
+      });
+    });
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
     }
+    throw error;
+  }
 }
 
 /**
  * 创建新目录
- *
  * @param {string} path - 目录的父路径（相对于 storage 目录）
  * @param {string} directoryName - 要创建的目录名称（不能包含路径分隔符）
- * @returns {Promise<Object|null>} - 成功时返回响应数据，超时时返回 null，其他错误将抛出
+ * @returns {Promise<Object|null>} 成功返回响应数据，超时返回 null，其他错误抛出
  */
 async function mkdir(path, directoryName) {
-    try {
-        // 创建超时 Promise
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new Error("Request timeout"));
-            }, timeOut);
-        });
+  try {
+    return await requestWithTimeout((authHeader) => {
+      const params = new URLSearchParams({
+        path: path,
+        directory_name: directoryName,
+      });
 
-        // 获取认证头信息
-        const authHeader = await getAuthHeader();
-        
-        // 构造查询参数
-        const params = new URLSearchParams({
-            path: path,
-            directory_name: directoryName,
-        });
-
-        // 发起 POST 请求（axios 默认会将 params 附加到 URL 上）
-        const requestPromise = axios.post(
-            getBackendUrl() + "/files/directories",
-            null, // 没有请求体，使用 null
-            {
-                params: params,
-                headers: authHeader,
-            }
-        );
-
-        const response = await Promise.race([requestPromise, timeoutPromise]);
-        console.log("Directory created:", response.data);
-
-        return response.data;
-    } catch (error) {
-        if (error.message === "Request timeout") {
-            console.warn(`Request timed out after ${timeOut}ms`);
-            return null;
-        } else {
-            throw error; // 重新抛出非超时错误
+      return axios.post(
+        getBackendUrl() + "/files/directories",
+        null,
+        {
+          params: params,
+          headers: authHeader,
         }
+      );
+    });
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
     }
+    throw error;
+  }
 }
 
 /**
  * 删除文件或目录
- *
  * @param {string} path - 要删除的文件或目录路径（相对于 storage 目录）
  * @param {boolean} [permanent=false] - 是否永久删除（不进入回收站）
- * @returns {Promise<Object|null>} - 成功时返回响应数据，超时时返回 null，其他错误将抛出
+ * @returns {Promise<Object|null>} 成功返回响应数据，超时返回 null，其他错误抛出
  */
 async function rm(path, permanent = false) {
-    try {
-        // 创建超时 Promise
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new Error("Request timeout"));
-            }, timeOut);
-        });
+  try {
+    return await requestWithTimeout((authHeader) => {
+      const params = new URLSearchParams({
+        permanent: permanent.toString(),
+      });
 
-        // 获取认证头信息
-        const authHeader = await getAuthHeader();
-        
-        // 构造查询参数
-        const params = new URLSearchParams({
-            permanent: permanent.toString(),
-        });
-
-        // 发起 DELETE 请求
-        const requestPromise = axios.delete(
-            `${getBackendUrl()}/files/${encodeURIComponent(path)}`,
-            {
-                params: params,
-                headers: authHeader,
-            }
-        );
-
-        const response = await Promise.race([requestPromise, timeoutPromise]);
-        console.log("File or directory deleted:", response.data);
-
-        return response.data;
-    } catch (error) {
-        if (error.message === "Request timeout") {
-            console.warn(`Request timed out after ${timeOut}ms`);
-            return null;
-        } else {
-            throw error; // 重新抛出非超时错误
+      return axios.delete(
+        `${getBackendUrl()}/files/${encodeURIComponent(path)}`,
+        {
+          params: params,
+          headers: authHeader,
         }
+      );
+    });
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
     }
+    throw error;
+  }
 }
-export {ls,mkdir,rm};
+
+export { ls, mkdir, rm };

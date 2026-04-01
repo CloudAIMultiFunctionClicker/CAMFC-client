@@ -12,21 +12,29 @@
 // Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
 // Email: admin@mc666.top
 
-// 蓝牙模块导入
-mod bluetooth;
-mod cpen_device_manager;
-// 下载模块导入
-mod download;
-// 上传模块导入
-mod upload;
-// 配置模块导入
-mod config;
-// 存储模块导入
-mod storage;
-// 事件发射模块导入
-mod event_emitter;
-// 截图模块导入
-mod screenshot;
+// ==================== 模块导入 ====================
+// 按功能模块组织的导入列表
+// 注意：保持向后兼容，原有代码仍然可以正常工作
+
+// 核心业务模块
+mod bluetooth;           // 蓝牙底层通信（实际实现在 bluetooth/bluetooth.rs）
+mod config;              // 配置管理
+mod storage;             // 数据存储
+
+// API 模块（上传/下载）- 已移动到新目录
+// mod upload;           // 已移动到 api/upload.rs
+// mod download;         // 已移动到 api/download.rs
+// mod cpen_device_manager; // 已移动到 device/cpen_device_manager.rs
+
+// 新功能模块（重构后的模块）
+mod utils;               // 工具函数（认证、HTTP 客户端、常量）
+mod api;                 // API 客户端（重新导出 upload/download）
+mod device;              // 设备管理（重新导出 cpen_device_manager）
+mod events;              // 事件发射
+mod commands;            // Tauri 命令（待重构）
+
+// 其他模块
+mod screenshot;          // 截图功能
 
 // 托盘相关导入
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
@@ -34,13 +42,25 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::Manager;
 use tauri::WindowEvent;
 
-// 使用新的Cpen设备管理器作为业务逻辑层
-use cpen_device_manager::CpenDeviceManager;
+// ==================== 类型导入 ====================
+// 从新模块结构中导入需要的类型
+// 使用重新导出的类型，保持代码简洁
+
+// 从 device 模块导入
+use device::CpenDeviceManager;
+
+// 从 bluetooth 模块导入
 use bluetooth::DeviceInfo;
-use download::{DownloadTask, AuthInfo, get_app_data_dir};
-use upload::UploadTask;
+
+// 从 api 模块导入（upload 和 download 重新导出）
+use api::{DownloadTask, AuthInfo, UploadTask};
+use api::download::get_app_data_dir; // 从 download 模块导入工具函数
+
+// 从 storage 模块导入
 use storage::{load_app_data, save_app_data, get_download_file_path, get_custom_download_path, set_custom_download_path, open_file, open_folder, load_download_path_to_cache};
-use event_emitter::set_app_handle;
+
+// 从 events 模块导入
+use events::set_app_handle;
 
 // 导入同步原语
 // 原来用tokio::sync::Mutex，继续用这个，适合异步环境
@@ -50,9 +70,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 // 下载任务管理器
-static DOWNLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<download::DownloadTask>>>> = OnceLock::new();
+static DOWNLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<api::DownloadTask>>>> = OnceLock::new();
 // 上传任务管理器
-static UPLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<upload::UploadTask>>>> = OnceLock::new();
+static UPLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<api::UploadTask>>>> = OnceLock::new();
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -431,13 +451,13 @@ async fn get_download_progress(file_id: String) -> Result<serde_json::Value, Str
         // 获取真实的进度信息
         let progress = task.get_progress().await;
         
-        // 将进度信息转换为JSON
+        // 将进度信息转换为 JSON
         let status_str = match &progress.status {
-            download::DownloadStatus::Pending => "Pending",
-            download::DownloadStatus::Downloading => "Downloading",
-            download::DownloadStatus::Paused => "Paused",
-            download::DownloadStatus::Completed => "Completed",
-            download::DownloadStatus::Error(err_msg) => {
+            api::DownloadStatus::Pending => "Pending",
+            api::DownloadStatus::Downloading => "Downloading",
+            api::DownloadStatus::Paused => "Paused",
+            api::DownloadStatus::Completed => "Completed",
+            api::DownloadStatus::Error(err_msg) => {
                 // 错误信息包含在状态字符串中
                 return Ok(serde_json::json!({
                     "file_id": progress.file_id,
@@ -605,13 +625,13 @@ async fn get_upload_progress(upload_id: String) -> Result<serde_json::Value, Str
         // 获取真实的进度信息
         let progress = task.get_progress().await;
         
-        // 将进度信息转换为JSON
+        // 将进度信息转换为 JSON
         let status_str = match &progress.status {
-            upload::UploadStatus::Pending => "Pending",
-            upload::UploadStatus::Uploading => "Uploading",
-            upload::UploadStatus::Paused => "Paused",
-            upload::UploadStatus::Completed => "Completed",
-            upload::UploadStatus::Error(err_msg) => {
+            api::UploadStatus::Pending => "Pending",
+            api::UploadStatus::Uploading => "Uploading",
+            api::UploadStatus::Paused => "Paused",
+            api::UploadStatus::Completed => "Completed",
+            api::UploadStatus::Error(err_msg) => {
                 // 错误信息包含在状态字符串中
                 return Ok(serde_json::json!({
                     "upload_id": progress.upload_id,

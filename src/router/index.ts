@@ -1,164 +1,66 @@
 /**
- * CAMFC Client - 路由配置
- *
- * 保留所有权利
- *
- * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
- * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
- *
- * Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
- * Email: abc.cxh2009@foxmail.com
- *
- * Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
- * Email: 1220594170@qq.com
- *
- * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
- * Email: admin@mc666.top
+ * 路由配置
+ * 懒加载页面，蓝牙未连接时限制访问
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
 // @ts-ignore
 import { useBluetoothStore } from '../stores/bluetooth.js'
 
-/**
- * 应用路由配置
- * 这是最简陋的路由配置，只包含三个页面
- * 采用懒加载优化包大小，只有首页是直接导入的
- */
+// 不需要蓝牙连接的页面
+const NO_BLUETOOTH_ROUTES = ['/float', '/screenshot', '/notes']
+
 const router = createRouter({
-  // 使用web history模式，URL看起来更干净（没有#号）
-  // 不过需要在生产环境服务器配置rewrite规则
   history: createWebHistory(),
-  
-  // 路由定义
   routes: [
     {
       path: '/',
       name: 'initialView',
-      component: ()=>import('../views/InitialView.vue'),  // 首页直接导入，保证首次加载速度
+      component: () => import('../views/InitialView.vue'),
     },
-    {path:'/fileView',
-      name: 'fileView',
-      component: () => import('../views/FileView.vue')
-    },
-    {path:'/main',
-      name: 'main',
-      component: () => import('../views/Main.vue')
-    },
-    {
-      path: '/about',
-      name: 'about',
-      // 懒加载：关于页面按需加载，减少初始包大小
-      // TODO: 如果页面很多，可以考虑分组打包（webpack chunk）
-      component: () => import('../views/AboutView.vue')
-    },
-    {
-      path: '/contact',
-      name: 'contact',
-      // 懒加载：联系页面
-      component: () => import('../views/ContactView.vue')
-    },
-    {
-      path: '/settings',
-      name: 'settings',
-      // 懒加载：联系页面
-      component: () => import('../views/Settings.vue')
-    },
-    // 新增仪表板相关路由
-    {
-      path: '/more-info',
-      name: 'moreInfo',
-      // 更多信息占位页面
-      component: () => import('../views/MoreInfo.vue')
-    },
-    {
-      path: '/notes',
-      name: 'notes',
-      // 笔记页面
-      component: () => import('../views/Notes.vue')
-    },
-    {
-      path: '/transfer',
-      name: 'transfer',
-      // 传输页面
-      component: () => import('../views/TransferView.vue')
-    },
-    {
-      path: '/float',
-      name: 'float',
-      // 悬浮窗页面
-      component: () => import('../views/FloatView.vue')
-    },
-    {
-      path: '/screenshot',
-      name: 'screenshot',
-      // 截图预览页面
-      component: () => import('../views/ScreenshotView.vue')
-    }
-    // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
+    { path: '/fileView', name: 'fileView', component: () => import('../views/FileView.vue') },
+    { path: '/main', name: 'main', component: () => import('../views/Main.vue') },
+    { path: '/about', name: 'about', component: () => import('../views/AboutView.vue') },
+    { path: '/contact', name: 'contact', component: () => import('../views/ContactView.vue') },
+    { path: '/settings', name: 'settings', component: () => import('../views/Settings.vue') },
+    { path: '/more-info', name: 'moreInfo', component: () => import('../views/MoreInfo.vue') },
+    { path: '/notes', name: 'notes', component: () => import('../views/Notes.vue') },
+    { path: '/transfer', name: 'transfer', component: () => import('../views/TransferView.vue') },
+    { path: '/float', name: 'float', component: () => import('../views/FloatView.vue') },
+    { path: '/screenshot', name: 'screenshot', component: () => import('../views/ScreenshotView.vue') }
   ]
 })
 
-// 路由守卫：蓝牙未连接时阻止跳转到其他路由
-// 简单粗暴：只要不是首页，就检查蓝牙连接状态
-router.beforeEach((to, _from, next) => {
-  // 如果是首页，直接放行
-  if (to.path === '/') {
+// 路由守卫：检查蓝牙连接
+router.beforeEach((to, from, next) => {
+  // 首页或不需要蓝牙的页面，直接放行
+  if (to.path === '/' || NO_BLUETOOTH_ROUTES.includes(to.path)) {
     next()
     return
   }
 
-  // 悬浮窗页面不需要蓝牙连接，直接放行
-  if (to.path === '/float') {
-    next()
-    return
-  }
-
-  // 截图页面不需要蓝牙连接，直接放行
-  if (to.path === '/screenshot') {
-    next()
-    return
-  }
-
-  // 笔记页面不需要蓝牙连接，直接放行
-  if (to.path === '/notes') {
-    next()
-    return
-  }
-
-  // 获取蓝牙 store
   const bluetoothStore = useBluetoothStore()
-
-  // 检查蓝牙是否已连接
   const connected = bluetoothStore.isConnected()
-  console.log(`[路由守卫] 目标：${to.path}, 蓝牙状态：${bluetoothStore.bluetoothStatus}, 连接：${connected}`)
+  
+  console.log(`[路由守卫] ${to.path}, 状态：${bluetoothStore.bluetoothStatus}`)
   
   if (connected) {
-    console.log('[路由守卫] 蓝牙已连接，允许跳转')
     next()
+    return
+  }
+  
+  // 可能是状态同步延迟，等 200ms 再试
+  if (from.path === '/' && bluetoothStore.bluetoothStatus === 'connected') {
+    setTimeout(() => {
+      if (bluetoothStore.isConnected()) {
+        next()
+      } else {
+        next('/')
+      }
+    }, 200)
   } else {
-    // 未连接，但有可能是状态同步延迟
-    // 检查是否是从连接页面跳转过来的
-    if (_from.path === '/' && bluetoothStore.bluetoothStatus === 'connected') {
-      console.log('[路由守卫] 检测到状态同步延迟，等待 200ms 后重试')
-      // 等待一小段时间让状态同步完成
-      setTimeout(() => {
-        const retryConnected = bluetoothStore.isConnected()
-        if (retryConnected) {
-          console.log('[路由守卫] 重试成功，蓝牙已连接，允许跳转')
-          next()
-        } else {
-          console.warn('[路由守卫] 重试失败，蓝牙未连接，阻止跳转到:', to.path)
-          next('/')
-        }
-      }, 200)
-    } else {
-      // 未连接，强制跳回首页
-      console.warn('[路由守卫] 蓝牙未连接，阻止跳转到:', to.path)
-      next('/')
-    }
+    next('/')
   }
 })
 
-// 导出路由实例
 export default router

@@ -25,14 +25,14 @@ export default defineConfig(async () => ({
 
   clearScreen: false,
   server: {
-    port: 1420,
+    port: 1430,
     strictPort: true,
     host: host || false,
     hmr: host
       ? {
           protocol: "ws",
           host,
-          port: 1421,
+          port: 1431,
         }
       : undefined,
     watch: {
@@ -56,5 +56,15 @@ export default defineConfig(async () => ({
       },
     },
     chunkSizeWarningLimit: 1000,
+  },
+  // Vitest 测试配置
+  test: {
+    globals: true, // 允许直接使用 describe, it 等全局函数
+    environment: "jsdom", // 使用 jsdom 模拟浏览器环境
+    setupFiles: ["./src/test/setup.js"], // 测试前的预处理文件
+    include: ["**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"], // 测试文件匹配模式
+    coverage: {
+      reporter: ["text", "json", "html"], // 覆盖率报告格式
+    },
   },
 }));

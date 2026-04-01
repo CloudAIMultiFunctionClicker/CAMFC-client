@@ -1,30 +1,14 @@
-/**
- * 标注数据存储工具
- * 用于保存和加载标注数据
- *
- * 保留所有权利
- *
- * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
- * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
- *
- * Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
- * Email: abc.cxh2009@foxmail.com
- *
- * Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
- * Email: 1220594170@qq.com
- *
- * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
- * Email: admin@mc666.top
- */
+// 标注数据存储工具 - 用 localStorage 保存标注数据
+// 之前想过用 IndexedDB，但 localStorage 够用了，而且简单
 
 const STORAGE_KEY = 'annotation_data'
+const MAX_ITEMS = 50 // 最多保留 50 条，避免爆存储
 
 /**
  * 保存标注数据
- * @param {string} imageId - 图片唯一标识
- * @param {Array} annotations - 标注数据数组
- * @param {string} imageData - 标注后的图片数据
- * @returns {boolean} 保存是否成功
+ * @param {string} imageId - 图片 ID
+ * @param {Array} annotations - 标注数组
+ * @param {string} imageData - 图片数据
  */
 export const saveAnnotations = (imageId, annotations, imageData) => {
   try {
@@ -35,35 +19,28 @@ export const saveAnnotations = (imageId, annotations, imageData) => {
       timestamp: Date.now()
     }
     
-    // 获取现有数据
     const existingData = getAllAnnotations()
-    
-    // 查找是否已存在该图片的标注
     const index = existingData.findIndex(item => item.imageId === imageId)
     
     if (index !== -1) {
-      // 更新现有标注
       existingData[index] = data
     } else {
-      // 添加新标注
       existingData.push(data)
     }
     
-    // 限制存储数量，保留最近的 50 条
-    const limitedData = existingData.slice(-50)
-    
+    // 限制数量，保留最新的
+    const limitedData = existingData.slice(-MAX_ITEMS)
     localStorage.setItem(STORAGE_KEY, JSON.stringify(limitedData))
     return true
   } catch (error) {
-    console.error('保存标注数据失败:', error)
+    console.error('保存标注失败:', error)
     return false
   }
 }
 
 /**
- * 加载指定图片的标注数据
- * @param {string} imageId - 图片唯一标识
- * @returns {Object|null} 标注数据对象，包含 annotations 和 imageData
+ * 加载标注数据
+ * @param {string} imageId - 图片 ID
  */
 export const loadAnnotations = (imageId) => {
   try {
@@ -80,29 +57,27 @@ export const loadAnnotations = (imageId) => {
     
     return null
   } catch (error) {
-    console.error('加载标注数据失败:', error)
+    console.error('加载标注失败:', error)
     return null
   }
 }
 
 /**
- * 获取所有标注数据
- * @returns {Array} 所有标注数据数组
+ * 获取所有标注
  */
 export const getAllAnnotations = () => {
   try {
     const data = localStorage.getItem(STORAGE_KEY)
     return data ? JSON.parse(data) : []
   } catch (error) {
-    console.error('获取所有标注数据失败:', error)
+    console.error('读取标注失败:', error)
     return []
   }
 }
 
 /**
- * 删除指定图片的标注数据
- * @param {string} imageId - 图片唯一标识
- * @returns {boolean} 删除是否成功
+ * 删除指定图片的标注
+ * @param {string} imageId - 图片 ID
  */
 export const deleteAnnotations = (imageId) => {
   try {
@@ -111,39 +86,37 @@ export const deleteAnnotations = (imageId) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredData))
     return true
   } catch (error) {
-    console.error('删除标注数据失败:', error)
+    console.error('删除标注失败:', error)
     return false
   }
 }
 
 /**
- * 清空所有标注数据
- * @returns {boolean} 清空是否成功
+ * 清空所有标注
  */
 export const clearAllAnnotations = () => {
   try {
     localStorage.removeItem(STORAGE_KEY)
     return true
   } catch (error) {
-    console.error('清空标注数据失败:', error)
+    console.error('清空标注失败:', error)
     return false
   }
 }
 
 /**
- * 生成图片唯一标识
+ * 生成图片 ID（简单哈希）
  * @param {string} imageData - 图片数据
- * @returns {string} 图片唯一标识
  */
 export const generateImageId = (imageData) => {
-  // 使用简单的哈希算法生成唯一标识
+  // 只取前 1000 字符计算，避免太长
   let hash = 0
-  const str = imageData.substring(0, 1000) // 只取前 1000 个字符计算哈希
+  const str = imageData.substring(0, 1000)
   
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i)
     hash = ((hash << 5) - hash) + char
-    hash = hash & hash // Convert to 32bit integer
+    hash = hash & hash
   }
   
   return `img_${Math.abs(hash)}_${Date.now()}`

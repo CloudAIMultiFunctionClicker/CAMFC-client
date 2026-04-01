@@ -1,41 +1,29 @@
-<!--
-保留所有权利
-
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
-
 <script setup>
-import Sidebar from '../components/layout/Sidebar.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
+import Sidebar from '../components/layout/Sidebar.vue'
 import { getUploadProgress, pauseUpload, resumeUpload } from '../components/data/upload.js'
 import { getDownloadProgress, pauseDownload, resumeDownload } from '../components/data/download.js'
-import { getActiveUploads, setActiveUploads, getActiveDownloads, setActiveDownloads, openFile, openFolder, getUploadHistory, saveUploadHistory, getDownloadHistory, saveDownloadHistory } from '../components/data/storage.js'
+import {
+  getActiveUploads, setActiveUploads,
+  getActiveDownloads, setActiveDownloads,
+  openFile, openFolder,
+  getUploadHistory, saveUploadHistory,
+  getDownloadHistory, saveDownloadHistory
+} from '../components/data/storage.js'
 import { invoke } from '@tauri-apps/api/core'
 
+// 侧边栏折叠状态
 const isSidebarCollapsed = ref(false)
-
-const handleCollapseChange = (collapsed) => {
-  isSidebarCollapsed.value = collapsed
-}
-
+// 当前激活的标签页
 const activeTab = ref('upload')
-
+// 上传/下载列表和历史记录
 const uploadList = ref([])
 const downloadList = ref([])
 const uploadHistory = ref([])
 const downloadHistory = ref([])
 let pollTimer = null
 
+// 格式化文件大小
 const formatSize = (bytes) => {
   if (!bytes || bytes === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB']
@@ -43,6 +31,12 @@ const formatSize = (bytes) => {
   return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i]
 }
 
+// 处理侧边栏折叠
+const handleCollapseChange = (collapsed) => {
+  isSidebarCollapsed.value = collapsed
+}
+
+// 刷新上传列表
 const refreshUploads = async () => {
   const uploadIds = await getActiveUploads()
   if (!uploadIds || uploadIds.length === 0) {
@@ -51,40 +45,37 @@ const refreshUploads = async () => {
   }
 
   const validIds = []
-  try {
-    const newList = []
+  const newList = []
 
-    for (const id of uploadIds) {
-      try {
-        const progress = await getUploadProgress(id)
-        if (progress && progress.status !== 'Error' && progress.status !== 'Pending') {
-          validIds.push(id)
-          newList.push({
-            id: progress.upload_id,
-            name: progress.filename || '未知文件',
-            size: formatSize(progress.total_size),
-            progress: progress.progress_percentage || 0,
-            status: mapStatus(progress.status),
-            speed: progress.speed_kbps ? (progress.speed_kbps / 1024).toFixed(1) + ' MB/s' : '-',
-            uploaded: formatSize(progress.uploaded),
-            total: formatSize(progress.total_size),
-            uploadId: progress.upload_id
-          })
-        }
-      } catch (e) {
-        console.error('获取上传进度失败:', e)
+  for (const id of uploadIds) {
+    try {
+      const progress = await getUploadProgress(id)
+      if (progress && progress.status !== 'Error' && progress.status !== 'Pending') {
+        validIds.push(id)
+        newList.push({
+          id: progress.upload_id,
+          name: progress.filename || '未知文件',
+          size: formatSize(progress.total_size),
+          progress: progress.progress_percentage || 0,
+          status: mapStatus(progress.status),
+          speed: progress.speed_kbps ? (progress.speed_kbps / 1024).toFixed(1) + ' MB/s' : '-',
+          uploaded: formatSize(progress.uploaded),
+          total: formatSize(progress.total_size),
+          uploadId: progress.upload_id
+        })
       }
+    } catch (e) {
+      console.error('获取上传进度失败:', e)
     }
+  }
 
-    uploadList.value = newList
-    if (validIds.length !== uploadIds.length) {
-      await setActiveUploads(validIds)
-    }
-  } catch (e) {
-    console.error('刷新上传列表失败:', e)
+  uploadList.value = newList
+  if (validIds.length !== uploadIds.length) {
+    await setActiveUploads(validIds)
   }
 }
 
+// 刷新下载列表
 const refreshDownloads = async () => {
   const fileIds = await getActiveDownloads()
   if (!fileIds || fileIds.length === 0) {
@@ -93,40 +84,37 @@ const refreshDownloads = async () => {
   }
 
   const validIds = []
-  try {
-    const newList = []
+  const newList = []
 
-    for (const id of fileIds) {
-      try {
-        const progress = await getDownloadProgress(id)
-        if (progress && progress.status !== 'Error' && progress.status !== 'Pending') {
-          validIds.push(id)
-          newList.push({
-            id: progress.file_id,
-            name: progress.file_name || '未知文件',
-            size: formatSize(progress.total_size),
-            progress: progress.progress_percentage || 0,
-            status: mapStatus(progress.status),
-            speed: progress.speed_kbps ? (progress.speed_kbps / 1024).toFixed(1) + ' MB/s' : '-',
-            downloaded: formatSize(progress.downloaded),
-            total: formatSize(progress.total_size),
-            fileId: progress.file_id
-          })
-        }
-      } catch (e) {
-        console.error('获取下载进度失败:', e)
+  for (const id of fileIds) {
+    try {
+      const progress = await getDownloadProgress(id)
+      if (progress && progress.status !== 'Error' && progress.status !== 'Pending') {
+        validIds.push(id)
+        newList.push({
+          id: progress.file_id,
+          name: progress.file_name || '未知文件',
+          size: formatSize(progress.total_size),
+          progress: progress.progress_percentage || 0,
+          status: mapStatus(progress.status),
+          speed: progress.speed_kbps ? (progress.speed_kbps / 1024).toFixed(1) + ' MB/s' : '-',
+          downloaded: formatSize(progress.downloaded),
+          total: formatSize(progress.total_size),
+          fileId: progress.file_id
+        })
       }
+    } catch (e) {
+      console.error('获取下载进度失败:', e)
     }
+  }
 
-    downloadList.value = newList
-    if (validIds.length !== fileIds.length) {
-      await setActiveDownloads(validIds)
-    }
-  } catch (e) {
-    console.error('刷新下载列表失败:', e)
+  downloadList.value = newList
+  if (validIds.length !== fileIds.length) {
+    await setActiveDownloads(validIds)
   }
 }
 
+// 状态映射
 const mapStatus = (status) => {
   const map = {
     'Uploading': 'uploading',
@@ -139,54 +127,48 @@ const mapStatus = (status) => {
   return map[status] || status
 }
 
+// 刷新所有列表
 const refreshAll = async () => {
   await Promise.all([refreshUploads(), refreshDownloads()])
   await checkAndSaveCompleted()
 }
 
+// 加载历史记录
 const loadHistory = async () => {
   uploadHistory.value = await getUploadHistory()
   downloadHistory.value = await getDownloadHistory()
 }
 
+// 保存到历史记录
 const saveToHistory = async (item, type) => {
+  const history = type === 'upload' ? await getUploadHistory() : await getDownloadHistory()
+  const newHistory = [
+    {
+      id: item.id,
+      name: item.name,
+      size: item.size,
+      status: item.status,
+      speed: item.speed,
+      completedTime: Date.now(),
+      fileId: item.fileId || item.id
+    },
+    ...history
+  ].slice(0, 100)
+  
   if (type === 'upload') {
-    const history = await getUploadHistory()
-    const newHistory = [
-      {
-        id: item.id,
-        name: item.name,
-        size: item.size,
-        status: item.status,
-        speed: item.speed,
-        completedTime: Date.now()
-      },
-      ...history
-    ].slice(0, 100)
     await saveUploadHistory(newHistory)
     uploadHistory.value = newHistory
   } else {
-    const history = await getDownloadHistory()
-    const newHistory = [
-      {
-        id: item.id,
-        name: item.name,
-        size: item.size,
-        status: item.status,
-        speed: item.speed,
-        completedTime: Date.now(),
-        fileId: item.fileId || item.id
-      },
-      ...history
-    ].slice(0, 100)
     await saveDownloadHistory(newHistory)
     downloadHistory.value = newHistory
   }
 }
 
+// 记录上次的状态，用于检测完成/失败
 let previousUploadStatus = {}
 let previousDownloadStatus = {}
 
+// 检查并保存已完成的传输
 const checkAndSaveCompleted = async () => {
   for (const item of uploadList.value) {
     const prevStatus = previousUploadStatus[item.id]
@@ -206,20 +188,20 @@ const checkAndSaveCompleted = async () => {
   }
 }
 
+// 从活跃列表中移除
 const removeFromActiveList = async (id, type) => {
   if (type === 'upload') {
     const stored = await getActiveUploads()
-    const newList = stored.filter(sid => sid !== id)
-    await setActiveUploads(newList)
+    await setActiveUploads(stored.filter(sid => sid !== id))
     uploadList.value = uploadList.value.filter(i => i.id !== id)
   } else {
     const stored = await getActiveDownloads()
-    const newList = stored.filter(sid => sid !== id)
-    await setActiveDownloads(newList)
+    await setActiveDownloads(stored.filter(sid => sid !== id))
     downloadList.value = downloadList.value.filter(i => i.id !== id)
   }
 }
 
+// 暂停/继续传输
 const handlePause = async (item, type) => {
   try {
     if (type === 'upload') {
@@ -244,28 +226,28 @@ const handlePause = async (item, type) => {
   }
 }
 
+// 取消传输
 const handleCancel = async (item, type) => {
   if (type === 'upload') {
     const stored = await getActiveUploads()
-    const newList = stored.filter(id => id !== item.id)
-    await setActiveUploads(newList)
+    await setActiveUploads(stored.filter(id => id !== item.id))
     uploadList.value = uploadList.value.filter(i => i.id !== item.id)
   } else {
     const stored = await getActiveDownloads()
-    const newList = stored.filter(id => id !== item.id)
-    await setActiveDownloads(newList)
+    await setActiveDownloads(stored.filter(id => id !== item.id))
     downloadList.value = downloadList.value.filter(i => i.id !== item.id)
   }
 }
 
+// 重试失败的传输
 const handleRetry = (item, type) => {
   item.status = type === 'upload' ? 'uploading' : 'downloading'
   item.progress = 0
 }
 
+// 删除历史记录或活跃任务
 const deleteHistoryItem = async (item, type) => {
   if (item.completedTime) {
-    // 这是历史记录，从历史记录中删除
     if (type === 'upload') {
       const history = await getUploadHistory()
       const newHistory = history.filter(h => !(h.id === item.id && h.completedTime === item.completedTime))
@@ -278,21 +260,11 @@ const deleteHistoryItem = async (item, type) => {
       downloadHistory.value = newHistory
     }
   } else {
-    // 这是活跃任务，从活跃列表中删除
-    if (type === 'upload') {
-      const stored = await getActiveUploads()
-      const newList = stored.filter(id => id !== item.id)
-      await setActiveUploads(newList)
-      uploadList.value = uploadList.value.filter(i => i.id !== item.id)
-    } else {
-      const stored = await getActiveDownloads()
-      const newList = stored.filter(id => id !== item.id)
-      await setActiveDownloads(newList)
-      downloadList.value = downloadList.value.filter(i => i.id !== item.id)
-    }
+    await removeFromActiveList(item.id, type)
   }
 }
 
+// 清空历史记录
 const clearHistory = async () => {
   await saveUploadHistory([])
   await saveDownloadHistory([])
@@ -300,10 +272,10 @@ const clearHistory = async () => {
   downloadHistory.value = []
 }
 
+// 打开文件
 const handleOpenFile = async (item) => {
   try {
     const fileId = item.fileId || item.id
-    console.log('打开文件，fileId:', fileId)
     const filePath = await invoke('get_download_file_path', { fileId })
     await openFile(filePath)
   } catch (error) {
@@ -311,10 +283,10 @@ const handleOpenFile = async (item) => {
   }
 }
 
+// 打开文件夹
 const handleOpenFolder = async (item) => {
   try {
     const fileId = item.fileId || item.id
-    console.log('打开文件夹，fileId:', fileId)
     const filePath = await invoke('get_download_file_path', { fileId })
     await openFolder(filePath)
   } catch (error) {
@@ -322,56 +294,45 @@ const handleOpenFolder = async (item) => {
   }
 }
 
+// 清理已完成的传输
 const clearCompleted = async (type) => {
-  if (type === 'upload') {
-    const completedItems = uploadList.value.filter(i => i.status === 'completed' || i.status === 'failed')
-    const completedIds = completedItems.map(i => i.id)
-    if (completedIds.length > 0) {
-      const history = await getUploadHistory()
-      const newHistory = [
-        ...completedItems.map(item => ({
-          id: item.id,
-          name: item.name,
-          size: item.size,
-          status: item.status,
-          speed: item.speed,
-          completedTime: Date.now()
-        })),
-        ...history
-      ].slice(0, 100)
+  const list = type === 'upload' ? uploadList.value : downloadList.value
+  const completedItems = list.filter(i => i.status === 'completed' || i.status === 'failed')
+  const completedIds = completedItems.map(i => i.id)
+  
+  if (completedIds.length > 0) {
+    const history = type === 'upload' ? await getUploadHistory() : await getDownloadHistory()
+    const newHistory = [
+      ...completedItems.map(item => ({
+        id: item.id,
+        name: item.name,
+        size: item.size,
+        status: item.status,
+        speed: item.speed,
+        completedTime: Date.now()
+      })),
+      ...history
+    ].slice(0, 100)
+    
+    if (type === 'upload') {
       await saveUploadHistory(newHistory)
-      
       const stored = await getActiveUploads()
-      const newList = stored.filter(id => !completedIds.includes(id))
-      await setActiveUploads(newList)
-    }
-    uploadList.value = uploadList.value.filter(i => i.status !== 'completed' && i.status !== 'failed')
-  } else {
-    const completedItems = downloadList.value.filter(i => i.status === 'completed' || i.status === 'failed')
-    const completedIds = completedItems.map(i => i.id)
-    if (completedIds.length > 0) {
-      const history = await getDownloadHistory()
-      const newHistory = [
-        ...completedItems.map(item => ({
-          id: item.id,
-          name: item.name,
-          size: item.size,
-          status: item.status,
-          speed: item.speed,
-          completedTime: Date.now()
-        })),
-        ...history
-      ].slice(0, 100)
+      await setActiveUploads(stored.filter(id => !completedIds.includes(id)))
+    } else {
       await saveDownloadHistory(newHistory)
-      
       const stored = await getActiveDownloads()
-      const newList = stored.filter(id => !completedIds.includes(id))
-      await setActiveDownloads(newList)
+      await setActiveDownloads(stored.filter(id => !completedIds.includes(id)))
     }
-    downloadList.value = downloadList.value.filter(i => i.status !== 'completed' && i.status !== 'failed')
+  }
+  
+  if (type === 'upload') {
+    uploadList.value = list.filter(i => i.status !== 'completed' && i.status !== 'failed')
+  } else {
+    downloadList.value = list.filter(i => i.status !== 'completed' && i.status !== 'failed')
   }
 }
 
+// 获取状态文本
 const getStatusText = (status) => {
   const map = {
     uploading: '上传中',
@@ -384,6 +345,7 @@ const getStatusText = (status) => {
   return map[status] || status
 }
 
+// 获取状态样式类
 const getStatusClass = (status) => {
   return {
     'status-uploading': status === 'uploading',
@@ -395,12 +357,14 @@ const getStatusClass = (status) => {
   }
 }
 
+// 组件挂载时开始轮询
 onMounted(() => {
   loadHistory()
   refreshAll()
   pollTimer = setInterval(refreshAll, 500)
 })
 
+// 组件卸载时清理定时器
 onUnmounted(() => {
   if (pollTimer) {
     clearInterval(pollTimer)
@@ -868,29 +832,6 @@ onUnmounted(() => {
   border-color: var(--accent-red, #ef4444);
 }
 
-.list-footer {
-  padding: 12px 20px;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.clear-btn {
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: .375rem;
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.clear-btn:hover {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
 .empty-state {
   padding: 60px 20px;
   text-align: center;
@@ -926,21 +867,5 @@ onUnmounted(() => {
   .item-progress, .item-status, .item-action {
     padding-left: 30px;
   }
-}
-
-.history-section {
-  border-top: 1px solid var(--border-color);
-}
-
-.history-header {
-  padding: 12px 20px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  background: rgba(0,0,0,0.1);
-}
-
-.history-item {
-  opacity: 0.8;
 }
 </style>

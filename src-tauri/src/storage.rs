@@ -111,8 +111,8 @@ pub fn get_app_data_dir() -> Result<PathBuf, String> {
 
 #[tauri::command]
 pub async fn get_download_file_path(fileId: String) -> Result<String, String> {
-    // 使用 download 模块的 get_app_data_dir 函数，它会考虑自定义下载路径
-    let data_dir = crate::download::get_app_data_dir()
+    // 使用 api::download 模块的 get_app_data_dir 函数，它会考虑自定义下载路径
+    let data_dir = crate::api::download::get_app_data_dir()
         .map_err(|e| format!("获取下载目录失败：{}", e))?;
     let file_path = data_dir.join(&fileId);
     Ok(file_path.to_string_lossy().to_string())

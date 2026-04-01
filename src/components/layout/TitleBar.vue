@@ -1,17 +1,7 @@
 <!--
-保留所有权利
-
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
+标题栏组件 - 自定义窗口控制栏
+功能：显示应用标题、主题切换、窗口控制（最小化/最大化/关闭）
+注意：关闭逻辑有点复杂，因为要处理托盘和偏好设置
 -->
 
 <script setup>
@@ -24,28 +14,24 @@ import { loadAppData, saveAppData } from '../../components/data/storage.js'
 
 const theme = inject('theme')
 const router = useRouter()
-
-const showConfirmDialog = ref(false)
-const rememberChoice = ref(false)
-const closePreference = ref(null) // 'minimize' | 'exit' | null
-
 const currentWindow = getCurrentWindow()
 
+// 状态
 const isMaximized = ref(false)
+const showConfirmDialog = ref(false)
+const rememberChoice = ref(false)
+const closePreference = ref(null)
+
+// 窗口状态监听 - 用 ResizeObserver 检测最大化状态
+// 试过用 Tauri 的事件监听，但 ResizeObserver 更可靠
+let resizeObserver = null
 
 const checkWindowState = async () => {
-  try {
-    isMaximized.value = await currentWindow.isMaximized()
-  } catch (error) {
-    console.error('检查窗口状态失败:', error)
-  }
+  isMaximized.value = await currentWindow.isMaximized().catch(() => false)
 }
 
-let resizeObserver = null
 const setupResizeObserver = () => {
-  resizeObserver = new ResizeObserver(() => {
-    checkWindowState()
-  })
+  resizeObserver = new ResizeObserver(checkWindowState)
   resizeObserver.observe(document.body)
 }
 
@@ -56,56 +42,38 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (resizeObserver) {
-    resizeObserver.disconnect()
-  }
+  resizeObserver?.disconnect()
 })
 
+// 关闭偏好设置 - 读取/保存用户选择
 const loadClosePreference = async () => {
   try {
     const saved = await loadAppData('close_preference')
-    console.log('[关闭偏好] 加载原始数据:', saved)
     if (saved) {
-      const pref = JSON.parse(saved)
-      closePreference.value = pref.preference
-      console.log('[关闭偏好] 加载成功:', closePreference.value)
-    } else {
-      console.log('[关闭偏好] 无保存的偏好')
+      closePreference.value = JSON.parse(saved).preference
     }
   } catch (error) {
-    console.error('[关闭偏好] 加载失败:', error)
+    console.error('加载关闭偏好失败:', error)
   }
 }
 
 const saveClosePreference = async (preference) => {
   try {
-    console.log('[关闭偏好] 准备保存:', preference)
     await saveAppData('close_preference', JSON.stringify({ preference }))
-    console.log('[关闭偏好] 保存成功:', preference)
-    
-    // 验证保存
-    const verify = await loadAppData('close_preference')
-    console.log('[关闭偏好] 验证保存结果:', verify)
   } catch (error) {
-    console.error('[关闭偏好] 保存失败:', error)
+    console.error('保存关闭偏好失败:', error)
   }
 }
 
+// 窗口控制函数 - 统一错误处理
 const minimizeWindow = async () => {
-  try {
-    await currentWindow.minimize()
-  } catch (error) {
-    console.error('最小化窗口失败:', error)
-  }
+  await currentWindow.minimize().catch(console.error)
 }
 
 const toggleMaximize = async () => {
   try {
-    if (isMaximized.value) {
-      await currentWindow.unmaximize()
-    } else {
-      await currentWindow.maximize()
-    }
+    const fn = isMaximized.value ? 'unmaximize' : 'maximize'
+    await currentWindow[fn]()
     isMaximized.value = !isMaximized.value
   } catch (error) {
     console.error('切换最大化失败:', error)
@@ -113,26 +81,18 @@ const toggleMaximize = async () => {
 }
 
 const closeApp = async () => {
-  try {
-    await invoke('exit_app')
-  } catch (error) {
-    console.error('退出应用失败:', error)
-  }
+  await invoke('exit_app').catch(console.error)
 }
 
+// 关闭逻辑 - 根据用户偏好决定行为
 const requestClose = async () => {
-  // 每次都重新读取最新的偏好设置
   await loadClosePreference()
   
-  // 根据偏好执行不同的操作
   if (closePreference.value === 'minimize') {
-    // 直接隐藏到托盘
     hideToTray(true)
   } else if (closePreference.value === 'exit') {
-    // 直接退出
     confirmClose(true)
   } else {
-    // 'ask' 或者未设置，显示确认对话框
     showConfirmDialog.value = true
     rememberChoice.value = false
   }
@@ -146,82 +106,23 @@ const confirmClose = async (fromPreference = false) => {
   await closeApp()
 }
 
-const confirmCloseWithRemember = async () => {
-  console.log('[关闭偏好] 点击完全关闭，复选框状态:', rememberChoice.value)
-  await confirmClose(false)
-}
-
-const cancelClose = () => {
-  showConfirmDialog.value = false
-}
-
-const hideToTrayWithRemember = async () => {
-  console.log('[关闭偏好] 点击隐藏到托盘，复选框状态:', rememberChoice.value)
-  await hideToTray(false)
-}
-
 const hideToTray = async (fromPreference = false) => {
   showConfirmDialog.value = false
   if (rememberChoice.value && !fromPreference) {
     await saveClosePreference('minimize')
   }
-  try {
-    await currentWindow.hide()
-  } catch (error) {
-    console.error('隐藏窗口失败:', error)
-  }
+  await currentWindow.hide().catch(console.error)
 }
 
+// 拖动窗口 - 排除按钮区域
 const startWindowDrag = async (event) => {
   if (event.button !== 0) return
   if (event.target.closest('button, .window-controls, .home-btn')) return
-  
-  try {
-    await currentWindow.startDragging()
-  } catch (error) {
-    console.error('拖动窗口失败:', error)
-  }
+  await currentWindow.startDragging().catch(console.error)
 }
 
 const goHome = () => {
   router.push('/main')
-}
-
-const goBack = () => {
-  // 检查当前路径
-  const currentPath = router.currentRoute.value.path
-  
-  // 如果当前在根路径（InitialView/连接页面），则不执行任何操作
-  // 因为已经在连接页面了，不能再返回
-  if (currentPath === '/') {
-    return
-  }
-  
-  // 如果在其他页面，尝试返回
-  if (window.history.length > 1) {
-    // 先保存当前历史长度
-    const currentHistoryLength = window.history.length
-    
-    // 执行返回操作
-    router.back()
-    
-    // 使用 setTimeout 检查返回后的路径
-    // 如果返回到了根路径（InitialView），则自动跳转到主页面
-    setTimeout(() => {
-      const newPath = router.currentRoute.value.path
-      if (newPath === '/') {
-        // 返回到连接页面了，自动跳转到主页面
-        router.replace('/main')
-      }
-    }, 50)
-  } else {
-    // 没有历史记录，直接跳转到主页面
-    router.push('/main')
-  }
-}
-
-const showDevelopingToast = () => {
-  alert('下载进度功能开发中')
 }
 </script>
 
@@ -264,9 +165,7 @@ const showDevelopingToast = () => {
   </header>
   
   <!-- 窗口关闭扩散波纹 -->
-  <Transition name="ripple-fade">
-    <div v-if="showCloseRipple" class="close-ripple" :style="closeRippleStyle"></div>
-  </Transition>
+
   
   <Transition name="confirm">
     <div v-if="showConfirmDialog" class="confirm-container" @click="cancelClose">
