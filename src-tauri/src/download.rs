@@ -179,8 +179,8 @@ impl ChunkDownloader {
         let encoded_file_id = urlencoding::encode(file_id);
         let url = format!("{}/download/{}", base_url, encoded_file_id);
         
-        println!("下载请求URL: {}", url);
-        println!("原始文件路径: {}", file_id);
+        tracing::info!("下载请求URL: {}", url);
+        tracing::info!("原始文件路径: {}", file_id);
         
         // 构建Range头
         let range_header = format!("bytes={}-{}", range_start, range_end);
@@ -227,8 +227,8 @@ impl ChunkDownloader {
         let encoded_file_id = urlencoding::encode(file_id);
         let url = format!("{}/download/{}", base_url, encoded_file_id);
         
-        println!("获取文件元数据URL (HEAD): {}", url);
-        println!("原始文件路径: {}", file_id);
+        tracing::info!("获取文件元数据URL (HEAD): {}", url);
+        tracing::info!("原始文件路径: {}", file_id);
         
         let headers = self.auth_info.get_auth_header()?;
         
@@ -269,7 +269,7 @@ impl ChunkDownloader {
             .unwrap_or(file_id)
             .to_string();
         
-        println!("获取到文件元数据: 文件名={}, 大小={}字节", filename, content_length);
+        tracing::info!("获取到文件元数据: 文件名={}, 大小={}字节", filename, content_length);
         
         Ok((content_length, filename))
     }
@@ -328,7 +328,7 @@ impl DownloadTask {
             1 // 如果不知道大小，就按一个分片处理
         };
         
-        println!("开始下载文件: {}, 总分片数: {}", self.file_name, chunks_count);
+        tracing::info!("开始下载文件: {}, 总分片数: {}", self.file_name, chunks_count);
         
         // 检查哪些分片已经下载（断点续传）
         // 如果文件已存在，检查已下载的大小，跳过已下载的分片
@@ -341,14 +341,14 @@ impl DownloadTask {
             
             starting_chunk = (file_size / CHUNK_SIZE) as u32;
             
-            println!("发现已下载文件: {} 字节，从分片 {} 开始继续下载", 
+            tracing::info!("发现已下载文件: {} 字节，从分片 {} 开始继续下载", 
                 file_size, starting_chunk);
             
             // 更新已下载大小
             let mut downloaded = self.downloaded_size.lock().await;
             *downloaded = file_size;
         } else {
-            println!("开始新下载，文件不存在");
+            tracing::info!("开始新下载，文件不存在");
         }
         
         // 分片下载，增加重试机制
@@ -358,7 +358,7 @@ impl DownloadTask {
                 let status = self.status.lock().await;
                 match *status {
                     DownloadStatus::Paused => {
-                        println!("下载已暂停");
+                        tracing::info!("下载已暂停");
                         return Ok(());
                     }
                     DownloadStatus::Error(_) => {
@@ -394,14 +394,14 @@ impl DownloadTask {
                         // 最后一个分片可能小于CHUNK_SIZE，这是正常的
                         let is_last_chunk = chunk_index == chunks_count - 1;
                         if !is_last_chunk && actual_size != expected_size {
-                            println!("警告: 分片 {} 大小异常，期望 {} 字节，实际 {} 字节", 
+                            tracing::info!("警告: 分片 {} 大小异常，期望 {} 字节，实际 {} 字节", 
                                 chunk_index, expected_size, actual_size);
                             // 继续处理，不中断下载
                         }
                         
                         // 写入文件
                         if let Err(e) = self.write_chunk(start, &chunk_data).await {
-                            println!("写入分片 {} 失败: {}, 重试 {}/3", chunk_index, e, retry_count + 1);
+                            tracing::info!("写入分片 {} 失败: {}, 重试 {}/3", chunk_index, e, retry_count + 1);
                             last_error = Some(e);
                             continue; // 写入失败也重试
                         }
@@ -410,7 +410,7 @@ impl DownloadTask {
                         let mut downloaded = self.downloaded_size.lock().await;
                         *downloaded += actual_size as u64;
                         
-                        println!("分片 {}/{} 下载完成 ({}/{} 字节)，当前进度: {}/{} 字节", 
+                        tracing::info!("分片 {}/{} 下载完成 ({}/{} 字节)，当前进度: {}/{} 字节", 
                             chunk_index + 1, 
                             chunks_count,
                             actual_size,
@@ -423,7 +423,7 @@ impl DownloadTask {
                         break; // 成功，跳出重试循环
                     }
                     Err(e) => {
-                        println!("下载分片 {} 失败: {}, 重试 {}/3", chunk_index, e, retry_count + 1);
+                        tracing::info!("下载分片 {} 失败: {}, 重试 {}/3", chunk_index, e, retry_count + 1);
                         last_error = Some(e);
                         // 等待一下再重试
                         tokio::time::sleep(Duration::from_secs(1)).await;
@@ -439,7 +439,7 @@ impl DownloadTask {
         }
         
         // 下载完成，验证文件完整性
-        println!("文件下载完成: {}，开始验证完整性...", self.file_name);
+        tracing::info!("文件下载完成: {}，开始验证完整性...", self.file_name);
         
         // 检查文件大小是否正确
         let file_size = fs::metadata(&self.save_path).await
@@ -448,29 +448,29 @@ impl DownloadTask {
         
         if file_size != self.total_size {
             let error_msg = format!("文件大小不匹配: 期望 {} 字节，实际 {} 字节", self.total_size, file_size);
-            println!("错误: {}", error_msg);
+            tracing::info!("错误: {}", error_msg);
             *self.status.lock().await = DownloadStatus::Error(error_msg.clone());
             return Err(anyhow::anyhow!(error_msg));
         }
         
-        println!("文件大小验证通过: {} 字节", file_size);
+        tracing::info!("文件大小验证通过: {} 字节", file_size);
         
         // 尝试计算文件哈希进行基本校验
         // 注意：这个校验只是本地校验，无法验证与服务器端是否一致
         match calculate_file_hash(&self.save_path).await {
             Ok(hash) => {
-                println!("文件SHA256哈希: {}", hash);
+                tracing::info!("文件SHA256哈希: {}", hash);
                 // 这里可以记录哈希值，将来可以与服务器端对比
             }
             Err(e) => {
-                println!("警告: 无法计算文件哈希: {}", e);
+                tracing::info!("警告: 无法计算文件哈希: {}", e);
                 // 不中断下载，只是记录警告
             }
         }
         
         // 更新状态为完成
         *self.status.lock().await = DownloadStatus::Completed;
-        println!("文件下载和验证完成: {}", self.file_name);
+        tracing::info!("文件下载和验证完成: {}", self.file_name);
         
         Ok(())
     }
@@ -508,7 +508,7 @@ impl DownloadTask {
         // offset应该 <= file_size，否则说明有分片间隙
         // 但这种情况在断点续传中可能发生（比如之前下载中断了）
         if offset > file_size {
-            println!("警告: offset {} > 文件大小 {}，可能存在分片间隙，扩展文件", offset, file_size);
+            tracing::info!("警告: offset {} > 文件大小 {}，可能存在分片间隙，扩展文件", offset, file_size);
             // 这里不处理，seek会扩展文件
         }
         
@@ -542,7 +542,7 @@ impl DownloadTask {
         
         let expected_new_size = std::cmp::max(offset + data.len() as u64, file_size);
         if new_file_size < expected_new_size {
-            println!("警告: 写入后文件大小 {} < 期望大小 {}", new_file_size, expected_new_size);
+            tracing::info!("警告: 写入后文件大小 {} < 期望大小 {}", new_file_size, expected_new_size);
         }
         
         Ok(())
@@ -551,12 +551,12 @@ impl DownloadTask {
     // 暂停下载
     pub async fn pause(&self) {
         *self.status.lock().await = DownloadStatus::Paused;
-        println!("下载已暂停");
+        tracing::info!("下载已暂停");
     }
     
     // 验证文件完整性 - 公开方法，可以在下载后调用
     pub async fn verify_file_integrity(&self) -> Result<bool> {
-        println!("开始验证文件完整性: {}", self.file_name);
+        tracing::info!("开始验证文件完整性: {}", self.file_name);
         
         // 检查文件是否存在
         if !self.save_path.exists() {
@@ -569,15 +569,15 @@ impl DownloadTask {
             .len();
         
         if file_size != self.total_size {
-            println!("文件大小不匹配: 期望 {} 字节，实际 {} 字节", self.total_size, file_size);
+            tracing::info!("文件大小不匹配: 期望 {} 字节，实际 {} 字节", self.total_size, file_size);
             return Ok(false);
         }
         
-        println!("文件大小验证通过: {} 字节", file_size);
+        tracing::info!("文件大小验证通过: {} 字节", file_size);
         
         // 计算文件哈希
         let hash = calculate_file_hash(&self.save_path).await?;
-        println!("文件SHA256哈希: {}", hash);
+        tracing::info!("文件SHA256哈希: {}", hash);
         
         // TODO: 这里应该与服务器端的哈希对比
         // 暂时只返回大小校验结果
@@ -623,7 +623,7 @@ pub fn get_app_data_dir() -> Result<PathBuf> {
     let download_dir = match custom_path {
         Ok(path) if !path.is_empty() => {
             // 使用自定义下载路径
-            println!("[DOWNLOAD] 使用自定义下载路径: {}", path);
+            tracing::info!("[DOWNLOAD] 使用自定义下载路径: {}", path);
             PathBuf::from(path)
         }
         _ => {

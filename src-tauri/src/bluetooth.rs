@@ -119,26 +119,26 @@ impl BluetoothManager {
     /// 思考：新实现使用了正确的Windows API调用方式
     /// 用.get()方法同步等待异步操作，应该能解决之前的编译错误
     pub fn enable_bluetooth(&self) -> Result<(), String> {
-        println!("开始检查并启用蓝牙设备（使用Windows Radio API）...");
+        tracing::info!("开始检查并启用蓝牙设备（使用Windows Radio API）...");
         
         // 调用内部实现，然后适配返回类型
         match self.enable_bluetooth_internal() {
             Ok(true) => {
-                println!("✅ 蓝牙已成功启用或已经是开启状态");
+                tracing::info!("✅ 蓝牙已成功启用或已经是开启状态");
                 Ok(())
             }
             Ok(false) => {
                 let err_msg = "未找到蓝牙设备".to_string();
-                println!("❌ {}", err_msg);
-                println!("请确保：");
-                println!("1. 计算机支持蓝牙功能");
-                println!("2. 蓝牙硬件已正确安装");
-                println!("3. 蓝牙驱动程序已更新");
+                tracing::info!("❌ {}", err_msg);
+                tracing::info!("请确保：");
+                tracing::info!("1. 计算机支持蓝牙功能");
+                tracing::info!("2. 蓝牙硬件已正确安装");
+                tracing::info!("3. 蓝牙驱动程序已更新");
                 Err(err_msg)
             }
             Err(e) => {
                 let err_msg = format!("蓝牙启用失败: {}", e);
-                println!("❌ {}", err_msg);
+                tracing::info!("❌ {}", err_msg);
                 Err(err_msg)
             }
         }
@@ -149,7 +149,7 @@ impl BluetoothManager {
     /// 这是代码实现，使用Windows Radio API
     /// 返回类型保持原样：Result<bool, Box<dyn std::error::Error>>
     fn enable_bluetooth_internal(&self) -> Result<bool, Box<dyn std::error::Error>> {
-        println!("正在查找蓝牙设备...");
+        tracing::info!("正在查找蓝牙设备...");
 
         // 获取所有无线电设备
         let async_op = Radio::GetRadiosAsync()?;
@@ -164,49 +164,49 @@ impl BluetoothManager {
                 let current_state = radio.State()?;
                 
                 if current_state == windows::Devices::Radios::RadioState::On {
-                    println!("蓝牙已经是开启状态");
+                    tracing::info!("蓝牙已经是开启状态");
                     Ok(true)
                 } else {
-                    println!("正在启用蓝牙...");
+                    tracing::info!("正在启用蓝牙...");
                     
                     // 尝试启用蓝牙
                     let result = radio.SetStateAsync(windows::Devices::Radios::RadioState::On)?.get()?;
                     
                     match result {
                         RadioAccessStatus::Allowed => {
-                            println!("蓝牙启用成功！");
-                            println!("新状态: {:?}", radio.State()?);
+                            tracing::info!("蓝牙启用成功！");
+                            tracing::info!("新状态: {:?}", radio.State()?);
                             Ok(true)
                         }
                         RadioAccessStatus::DeniedBySystem => {
                             let err_msg = "系统拒绝访问蓝牙设备，可能的原因：管理员权限不足或系统策略限制";
-                            eprintln!("错误：{}", err_msg);
+                             tracing::error!("错误：{}", err_msg);
                             Err(err_msg.into())
                         }
                         RadioAccessStatus::DeniedByUser => {
                             let err_msg = "用户拒绝访问蓝牙设备";
-                            eprintln!("错误：{}", err_msg);
+                             tracing::error!("错误：{}", err_msg);
                             Err(err_msg.into())
                         }
                         RadioAccessStatus::Unspecified => {
                             let err_msg = "未知错误，无法启用蓝牙";
-                            eprintln!("错误：{}", err_msg);
+                             tracing::error!("错误：{}", err_msg);
                             Err(err_msg.into())
                         }
                         _ => {
                             let err_msg = format!("未知的访问状态: {:?}", result);
-                            eprintln!("错误：{}", err_msg);
+                             tracing::error!("错误：{}", err_msg);
                             Err(err_msg.into())
                         }
                     }
                 }
             }
             None => {
-                eprintln!("未找到蓝牙设备");
-                eprintln!("请确保：");
-                eprintln!("1. 计算机支持蓝牙功能");
-                eprintln!("2. 蓝牙硬件已正确安装");
-                eprintln!("3. 蓝牙驱动程序已更新");
+                 tracing::error!("未找到蓝牙设备");
+                 tracing::error!("请确保：");
+                 tracing::error!("1. 计算机支持蓝牙功能");
+                 tracing::error!("2. 蓝牙硬件已正确安装");
+                 tracing::error!("3. 蓝牙驱动程序已更新");
                 Ok(false)
             }
         }
@@ -216,7 +216,7 @@ impl BluetoothManager {
     /// 
     /// 遍历所有无线电设备，找到类型为蓝牙的设备
     fn find_bluetooth_radio(radios: &windows::Foundation::Collections::IVectorView<Radio>) -> Option<Radio> {
-        println!("在 {} 个无线电设备中查找蓝牙设备...", radios.Size().unwrap_or(0));
+        tracing::info!("在 {} 个无线电设备中查找蓝牙设备...", radios.Size().unwrap_or(0));
         
         let count = radios.Size().unwrap_or(0);
         for i in 0..count {
@@ -225,22 +225,22 @@ impl BluetoothManager {
                     match radio.Kind() {
                         Ok(kind) => {
                             if kind == RadioKind::Bluetooth {
-                                println!("找到蓝牙无线电设备 (索引: {})", i);
+                                tracing::info!("找到蓝牙无线电设备 (索引: {})", i);
                                 return Some(radio);
                             }
                         }
                         Err(e) => {
-                            println!("获取无线电设备类型失败 (索引: {}): {}", i, e);
+                            tracing::info!("获取无线电设备类型失败 (索引: {}): {}", i, e);
                         }
                     }
                 }
                 Err(e) => {
-                    println!("获取无线电设备失败 (索引: {}): {}", i, e);
+                    tracing::info!("获取无线电设备失败 (索引: {}): {}", i, e);
                 }
             }
         }
         
-        println!("未找到蓝牙无线电设备");
+        tracing::info!("未找到蓝牙无线电设备");
         None
     }
     
@@ -252,16 +252,16 @@ impl BluetoothManager {
     /// 思考：这个方法应该放在哪里？也许可以作为fallback
     /// 先实现，后面再看怎么用
     pub async fn check_bluetooth_via_btleplug(&mut self) -> Result<bool, BtError> {
-        println!("通过btleplug检查蓝牙状态...");
+        tracing::info!("通过btleplug检查蓝牙状态...");
         
         // 尝试创建Manager，如果失败说明蓝牙可能不可用
         match Manager::new().await {
             Ok(_manager) => {
-                println!("btleplug Manager创建成功，蓝牙应该可用");
+                tracing::info!("btleplug Manager创建成功，蓝牙应该可用");
                 Ok(true)
             }
             Err(e) => {
-                println!("btleplug Manager创建失败，蓝牙可能不可用: {}", e);
+                tracing::info!("btleplug Manager创建失败，蓝牙可能不可用: {}", e);
                 // 返回错误，但用友好描述
                 Err(format!("蓝牙检测失败: {}", e))
             }
@@ -287,7 +287,7 @@ impl BluetoothManager {
     pub async fn scan_devices(&mut self, duration_ms: u64) -> Result<Vec<DeviceInfo>, BtError> {
         let adapter = self.get_adapter().await?;
         
-        println!("扫描设备 {}ms...", duration_ms);
+        tracing::info!("扫描设备 {}ms...", duration_ms);
         adapter.start_scan(ScanFilter::default()).await
             .map_err(|e| format!("开始扫描失败: {}", e))?;
         
@@ -320,28 +320,28 @@ impl BluetoothManager {
     pub async fn connect(&mut self, address: &str) -> Result<(), BtError> {
         // 连接前强制清理旧的监听任务和状态
         // 这确保连接新设备时不会复用旧的监听任务
-        println!("[BLUETOOTH] 连接前清理旧状态...");
+        tracing::info!("[BLUETOOTH] 连接前清理旧状态...");
         self.cleanup_connection_state().await;
         
         const MAX_RETRIES: u32 = 3;
         const RETRY_DELAY_MS: u64 = 500;
         
         for attempt in 1..=MAX_RETRIES {
-            println!("[BLUETOOTH] 连接尝试 {}/{}: {}", attempt, MAX_RETRIES, address);
+            tracing::info!("[BLUETOOTH] 连接尝试 {}/{}: {}", attempt, MAX_RETRIES, address);
             
             match self.connect_once(address).await {
                 Ok(_) => {
-                    println!("[BLUETOOTH] 连接成功");
+                    tracing::info!("[BLUETOOTH] 连接成功");
                     return Ok(());
                 }
                 Err(e) if attempt < MAX_RETRIES => {
-                    println!("[BLUETOOTH] 连接失败，{}ms后重试: {}", RETRY_DELAY_MS, e);
+                    tracing::info!("[BLUETOOTH] 连接失败，{}ms后重试: {}", RETRY_DELAY_MS, e);
                     // 清理状态后重试
                     self.cleanup_connection_state().await;
                     sleep(Duration::from_millis(RETRY_DELAY_MS)).await;
                 }
                 Err(e) => {
-                    println!("[BLUETOOTH] 连接重试次数用尽: {}", e);
+                    tracing::info!("[BLUETOOTH] 连接重试次数用尽: {}", e);
                     return Err(e);
                 }
             }
@@ -352,7 +352,7 @@ impl BluetoothManager {
     
     /// 单次连接尝试（内部方法）
     async fn connect_once(&mut self, address: &str) -> Result<(), BtError> {
-        println!("[BLUETOOTH] 开始连接 {}...", address);
+        tracing::info!("[BLUETOOTH] 开始连接 {}...", address);
         
         // 先扫描找到设备
         let adapter = self.get_adapter().await?;
@@ -392,15 +392,15 @@ impl BluetoothManager {
         }
         
         // 预先发现服务，避免后续操作时出错
-        println!("[BLUETOOTH] 发现服务...");
+        tracing::info!("[BLUETOOTH] 发现服务...");
         match timeout(Duration::from_secs(5), peripheral.discover_services()).await {
-            Ok(Ok(_)) => println!("[BLUETOOTH] 服务发现完成"),
+            Ok(Ok(_)) => tracing::info!("[BLUETOOTH] 服务发现完成"),
             Ok(Err(e)) => {
-                println!("[BLUETOOTH] 服务发现失败: {}", e);
+                tracing::info!("[BLUETOOTH] 服务发现失败: {}", e);
                 // 不返回错误，继续尝试
             }
             Err(_) => {
-                println!("[BLUETOOTH] 服务发现超时");
+                tracing::info!("[BLUETOOTH] 服务发现超时");
                 // 不返回错误，继续尝试
             }
         }
@@ -424,19 +424,19 @@ impl BluetoothManager {
         if let Some(h) = self.listening_handle.take() {
             h.abort();
             match timeout(Duration::from_secs(1), h).await {
-                Ok(_) => println!("[BLUETOOTH] 监听任务已结束"),
-                Err(_) => println!("[BLUETOOTH] 监听任务结束超时，继续清理"),
+                Ok(_) => tracing::info!("[BLUETOOTH] 监听任务已结束"),
+                Err(_) => tracing::info!("[BLUETOOTH] 监听任务结束超时，继续清理"),
             }
         }
         self.response_rx = None;
         self.button_rx = None;
         self.connected_peripheral = None;
-        println!("[BLUETOOTH] 连接状态已彻底清理");
+        tracing::info!("[BLUETOOTH] 连接状态已彻底清理");
     }
 
     /// 断开连接
     pub async fn disconnect(&mut self) -> Result<(), BtError> {
-        println!("[BLUETOOTH] 开始断开连接...");
+        tracing::info!("[BLUETOOTH] 开始断开连接...");
         
         // 先停止监听
         self.stop_listening().await;
@@ -449,7 +449,7 @@ impl BluetoothManager {
         // 彻底清理状态
         self.cleanup_connection_state().await;
         
-        println!("[BLUETOOTH] 断开连接完成");
+        tracing::info!("[BLUETOOTH] 断开连接完成");
         Ok(())
     }
 
@@ -466,21 +466,21 @@ impl BluetoothManager {
                     Ok(Ok(connected)) => {
                         if self.last_connected_state != Some(connected) {
                             self.last_connected_state = Some(connected);
-                            println!("[BLUETOOTH] 连接状态变化: {}", connected);
+                            tracing::info!("[BLUETOOTH] 连接状态变化: {}", connected);
                         }
                         Ok(connected)
                     }
                     Ok(Err(e)) => {
                         if self.last_connected_state != Some(false) {
                             self.last_connected_state = Some(false);
-                            println!("[BLUETOOTH] 检查连接状态失败: {}", e);
+                            tracing::info!("[BLUETOOTH] 检查连接状态失败: {}", e);
                         }
                         Err(format!("检查连接状态失败: {}", e))
                     }
                     Err(_) => {
                         if self.last_connected_state != Some(false) {
                             self.last_connected_state = Some(false);
-                            println!("[BLUETOOTH] 连接状态检测超时，假设已断开");
+                            tracing::info!("[BLUETOOTH] 连接状态检测超时，假设已断开");
                         }
                         Ok(false)
                     }
@@ -489,7 +489,7 @@ impl BluetoothManager {
             None => {
                 if self.last_connected_state != Some(false) {
                     self.last_connected_state = Some(false);
-                    println!("[BLUETOOTH] 没有已连接的peripheral");
+                    tracing::info!("[BLUETOOTH] 没有已连接的peripheral");
                 }
                 Ok(false)
             }
@@ -507,7 +507,7 @@ impl BluetoothManager {
             .map_err(|_| "服务发现超时".to_string())?
             .map_err(|e| format!("服务发现失败：{}", e))?;
         
-        println!("[BLUETOOTH] 服务发现完成，共发现 {} 个服务", peripheral.services().len());
+        tracing::info!("[BLUETOOTH] 服务发现完成，共发现 {} 个服务", peripheral.services().len());
         
         Ok(())
     }
@@ -554,7 +554,7 @@ impl BluetoothManager {
             .map_err(|_| "发送超时".to_string())?
             .map_err(|e| format!("发送失败: {}", e))?;
         
-        println!("发送成功: {} bytes", data.len());
+        tracing::info!("发送成功: {} bytes", data.len());
         Ok(())
     }
 
@@ -563,13 +563,13 @@ impl BluetoothManager {
                            self.listening_handle.as_ref().map_or(true, |h| h.is_finished());
         
         if need_restart {
-            println!("[BLUETOOTH] 监听任务需要重启，清理旧状态...");
+            tracing::info!("[BLUETOOTH] 监听任务需要重启，清理旧状态...");
             
             if let Some(h) = self.listening_handle.take() {
                 h.abort();
                 match timeout(Duration::from_millis(500), h).await {
-                    Ok(_) => println!("[BLUETOOTH] 旧监听任务已结束"),
-                    Err(_) => println!("[BLUETOOTH] 旧监听任务结束超时"),
+                    Ok(_) => tracing::info!("[BLUETOOTH] 旧监听任务已结束"),
+                    Err(_) => tracing::info!("[BLUETOOTH] 旧监听任务结束超时"),
                 }
             }
             self.response_rx = None;
@@ -593,7 +593,7 @@ impl BluetoothManager {
                 .find(|c| c.uuid == char_uuid_parsed)
                 .ok_or_else(|| format!("未找到特性: {}", char_uuid))?;
             
-            println!("[BLUETOOTH] 启动蓝牙通知监听...");
+            tracing::info!("[BLUETOOTH] 启动蓝牙通知监听...");
             let peripheral_clone = peripheral.clone();
             let char_clone = characteristic.clone();
             
@@ -603,32 +603,32 @@ impl BluetoothManager {
             let mut last_button_state: Option<String> = None;
             
             let handle = tokio::spawn(async move {
-                println!("[BLUETOOTH] 等待通知流...");
+                tracing::info!("[BLUETOOTH] 等待通知流...");
                 match peripheral_clone.notifications().await {
                     Ok(stream) => {
-                        println!("[BLUETOOTH] 通知流已创建，正在订阅...");
+                        tracing::info!("[BLUETOOTH] 通知流已创建，正在订阅...");
                         match peripheral_clone.subscribe(&char_clone).await {
-                            Ok(_) => println!("[BLUETOOTH] 订阅成功"),
+                            Ok(_) => tracing::info!("[BLUETOOTH] 订阅成功"),
                             Err(e) => {
-                                println!("[BLUETOOTH] 订阅失败：{}", e);
+                                tracing::info!("[BLUETOOTH] 订阅失败：{}", e);
                                 return;
                             }
                         }
                         
                         let mut stream = stream;
-                        println!("[BLUETOOTH] 开始监听通知...");
+                        tracing::info!("[BLUETOOTH] 开始监听通知...");
                         while let Some(notif) = stream.next().await {
                             let data_hex = notif.value.iter().map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
                             let data_str = String::from_utf8_lossy(&notif.value);
                             let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string();
                             
-                            println!("========================================");
-                            println!("[BLUETOOTH] 收到数据包");
-                            println!("  时间：{}", timestamp);
-                            println!("  长度：{} bytes", notif.value.len());
-                            println!("  Hex: {}", data_hex);
-                            println!("  ASCII: {}", data_str.trim());
-                            println!("========================================");
+                            tracing::info!("========================================");
+                            tracing::info!("[BLUETOOTH] 收到数据包");
+                            tracing::info!("  时间：{}", timestamp);
+                            tracing::info!("  长度：{} bytes", notif.value.len());
+                            tracing::info!("  Hex: {}", data_hex);
+                            tracing::info!("  ASCII: {}", data_str.trim());
+                            tracing::info!("========================================");
                             
                             let is_button_event = notif.value.len() >= 1 && 
                                 (notif.value[0] == 0xAA || notif.value[0] == 0xAB || 
@@ -640,7 +640,7 @@ impl BluetoothManager {
                                 
                                 if first_byte == 0xAA {
                                     if last_button_state.as_ref().map_or(true, |s| s != "press") {
-                                        println!("[BLUETOOTH] 上一页（GPIO10 按下 0xAA）");
+                                        tracing::info!("[BLUETOOTH] 上一页（GPIO10 按下 0xAA）");
                                         last_button_state = Some("press".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_press_left");
@@ -648,7 +648,7 @@ impl BluetoothManager {
                                     }
                                 } else if first_byte == 0xAB {
                                     if last_button_state.as_ref().map_or(true, |s| s != "release") {
-                                        println!("[BLUETOOTH] 上一页松开（GPIO10 松开 0xAB）");
+                                        tracing::info!("[BLUETOOTH] 上一页松开（GPIO10 松开 0xAB）");
                                         last_button_state = Some("release".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_release_left");
@@ -656,7 +656,7 @@ impl BluetoothManager {
                                     }
                                 } else if first_byte == 0xAC {
                                     if last_button_state.as_ref().map_or(true, |s| s != "press_left") {
-                                        println!("[BLUETOOTH] 下一页（GPIO9 按下 0xAC）");
+                                        tracing::info!("[BLUETOOTH] 下一页（GPIO9 按下 0xAC）");
                                         last_button_state = Some("press_left".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_press");
@@ -664,24 +664,24 @@ impl BluetoothManager {
                                     }
                                 } else if first_byte == 0xAD {
                                     if last_button_state.as_ref().map_or(true, |s| s != "release_left") {
-                                        println!("[BLUETOOTH] 下一页松开（GPIO9 松开 0xAD）");
+                                        tracing::info!("[BLUETOOTH] 下一页松开（GPIO9 松开 0xAD）");
                                         last_button_state = Some("release_left".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_release");
                                         });
                                     }
                                 } else if first_byte == 0x12 {
-                                    println!("[BLUETOOTH] 收到截图命令（0x12）");
+                                    tracing::info!("[BLUETOOTH] 收到截图命令（0x12）");
                                     tokio::spawn(async move {
                                         crate::event_emitter::emit_screenshot_command();
                                     });
                                 } else if first_byte == 0x10 {
-                                    println!("[BLUETOOTH] 收到显示主窗口 + note 命令（0x10）");
+                                    tracing::info!("[BLUETOOTH] 收到显示主窗口 + note 命令（0x10）");
                                     tokio::spawn(async move {
                                         crate::event_emitter::emit_show_note_command();
                                     });
                                 } else if first_byte == 0x08 {
-                                    println!("[BLUETOOTH] 收到打开云盘命令（0x08）");
+                                    tracing::info!("[BLUETOOTH] 收到打开云盘命令（0x08）");
                                     tokio::spawn(async move {
                                         crate::event_emitter::emit_open_cloud_command();
                                     });
@@ -701,16 +701,16 @@ impl BluetoothManager {
                                 };
                                 
                                 if response_tx.try_send(response).is_err() {
-                                    println!("[BLUETOOTH] 响应通道已满，丢弃数据");
+                                    tracing::info!("[BLUETOOTH] 响应通道已满，丢弃数据");
                                 }
                             }
                         }
                         
-                        println!("[BLUETOOTH] 通知流已结束，连接可能已断开");
+                        tracing::info!("[BLUETOOTH] 通知流已结束，连接可能已断开");
                         crate::event_emitter::emit_bluetooth_disconnect();
                     }
                     Err(e) => {
-                        println!("[BLUETOOTH] 创建通知流失败：{}", e);
+                        tracing::info!("[BLUETOOTH] 创建通知流失败：{}", e);
                         crate::event_emitter::emit_bluetooth_disconnect();
                     }
                 }
@@ -719,9 +719,9 @@ impl BluetoothManager {
             self.response_rx = Some(response_rx);
             self.button_rx = Some(button_rx);
             self.listening_handle = Some(handle);
-            println!("[BLUETOOTH] 监听任务已启动");
+            tracing::info!("[BLUETOOTH] 监听任务已启动");
         } else {
-            println!("[BLUETOOTH] 复用现有的监听任务");
+            tracing::info!("[BLUETOOTH] 复用现有的监听任务");
         }
         
         if let Some(rx) = &mut self.response_rx {
@@ -731,12 +731,12 @@ impl BluetoothManager {
                         if expected.matches(&data) {
                             return Ok(data.into_bytes());
                         } else {
-                            println!("[BLUETOOTH] 跳过不匹配的响应类型，继续等待...");
+                            tracing::info!("[BLUETOOTH] 跳过不匹配的响应类型，继续等待...");
                             continue;
                         }
                     }
                     Ok(None) => {
-                        println!("[BLUETOOTH] 响应通道已关闭，需要重新连接");
+                        tracing::info!("[BLUETOOTH] 响应通道已关闭，需要重新连接");
                         self.response_rx = None;
                         return Err("监听通道已关闭，请重新连接".to_string());
                     }
@@ -760,7 +760,7 @@ impl BluetoothManager {
     /// 
     /// 返回蓝牙适配器的简单信息
     pub async fn get_local_bluetooth_info(&mut self) -> Result<String, BtError> {
-        println!("获取本地蓝牙适配器信息...");
+        tracing::info!("获取本地蓝牙适配器信息...");
         
         // 简单实现，直接返回一个默认值
         // 注意：btleplug 没有直接提供版本信息
@@ -771,7 +771,7 @@ impl BluetoothManager {
     /// 
     /// 通过读取设备的服务和特征来获取版本信息
     pub async fn get_cpen_bluetooth_version(&mut self) -> Result<String, BtError> {
-        println!("获取 Cpen 设备蓝牙版本...");
+        tracing::info!("获取 Cpen 设备蓝牙版本...");
         
         match &self.connected_peripheral {
             Some(peripheral) => {
@@ -782,7 +782,7 @@ impl BluetoothManager {
                 // 先尝试获取设备的服务列表
                 match peripheral.discover_services().await {
                     Ok(_) => {
-                        println!("成功发现设备服务");
+                        tracing::info!("成功发现设备服务");
                         // 如果连接成功，说明设备支持至少蓝牙 4.0（BLE）
                         Ok("5.0".to_string())
                     }
@@ -801,7 +801,7 @@ impl BluetoothManager {
     /// 
     /// 在指定的时间间隔内发送心跳包，防止连接因超时而断开
     pub async fn send_keep_alive(&mut self, service_uuid: &str, char_uuid: &str) -> Result<(), BtError> {
-        println!("发送蓝牙保活心跳包...");
+        tracing::info!("发送蓝牙保活心跳包...");
         
         match &self.connected_peripheral {
             Some(peripheral) => {
@@ -811,7 +811,7 @@ impl BluetoothManager {
                 }
                 
                 // 获取特征
-                let service = Uuid::parse_str(service_uuid).map_err(|e| format!("无效的服务 UUID: {}", e))?;
+                let _service = Uuid::parse_str(service_uuid).map_err(|e| format!("无效的服务 UUID: {}", e))?;
                 let characteristic = Uuid::parse_str(char_uuid).map_err(|e| format!("无效的特征 UUID: {}", e))?;
                 
                 // 获取已发现的特征列表
@@ -824,11 +824,11 @@ impl BluetoothManager {
                 // 发送心跳包
                 match peripheral.write(target_char, b"ping", WriteType::WithoutResponse).await {
                     Ok(_) => {
-                        println!("蓝牙保活心跳包发送成功");
+                        tracing::info!("蓝牙保活心跳包发送成功");
                         Ok(())
                     }
                     Err(e) => {
-                        println!("发送保活心跳包失败: {}", e);
+                        tracing::info!("发送保活心跳包失败: {}", e);
                         Err(format!("发送保活心跳包失败: {}", e))
                     }
                 }
@@ -848,59 +848,58 @@ async fn main() -> Result<(), Box<dyn Error>> {
     bt.enable_bluetooth()?;
     
     // 2. 扫描设备
-    println!("开始扫描蓝牙设备...\n");
+    tracing::info!("开始扫描蓝牙设备...\n");
     let devices = bt.scan_devices(5000).await?;
     
-    println!("\n========== 扫描结果 ==========");
-    println!("共找到 {} 个设备:\n", devices.len());
+    tracing::info!("\n========== 扫描结果 ==========");
+    tracing::info!("共找到 {} 个设备:\n", devices.len());
     
     for (i, d) in devices.iter().enumerate() {
-        println!("[{}] {}", i + 1, d.name);
-        println!("    地址: {}", d.address);
+        tracing::info!("[{}] {}", i + 1, d.name);
+        tracing::info!("    地址: {}", d.address);
         if !d.services.is_empty() {
-            println!("    服务:");
+            tracing::info!("    服务:");
             for s in &d.services {
-                println!("      - {}", s);
+                tracing::info!("      - {}", s);
             }
         }
-        println!();
-    }
+        tracing::info!("");    }
     
-    println!("==============================");
+    tracing::info!("==============================");
     
     // 3. 查找Cpen设备
     let cpen_device = devices.iter().find(|d| d.name.starts_with("Cpen"));
     
     match cpen_device {
         Some(device) => {
-            println!("\n找到Cpen设备: {} ({})", device.name, device.address);
+            tracing::info!("\n找到Cpen设备: {} ({})", device.name, device.address);
             
             // 4. 连接
-            println!("正在连接...");
+            tracing::info!("正在连接...");
             bt.connect(&device.address).await?;
-            println!("连接成功！");
+            tracing::info!("连接成功！");
             
             // Cpen设备UUID（来自原代码）
             let service_uuid = "d816e4c6-1b99-4da7-bcd5-7c37cc2642c4";
             let char_uuid = "d816e4c7-1b99-4da7-bcd5-7c37cc2642c4";
             
             // 5. 发送getTotp命令
-            println!("\n发送 'getTotp' 命令...");
+            tracing::info!("\n发送 'getTotp' 命令...");
             bt.send(service_uuid, char_uuid, b"getTotp").await?;
             
             // 6. 接收响应
-            println!("等待TOTP响应...");
+            tracing::info!("等待TOTP响应...");
             let response = bt.recv(service_uuid, char_uuid, ResponseType::GetTotp).await?;
             let totp_str = String::from_utf8_lossy(&response);
-            println!("收到TOTP: {}", totp_str);
+            tracing::info!("收到TOTP: {}", totp_str);
             
             // 7. 断开连接
-            println!("\n正在断开连接...");
+            tracing::info!("\n正在断开连接...");
             bt.disconnect().await?;
-            println!("已断开");
+            tracing::info!("已断开");
         }
         None => {
-            println!("\n未找到以'Cpen'开头的设备");
+            tracing::info!("\n未找到以'Cpen'开头的设备");
         }
     }
     

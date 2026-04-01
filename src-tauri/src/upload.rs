@@ -132,7 +132,7 @@ impl ChunkUploader {
             .await
             .context("解析初始化响应失败")?;
             
-        println!("上传初始化成功，获取到 upload_id: {}", response_data.upload_id);
+        tracing::info!("上传初始化成功，获取到 upload_id: {}", response_data.upload_id);
         Ok(response_data.upload_id)
     }
     
@@ -178,7 +178,7 @@ impl ChunkUploader {
             ));
         }
         
-        println!("分片 {} 上传成功", chunk_index);
+        tracing::info!("分片 {} 上传成功", chunk_index);
         Ok(())
     }
     
@@ -190,7 +190,7 @@ impl ChunkUploader {
         total_chunks: u32,
         target_path: Option<&str>,
     ) -> Result<String> {
-        eprintln!("[finish_upload] 开始处理，upload_id={}, filename={}, total_chunks={}, target_path={:?}", 
+         tracing::error!("[finish_upload] 开始处理，upload_id={}, filename={}, total_chunks={}, target_path={:?}", 
                  upload_id, filename, total_chunks, target_path);
         
         let base_url = get_base_url()?;
@@ -209,12 +209,12 @@ impl ChunkUploader {
         
         // 如果提供了目标路径，添加到参数中
         if let Some(path) = target_path {
-            eprintln!("[finish_upload] 添加目标路径: {}", path);
+             tracing::error!("[finish_upload] 添加目标路径: {}", path);
             params.push(("target_path", path));
         }
         
-        eprintln!("[finish_upload] 发送请求到: {}", url);
-        eprintln!("[finish_upload] 参数: {:?}", params);
+         tracing::error!("[finish_upload] 发送请求到: {}", url);
+         tracing::error!("[finish_upload] 参数: {:?}", params);
         
         // 发送POST请求
         let response = self.client
@@ -225,7 +225,7 @@ impl ChunkUploader {
             .await
             .context("完成上传失败")?;
             
-        eprintln!("[finish_upload] 收到响应状态: {:?}", response.status());
+         tracing::error!("[finish_upload] 收到响应状态: {:?}", response.status());
         
         if !response.status().is_success() {
             let status = response.status();
@@ -239,7 +239,7 @@ impl ChunkUploader {
         
         // 解析响应，获取文件ID等信息
         let response_text = response.text().await.context("读取完成响应失败")?;
-        eprintln!("[finish_upload] 上传完成响应: {}", response_text);
+         tracing::error!("[finish_upload] 上传完成响应: {}", response_text);
         
         Ok(format!("上传完成: {}", filename))
     }
@@ -325,7 +325,7 @@ impl UploadTask {
             1
         };
         
-        println!("创建上传任务: {}, 大小: {} 字节, 分片数: {}", filename, total_size, chunks_total);
+        tracing::info!("创建上传任务: {}, 大小: {} 字节, 分片数: {}", filename, total_size, chunks_total);
         
         Ok(Self {
             upload_id: upload_id.clone(),
@@ -345,13 +345,13 @@ impl UploadTask {
         // 更新状态为上传中
         *self.status.lock().await = UploadStatus::Uploading;
         
-        println!("开始上传文件: {}, upload_id: {}", self.filename, self.upload_id);
+        tracing::info!("开始上传文件: {}, upload_id: {}", self.filename, self.upload_id);
         
         // 查询已上传分片，实现断点续传
         let uploaded_chunks = self.uploader.get_upload_status(&self.upload_id).await
             .unwrap_or_else(|_| vec![]); // 如果查询失败，当做没有已上传分片
         
-        println!("已上传分片: {:?}", uploaded_chunks);
+        tracing::info!("已上传分片: {:?}", uploaded_chunks);
         
         // 打开文件
         let mut file = File::open(&self.file_path).await
@@ -372,13 +372,13 @@ impl UploadTask {
         // 更新已上传大小
         self.uploaded_size.store(already_uploaded, Ordering::SeqCst);
         
-        println!("已上传大小: {} 字节", already_uploaded);
+        tracing::info!("已上传大小: {} 字节", already_uploaded);
         
         // 分片上传
         for chunk_index in 0..self.chunks_total {
             // 跳过已上传的分片
             if uploaded_chunks.contains(&chunk_index) {
-                println!("分片 {} 已上传，跳过", chunk_index);
+                tracing::info!("分片 {} 已上传，跳过", chunk_index);
                 continue;
             }
             
@@ -387,7 +387,7 @@ impl UploadTask {
                 let status = self.status.lock().await;
                 match *status {
                     UploadStatus::Paused => {
-                        println!("上传已暂停");
+                        tracing::info!("上传已暂停");
                         return Ok(());
                     }
                     UploadStatus::Error(_) => {
@@ -434,12 +434,12 @@ impl UploadTask {
                 ).await {
                     Ok(_) => {
                         // 更新进度
-                        eprintln!("[start] 分片 {} 上传成功，准备更新进度", chunk_index);
+                         tracing::error!("[start] 分片 {} 上传成功，准备更新进度", chunk_index);
                         self.uploaded_size.fetch_add(chunk_size as u64, Ordering::SeqCst);
-                        eprintln!("[start] 获得锁，更新进度");
+                         tracing::error!("[start] 获得锁，更新进度");
                         
                         let current_uploaded = self.uploaded_size.load(Ordering::SeqCst);
-                        eprintln!("[start] 分片 {}/{} 上传成功 ({}/{} 字节)，当前进度: {}/{} 字节", 
+                         tracing::error!("[start] 分片 {}/{} 上传成功 ({}/{} 字节)，当前进度: {}/{} 字节", 
                             chunk_index + 1, 
                             self.chunks_total,
                             chunk_size,
@@ -452,7 +452,7 @@ impl UploadTask {
                         break; // 成功，跳出重试循环
                     }
                     Err(e) => {
-                        println!("上传分片 {} 失败: {}, 重试 {}/3", chunk_index, e, retry_count + 1);
+                        tracing::info!("上传分片 {} 失败: {}, 重试 {}/3", chunk_index, e, retry_count + 1);
                         last_error = Some(e);
                         // 等待一下再重试
                         tokio::time::sleep(Duration::from_secs(1)).await;
@@ -468,17 +468,17 @@ impl UploadTask {
         }
         
         // 所有分片上传完成，调用完成接口
-        eprintln!("[start] 所有分片上传完成，共 {} 个分片，准备调用 finish_upload", self.chunks_total);
+         tracing::error!("[start] 所有分片上传完成，共 {} 个分片，准备调用 finish_upload", self.chunks_total);
         
         match self.uploader.finish_upload(&self.upload_id, &self.filename, self.chunks_total, self.target_path.as_deref()).await {
             Ok(result) => {
-                eprintln!("[start] 上传完成: {}", result);
+                 tracing::error!("[start] 上传完成: {}", result);
                 *self.status.lock().await = UploadStatus::Completed;
                 Ok(())
             }
             Err(e) => {
                 let error_msg = format!("[start] 完成上传失败: {}", e);
-                eprintln!("错误: {}", error_msg);
+                 tracing::error!("错误: {}", error_msg);
                 *self.status.lock().await = UploadStatus::Error(error_msg.clone());
                 Err(anyhow::anyhow!(error_msg))
             }
@@ -488,7 +488,7 @@ impl UploadTask {
     // 暂停上传
     pub async fn pause(&self) {
         *self.status.lock().await = UploadStatus::Paused;
-        println!("上传已暂停");
+        tracing::info!("上传已暂停");
     }
     
     // 获取上传进度

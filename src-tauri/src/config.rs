@@ -49,41 +49,41 @@ static BACKEND_CONFIG: OnceLock<BackendConfig> = OnceLock::new();
 
 // 初始化配置
 pub async fn init_config() -> Result<()> {
-    println!("开始初始化后端配置...");
+    tracing::info!("开始初始化后端配置...");
     
     // 1. 先尝试从环境变量读取
     if let Some(config) = try_load_from_env() {
-        println!("从环境变量加载配置: {}", config.get_full_url());
+        tracing::info!("从环境变量加载配置: {}", config.get_full_url());
         
         // 检测环境变量指定的服务器是否可用
-        println!("检测环境变量指定的服务器是否可用...");
+        tracing::info!("检测环境变量指定的服务器是否可用...");
         if check_env_backend_available(&config).await {
-            println!("环境变量指定的服务器可用");
+            tracing::info!("环境变量指定的服务器可用");
             BACKEND_CONFIG.set(config)
                 .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
             return Ok(());
         } else {
-            println!("环境变量指定的服务器不可用，继续尝试其他配置源...");
+            tracing::info!("环境变量指定的服务器不可用，继续尝试其他配置源...");
         }
     }
     
     // 2. 环境变量不存在或不可用，尝试从远程 API 获取
-    println!("尝试从远程 API 获取配置...");
+    tracing::info!("尝试从远程 API 获取配置...");
     match try_load_from_remote().await {
         Ok(config) => {
-            println!("从远程 API 加载配置: {}", config.get_full_url());
+            tracing::info!("从远程 API 加载配置: {}", config.get_full_url());
             BACKEND_CONFIG.set(config)
                 .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
             Ok(())
         }
         Err(e) => {
-            println!("远程配置加载失败: {}，使用默认配置", e);
+            tracing::info!("远程配置加载失败: {}，使用默认配置", e);
             // 3. 远程获取失败，使用默认配置
             let default_config = BackendConfig {
                 base_url: "http://localhost".to_string(),
                 port: 8005,
             };
-            println!("使用默认配置: {}", default_config.get_full_url());
+            tracing::info!("使用默认配置: {}", default_config.get_full_url());
             BACKEND_CONFIG.set(default_config)
                 .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
             Ok(())
@@ -94,7 +94,7 @@ pub async fn init_config() -> Result<()> {
 // 检测环境变量指定的服务器是否可用
 async fn check_env_backend_available(config: &BackendConfig) -> bool {
     let test_url = format!("{}:{}/test", config.base_url, config.port);
-    println!("检测后端可用性: {}", test_url);
+    tracing::info!("检测后端可用性: {}", test_url);
     
     let client = match reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
@@ -102,7 +102,7 @@ async fn check_env_backend_available(config: &BackendConfig) -> bool {
     {
         Ok(c) => c,
         Err(e) => {
-            println!("创建HTTP客户端失败: {}", e);
+            tracing::error!("创建HTTP客户端失败: {}", e);
             return false;
         }
     };
@@ -113,25 +113,25 @@ async fn check_env_backend_available(config: &BackendConfig) -> bool {
                 match response.text().await {
                     Ok(text) => {
                         if serde_json::from_str::<serde_json::Value>(&text).is_ok() {
-                            println!("后端可用，返回合法 JSON: {}", text);
+                            tracing::info!("后端可用，返回合法 JSON: {}", text);
                             true
                         } else {
-                            println!("后端响应不是合法 JSON: {}", text);
+                            tracing::info!("后端响应不是合法 JSON: {}", text);
                             false
                         }
                     }
                     Err(e) => {
-                        println!("读取响应失败: {}", e);
+                        tracing::info!("读取响应失败: {}", e);
                         false
                     }
                 }
             } else {
-                println!("后端返回错误状态: {}", response.status());
+                tracing::info!("后端返回错误状态: {}", response.status());
                 false
             }
         }
         Err(e) => {
-            println!("检测后端失败: {}", e);
+            tracing::info!("检测后端失败: {}", e);
             false
         }
     }
@@ -152,6 +152,8 @@ fn try_load_from_env() -> Option<BackendConfig> {
     } else {
         format!("http://{}", base_url)
     };
+    tracing::info!("从环境变量加载配置: {}", base_url);
+    tracing::info!("端口号: {}", port);
     
     Some(BackendConfig {
         base_url,
@@ -167,7 +169,6 @@ async fn try_load_from_remote() -> Result<BackendConfig> {
         .context("创建HTTP客户端失败")?;
     
     let url = "https://me.011420.xyz/api/camfc/data.json";
-    println!("请求远程配置: {}", url);
     
     let response = client
         .get(url)
@@ -190,14 +191,14 @@ async fn try_load_from_remote() -> Result<BackendConfig> {
         .await
         .context("解析远程配置失败")?;
     
-    println!("远程配置解析成功，收到 {} 个候选地址", remote_config.base_url.len());
+    tracing::info!("远程配置解析成功，收到 {} 个候选地址", remote_config.base_url.len());
     
     // 依次检测每个候选地址的可用性
     for (index, candidate) in remote_config.base_url.iter().enumerate() {
-        println!("检测候选地址 [{}/{}]: {}", index + 1, remote_config.base_url.len(), candidate);
+        tracing::info!("检测候选地址 [{}/{}]: {}", index + 1, remote_config.base_url.len(), candidate);
         
         if check_backend_available(&client, candidate).await {
-            println!("候选地址可用: {}", candidate);
+            tracing::info!("候选地址可用: {}", candidate);
             
             // 解析 base_url 和 port
             let (base_url, port) = parse_backend_url(candidate)?;
@@ -207,7 +208,7 @@ async fn try_load_from_remote() -> Result<BackendConfig> {
                 port,
             });
         } else {
-            println!("候选地址不可用: {}", candidate);
+            tracing::info!("候选地址不可用: {}", candidate);
         }
     }
     
@@ -248,13 +249,13 @@ async fn check_backend_available(client: &reqwest::Client, backend_url: &str) ->
     let (base_url, port) = match parse_backend_url(backend_url) {
         Ok(result) => result,
         Err(e) => {
-            println!("解析后端 URL 失败: {} - {}", backend_url, e);
+            tracing::info!("解析后端 URL 失败: {} - {}", backend_url, e);
             return false;
         }
     };
     
     let test_url = format!("{}:{}/test", base_url, port);
-    println!("检测后端可用性: {}", test_url);
+    tracing::info!("检测后端可用性: {}", test_url);
     
     match client
         .get(&test_url)
@@ -269,25 +270,25 @@ async fn check_backend_available(client: &reqwest::Client, backend_url: &str) ->
                     Ok(text) => {
                         // 检查是否是合法的 JSON
                         if serde_json::from_str::<serde_json::Value>(&text).is_ok() {
-                            println!("后端可用，返回合法 JSON: {}", text);
+                            tracing::info!("后端可用，返回合法 JSON: {}", text);
                             true
                         } else {
-                            println!("后端响应不是合法 JSON: {}", text);
+                            tracing::info!("后端响应不是合法 JSON: {}", text);
                             false
                         }
                     }
                     Err(e) => {
-                        println!("读取响应失败: {}", e);
+                        tracing::info!("读取响应失败: {}", e);
                         false
                     }
                 }
             } else {
-                println!("后端返回错误状态: {}", response.status());
+                tracing::info!("后端返回错误状态: {}", response.status());
                 false
             }
         }
         Err(e) => {
-            println!("检测后端失败: {}", e);
+            tracing::info!("检测后端失败: {}", e);
             false
         }
     }

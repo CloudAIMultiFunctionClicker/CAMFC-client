@@ -74,20 +74,20 @@ pub async fn save_storage(storage: &AppStorage) -> Result<()> {
 
 #[tauri::command]
 pub async fn load_app_data(key: String) -> Result<String, String> {
-    println!("[STORAGE] 加载设置: {}", key);
+    tracing::info!("[STORAGE] 加载设置: {}", key);
     
     let storage = load_storage().await
         .map_err(|e| format!("加载数据失败: {}", e))?;
     
     let value = storage.data.get(&key).cloned().unwrap_or_default();
     
-    println!("[STORAGE] 加载设置完成: {} = {}", key, if value.is_empty() { "(空)" } else { "(有值)" });
+    tracing::info!("[STORAGE] 加载设置完成: {} = {}", key, if value.is_empty() { "(空)" } else { "(有值)" });
     Ok(value)
 }
 
 #[tauri::command]
 pub async fn save_app_data(key: String, value: String) -> Result<(), String> {
-    println!("[STORAGE] 保存设置: {} = {}", key, value);
+    tracing::info!("[STORAGE] 保存设置: {} = {}", key, value);
     
     let mut storage = load_storage().await
         .map_err(|e| format!("加载数据失败: {}", e))?;
@@ -97,7 +97,7 @@ pub async fn save_app_data(key: String, value: String) -> Result<(), String> {
     save_storage(&storage).await
         .map_err(|e| format!("保存数据失败: {}", e))?;
     
-    println!("[STORAGE] 设置保存成功");
+    tracing::info!("[STORAGE] 设置保存成功");
     Ok(())
 }
 
@@ -120,7 +120,7 @@ pub async fn get_download_file_path(fileId: String) -> Result<String, String> {
 
 #[tauri::command]
 pub fn open_file(filePath: String) -> Result<(), String> {
-    println!("[STORAGE] 打开文件：{}", filePath);
+    tracing::info!("[STORAGE] 打开文件：{}", filePath);
     
     // 使用 Windows 的 start 命令打开文件
     Command::new("cmd")
@@ -128,13 +128,13 @@ pub fn open_file(filePath: String) -> Result<(), String> {
         .spawn()
         .map_err(|e| format!("打开文件失败：{}", e))?;
     
-    println!("[STORAGE] 文件打开命令已执行");
+    tracing::info!("[STORAGE] 文件打开命令已执行");
     Ok(())
 }
 
 #[tauri::command]
 pub fn open_folder(folderPath: String) -> Result<(), String> {
-    println!("[STORAGE] 打开文件所在文件夹：{}", folderPath);
+    tracing::info!("[STORAGE] 打开文件所在文件夹：{}", folderPath);
     
     // 提取文件路径中的目录部分
     let path = PathBuf::from(&folderPath);
@@ -147,7 +147,7 @@ pub fn open_folder(folderPath: String) -> Result<(), String> {
         .spawn()
         .map_err(|e| format!("打开文件夹失败：{}", e))?;
     
-    println!("[STORAGE] 文件夹打开命令已执行");
+    tracing::info!("[STORAGE] 文件夹打开命令已执行");
     Ok(())
 }
 
@@ -196,7 +196,7 @@ pub async fn get_custom_download_path() -> Result<String, String> {
 
 #[tauri::command]
 pub async fn set_custom_download_path(path: String) -> Result<(), String> {
-    println!("[STORAGE] 设置自定义下载路径: {}", path);
+    tracing::info!("[STORAGE] 设置自定义下载路径: {}", path);
     
     // 更新缓存
     set_download_path_cache(&path);
@@ -213,6 +213,6 @@ pub async fn set_custom_download_path(path: String) -> Result<(), String> {
     save_storage(&storage).await
         .map_err(|e| format!("保存存储失败: {}", e))?;
     
-    println!("[STORAGE] 自定义下载路径保存成功: {}", path);
+    tracing::info!("[STORAGE] 自定义下载路径保存成功: {}", path);
     Ok(())
 }
