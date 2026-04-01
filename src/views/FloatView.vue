@@ -137,6 +137,19 @@ let unlistenConnection = null
 
 onMounted(async () => {
   console.log('FloatView mounted')
+  
+  try {
+    const { getFloatWindowEnabled } = await import('../components/data/storage.js')
+    const enabled = await getFloatWindowEnabled()
+    if (!enabled) {
+      console.log('悬浮窗功能已禁用，隐藏窗口')
+      const currentWindow = await getCurrentWindow()
+      await currentWindow.hide()
+      return
+    }
+  } catch (e) {
+    console.warn('检查悬浮窗状态失败:', e)
+  }
 
   unlistenTheme = await listen('theme-changed', (event) => {
     const newTheme = event.payload
@@ -155,6 +168,30 @@ onMounted(async () => {
     // 直接触发截图
     await handleScreenshot()
   })
+
+  // 监听悬浮窗开关状态变化
+  let unlistenFloatToggle = null
+  try {
+    unlistenFloatToggle = await listen('float-window-toggled', async (event) => {
+      const enabled = event.payload
+      console.log('[悬浮窗] 收到悬浮窗状态变化事件:', enabled)
+      if (!enabled) {
+        console.log('[悬浮窗] 悬浮窗已被禁用，正在隐藏窗口...')
+        const currentWindow = await getCurrentWindow()
+        await currentWindow.hide()
+        console.log('[悬浮窗] 窗口已隐藏')
+      } else {
+        console.log('[悬浮窗] 悬浮窗已启用，正在显示窗口...')
+        const currentWindow = await getCurrentWindow()
+        await currentWindow.show()
+        await currentWindow.center()
+        console.log('[悬浮窗] 窗口已显示')
+      }
+    })
+    console.log('[悬浮窗] 成功监听悬浮窗状态变化事件')
+  } catch (e) {
+    console.error('[悬浮窗] 监听悬浮窗状态变化失败:', e)
+  }
 
   const checkMainWindowTheme = async () => {
     try {
@@ -210,6 +247,7 @@ onMounted(async () => {
     if (unlistenTheme) unlistenTheme()
     if (unlistenConnection) unlistenConnection()
     if (unlistenScreenshot) unlistenScreenshot()
+    if (unlistenFloatToggle) unlistenFloatToggle()
     if (keepOnTopInterval) {
       clearInterval(keepOnTopInterval)
     }

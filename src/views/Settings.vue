@@ -126,6 +126,10 @@ Email: admin@mc666.top
             </button>
           </div>
         </div>
+      </div>
+
+      <div v-else-if="activeNav === 'application'" class="settings-panel">
+        <h3>应用设置</h3>
         <div class="setting-card">
           <h4>窗口关闭行为</h4>
           <div class="setting-item">
@@ -160,7 +164,25 @@ Email: admin@mc666.top
               </button>
             </div>
           </div>
-
+        </div>
+        
+        <div class="setting-card">
+          <h4>悬浮窗功能</h4>
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="label-text">启用悬浮窗</span>
+              <span class="label-desc">显示可拖动的悬浮窗，提供快速访问功能</span>
+            </div>
+            <div class="setting-control">
+              <button 
+                class="toggle-btn" 
+                :class="{ active: floatWindowEnabled }"
+                @click="toggleFloatWindow"
+              >
+                <span class="toggle-slider"></span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -277,6 +299,7 @@ const downloadPath = ref('')
 const closeBehavior = ref('ask') // 'minimize' | 'exit' | 'ask'
 const showFaq = ref(false)
 const isLightMode = ref(false)
+const floatWindowEnabled = ref(true)
 
 // 监听主题变化，同步 FAQ 悬浮窗
 watch(() => theme?.isLightMode, (newVal) => {
@@ -289,6 +312,7 @@ const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
   { id: 'hardware', label: '连接设置', icon: 'ri-link' },
   { id: 'download', label: '下载设置', icon: 'ri-download-line' },
+  { id: 'application', label: '应用设置', icon: 'ri-apps-line' },
   { id: 'theme', label: '深色模式', icon: 'ri-moon-line' },
   { id: 'help', label: '帮助与反馈', icon: 'ri-question-line' },
   { id: 'about', label: '关于', icon: 'ri-information-line' }
@@ -326,6 +350,15 @@ const loadSettings = async () => {
     } catch (e) {
       console.warn('加载关闭偏好失败:', e)
       closeBehavior.value = 'ask'
+    }
+    
+    // 加载悬浮窗启用状态
+    try {
+      const { getFloatWindowEnabled } = await import('../components/data/storage.js')
+      floatWindowEnabled.value = await getFloatWindowEnabled()
+    } catch (e) {
+      console.warn('加载悬浮窗状态失败:', e)
+      floatWindowEnabled.value = true
     }
   } catch (error) {
     console.error('加载设置失败:', error)
@@ -506,6 +539,68 @@ const disconnectDevice = async () => {
   showToast('已断开设备连接', '#10b981')
 }
 
+const toggleFloatWindow = async () => {
+  floatWindowEnabled.value = !floatWindowEnabled.value
+  try {
+    const { setFloatWindowEnabled } = await import('../components/data/storage.js')
+    await setFloatWindowEnabled(floatWindowEnabled.value)
+    const status = floatWindowEnabled.value ? '已启用' : '已禁用'
+    showToast(`悬浮窗功能：${status}`, '#3b82f6')
+    console.log('[设置页面] 悬浮窗状态已更新:', floatWindowEnabled.value)
+    
+    // 广播悬浮窗状态变化事件
+    try {
+      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+      console.log('[设置页面] 尝试获取悬浮窗...')
+      const floatWindow = await WebviewWindow.getByLabel('float')
+      console.log('[设置页面] 悬浮窗获取成功:', floatWindow)
+      if (floatWindow) {
+        console.log('[设置页面] 发送悬浮窗状态变化事件...')
+        await floatWindow.emit('float-window-toggled', floatWindowEnabled.value)
+        console.log('[设置页面] 事件发送成功')
+        
+        // 如果启用悬浮窗且窗口被隐藏，显示它
+        if (floatWindowEnabled.value) {
+          const isVisible = await floatWindow.isVisible()
+          if (!isVisible) {
+            console.log('[设置页面] 悬浮窗被隐藏，正在显示...')
+            await floatWindow.show()
+            await floatWindow.center()
+          }
+        }
+      } else {
+        console.log('[设置页面] 悬浮窗不存在')
+        // 如果启用悬浮窗且窗口不存在，尝试创建
+        if (floatWindowEnabled.value) {
+          console.log('[设置页面] 悬浮窗不存在，尝试创建...')
+          try {
+            const newFloatWindow = new WebviewWindow('float', {
+              url: '/float',
+              width: 360,
+              height: 40,
+              x: 100,
+              y: 100,
+              alwaysOnTop: true,
+              decorations: false,
+              transparent: true,
+              resizable: false,
+              skipTaskbar: true
+            })
+            console.log('[设置页面] 悬浮窗创建成功')
+          } catch (createError) {
+            console.error('[设置页面] 悬浮窗创建失败:', createError)
+          }
+        }
+      }
+    } catch (e) {
+      console.error('[设置页面] 广播悬浮窗状态失败:', e)
+    }
+  } catch (e) {
+    console.error('切换悬浮窗状态失败:', e)
+    showToast('保存设置失败', '#ef4444')
+  }
+}
+
 const logout = async () => {
   showToast('正在退出登录...', '#f59e0b')
   await disconnect()
@@ -580,20 +675,24 @@ const openDownloadFolder = async () => {
     let targetPath = downloadPath.value
     
     if (!targetPath) {
-      // 使用系统默认下载目录
+      // 使用 Windows 的公共下载目录作为默认下载路径
       if (navigator.platform.indexOf('Win') > -1) {
-        targetPath = 'C:\\Users\\' + (await import('os').then(m => m.default?.userInfo?.().username || '')) + '\\Downloads'
+        targetPath = 'C:\\Users\\Public\\Downloads'
+      } else {
+        showToast('无法确定下载目录', '#f59e0b')
+        return
       }
     }
     
     if (targetPath) {
       await invoke('open_folder', { folderPath: targetPath })
+      showToast('已打开下载目录', '#10b981')
     } else {
       showToast('无法确定下载目录', '#f59e0b')
     }
   } catch (e) {
     console.error('打开下载目录失败:', e)
-    showToast('打开下载目录失败', '#ef4444')
+    showToast('打开失败: ' + e.message, '#ef4444')
   }
 }
 
