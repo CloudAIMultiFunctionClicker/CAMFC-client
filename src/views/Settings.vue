@@ -229,6 +229,30 @@ Email: admin@mc666.top
           <span class="setting-value">已是最新</span>
         </div>
         <button class="action-btn" @click="openChangelog">查看更新日志</button>
+        
+        <!-- 开源软件声明 -->
+        <div class="setting-card" style="margin-top: 24px;">
+          <h4>开源软件声明</h4>
+          <p class="opensource-desc">本软件使用了以下开源项目，感谢这些项目的贡献者：</p>
+          <div class="opensource-list">
+            <div class="opensource-item">
+              <span class="lib-name" @click="openUrl('https://github.com/vuejs/vue')">Vue.js</span>
+              <span class="lib-license" @click="openUrl('https://github.com/vuejs/vue/blob/main/LICENSE')">MIT License</span>
+            </div>
+            <div class="opensource-item">
+              <span class="lib-name" @click="openUrl('https://github.com/tauri-apps/tauri')">Tauri</span>
+              <span class="lib-license" @click="openUrl('https://github.com/tauri-apps/tauri/blob/dev/LICENSE')">MIT License</span>
+            </div>
+            <div class="opensource-item">
+              <span class="lib-name" @click="openUrl('https://github.com/lucide-icons/lucide')">Lucide Icons</span>
+              <span class="lib-license" @click="openUrl('https://github.com/lucide-icons/lucide/blob/main/LICENSE')">ISC License</span>
+            </div>
+            <div class="opensource-item">
+              <span class="lib-name" @click="openUrl('https://github.com/Remix-Design/RemixIcon')">Remix Icon</span>
+              <span class="lib-license" @click="openUrl('https://github.com/Remix-Design/RemixIcon/blob/master/License')">Apache-2.0</span>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
@@ -1325,6 +1349,61 @@ onUnmounted(() => {
   color: var(--text-muted, #8c959f);
   font-size: 14px;
   margin: 0;
+}
+
+/* 开源软件声明样式 */
+.opensource-desc {
+  font-size: 14px;
+  color: var(--text-secondary, #57606a);
+  margin: 0 0 16px 0;
+}
+
+.opensource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opensource-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background-color: var(--bg-tertiary, #f6f8fa);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.opensource-item:hover {
+  border-color: var(--accent-blue, #0969da);
+  background-color: var(--selected-bg, #ddf4ff);
+}
+
+.lib-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent-blue, #0969da);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.lib-name:hover {
+  text-decoration: underline;
+}
+
+.lib-license {
+  font-size: 12px;
+  color: var(--text-muted, #8c959f);
+  font-family: monospace;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.lib-license:hover {
+  color: var(--accent-blue, #0969da);
+  text-decoration: underline;
 }
 
 .help-panel {
