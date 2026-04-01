@@ -307,6 +307,21 @@ onMounted(async () => {
       console.error('打开云盘页面失败:', e)
     }
   })
+
+  // 监听新建笔记命令（0x11）- 静默打开，不显示 toast
+  const createNoteUnlisten = await listen('create-note-command', async () => {
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到新建笔记命令（0x11），静默打开笔记编辑窗口')
+    // 直接打开笔记编辑窗口，不显示任何提示
+    try {
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('open_note_editor_window', { noteUuid: null })
+    } catch (e) {
+      console.error('打开笔记编辑窗口失败:', e)
+    }
+  })
   
   // 定时检查蓝牙连接状态（每 10 秒）
   let connectionCheckInterval = null
@@ -548,6 +563,9 @@ onMounted(async () => {
     }
     if (openCloudUnlisten) {
       openCloudUnlisten()
+    }
+    if (createNoteUnlisten) {
+      createNoteUnlisten()
     }
   })
   

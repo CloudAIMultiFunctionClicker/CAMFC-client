@@ -33,6 +33,8 @@ use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent}
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::Manager;
 use tauri::WindowEvent;
+use tauri::WebviewWindowBuilder;
+use tauri::Emitter;
 
 // 使用新的Cpen设备管理器作为业务逻辑层
 use cpen_device_manager::CpenDeviceManager;
@@ -1215,6 +1217,71 @@ async fn send_keep_alive() -> Result<String, String> {
     }
 }
 
+/// 创建笔记编辑独立窗口
+///
+/// 前端调用这个命令来打开一个独立的笔记编辑窗口
+/// 新建笔记窗口只能有一个，编辑笔记可以为每个笔记打开独立窗口
+///
+/// 参数：note_uuid - 可选，要编辑的笔记UUID，不传则创建新笔记
+#[tauri::command]
+async fn open_note_editor_window(app_handle: tauri::AppHandle, note_uuid: Option<String>) -> Result<(), String> {
+    tracing::info!("前端调用open_note_editor_window命令，note_uuid: {:?}", note_uuid);
+
+    // 新建笔记使用固定标签，确保只能有一个新建窗口
+    // 编辑笔记使用基于UUID的标签，每个笔记可以有自己的窗口
+    let label = match &note_uuid {
+        Some(uuid) => format!("note_editor_{}", uuid.replace("-", "_")),
+        None => "note_editor_new".to_string(),
+    };
+
+    // 检查窗口是否已存在
+    if let Some(window) = app_handle.get_webview_window(&label) {
+        // 窗口已存在，聚焦
+        if let Err(e) = window.show() {
+            tracing::error!("显示笔记编辑窗口失败: {}", e);
+        }
+        if let Err(e) = window.set_focus() {
+            tracing::error!("聚焦笔记编辑窗口失败: {}", e);
+        }
+        return Ok(());
+    }
+
+    // 如果是新建笔记，还要检查是否已有其他新建笔记窗口
+    // 如果有，关闭它再开新的（避免状态混乱）
+    if note_uuid.is_none() {
+        if let Some(existing_window) = app_handle.get_webview_window("note_editor_new") {
+            tracing::info!("关闭已存在的新建笔记窗口");
+            let _ = existing_window.close();
+        }
+    }
+
+    // 构建URL，携带笔记UUID参数
+    let url = match &note_uuid {
+        Some(uuid) => format!("/note-editor?uuid={}", uuid),
+        None => "/note-editor".to_string(),
+    };
+
+    // 创建新窗口
+    match WebviewWindowBuilder::new(&app_handle, &label, tauri::WebviewUrl::App(url.into()))
+        .title("笔记编辑 - CAMFC")
+        .inner_size(900.0, 700.0)
+        .min_inner_size(600.0, 400.0)
+        .resizable(true)
+        .decorations(false)
+        .center()
+        .build()
+    {
+        Ok(_) => {
+            tracing::info!("笔记编辑窗口创建成功: {}", label);
+            Ok(())
+        }
+        Err(e) => {
+            tracing::error!("创建笔记编辑窗口失败: {}", e);
+            Err(format!("创建窗口失败: {}", e))
+        }
+    }
+}
+
 /// 模拟按下并松开左箭头键
 /// 
 /// GPIO9 按钮松开时调用，模拟按下左箭头键
@@ -1285,6 +1352,26 @@ pub fn run() {
     drop(rt);
 
     tauri::Builder::default()
+        .on_window_event(|window, event| {
+            match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    let label = window.label();
+                    if label.starts_with("note_editor") {
+                        // 笔记窗口直接关闭，不阻止
+                        tracing::info!("笔记窗口关闭: {}", label);
+                        // 显式允许关闭，防止触发应用退出
+                        // 不调用 api.prevent_close()
+                    } else if label == "main" {
+                        // 主窗口关闭时隐藏而不是退出
+                        api.prevent_close();
+                        if let Err(e) = window.hide() {
+                            tracing::error!("隐藏主窗口失败: {}", e);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        })
         .setup(|app| {
             set_app_handle(app.handle().clone());
 
@@ -1350,22 +1437,6 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // 获取主窗口并设置关闭事件处理
-            // 点击关闭按钮时隐藏窗口而不是退出应用
-            if let Some(window) = app.get_webview_window("main") {
-                let window_clone = window.clone();
-                window.on_window_event(move |event| {
-                    if let WindowEvent::CloseRequested { api, .. } = event {
-                        // 阻止默认的关闭行为
-                        api.prevent_close();
-                        // 隐藏窗口
-                        if let Err(e) = window_clone.hide() {
-                             tracing::error!("隐藏窗口失败: {}", e);
-                        }
-                    }
-                });
-            }
-
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())
@@ -1417,7 +1488,23 @@ pub fn run() {
             get_cpen_bluetooth_version,
             // 蓝牙保活命令
             send_keep_alive,
+            // 笔记编辑窗口命令
+            open_note_editor_window,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // 处理运行事件，阻止应用在最后一个窗口关闭时退出
+            match event {
+                tauri::RunEvent::ExitRequested { api, .. } => {
+                    // 检查主窗口是否还存在
+                    if app_handle.get_webview_window("main").is_some() {
+                        // 主窗口还在，阻止退出（可能是笔记窗口关闭触发的）
+                        api.prevent_exit();
+                    }
+                    // 如果主窗口不在了，允许退出
+                }
+                _ => {}
+            }
+        });
 }

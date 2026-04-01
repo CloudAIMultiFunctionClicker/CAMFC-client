@@ -78,6 +78,12 @@ const router = createRouter({
       component: () => import('../views/Notes.vue')
     },
     {
+      path: '/note-editor',
+      name: 'noteEditor',
+      // 笔记编辑页面
+      component: () => import('../views/NoteEditor.vue')
+    },
+    {
       path: '/transfer',
       name: 'transfer',
       // 传输页面
@@ -122,6 +128,12 @@ router.beforeEach((to, _from, next) => {
 
   // 笔记页面不需要蓝牙连接，直接放行
   if (to.path === '/notes') {
+    next()
+    return
+  }
+
+  // 笔记编辑页面不需要蓝牙连接，直接放行
+  if (to.path === '/note-editor') {
     next()
     return
   }

@@ -22,7 +22,7 @@ Email: admin@mc666.top
         笔记
       </h1>
       <div class="header-actions">
-        <button class="add-btn" @click="showAddModal = true">
+        <button class="add-btn" @click="openNoteEditorWindow()">
           <i class="ri-add-line"></i>
           新建笔记
         </button>
@@ -71,6 +71,7 @@ Email: admin@mc666.top
             :key="note.uuid"
             class="note-card"
             :class="{ active: selectedNote?.uuid === note.uuid }"
+            @dblclick="openNoteEditorWindow(note.uuid)"
             @click="selectNote(note)"
           >
             <div class="note-title-wrapper">
@@ -321,11 +322,13 @@ Email: admin@mc666.top
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import axios from 'axios'
 import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl } from '../config/backend.js'
 import { FileText } from 'lucide-vue-next'
+import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 
 const timeOut = 3000
 
@@ -384,10 +387,43 @@ const currentPageNotes = computed(() => {
 })
 
 const loadedNotes = ref({})
+let unlistenNotesUpdated = null
 
-onMounted(() => {
+onMounted(async () => {
   loadNotes()
+
+  // 监听笔记更新事件
+  unlistenNotesUpdated = await listen('notes-updated', (event) => {
+    console.log('收到笔记更新事件:', event.payload)
+    loadNotes()
+  })
+
+  // 监听键盘快捷键 Ctrl+N 新建笔记
+  document.addEventListener('keydown', handleKeydown)
 })
+
+onUnmounted(() => {
+  if (unlistenNotesUpdated) {
+    unlistenNotesUpdated()
+  }
+  document.removeEventListener('keydown', handleKeydown)
+})
+
+function handleKeydown(e) {
+  if (e.ctrlKey && e.key === 'n') {
+    e.preventDefault()
+    openNoteEditorWindow()
+  }
+}
+
+async function openNoteEditorWindow(noteUuid = null) {
+  try {
+    await invoke('open_note_editor_window', { noteUuid })
+  } catch (e) {
+    console.error('打开笔记编辑窗口失败:', e)
+    showToast('打开笔记编辑窗口失败: ' + (e.message || '未知错误'), '#ef4444')
+  }
+}
 
 async function loadNotes() {
   isLoading.value = true

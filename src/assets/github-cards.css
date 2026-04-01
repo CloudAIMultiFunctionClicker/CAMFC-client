@@ -1,0 +1,218 @@
+/* GitHub 风格卡片 - 使用项目现有变量 */
+
+.gh-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.gh-card:hover {
+  border-color: var(--text-muted);
+}
+
+.gh-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.gh-card-description {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.gh-card-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.gh-card-action:hover {
+  background-color: var(--hover-bg);
+}
+
+/* GitHub 风格侧边栏 */
+.gh-sidebar {
+  width: 256px;
+  min-height: 100vh;
+  background-color: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.gh-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.gh-sidebar-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.gh-sidebar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gh-sidebar-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.gh-sidebar-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+}
+
+.gh-sidebar-section {
+  margin-bottom: 16px;
+}
+
+.gh-sidebar-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding: 8px 8px 4px;
+  margin-bottom: 4px;
+}
+
+.gh-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 14px;
+  color: var(--text-primary);
+  text-decoration: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.gh-sidebar-item:hover {
+  background-color: var(--hover-bg);
+}
+
+.gh-sidebar-item.active {
+  background-color: var(--hover-bg);
+  font-weight: 500;
+}
+
+.gh-sidebar-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.gh-sidebar-item.active .gh-sidebar-icon {
+  color: var(--text-primary);
+}
+
+/* GitHub 风格顶部导航栏 */
+.gh-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  padding: 0 24px;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.gh-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.gh-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.gh-header-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gh-header-search {
+  position: relative;
+  width: 240px;
+}
+
+.gh-header-search input {
+  width: 100%;
+  height: 32px;
+  padding: 0 12px 0 32px;
+  font-size: 14px;
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+}
+
+.gh-header-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.gh-header-search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.gh-header-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.gh-header-btn:hover {
+  background-color: var(--hover-bg);
+}
+
+.gh-header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+}
