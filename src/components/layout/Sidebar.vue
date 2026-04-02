@@ -109,6 +109,14 @@ const toggleCollapse = () => {
                         <span>传输</span>
                     </router-link>
                 </li>
+                
+                <!-- 最近活动 -->
+                <li class="menu-item">
+                    <router-link to="/recent-activities" class="menu-link">
+                        <i class="ri-history-line"></i>
+                        <span>最近活动</span>
+                    </router-link>
+                </li>
             </ul>
         </nav>
 

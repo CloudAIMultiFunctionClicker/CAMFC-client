@@ -182,10 +182,9 @@ async function apiRequest(url, data = {}) {
 
 // 初始化
 onMounted(async () => {
-  // 从 URL 参数获取笔记信息
+  // 从 URL 参数获取笔记信息（content 不再从 URL 获取）
   const uuid = route.query.uuid
   const title = route.query.title
-  const content = route.query.content || ''
   
   if (!uuid) {
     showToast('笔记信息不完整', '#ef4444')
@@ -195,15 +194,23 @@ onMounted(async () => {
   
   noteUuid.value = uuid
   noteTitle.value = title || '未命名笔记'
-  noteContent.value = content
-  originalContent.value = content
+  // content 初始为空，等待主窗口发送
+  noteContent.value = ''
+  originalContent.value = ''
   
-  // 初始化编辑器内容
-  setTimeout(() => {
+  // 监听主窗口发送的内容
+  const unlistenContent = await listen('load-note-content', (event) => {
+    const content = event.payload?.content || ''
+    noteContent.value = content
+    originalContent.value = content
+    // 初始化编辑器内容
     if (editorTextarea.value) {
       editorTextarea.value.innerHTML = renderMarkdown(content)
     }
-  }, 100)
+  })
+  
+  // 保存 unlisten 函数用于卸载
+  window._unlistenContent = unlistenContent
   
   // 监听保存快捷键
   document.addEventListener('keydown', handleGlobalKeydown)
@@ -211,6 +218,10 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleGlobalKeydown)
+  // 清理事件监听
+  if (window._unlistenContent) {
+    window._unlistenContent()
+  }
 })
 
 // 全局键盘事件（Ctrl+S 保存）

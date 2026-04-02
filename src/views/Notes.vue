@@ -345,9 +345,10 @@ function nextPage() {
 }
 
 // 打开笔记编辑窗口
-function openNoteEditorWindow(note) {
+async function openNoteEditorWindow(note) {
   const windowLabel = `note-editor-${note.uuid}`
-  const url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}&content=${encodeURIComponent(note.content || '')}`
+  // 不传 content，避免 URL 过长导致 431 错误
+  const url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
   
   const webview = new WebviewWindow(windowLabel, {
     url: url,
@@ -361,8 +362,17 @@ function openNoteEditorWindow(note) {
     resizable: true
   })
   
-  webview.once('tauri://created', () => {
+  webview.once('tauri://created', async () => {
     console.log('笔记编辑窗口创建成功:', windowLabel)
+    // 窗口创建后再发送内容，避免 URL 过长
+    // 延迟一点确保窗口已加载
+    setTimeout(async () => {
+      try {
+        await webview.emit('load-note-content', { content: note.content || '' })
+      } catch (e) {
+        console.error('发送笔记内容失败:', e)
+      }
+    }, 300)
   })
   
   webview.once('tauri://error', (e) => {
