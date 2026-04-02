@@ -345,7 +345,17 @@ impl UploadTask {
     }
     
     // 开始上传（或恢复上传）
+    // 思考：恢复上传时会自动跳过已上传的分片，实现断点续传
     pub async fn start(&self) -> Result<()> {
+        // 检查当前状态，如果已经是上传中则不需要重复启动
+        {
+            let status = self.status.lock().await;
+            if matches!(*status, UploadStatus::Uploading) {
+                tracing::info!("上传任务已在进行中，跳过重复启动");
+                return Ok(());
+            }
+        }
+        
         // 更新状态为上传中
         *self.status.lock().await = UploadStatus::Uploading;
         
@@ -387,11 +397,12 @@ impl UploadTask {
             }
             
             // 检查状态，如果暂停了就退出循环
+            // 在读取数据前检查，确保暂停能尽快生效
             {
                 let status = self.status.lock().await;
                 match *status {
                     UploadStatus::Paused => {
-                        tracing::info!("上传已暂停");
+                        tracing::info!("上传已暂停，当前分片: {}", chunk_index);
                         return Ok(());
                     }
                     UploadStatus::Error(_) => {
@@ -428,6 +439,15 @@ impl UploadTask {
                 ));
             }
             
+            // 再次检查暂停状态，确保在读取数据后、上传前检查
+            {
+                let status = self.status.lock().await;
+                if matches!(*status, UploadStatus::Paused) {
+                    tracing::info!("上传已暂停（读取数据后），当前分片: {}", chunk_index);
+                    return Ok(());
+                }
+            }
+            
             // 分片重试机制
             let mut last_error = None;
             for retry_count in 0..3 { // 最多重试3次
@@ -438,16 +458,12 @@ impl UploadTask {
                 ).await {
                     Ok(_) => {
                         // 更新进度
-                         tracing::error!("[start] 分片 {} 上传成功，准备更新进度", chunk_index);
                         self.uploaded_size.fetch_add(chunk_size as u64, Ordering::SeqCst);
-                         tracing::error!("[start] 获得锁，更新进度");
                         
                         let current_uploaded = self.uploaded_size.load(Ordering::SeqCst);
-                         tracing::error!("[start] 分片 {}/{} 上传成功 ({}/{} 字节)，当前进度: {}/{} 字节", 
+                        tracing::info!("分片 {}/{} 上传成功，当前进度: {}/{} 字节", 
                             chunk_index + 1, 
                             self.chunks_total,
-                            chunk_size,
-                            chunk_size,
                             current_uploaded,
                             self.total_size
                         );
@@ -472,11 +488,11 @@ impl UploadTask {
         }
         
         // 所有分片上传完成，调用完成接口
-         tracing::error!("[start] 所有分片上传完成，共 {} 个分片，准备调用 finish_upload", self.chunks_total);
+        tracing::info!("所有分片上传完成，共 {} 个分片，准备调用 finish_upload", self.chunks_total);
         
         match self.uploader.finish_upload(&self.upload_id, &self.filename, self.chunks_total, self.target_path.as_deref()).await {
             Ok(result) => {
-                 tracing::error!("[start] 上传完成: {}", result);
+                tracing::info!("上传完成: {}", result);
                 *self.status.lock().await = UploadStatus::Completed;
                 
                 // 记录上传活动（如果提供了user_uuid）
@@ -491,8 +507,8 @@ impl UploadTask {
                 Ok(())
             }
             Err(e) => {
-                let error_msg = format!("[start] 完成上传失败: {}", e);
-                 tracing::error!("错误: {}", error_msg);
+                let error_msg = format!("完成上传失败: {}", e);
+                tracing::error!("错误: {}", error_msg);
                 *self.status.lock().await = UploadStatus::Error(error_msg.clone());
                 Err(anyhow::anyhow!(error_msg))
             }

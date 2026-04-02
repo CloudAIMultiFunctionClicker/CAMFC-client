@@ -727,15 +727,70 @@ async fn pause_upload(upload_id: String) -> Result<(), String> {
 
 /// 恢复上传
 /// 
-/// TODO: 需要上传任务管理器来实现真正的恢复功能
-/// 先简单返回成功
+/// 从上传任务管理器中找到任务并重新启动上传
+/// 支持断点续传，会自动跳过已上传的分片
 #[tauri::command]
 async fn resume_upload(upload_id: String) -> Result<(), String> {
     tracing::info!("前端调用resume_upload命令，upload_id: {}", upload_id);
     
-    // 暂时简单实现，实际应该重新开始上传任务
-    tracing::info!("上传恢复功能待实现，目前只能重新开始上传");
-    Ok(())
+    // 从上传任务管理器中获取任务
+    let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
+    let tasks_map = upload_tasks.lock().await;
+    
+    if let Some(task) = tasks_map.get(&upload_id) {
+        // 检查当前状态
+        let progress = task.get_progress().await;
+        match progress.status {
+            upload::UploadStatus::Paused => {
+                // 任务已暂停，可以恢复
+                tracing::info!("找到已暂停的上传任务，准备恢复: {}", upload_id);
+            }
+            upload::UploadStatus::Error(_) => {
+                // 任务出错，可以尝试恢复
+                tracing::info!("找到出错的上传任务，尝试恢复: {}", upload_id);
+            }
+            upload::UploadStatus::Completed => {
+                return Err("上传任务已完成，无法恢复".to_string());
+            }
+            _ => {
+                tracing::info!("上传任务当前状态: {:?}，直接返回", progress.status);
+                return Ok(());
+            }
+        }
+        
+        // 注意：这里需要释放锁，然后在后台重新获取任务来执行
+        drop(tasks_map);
+        
+        // 在后台异步执行上传
+        let upload_id_for_spawn = upload_id.clone();
+        tokio::spawn(async move {
+            tracing::info!("后台恢复上传任务: {}", upload_id_for_spawn);
+            
+            // 重新获取任务管理器和任务
+            let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
+            let tasks_map = upload_tasks.lock().await;
+            
+            if let Some(task) = tasks_map.get(&upload_id_for_spawn) {
+                // 直接使用引用来启动任务
+                match task.start().await {
+                    Ok(_) => {
+                        tracing::info!("后台恢复上传完成: {}", upload_id_for_spawn);
+                    }
+                    Err(e) => {
+                        tracing::error!("后台恢复上传失败: {}，错误: {}", upload_id_for_spawn, e);
+                    }
+                }
+            } else {
+                tracing::error!("恢复时找不到任务: {}", upload_id_for_spawn);
+            }
+        });
+        
+        tracing::info!("上传任务已恢复: {}", upload_id);
+        Ok(())
+    } else {
+        tracing::error!("上传任务 {} 不存在，无法恢复", upload_id);
+        Err(format!("上传任务 {} 不存在", upload_id))
+    }
 }
 
 /// 批量上传文件（从文件路径列表）
