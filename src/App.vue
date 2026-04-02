@@ -29,6 +29,9 @@ const router = useRouter()
 
 const isFloatPage = computed(() => route.path === '/float')
 
+// 判断是否在笔记编辑器子窗口
+const isNoteEditorPage = computed(() => route.path === '/note-editor')
+
 // TOTP定时刷新
 let totpRefreshInterval = null
 const TOTP_REFRESH_INTERVAL = 30000
@@ -569,8 +572,8 @@ setTimeout(() => {
   <!-- 整个应用的主题通过 body 类名控制 -->
   <div class="app-container" v-if="!isFloatPage">
     <!-- 自定义顶栏 -->
-    <TitleBar />
-    <div class="main-content">
+    <TitleBar v-if="!isNoteEditorPage" />
+    <div class="main-content" :style="isNoteEditorPage ? 'padding-top: 0;' : ''">
       <router-view></router-view>
     </div>
   </div>
@@ -580,12 +583,12 @@ setTimeout(() => {
 <style>
 /* 全局主题样式 - 优化后的深色主题配色 */
 body {
-  /* 背景色 - 使用更深的蓝黑色系 */
-  --bg-primary: #0d1117;
-  --bg-secondary: #161b22;
-  --bg-sidebar: #161b22;
-  --bg-header: #161b22;
-  --bg-tertiary: #21262d;
+  /* 背景色 - 使用纯黑色/深黑色 */
+  --bg-primary: #000000;
+  --bg-secondary: #0d0d0d;
+  --bg-sidebar: #0d0d0d;
+  --bg-header: #0d0d0d;
+  --bg-tertiary: #1a1a1a;
   
   /* 文字色 - 高可读性 */
   --text-primary: #f0f6fc;
@@ -608,9 +611,9 @@ body {
   --accent-yellow: #d29922;
   
   /* 交互色 */
-  --hover-bg: rgba(240, 246, 252, 0.1);
-  --selected-bg: rgba(56, 139, 253, 0.15);
-  --input-bg: #0d1117;
+  --hover-bg: rgba(255, 255, 255, 0.08);
+  --selected-bg: rgba(255, 255, 255, 0.12);
+  --input-bg: #000000;
   
   /* 警告按钮配色（暗色模式） */
   --danger-btn-bg: #212830;
@@ -677,10 +680,9 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  overflow: hidden; /* 防止出现滚动条 */
 }
 
-/* 应用容器布局 */
+/* 应用容器布局 - 固定标题栏，内容可滚动 */
 .app-container {
   display: flex;
   flex-direction: column;
@@ -688,10 +690,12 @@ body {
   overflow: hidden;
 }
 
-/* 主内容区域 */
+/* 主内容区域 - 支持滚动，留出标题栏空间 */
 .main-content {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 48px; /* 留出标题栏高度 */
 }
 
 /* 全局滚动条样式 */

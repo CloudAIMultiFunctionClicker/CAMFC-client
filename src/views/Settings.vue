@@ -770,8 +770,9 @@ onUnmounted(() => {
 <style scoped>
 .settings-page {
   display: flex;
-  min-height: 100vh;
+  height: 100%;
   background-color: var(--bg-primary, #ffffff);
+  overflow: hidden;
 }
 
 .settings-sidebar {
@@ -780,6 +781,12 @@ onUnmounted(() => {
   border-right: 1px solid var(--border-color, #d0d7de);
   padding: 24px 16px;
   flex-shrink: 0;
+  position: fixed;
+  top: 48px; /* 标题栏高度 */
+  left: 0;
+  bottom: 0;
+  overflow-y: auto;
+  z-index: 1000;
 }
 
 .sidebar-title {
@@ -818,9 +825,9 @@ onUnmounted(() => {
 }
 
 .nav-item.active {
-  background-color: var(--selected-bg, #ddf4ff);
-  color: var(--accent-blue, #0969da);
-  font-weight: 500;
+  background-color: var(--selected-bg, rgba(255, 255, 255, 0.1));
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .nav-item i {
@@ -832,8 +839,10 @@ onUnmounted(() => {
 .settings-content {
   flex: 1;
   padding: 32px;
+  padding-left: 320px; /* 侧边栏宽度 + padding + 额外留白 */
   overflow-y: auto;
   background-color: var(--bg-primary, #ffffff);
+  height: 100%;
 }
 
 .settings-panel {

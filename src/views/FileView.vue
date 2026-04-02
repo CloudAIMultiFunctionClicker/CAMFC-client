@@ -82,23 +82,37 @@ Email: admin@mc666.top
 </template>
 
 <style scoped>
-  /* 主容器样式 - 使用flex布局 */
+  /* 主容器样式 - 使用 flex 布局 */
   .main-container {
     display: flex;
     width: 100%;
-    height: calc(100vh - 65px); /* 减去头部高度 */
+    height: 100%;
     overflow: hidden; /* 防止滚动条出现在容器上 */
   }
 
-  /* 内容区域样式 - 使用CSS变量支持主题切换 */
+  /* 侧边栏样式 - 固定不动 */
+  .main-container :deep(.sidebar) {
+    flex-shrink: 0;
+    position: fixed;
+    top: 48px; /* 标题栏高度 */
+    left: 0;
+    bottom: 0;
+    overflow-y: auto;
+    z-index: 1000;
+  }
+
+  /* 内容区域样式 - 固定，不可滚动 */
   .content-area {
     flex: 1; /* 占据剩余空间 */
     background: var(--bg-primary, #0f172a); /* 使用主题主背景色 */
     padding: 24px;
+    padding-left: 280px; /* 侧边栏宽度 + 额外留白 */
     margin-left: 0; /* 默认没有左边距 */
     box-sizing: border-box;
-    overflow-y: auto; /* 内容区域可滚动 */
+    overflow: hidden; /* 内容区域不可滚动，让 FileTable 自己滚动 */
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 添加平滑过渡效果，与侧边栏动画保持一致 */
+    display: flex;
+    flex-direction: column;
   }
   
   /* 当侧边栏收起时，内容区域向左扩展填充空间 */

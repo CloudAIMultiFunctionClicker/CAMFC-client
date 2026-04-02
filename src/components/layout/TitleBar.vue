@@ -314,8 +314,11 @@ const showDevelopingToast = () => {
   flex-shrink: 0;
   background: var(--bg-header, #161b22);
   border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  position: relative;
-  z-index: 10000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99999;
   transition: background 0.3s ease, border-color 0.3s ease;
   -webkit-app-region: drag;
 }

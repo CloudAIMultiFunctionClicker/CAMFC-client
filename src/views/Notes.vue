@@ -22,7 +22,7 @@ Email: admin@mc666.top
         笔记
       </h1>
       <div class="header-actions">
-        <button class="add-btn" @click="showAddModal = true">
+        <button class="add-btn" @click="createAndOpenNote">
           <i class="ri-add-line"></i>
           新建笔记
         </button>
@@ -70,7 +70,7 @@ Email: admin@mc666.top
             v-for="note in currentPageNotes"
             :key="note.uuid"
             class="note-card"
-            :class="{ active: selectedNote?.uuid === note.uuid }"
+            :class="{ active: false }"
             @click="selectNote(note)"
           >
             <div class="note-title-wrapper">
@@ -124,102 +124,6 @@ Email: admin@mc666.top
         </div>
       </div>
     </div>
-
-    <Transition name="modal">
-      <div v-if="selectedNote" class="note-modal-overlay" @click.self="selectedNote = null; isEditing = false">
-        <div class="note-modal-content" @click.stop>
-          <div class="note-modal-header">
-            <span class="note-title-display">{{ selectedNote.title }}</span>
-            <div class="note-modal-actions">
-              <button v-if="!isEditing" class="edit-btn" @click="startEditing">
-                <i class="ri-edit-line"></i>
-              </button>
-              <template v-else>
-                <button class="save-btn" @click="saveAndClose">
-                  <i class="ri-check-line"></i>
-                </button>
-              </template>
-              <button class="close-btn" @click="handleCloseNote">
-                <i class="ri-close-line"></i>
-              </button>
-            </div>
-          </div>
-          <div class="note-modal-body">
-            <div v-if="!isEditing">
-              <div v-if="selectedNote.content" class="preview-text" v-html="renderMarkdown(selectedNote.content)"></div>
-              <div v-else class="preview-text empty">暂无内容</div>
-            </div>
-            <div v-else class="editor-container" :class="{ 'dragging-over': isDraggingOver }" @paste="handlePaste" @dragenter="handleDragEnter" @dragleave="handleDragLeave" @drop="handleDrop">
-              <div
-                ref="editorTextarea"
-                class="note-editor-content"
-                contenteditable="true"
-                placeholder="使用 Markdown 格式书写... 支持 Ctrl+V 粘贴图片、拖拽图片到此处"
-                @input="handleEditorInput"
-                @keydown="handleEditorKeydown"
-              ></div>
-            </div>
-          </div>
-          <div v-if="isEditing" class="editor-toolbar">
-            <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="insertMarkdown('h1')">
-                <i class="ri-h-1"></i>
-              </button>
-              <span class="tooltip">一级标题<span class="tooltip-syntax">语法: # 标题</span></span>
-            </div>
-            <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="insertMarkdown('h2')">
-                <i class="ri-h-2"></i>
-              </button>
-              <span class="tooltip">二级标题<span class="tooltip-syntax">语法: ## 标题</span></span>
-            </div>
-            <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="insertMarkdown('h3')">
-                <i class="ri-h-3"></i>
-              </button>
-              <span class="tooltip">三级标题<span class="tooltip-syntax">语法: ### 标题</span></span>
-            </div>
-            <div class="toolbar-divider"></div>
-            <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="insertMarkdown('bold')">
-                <i class="ri-bold"></i>
-              </button>
-              <span class="tooltip">加粗<span class="tooltip-syntax">语法: **文本**</span></span>
-            </div>
-            <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="insertMarkdown('italic')">
-                <i class="ri-italic"></i>
-              </button>
-              <span class="tooltip">斜体<span class="tooltip-syntax">语法: *文本*</span></span>
-            </div>
-            <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="insertMarkdown('strike')">
-                <i class="ri-strikethrough"></i>
-              </button>
-              <span class="tooltip">删除线<span class="tooltip-syntax">语法: ~~文本~~</span></span>
-            </div>
-            <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="insertMarkdown('code')">
-                <i class="ri-code-line"></i>
-              </button>
-              <span class="tooltip">行内代码<span class="tooltip-syntax">语法: `代码`</span></span>
-            </div>
-            <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="insertMarkdown('list')">
-                <i class="ri-list-unordered"></i>
-              </button>
-              <span class="tooltip">列表<span class="tooltip-syntax">语法: - 项目</span></span>
-            </div>
-            <div class="toolbar-btn-wrapper">
-              <button class="toolbar-btn" @click="handleImageClick">
-                <i class="ri-image-line"></i>
-              </button>
-              <span class="tooltip">图片<span class="tooltip-syntax">Ctrl+V 粘贴或拖拽图片</span></span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
 
     <Transition name="modal">
       <div v-if="showAddModal" class="modal-overlay" @click="showAddModal = false">
@@ -298,31 +202,14 @@ Email: admin@mc666.top
       </div>
     </Transition>
 
-    <Transition name="modal">
-      <div v-if="showSaveConfirmModal" class="modal-overlay" @click="cancelClose">
-        <div class="modal-content" @click.stop>
-          <div class="modal-header">
-            <h3><i class="ri-save-line"></i> 保存更改</h3>
-            <button class="close-btn" @click="cancelClose">
-              <i class="ri-close-line"></i>
-            </button>
-          </div>
-          <div class="modal-body save-modal-body">
-            <p>您对笔记做了更改，是否保存？</p>
-          </div>
-          <div class="modal-footer">
-            <button class="cancel-btn" @click="discardChanges">不保存</button>
-            <button class="confirm-btn" @click="confirmSave">保存</button>
-          </div>
-        </div>
-      </div>
-    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { listen } from '@tauri-apps/api/event'
 import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl } from '../config/backend.js'
 import { FileText } from 'lucide-vue-next'
@@ -349,26 +236,18 @@ async function apiRequest(url, data = {}) {
   return response.data
 }
 const notes = ref([])
-const selectedNote = ref(null)
 const showAddModal = ref(false)
 const newNoteTitle = ref('')
 const showDeleteModal = ref(false)
 const noteToDelete = ref(null)
 const showMoreMenu = ref(false)
 const moreMenuNote = ref(null)
-const showRenameModal = ref(false)
-const renameNote = ref(null)
-const newNoteName = ref('')
 const editingNote = ref(null)
 const editingCardNote = ref(null)
 const titleInput = ref(null)
 const cardTitleInput = ref(null)
-const isEditing = ref(false)
-const showSaveConfirmModal = ref(false)
 const showImportExportMenu = ref(false)
 const isConfirmingDelete = ref(false)
-const isDraggingOver = ref(false)
-let originalContent = ''
 
 const pageSize = 9
 const currentPage = ref(1)
@@ -384,9 +263,21 @@ const currentPageNotes = computed(() => {
 })
 
 const loadedNotes = ref({})
+let unlistenNoteSaved = null
 
-onMounted(() => {
+onMounted(async () => {
   loadNotes()
+  
+  // 监听笔记保存事件，刷新列表
+  unlistenNoteSaved = await listen('note-saved', () => {
+    loadNotes()
+  })
+})
+
+onUnmounted(() => {
+  if (unlistenNoteSaved) {
+    unlistenNoteSaved()
+  }
 })
 
 async function loadNotes() {
@@ -453,21 +344,72 @@ function nextPage() {
   goToPage(currentPage.value + 1)
 }
 
+// 打开笔记编辑窗口
+function openNoteEditorWindow(note) {
+  const windowLabel = `note-editor-${note.uuid}`
+  const url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}&content=${encodeURIComponent(note.content || '')}`
+  
+  const webview = new WebviewWindow(windowLabel, {
+    url: url,
+    title: note.title || '编辑笔记',
+    width: 900,
+    height: 600,
+    minWidth: 400,
+    minHeight: 300,
+    center: true,
+    decorations: false,
+    resizable: true
+  })
+  
+  webview.once('tauri://created', () => {
+    console.log('笔记编辑窗口创建成功:', windowLabel)
+  })
+  
+  webview.once('tauri://error', (e) => {
+    console.error('笔记编辑窗口创建失败:', e)
+    showToast('打开编辑窗口失败', '#ef4444')
+  })
+}
+
+async function createAndOpenNote() {
+  const uuid = crypto.randomUUID()
+  const now = new Date()
+  const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+  const defaultTitle = `未命名笔记_${timestamp}`
+  
+  // 只在本地创建，不保存到云端
+  const newNote = {
+    uuid,
+    title: defaultTitle,
+    content: '',
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString()
+  }
+  notes.value.unshift(newNote)
+  
+  // 直接打开编辑窗口，用户点击保存时才保存
+  openNoteEditorWindow(newNote)
+}
+
 async function addNote() {
   if (!newNoteTitle.value.trim()) return
 
   const uuid = crypto.randomUUID()
   try {
     await apiRequest('/note/add', { uuid, title: newNoteTitle.value })
-    notes.value.unshift({
+    const newNote = {
       uuid,
       title: newNoteTitle.value,
       content: '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    })
+    }
+    notes.value.unshift(newNote)
     newNoteTitle.value = ''
     showAddModal.value = false
+    
+    // 创建后直接打开编辑窗口
+    openNoteEditorWindow(newNote)
   } catch (e) {
     console.error('添加笔记失败:', e)
     showToast('添加笔记失败: ' + (e.message || '网络错误'), '#ef4444')
@@ -475,7 +417,8 @@ async function addNote() {
 }
 
 function selectNote(note) {
-  selectedNote.value = note
+  // 打开独立编辑窗口
+  openNoteEditorWindow(note)
 }
 
 function deleteNote(id) {
@@ -495,9 +438,6 @@ async function deleteNoteApi(uuid) {
   try {
     await apiRequest('/note/delete', { uuid })
     notes.value = notes.value.filter(n => n.uuid !== uuid)
-    if (selectedNote.value?.uuid === uuid) {
-      selectedNote.value = null
-    }
   } catch (e) {
     console.error('删除笔记失败:', e)
     showToast('删除笔记失败: ' + (e.message || '网络错误'), '#ef4444')
@@ -583,310 +523,7 @@ function handleDeleteClick() {
   }
 }
 
-function startEditing() {
-  if (selectedNote.value) {
-    originalContent = selectedNote.value.content
-  }
-  isEditing.value = true
-  setTimeout(() => {
-    initEditorContent()
-  }, 100)
-}
 
-function handleCloseNote() {
-  if (isEditing.value) {
-    if (selectedNote.value && selectedNote.value.content !== originalContent) {
-      showSaveConfirmModal.value = true
-    } else {
-      selectedNote.value = null
-      isEditing.value = false
-    }
-  } else {
-    selectedNote.value = null
-    isEditing.value = false
-  }
-}
-
-async function saveAndClose() {
-  if (editorTextarea.value) {
-    selectedNote.value.content = convertHtmlToMarkdown(editorTextarea.value.innerHTML)
-  }
-  await syncNoteToCloud(selectedNote.value)
-  selectedNote.value = null
-  isEditing.value = false
-}
-
-async function confirmSave() {
-  if (editorTextarea.value) {
-    selectedNote.value.content = convertHtmlToMarkdown(editorTextarea.value.innerHTML)
-  }
-  await syncNoteToCloud(selectedNote.value)
-  showSaveConfirmModal.value = false
-  selectedNote.value = null
-  isEditing.value = false
-}
-
-function discardChanges() {
-  if (selectedNote.value) {
-    selectedNote.value.content = notes.value.find(n => n.uuid === selectedNote.value?.uuid)?.content || ''
-  }
-  showSaveConfirmModal.value = false
-  selectedNote.value = null
-  isEditing.value = false
-}
-
-function cancelClose() {
-  showSaveConfirmModal.value = false
-}
-
-function renderMarkdown(text) {
-  if (!text) return ''
-  
-  let html = text
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-    .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-    .replace(/\*(.*)\*/gim, '<em>$1</em>')
-    .replace(/~~(.*)~~/gim, '<del>$1</del>')
-    .replace(/`([^`]+)`/gim, '<code>$1</code>')
-    .replace(/^- (.*$)/gim, '<li>$1</li>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<div class="markdown-image-wrapper"><img src="$2" alt="$1" class="markdown-image" onerror="this.style.display=\'none\'; this.nextSibling && (this.nextSibling.style.display=\'flex\')"></div><div class="markdown-image-error" style="display:none"><i class="ri-image-line"></i><span>图片加载失败</span></div>')
-    .replace(/\n/gim, '<br>')
-  
-  return html
-}
-
-function saveNote() {
-  if (selectedNote.value) {
-    selectedNote.value.updatedAt = new Date().toISOString()
-  }
-}
-
-async function syncNoteToCloud(note) {
-  try {
-    await apiRequest('/note/update', { 
-      uuid: note.uuid, 
-      content: note.content || '',
-      title: note.title 
-    })
-  } catch (e) {
-    console.error('同步笔记失败:', e)
-    showToast('同步失败: ' + (e.message || '网络错误'), '#ef4444')
-  }
-}
-
-const editorTextarea = ref(null)
-
-const initEditorContent = () => {
-  if (editorTextarea.value && selectedNote.value) {
-    editorTextarea.value.innerHTML = renderMarkdown(selectedNote.value.content || '')
-  }
-}
-
-const handleEditorInput = () => {
-  if (editorTextarea.value) {
-    const html = editorTextarea.value.innerHTML
-    selectedNote.value.content = convertHtmlToMarkdown(html)
-    saveNote()
-  }
-}
-
-const handleEditorKeydown = (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    const selection = window.getSelection()
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      const container = range.startContainer
-      if (container.nodeType === Node.TEXT_NODE && container.textContent.startsWith('#')) {
-        e.preventDefault()
-        document.execCommand('insertHTML', false, '<div><br></div>')
-      }
-    }
-  }
-}
-
-const convertHtmlToMarkdown = (html) => {
-  let text = html
-    .replace(/<div><br><\/div>/g, '\n')
-    .replace(/<div>(.*?)<\/div>/g, '$1\n')
-    .replace(/<h1>(.*?)<\/h1>/g, '# $1\n')
-    .replace(/<h2>(.*?)<\/h2>/g, '## $1\n')
-    .replace(/<h3>(.*?)<\/h3>/g, '### $1\n')
-    .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
-    .replace(/<b>(.*?)<\/b>/g, '**$1**')
-    .replace(/<em>(.*?)<\/em>/g, '*$1*')
-    .replace(/<i>(.*?)<\/i>/g, '*$1*')
-    .replace(/<del>(.*?)<\/del>/g, '~~$1~~')
-    .replace(/<code>(.*?)<\/code>/g, '`$1`')
-    .replace(/<li>(.*?)<\/li>/g, '- $1\n')
-    .replace(/<ul>|<\/ul>|<ol>|<\/ol>/g, '')
-    .replace(/<br\s*\/?>/g, '\n')
-    .replace(/<img src="([^"]*)" alt="([^"]*)"[^>]*>/g, '![$2]($1)')
-    .replace(/<span class="markdown-image-wrapper">/g, '')
-    .replace(/<div class="markdown-image-error"[^>]*>.*?<\/div>/g, '')
-    .replace(/<div class="img-error">.*?<\/div>/g, '')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&')
-  return text.trim()
-}
-
-const handlePaste = async (event) => {
-  if (!isEditing.value) return
-
-  const clipboardData = event.clipboardData
-  if (!clipboardData) return
-
-  const items = clipboardData.items
-  for (let i = 0; i < items.length; i++) {
-    if (items[i].type.startsWith('image/')) {
-      event.preventDefault()
-      const blob = items[i].getAsFile()
-      if (blob) {
-        await insertImageFromBlob(blob)
-      }
-      return
-    }
-  }
-}
-
-const insertImageFromBlob = (blob) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const base64 = e.target.result
-      insertMarkdownImage(base64)
-      resolve()
-    }
-    reader.readAsDataURL(blob)
-  })
-}
-
-const insertMarkdownImage = (imageData) => {
-  const editor = editorTextarea.value
-  if (!editor) return
-
-  const imgHtml = `<div class="markdown-image-wrapper"><img src="${imageData}" alt="截图_${Date.now()}" class="markdown-image" onerror="this.style.display='none'; this.nextSibling && (this.nextSibling.style.display='flex')"></div><div class="markdown-image-error" style="display:none"><i class="ri-image-line"></i><span>图片加载失败</span></div><div><br></div>`
-
-  const selection = window.getSelection()
-  if (selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0)
-    range.deleteContents()
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = imgHtml
-    range.insertNode(tempDiv)
-    range.collapse(false)
-  } else {
-    editor.innerHTML += imgHtml
-  }
-
-  selectedNote.value.content = convertHtmlToMarkdown(editor.innerHTML)
-  saveNote()
-  showToast('图片已插入', '#10b981')
-}
-
-const handleDragEnter = (e) => {
-  e.preventDefault()
-  isDraggingOver.value = true
-}
-
-const handleDragLeave = (e) => {
-  e.preventDefault()
-  isDraggingOver.value = false
-}
-
-const handleDrop = async (e) => {
-  e.preventDefault()
-  isDraggingOver.value = false
-
-  if (!isEditing.value) return
-
-  const files = e.dataTransfer.files
-  if (files.length === 0) return
-
-  const file = files[0]
-  if (!file.type.startsWith('image/')) {
-    showToast('仅支持图片文件', '#f59e0b')
-    return
-  }
-
-  await insertImageFromBlob(file)
-}
-
-const handleImageClick = () => {
-  navigator.clipboard.read().then(items => {
-    for (const item of items) {
-      if (item.types.some(type => type.startsWith('image/'))) {
-        item.getType('image/').then(blob => {
-          insertImageFromBlob(blob)
-        })
-        return
-      }
-    }
-    showToast('剪贴板无图片，可直接 Ctrl+V 粘贴或拖拽图片', '#f59e0b')
-  }).catch(() => {
-    showToast('可直接 Ctrl+V 粘贴或拖拽图片到编辑器', '#f59e0b')
-  })
-}
-
-function insertMarkdown(type) {
-  const editor = editorTextarea.value
-  if (!editor) return
-
-  const selection = window.getSelection()
-  let selectedText = ''
-  if (selection.rangeCount > 0) {
-    selectedText = selection.toString()
-  }
-
-  let insert = ''
-  switch (type) {
-    case 'h1':
-      insert = selectedText ? `<h1>${selectedText}</h1>` : '<h1>标题</h1>'
-      break
-    case 'h2':
-      insert = selectedText ? `<h2>${selectedText}</h2>` : '<h2>标题</h2>'
-      break
-    case 'h3':
-      insert = selectedText ? `<h3>${selectedText}</h3>` : '<h3>标题</h3>'
-      break
-    case 'bold':
-      insert = selectedText ? `<strong>${selectedText}</strong>` : '<strong>加粗文本</strong>'
-      break
-    case 'italic':
-      insert = selectedText ? `<em>${selectedText}</em>` : '<em>斜体文本</em>'
-      break
-    case 'strike':
-      insert = selectedText ? `<del>${selectedText}</del>` : '<del>删除线</del>'
-      break
-    case 'code':
-      insert = selectedText ? `<code>${selectedText}</code>` : '<code>代码</code>'
-      break
-    case 'list':
-      insert = selectedText ? `<li>${selectedText}</li>` : '<li>列表项</li>'
-      break
-    case 'image':
-      showToast('请使用 Ctrl+V 粘贴或拖拽图片', '#f59e0b')
-      return
-  }
-
-  if (selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0)
-    range.deleteContents()
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = insert
-    range.insertNode(tempDiv)
-    range.collapse(false)
-  } else {
-    editor.innerHTML += insert
-  }
-
-  selectedNote.value.content = convertHtmlToMarkdown(editor.innerHTML)
-  saveNote()
-}
 
 function formatDate(dateStr) {
   if (!dateStr) {
@@ -952,17 +589,30 @@ function importNotes() {
 
 <style scoped>
 .notes-container {
-  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 30px;
   max-width: 1200px;
   margin: 0 auto;
-  min-height: calc(100vh - 100px);
 }
 
 .notes-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 30px;
+  padding: 30px 0;
+  flex-shrink: 0; /* 防止被压缩 */
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-primary);
+  z-index: 10;
+}
+
+.notes-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 30px;
 }
 
 .page-title {
@@ -1310,113 +960,6 @@ function importNotes() {
   z-index: 100;
 }
 
-.note-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.note-modal-content {
-  background-color: var(--bg-secondary);
-  border-radius: .375rem;
-  width: 90%;
-  max-width: 900px;
-  max-height: 85vh;
-  min-height: 500px;
-  border: 1px solid var(--border-color);
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
-}
-
-.note-modal-overlay,
-.note-modal-overlay .note-modal-content {
-  animation-duration: 0.3s;
-  animation-timing-function: ease;
-}
-
-.note-modal-overlay.modal-enter-active .note-modal-content {
-  animation-name: modalScaleIn;
-}
-
-.note-modal-overlay.modal-leave-active .note-modal-content {
-  animation-name: modalScaleOut;
-}
-
-@keyframes modalScaleIn {
-  from {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes modalScaleOut {
-  from {
-    transform: scale(1);
-    opacity: 1;
-  }
-  to {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-}
-
-.note-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.note-modal-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.note-modal-body {
-  flex: 1;
-  padding: 24px;
-  overflow-y: auto;
-  min-height: 400px;
-}
-
-.title-input {
-  flex: 1;
-  background: none;
-  border: none;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-  outline: none;
-}
-
-.note-title-display {
-  flex: 1;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.title-input::placeholder {
-  color: var(--text-muted);
-}
-
 .close-btn {
   background: none;
   border: none;
@@ -1431,323 +974,6 @@ function importNotes() {
 .close-btn:hover {
   color: var(--text-primary);
   background-color: var(--hover-bg);
-}
-
-.editor-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.edit-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 18px;
-  padding: 4px 8px;
-  border-radius: .375rem;
-  transition: all 0.2s;
-}
-
-.edit-btn:hover {
-  color: var(--accent-blue, #3178c6);
-  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
-}
-
-.save-btn {
-  background: none;
-  border: none;
-  color: #22c55e;
-  cursor: pointer;
-  font-size: 18px;
-  padding: 4px 8px;
-  border-radius: .375rem;
-  transition: all 0.2s;
-}
-
-.save-btn:hover {
-  background-color: rgba(34, 197, 94, 0.1);
-}
-
-.preview-text {
-  font-size: 15px;
-  color: var(--text-primary);
-  line-height: 1.6;
-}
-
-.preview-text.empty {
-  color: var(--text-muted);
-}
-
-.preview-text :deep(h1),
-.preview-text :deep(h2),
-.preview-text :deep(h3) {
-  margin: 16px 0 10px;
-  color: var(--text-primary);
-}
-
-.preview-text :deep(code) {
-  background-color: var(--bg-primary);
-  padding: 2px 6px;
-  border-radius: .375rem;
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 14px;
-}
-
-.preview-text :deep(del) {
-  color: var(--text-muted);
-}
-
-.preview-text :deep(li) {
-  margin-left: 20px;
-  margin-bottom: 4px;
-}
-
-.preview-text :deep(.markdown-image) {
-  max-width: 100%;
-  border-radius: .375rem;
-  margin: 12px 0;
-}
-
-.preview-text :deep(.markdown-image-wrapper) {
-  display: inline-block;
-  width: 100%;
-}
-
-.preview-text :deep(.markdown-image-error) {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 20px;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: .375rem;
-  color: var(--text-muted);
-  margin: 12px 0;
-}
-
-.preview-text :deep(.markdown-image-error i) {
-  font-size: 20px;
-}
-
-.note-editor-content {
-  width: 100%;
-  height: 100%;
-  min-height: 400px;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 15px;
-  line-height: 1.7;
-  resize: none;
-  outline: none;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-.note-editor-content:empty::before {
-  content: attr(placeholder);
-  color: var(--text-muted);
-  pointer-events: none;
-  display: block;
-}
-
-.note-editor-content :deep(h1),
-.note-editor-content :deep(h2),
-.note-editor-content :deep(h3) {
-  margin: 16px 0 10px;
-  color: var(--text-primary);
-}
-
-.note-editor-content :deep(code) {
-  background-color: var(--bg-primary);
-  padding: 2px 6px;
-  border-radius: .375rem;
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 14px;
-}
-
-.note-editor-content :deep(strong) {
-  font-weight: 600;
-}
-
-.note-editor-content :deep(del) {
-  color: var(--text-muted);
-}
-
-.note-editor-content :deep(li) {
-  margin-left: 20px;
-  margin-bottom: 4px;
-}
-
-.note-editor-content :deep(.markdown-image) {
-  max-width: 100%;
-  border-radius: .375rem;
-  margin: 12px 0;
-}
-
-.note-editor-content :deep(.markdown-image-wrapper) {
-  display: inline-block;
-  width: 100%;
-}
-
-.note-editor-content :deep(.markdown-image-error) {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 20px;
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: .375rem;
-  color: var(--text-muted);
-  margin: 12px 0;
-}
-
-.editor-container {
-  width: 100%;
-  min-height: 400px;
-}
-
-.editor-container.dragging-over {
-  border: 2px dashed var(--accent-blue);
-  background-color: rgba(59, 130, 246, 0.1);
-  border-radius: .375rem;
-}
-
-.note-editor-textarea {
-  width: 100%;
-  height: 100%;
-  min-height: 400px;
-  background: none;
-  border: none;
-  color: var(--text-primary);
-  font-size: 15px;
-  line-height: 1.7;
-  resize: none;
-  outline: none;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-}
-
-.note-editor-textarea:empty::before {
-  content: attr(placeholder);
-  color: var(--text-muted);
-  pointer-events: none;
-  display: block;
-}
-
-.editor-toolbar {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background-color: var(--bg-secondary, #1e293b);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  z-index: 10;
-}
-
-.toolbar-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: none;
-  border: none;
-  border-radius: .375rem;
-  color: var(--text-secondary, #94a3b8);
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.toolbar-btn:hover {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
-  color: var(--text-primary, #f1f5f9);
-}
-
-.toolbar-divider {
-  width: 1px;
-  height: 20px;
-  background-color: var(--border-color, rgba(255, 255, 255, 0.2));
-  margin: 0 4px;
-}
-
-.toolbar-btn-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.toolbar-btn-wrapper:hover .tooltip {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
-
-.tooltip {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) translateY(5px);
-  padding: 8px 12px;
-  background-color: var(--bg-primary, #0f172a);
-  color: var(--text-primary, #f8fafc);
-  font-size: 12px;
-  white-space: nowrap;
-  border-radius: .375rem;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.2s ease;
-  pointer-events: none;
-  margin-bottom: 8px;
-  z-index: 100;
-}
-
-.tooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: var(--bg-primary, #0f172a);
-}
-
-.tooltip-syntax {
-  display: block;
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px dashed var(--border-color, rgba(255, 255, 255, 0.2));
-  font-family: 'Monaco', 'Menlo', monospace;
-  color: var(--accent-blue, #3178c6);
-  font-size: 11px;
-}
-
-.content-input {
-  flex: 1;
-  background: none;
-  border: none;
-  padding: 20px;
-  font-size: 15px;
-  color: var(--text-primary);
-  line-height: 1.6;
-  resize: none;
-  outline: none;
-}
-
-.content-input::placeholder {
-  color: var(--text-muted);
 }
 
 .modal-overlay {
@@ -1788,10 +1014,6 @@ function importNotes() {
 
 .modal-body {
   padding: 20px;
-}
-
-.save-modal-body {
-  padding-left: 24px;
 }
 
 .input-wrapper {
