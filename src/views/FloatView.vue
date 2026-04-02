@@ -94,15 +94,15 @@ const getInitialTheme = () => {
 const isLightMode = ref(getInitialTheme())
 
 const themeVars = computed(() => ({
-  '--float-bg': isLightMode.value ? '#f5f5f5' : '#1a1a2e',
+  '--float-bg': isLightMode.value ? '#f5f5f5' : '#0d0d0d',
   '--float-text': isLightMode.value ? '#333' : '#e0e0e0',
   '--float-btn-color': isLightMode.value ? '#666' : '#a0a0a0',
   '--float-btn-hover-bg': isLightMode.value ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.1)',
   '--float-btn-hover-color': isLightMode.value ? '#333' : '#fff',
-  '--float-menu-bg': isLightMode.value ? 'white' : '#2a2a3e',
+  '--float-menu-bg': isLightMode.value ? 'white' : '#1a1a1a',
   '--float-menu-text': isLightMode.value ? '#333' : '#e0e0e0',
-  '--float-menu-border': isLightMode.value ? '#e5e5e5' : '#3a3a4e',
-  '--float-tip-bg': isLightMode.value ? '#ffffff' : '#2a2a3e',
+  '--float-menu-border': isLightMode.value ? '#e5e5e5' : '#333333',
+  '--float-tip-bg': isLightMode.value ? '#ffffff' : '#1a1a1a',
 }))
 
 // 点击外部指令的处理函数

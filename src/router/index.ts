@@ -96,6 +96,12 @@ const router = createRouter({
       component: () => import('../views/ScreenshotView.vue')
     },
     {
+      path: '/note-editor',
+      name: 'noteEditor',
+      // 笔记编辑窗口页面
+      component: () => import('../views/NoteEditorWindow.vue')
+    },
+    {
       path: '/recent-activities',
       name: 'recentActivities',
       // 最近活动记录页面
@@ -128,6 +134,12 @@ router.beforeEach((to, _from, next) => {
 
   // 笔记页面不需要蓝牙连接，直接放行
   if (to.path === '/notes') {
+    next()
+    return
+  }
+
+  // 笔记编辑窗口不需要蓝牙连接，直接放行
+  if (to.path === '/note-editor') {
     next()
     return
   }

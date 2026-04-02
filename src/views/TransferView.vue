@@ -629,18 +629,33 @@ onUnmounted(() => {
 .main-container {
   display: flex;
   width: 100%;
-  height: calc(100vh - 65px);
+  height: 100%;
   overflow: hidden;
 }
 
+/* 侧边栏样式 - 固定不动 */
+.main-container :deep(.sidebar) {
+  flex-shrink: 0;
+  position: fixed;
+  top: 48px; /* 标题栏高度 */
+  left: 0;
+  bottom: 0;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+/* 内容区域样式 - 固定，不可滚动 */
 .content-area {
   flex: 1;
   background: var(--bg-primary, #0f172a);
   padding: 24px;
+  padding-left: 280px; /* 侧边栏宽度 + 额外留白 */
   margin-left: 0;
   box-sizing: border-box;
-  overflow-y: auto;
+  overflow: hidden; /* 内容区域不可滚动，让传输列表自己滚动 */
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
 }
 
 .content-area.expanded {
@@ -648,8 +663,8 @@ onUnmounted(() => {
 }
 
 .transfer-container {
-  max-width: 1000px;
-  margin: 0 auto;
+  max-width: none;
+  width: 100%;
 }
 
 .page-title {
