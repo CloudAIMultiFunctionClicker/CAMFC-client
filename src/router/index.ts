@@ -94,6 +94,12 @@ const router = createRouter({
       name: 'screenshot',
       // 截图预览页面
       component: () => import('../views/ScreenshotView.vue')
+    },
+    {
+      path: '/recent-activities',
+      name: 'recentActivities',
+      // 最近活动记录页面
+      component: () => import('../views/RecentActivities.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]

@@ -36,6 +36,7 @@ use reqwest::{Client, multipart};
 use crate::download::AuthInfo;
 // 导入配置模块
 use crate::config;
+use crate::activity_log::{ActivityLogManager, ActivityType};
 
 // 默认分片大小 256KB
 const CHUNK_SIZE: u64 = 256 * 1024; // 256KB
@@ -291,6 +292,7 @@ pub struct UploadTask {
     uploader: ChunkUploader,
     chunks_total: u32,
     target_path: Option<String>,
+    user_uuid: Option<String>,
 }
 
 impl UploadTask {
@@ -299,6 +301,7 @@ impl UploadTask {
         file_path: PathBuf,
         auth_info: AuthInfo,
         target_path: Option<&str>,
+        user_uuid: Option<String>,
     ) -> Result<Self> {
         // 获取文件名
         let filename = file_path
@@ -337,6 +340,7 @@ impl UploadTask {
             uploader,
             chunks_total,
             target_path: target_path.map(|s| s.to_string()),
+            user_uuid,
         })
     }
     
@@ -474,6 +478,16 @@ impl UploadTask {
             Ok(result) => {
                  tracing::error!("[start] 上传完成: {}", result);
                 *self.status.lock().await = UploadStatus::Completed;
+                
+                // 记录上传活动（如果提供了user_uuid）
+                if let Some(ref user_uuid) = self.user_uuid {
+                    if let Err(e) = record_upload_activity_for_user(user_uuid, &self.filename, self.total_size).await {
+                        tracing::warn!("记录上传活动失败: {}", e);
+                    } else {
+                        tracing::info!("已记录上传活动: {}", self.filename);
+                    }
+                }
+                
                 Ok(())
             }
             Err(e) => {
@@ -514,4 +528,11 @@ impl UploadTask {
             speed_kbps,
         }
     }
+}
+
+// 记录上传活动
+pub async fn record_upload_activity_for_user(user_uuid: &str, file_path: &str, file_size: u64) -> Result<()> {
+    let manager = ActivityLogManager::new(user_uuid.to_string());
+    manager.add_activity(ActivityType::Upload, file_path, file_size).await
+        .map_err(|e| anyhow::anyhow!("记录上传活动失败: {}", e))
 }

@@ -848,4 +848,41 @@ impl CpenDeviceManager {
     // 改为简单的"提前5秒刷新"策略，这样更简单可靠
     // 照逻辑每30秒重新请求TOTP，我们的策略是在缓存还有5秒过期时就刷新
     // 这样get_totp方法返回的值总是新鲜的（最多25秒内的）
+    
+    /// 获取用户UUID
+    /// 
+    /// 从设备ID中解析user_uuid（假设设备ID格式为 "user_uuid:device_id"）
+    /// 如果是DEBUG模式，从环境变量CAMFC_UUID获取
+    pub async fn get_user_uuid(&mut self) -> Result<String, CpenError> {
+        // DEBUG模式：从环境变量读取UUID
+        if Self::is_debug_mode() {
+            tracing::info!("🔧 DEBUG模式：从环境变量获取用户UUID");
+            dotenv::dotenv().ok();
+            if let Ok(uuid) = std::env::var("CAMFC_UUID") {
+                if !uuid.is_empty() {
+                    tracing::info!("✅ DEBUG模式用户UUID: {}", uuid);
+                    return Ok(uuid);
+                }
+            }
+            // 如果没有设置CAMFC_UUID，使用CAMFC_ID作为fallback
+            if let Some((id, _)) = Self::get_debug_config() {
+                tracing::info!("🔧 DEBUG模式：使用CAMFC_ID作为用户UUID: {}", id);
+                return Ok(id);
+            }
+        }
+        
+        // 从设备ID获取user_uuid
+        // 假设设备ID格式为 "user_uuid:device_id"
+        let device_id = self.get_device_id().await?;
+        
+        // 尝试解析user_uuid
+        if let Some((user_uuid, _)) = device_id.split_once(':') {
+            tracing::info!("从设备ID解析出用户UUID: {}", user_uuid);
+            Ok(user_uuid.to_string())
+        } else {
+            // 如果没有冒号分隔，整个设备ID就是user_uuid
+            tracing::info!("设备ID直接作为用户UUID: {}", device_id);
+            Ok(device_id)
+        }
+    }
 }

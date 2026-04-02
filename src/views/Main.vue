@@ -33,6 +33,12 @@ Email: admin@mc666.top
         <h3 class="card-title">笔记</h3>
       </button>
       
+      <!-- 最近活动按钮 -->
+      <button class="nav-card recent-activities" @click="goToRecentActivities">
+        <History :size="48" class="card-icon" />
+        <h3 class="card-title">最近活动</h3>
+      </button>
+      
       <!-- 设置按钮 -->
       <button class="nav-card settings" @click="goToSettings">
         <Settings :size="48" class="card-icon" />
@@ -48,7 +54,7 @@ Email: admin@mc666.top
 // 后续可以加动画效果，但现在先保证基本功能能用
 
 import { useRouter } from 'vue-router'
-import { Cloud, FileText, Settings } from 'lucide-vue-next'
+import { Cloud, FileText, Settings, History } from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -68,6 +74,12 @@ function goToSettings() {
 function goToNotes() {
   console.log('跳转到笔记页面（占位）')
   router.push('/notes')
+}
+
+// 跳转到最近活动页面
+function goToRecentActivities() {
+  console.log('跳转到最近活动页面')
+  router.push('/recent-activities')
 }
 
 // 注：这里没有onMounted之类的生命周期，因为就是个静态导航页
@@ -138,6 +150,11 @@ function goToNotes() {
 /* 笔记卡片特殊样式 */
 .notes:hover {
   box-shadow: 0 8px 20px rgba(var(--accent-purple-rgb, 188, 140, 255), 0.2);
+}
+
+/* 最近活动卡片特殊样式 */
+.recent-activities:hover {
+  box-shadow: 0 8px 20px rgba(var(--accent-orange-rgb, 245, 158, 11), 0.2);
 }
 
 /* 卡片图标 */

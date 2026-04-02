@@ -17,11 +17,13 @@ Email: admin@mc666.top
 <script setup>
 import Sidebar from '../components/layout/Sidebar.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getUploadProgress, pauseUpload, resumeUpload } from '../components/data/upload.js'
 import { getDownloadProgress, pauseDownload, resumeDownload } from '../components/data/download.js'
 import { getActiveUploads, setActiveUploads, getActiveDownloads, setActiveDownloads, openFile, openFolder, getUploadHistory, saveUploadHistory, getDownloadHistory, saveDownloadHistory } from '../components/data/storage.js'
 import { invoke } from '@tauri-apps/api/core'
 
+const router = useRouter()
 const isSidebarCollapsed = ref(false)
 
 const handleCollapseChange = (collapsed) => {
@@ -372,6 +374,10 @@ const clearCompleted = async (type) => {
   }
 }
 
+const goToRecentActivities = () => {
+  router.push('/recent-activities')
+}
+
 const getStatusText = (status) => {
   const map = {
     uploading: '上传中',
@@ -605,6 +611,13 @@ onUnmounted(() => {
               <p>暂无下载任务</p>
             </div>
           </div>
+        </div>
+
+        <div class="activity-section">
+          <button class="activity-btn" @click="goToRecentActivities">
+            <i class="ri-history-line"></i>
+            <span>最近活动记录</span>
+          </button>
         </div>
 
       </div>
@@ -942,5 +955,40 @@ onUnmounted(() => {
 
 .history-item {
   opacity: 0.8;
+}
+
+.activity-section {
+  padding: 20px;
+  text-align: center;
+  border-top: 1px solid var(--border-color);
+  background: rgba(0,0,0,0.2);
+}
+
+.activity-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.activity-btn:hover {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: white;
+}
+
+.activity-btn i {
+  font-size: 16px;
 }
 </style>

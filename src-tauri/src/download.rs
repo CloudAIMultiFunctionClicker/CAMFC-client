@@ -36,6 +36,7 @@ use hex::encode as hex_encode;
 // 导入配置模块
 use crate::config;
 use crate::storage;
+use crate::activity_log::{ActivityLogManager, ActivityType};
 
 // 默认分片大小 256KB
 const CHUNK_SIZE: u64 = 256 * 1024; // 256KB
@@ -128,6 +129,7 @@ pub struct DownloadProgress {
 pub struct AuthInfo {
     pub device_id: String,  // 设备ID
     pub totp: String,       // 动态密码
+    pub user_uuid: String,  // 用户UUID
 }
 
 impl AuthInfo {
@@ -135,7 +137,8 @@ impl AuthInfo {
     pub fn get_auth_header(&self) -> Result<header::HeaderMap> {
         let auth_json = serde_json::json!({
             "Id": self.device_id,
-            "Totp": self.totp
+            "Totp": self.totp,
+            "UserUuid": self.user_uuid
         }).to_string();
         
         let mut headers = header::HeaderMap::new();
@@ -284,6 +287,7 @@ pub struct DownloadTask {
     downloaded_size: Arc<Mutex<u64>>,
     status: Arc<Mutex<DownloadStatus>>,
     downloader: ChunkDownloader,
+    user_uuid: Option<String>,
 }
 
 impl DownloadTask {
@@ -292,6 +296,7 @@ impl DownloadTask {
         file_id: String,
         save_path: PathBuf,
         auth_info: AuthInfo,
+        user_uuid: Option<String>,
     ) -> Result<Self> {
         // 创建下载器
         let downloader = ChunkDownloader::new(auth_info)?;
@@ -313,6 +318,7 @@ impl DownloadTask {
             downloaded_size: Arc::new(Mutex::new(0)),
             status: Arc::new(Mutex::new(DownloadStatus::Pending)),
             downloader,
+            user_uuid,
         })
     }
     
@@ -471,6 +477,15 @@ impl DownloadTask {
         // 更新状态为完成
         *self.status.lock().await = DownloadStatus::Completed;
         tracing::info!("文件下载和验证完成: {}", self.file_name);
+        
+        // 记录下载活动（如果提供了user_uuid）
+        if let Some(ref user_uuid) = self.user_uuid {
+            if let Err(e) = record_download_activity_for_user(user_uuid, &self.file_id, self.total_size).await {
+                tracing::warn!("记录下载活动失败: {}", e);
+            } else {
+                tracing::info!("已记录下载活动: {}", self.file_id);
+            }
+        }
         
         Ok(())
     }
@@ -671,4 +686,11 @@ pub async fn calculate_file_hash(path: &Path) -> Result<String> {
     }
     
     Ok(hex_encode(hasher.finalize()))
+}
+
+// 记录下载活动
+pub async fn record_download_activity_for_user(user_uuid: &str, file_path: &str, file_size: u64) -> Result<()> {
+    let manager = ActivityLogManager::new(user_uuid.to_string());
+    manager.add_activity(ActivityType::Download, file_path, file_size).await
+        .map_err(|e| anyhow::anyhow!("记录下载活动失败: {}", e))
 }

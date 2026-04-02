@@ -27,6 +27,8 @@ mod storage;
 mod event_emitter;
 // 截图模块导入
 mod screenshot;
+// 活动日志模块导入
+mod activity_log;
 
 // 托盘相关导入
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
@@ -41,6 +43,7 @@ use download::{DownloadTask, AuthInfo, get_app_data_dir};
 use upload::UploadTask;
 use storage::{load_app_data, save_app_data, get_download_file_path, get_custom_download_path, set_custom_download_path, open_file, open_folder, load_download_path_to_cache, get_default_download_path};
 use event_emitter::set_app_handle;
+use activity_log::{get_recent_activities, record_upload_activity, record_download_activity, record_access_activity};
 
 // 导入同步原语
 // 原来用tokio::sync::Mutex，继续用这个，适合异步环境
@@ -207,6 +210,28 @@ async fn is_connected() -> Result<bool, String> {
     }
 }
 
+/// 获取用户UUID
+/// 
+/// 从设备ID中解析user_uuid（假设设备ID格式为 "user_uuid:device_id"）
+/// 如果是DEBUG模式，从环境变量CAMFC_UUID获取
+#[tauri::command]
+async fn get_user_uuid() -> Result<String, String> {
+    tracing::info!("前端调用get_user_uuid命令...");
+    
+    let mut manager = get_cpen_device_manager()?.lock().await;
+    
+    match manager.get_user_uuid().await {
+        Ok(user_uuid) => {
+            tracing::info!("用户UUID获取成功: {}", user_uuid);
+            Ok(user_uuid)
+        }
+        Err(e) => {
+            tracing::error!("用户UUID获取失败: {}", e);
+            Err(format!("获取用户UUID失败: {}", e))
+        }
+    }
+}
+
 /// 扫描并返回所有Cpen设备列表
 /// 
 /// 前端调用这个命令获取所有可连接的Cpen设备。
@@ -353,14 +378,16 @@ async fn download_file(file_id: String) -> Result<String, String> {
     // 初始化下载路径缓存
     let _ = load_download_path_to_cache().await;
     
-    // 先获取设备ID和TOTP
+    // 先获取设备ID、用户UUID和TOTP
     let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
+    let user_uuid = get_user_uuid().await.map_err(|e| format!("获取用户UUID失败: {}", e))?;
     let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
     
-    // 创建认证信息
+    // 创建认证信息（克隆user_uuid）
     let auth_info = AuthInfo {
         device_id,
         totp,
+        user_uuid: user_uuid.clone(),
     };
     
     // 获取下载目录
@@ -374,8 +401,8 @@ async fn download_file(file_id: String) -> Result<String, String> {
     
     tracing::info!("创建下载任务: {} -> {:?}", file_id, save_path);
     
-    // 创建下载任务
-    let task = DownloadTask::new(file_id.clone(), save_path.clone(), auth_info)
+    // 创建下载任务（传递user_uuid）
+    let task = DownloadTask::new(file_id.clone(), save_path.clone(), auth_info, Some(user_uuid.clone()))
         .await
         .map_err(|e| format!("创建下载任务失败: {}", e))?;
     
@@ -393,6 +420,7 @@ async fn download_file(file_id: String) -> Result<String, String> {
     let task_for_spawn = task_arc.clone();
     let file_id_for_spawn = file_id.clone();
     let save_path_for_spawn = save_path.clone();
+    let _user_uuid_for_spawn = user_uuid.clone();
     
     tokio::spawn(async move {
         tracing::info!("后台下载任务开始: {}", file_id_for_spawn);
@@ -538,18 +566,20 @@ async fn resume_download(file_id: String) -> Result<(), String> {
 async fn upload_file(file_path: String) -> Result<String, String> {
     tracing::info!("前端调用upload_file命令，文件路径: {}", file_path);
     
-    // 先获取设备ID和TOTP
+    // 先获取设备ID、用户UUID和TOTP
     let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
+    let user_uuid = get_user_uuid().await.map_err(|e| format!("获取用户UUID失败: {}", e))?;
     let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
     
-    // 创建认证信息
+    // 创建认证信息（克隆user_uuid）
     let auth_info = AuthInfo {
         device_id,
         totp,
+        user_uuid: user_uuid.clone(),
     };
     
-    // 创建上传任务
-    let task = UploadTask::new(std::path::PathBuf::from(&file_path), auth_info, None)
+    // 创建上传任务（传递user_uuid）
+    let task = UploadTask::new(std::path::PathBuf::from(&file_path), auth_info, None, Some(user_uuid.clone()))
         .await
         .map_err(|e| format!("创建上传任务失败: {}", e))?;
     
@@ -570,6 +600,7 @@ async fn upload_file(file_path: String) -> Result<String, String> {
     // 在后台异步执行上传，不阻塞前端响应
     let task_for_spawn = task_arc.clone();
     let upload_id_for_spawn = upload_id.clone();
+    let _user_uuid_for_spawn = user_uuid.clone();
     
     tokio::spawn(async move {
         tracing::info!("后台上传任务开始: {}", upload_id_for_spawn);
@@ -725,14 +756,16 @@ async fn upload_files_from_paths(file_paths: Vec<String>, target_path: Option<St
         }));
     }
     
-    // 先获取设备ID和TOTP（只需要获取一次）
+    // 先获取设备ID、用户UUID和TOTP（只需要获取一次）
     let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
+    let user_uuid = get_user_uuid().await.map_err(|e| format!("获取用户UUID失败: {}", e))?;
     let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
     
     // 创建认证信息
     let auth_info = AuthInfo {
         device_id,
         totp,
+        user_uuid: user_uuid.clone(),
     };
     
     let mut upload_ids = Vec::new();
@@ -746,11 +779,12 @@ async fn upload_files_from_paths(file_paths: Vec<String>, target_path: Option<St
         let file_path_str = file_path.clone();
         file_paths_str.push(file_path_str.clone());
         
-        // 创建上传任务，传递目标路径
+        // 创建上传任务，传递目标路径和user_uuid
         let task = UploadTask::new(
             std::path::PathBuf::from(&file_path), 
             auth_info.clone(), 
-            target_path.as_deref()
+            target_path.as_deref(),
+            Some(user_uuid.clone())
         )
             .await
             .map_err(|e| format!("创建上传任务失败: {}", e))?;
@@ -770,6 +804,7 @@ async fn upload_files_from_paths(file_paths: Vec<String>, target_path: Option<St
         // 在后台异步执行上传，不阻塞前端响应
         let task_for_spawn = task_arc.clone();
         let upload_id_for_spawn = upload_id.clone();
+        let _user_uuid_for_spawn = user_uuid.clone();
         
         tokio::spawn(async move {
             tracing::info!("后台上传任务开始: {}", upload_id_for_spawn);
@@ -816,22 +851,25 @@ async fn select_and_upload_file(target_path: Option<String>) -> Result<serde_jso
             // 转换为字符串
             let file_path_str = file_path.to_string_lossy().to_string();
             
-            // 先获取设备ID和TOTP
+            // 先获取设备ID、用户UUID和TOTP
             let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
+            let user_uuid = get_user_uuid().await.map_err(|e| format!("获取用户UUID失败: {}", e))?;
             let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
             
-            // 创建认证信息
+            // 创建认证信息（克隆user_uuid）
             let auth_info = AuthInfo {
                 device_id,
                 totp,
+                user_uuid: user_uuid.clone(),
             };
             
-            // 创建上传任务，传递目标路径
+            // 创建上传任务，传递目标路径和user_uuid
             tracing::info!("[DEBUG] 开始创建上传任务，目标路径: {:?}", target_path);
             let task = UploadTask::new(
                 file_path.clone(), 
                 auth_info, 
-                target_path.as_deref()
+                target_path.as_deref(),
+                Some(user_uuid.clone())
             )
                 .await
                 .map_err(|e| format!("创建上传任务失败: {}", e))?;
@@ -904,13 +942,15 @@ async fn select_and_upload_multiple_files() -> Result<serde_json::Value, String>
                 }));
             }
             
-            // 先获取设备ID和TOTP（只需要获取一次）
+            // 先获取设备ID、用户UUID和TOTP（只需要获取一次）
             let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
+            let user_uuid = get_user_uuid().await.map_err(|e| format!("获取用户UUID失败: {}", e))?;
             let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
             
             let auth_info = AuthInfo {
                 device_id,
                 totp,
+                user_uuid: user_uuid.clone(),
             };
             
             let mut upload_ids = Vec::new();
@@ -921,8 +961,8 @@ async fn select_and_upload_multiple_files() -> Result<serde_json::Value, String>
                 let file_path_str = file_path.to_string_lossy().to_string();
                 file_paths_str.push(file_path_str.clone());
                 
-                // 创建上传任务
-                let task = UploadTask::new(file_path.clone(), auth_info.clone(), None)
+                // 创建上传任务（传递user_uuid）
+                let task = UploadTask::new(file_path.clone(), auth_info.clone(), None, Some(user_uuid.clone()))
                     .await
                     .map_err(|e| format!("创建上传任务失败: {}", e))?;
                 
@@ -1379,6 +1419,7 @@ pub fn run() {
             scan_all_bluetooth_devices, // 扫描所有蓝牙设备
             connect_cpen_device, // 连接指定的Cpen设备
             get_device_id,      // 获取设备ID
+            get_user_uuid,      // 获取用户UUID
             get_connection_status, // 获取连接状态
             is_connected,       // 检查是否已建立稳定连接
             disconnect,         // 断开连接
@@ -1418,6 +1459,11 @@ pub fn run() {
             get_cpen_bluetooth_version,
             // 蓝牙保活命令
             send_keep_alive,
+            // 活动日志命令
+            get_recent_activities,
+            record_upload_activity,
+            record_download_activity,
+            record_access_activity,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
