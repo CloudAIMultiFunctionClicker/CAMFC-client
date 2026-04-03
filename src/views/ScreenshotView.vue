@@ -112,6 +112,7 @@ Email: admin@mc666.top
 <script setup>
 import { ref, onBeforeMount, onMounted, onUnmounted, watch } from 'vue'
 import { listen } from '@tauri-apps/api/event'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { showToast } from '../components/layout/showToast.js'
 import AnnotatePanel from '../components/annotate/AnnotatePanel.vue'
 import { saveAnnotations, loadAnnotations, generateImageId } from '../utils/annotationStorage.js'
@@ -584,15 +585,51 @@ const saveToNotes = async () => {
     
     showToast('截图已保存到笔记', '#10b981')
     
-    // 延迟跳转到笔记页面
-    setTimeout(() => {
-      window.location.href = '#/notes'
-    }, 500)
+    // 主窗口立即跳转回主页面
+    window.location.href = '/' 
+    
+    // 子窗口打开笔记编辑页面
+    openNoteEditorWindow({ uuid, title: noteTitle, content: markdownContent })
     
   } catch (error) {
     console.error('保存到笔记失败:', error)
     showToast('保存失败：' + (error.message || '网络错误'), '#ef4444')
   }
+}
+
+// 打开笔记编辑窗口（子窗口）
+const openNoteEditorWindow = (note) => {
+  const windowLabel = `note-editor-${note.uuid}`
+  const url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
+
+  const webview = new WebviewWindow(windowLabel, {
+    url: url,
+    title: note.title || '编辑笔记',
+    width: 900,
+    height: 600,
+    minWidth: 400,
+    minHeight: 300,
+    center: true,
+    decorations: false,
+    resizable: true
+  })
+
+  webview.once('tauri://created', async () => {
+    console.log('笔记编辑窗口创建成功:', windowLabel)
+    // 窗口创建后再发送内容，避免 URL 过长
+    setTimeout(async () => {
+      try {
+        await webview.emit('load-note-content', { content: note.content || '' })
+      } catch (e) {
+        console.error('发送笔记内容失败:', e)
+      }
+    }, 300)
+  })
+
+  webview.once('tauri://error', (e) => {
+    console.error('笔记编辑窗口创建失败:', e)
+    showToast('打开编辑窗口失败', '#ef4444')
+  })
 }
 
 const goBack = () => {

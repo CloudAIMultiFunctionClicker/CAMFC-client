@@ -81,7 +81,7 @@ pub async fn init_config() -> Result<()> {
             // 3. 远程获取失败，使用默认配置
             let default_config = BackendConfig {
                 base_url: "http://localhost".to_string(),
-                port: 8005,
+                port: 7548,
             };
             tracing::info!("使用默认配置: {}", default_config.get_full_url());
             BACKEND_CONFIG.set(default_config)
