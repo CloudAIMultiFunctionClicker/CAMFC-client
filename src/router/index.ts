@@ -106,6 +106,12 @@ const router = createRouter({
       name: 'recentActivities',
       // 最近活动记录页面
       component: () => import('../views/RecentActivities.vue')
+    },
+    {
+      path: '/empty',
+      name: 'empty',
+      // 空白页面
+      component: () => import('../views/Empty.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]
@@ -140,6 +146,12 @@ router.beforeEach((to, _from, next) => {
 
   // 笔记编辑窗口不需要蓝牙连接，直接放行
   if (to.path === '/note-editor') {
+    next()
+    return
+  }
+
+  // 空白窗口不需要蓝牙连接，直接放行
+  if (to.path === '/empty') {
     next()
     return
   }

@@ -32,6 +32,12 @@ const isFloatPage = computed(() => route.path === '/float')
 // 判断是否在笔记编辑器子窗口
 const isNoteEditorPage = computed(() => route.path === '/note-editor')
 
+// 判断是否在空白窗口
+const isEmptyPage = computed(() => route.path === '/empty')
+
+// 判断是否需要隐藏标题栏（笔记编辑器和空白窗口）
+const shouldHideTitleBar = computed(() => isNoteEditorPage.value || isEmptyPage.value)
+
 // TOTP定时刷新
 let totpRefreshInterval = null
 const TOTP_REFRESH_INTERVAL = 30000
@@ -597,8 +603,8 @@ setTimeout(() => {
   <!-- 整个应用的主题通过 body 类名控制 -->
   <div class="app-container" v-if="!isFloatPage">
     <!-- 自定义顶栏 -->
-    <TitleBar v-if="!isNoteEditorPage" />
-    <div class="main-content" :style="isNoteEditorPage ? 'padding-top: 0;' : ''">
+    <TitleBar v-if="!shouldHideTitleBar" />
+    <div class="main-content" :style="shouldHideTitleBar ? 'padding-top: 0;' : ''">
       <router-view></router-view>
     </div>
   </div>

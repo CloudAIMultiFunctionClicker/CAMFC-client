@@ -492,6 +492,8 @@ async function openScreenshotWindow(screenshotData) {
         if (webviewWindow) {
           await webviewWindow.emit('screenshot-data', screenshotData)
         }
+        // 截图成功后创建一个新的空白窗口
+        createBlankWindow()
       })
 
       webview.once('tauri://error', (e) => {
@@ -515,10 +517,40 @@ async function openScreenshotWindow(screenshotData) {
         // 再发送截图数据
         await webview.emit('screenshot-data', screenshotData)
         console.log('截图数据已发送')
+        // 截图成功后创建一个新的空白窗口
+        createBlankWindow()
       }
     }
   } catch (e) {
     console.error('打开截图窗口失败:', e)
+  }
+}
+
+/**
+ * 创建新的空白窗口
+ */
+function createBlankWindow() {
+  console.log('创建新的空白窗口')
+  try {
+    const blankWindow = new WebviewWindow(`blank-${Date.now()}`, {
+      url: '/empty',
+      title: '空白窗口',
+      width: 800,
+      height: 600,
+      center: true,
+      decorations: false,
+      resizable: true
+    })
+
+    blankWindow.once('tauri://created', () => {
+      console.log('空白窗口创建成功')
+    })
+
+    blankWindow.once('tauri://error', (e) => {
+      console.error('空白窗口创建失败:', e)
+    })
+  } catch (e) {
+    console.error('创建空白窗口失败:', e)
   }
 }
 
