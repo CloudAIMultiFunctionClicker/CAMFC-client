@@ -295,18 +295,21 @@ watch([activeTab, limit], () => {
 </template>
 
 <style scoped>
+/* 参考 Notes.vue 的样式规范，使用 CSS 变量 */
+
 .recent-activities-container {
   display: flex;
   height: 100vh;
-  background-color: #f3f4f6;
+  background-color: var(--bg-primary);
 }
 
 .content {
   flex: 1;
   margin-left: 240px;
-  padding: 24px;
+  padding: 30px;
   overflow-y: auto;
   transition: margin-left 0.3s ease;
+  max-width: 1200px;
 }
 
 .content.sidebar-collapsed {
@@ -315,18 +318,23 @@ watch([activeTab, limit], () => {
 
 .header {
   margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .header h1 {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
   margin: 0 0 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-muted);
   margin: 0;
 }
 
@@ -336,6 +344,10 @@ watch([activeTab, limit], () => {
   gap: 16px;
   margin-bottom: 24px;
   flex-wrap: wrap;
+  padding: 20px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
 }
 
 .filter-group,
@@ -348,7 +360,7 @@ watch([activeTab, limit], () => {
 .filter-group label,
 .limit-group label {
   font-size: 14px;
-  color: #374151;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 
@@ -359,43 +371,46 @@ watch([activeTab, limit], () => {
 
 .filter-btn {
   padding: 8px 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background-color: white;
-  color: #374151;
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .filter-btn:hover {
-  background-color: #f9fafb;
-  border-color: #d1d5db;
+  background-color: var(--hover-bg);
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
 }
 
 .filter-btn.active {
-  background-color: #3b82f6;
-  border-color: #3b82f6;
+  background-color: var(--accent-blue);
+  border-color: var(--accent-blue);
   color: white;
 }
 
 .limit-input {
   width: 80px;
   padding: 8px 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
   font-size: 14px;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .limit-input:focus {
   outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(var(--accent-blue-rgb, 49, 120, 198), 0.2);
 }
 
 .limit-hint {
   font-size: 12px;
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .refresh-btn {
@@ -403,18 +418,19 @@ watch([activeTab, limit], () => {
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background-color: white;
-  color: #374151;
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background-color: #f9fafb;
-  border-color: #d1d5db;
+  background-color: var(--hover-bg);
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
 }
 
 .refresh-btn:disabled {
@@ -436,10 +452,10 @@ watch([activeTab, limit], () => {
   display: flex;
   gap: 24px;
   margin-bottom: 24px;
-  padding: 12px 16px;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 16px 20px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
 }
 
 .stat-item {
@@ -451,12 +467,12 @@ watch([activeTab, limit], () => {
 .stat-value {
   font-size: 20px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--text-primary);
 }
 
 .stat-label {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .activities-list {
@@ -466,15 +482,15 @@ watch([activeTab, limit], () => {
 }
 
 .activity-item {
-  background-color: white;
-  border-radius: 8px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
   padding: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: box-shadow 0.2s;
+  transition: all 0.2s;
 }
 
 .activity-item:hover {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent-blue);
 }
 
 .activity-header {
@@ -487,7 +503,7 @@ watch([activeTab, limit], () => {
 .activity-icon {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: .375rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -506,7 +522,7 @@ watch([activeTab, limit], () => {
 
 .activity-time {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .activity-body {
@@ -519,19 +535,19 @@ watch([activeTab, limit], () => {
 .file-name {
   font-size: 15px;
   font-weight: 500;
-  color: #1f2937;
+  color: var(--text-primary);
   word-break: break-all;
 }
 
 .file-path {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--text-secondary);
   word-break: break-all;
 }
 
 .file-size {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--text-muted);
 }
 
 .empty-state {
@@ -541,33 +557,38 @@ watch([activeTab, limit], () => {
   justify-content: center;
   padding: 64px 24px;
   text-align: center;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
 }
 
 .empty-icon {
   margin-bottom: 24px;
   opacity: 0.5;
+  color: var(--text-muted);
 }
 
 .empty-text {
   font-size: 16px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0 0 24px 0;
 }
 
 .clear-filters-btn {
   padding: 10px 20px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background-color: white;
-  color: #374151;
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  background-color: var(--bg-primary);
+  color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .clear-filters-btn:hover {
-  background-color: #f9fafb;
-  border-color: #d1d5db;
+  background-color: var(--hover-bg);
+  border-color: var(--accent-blue);
+  color: var(--text-primary);
 }
 
 .loading-state {
@@ -576,6 +597,9 @@ watch([activeTab, limit], () => {
   align-items: center;
   justify-content: center;
   padding: 64px 24px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
 }
 
 .spinner-container {
@@ -587,7 +611,35 @@ watch([activeTab, limit], () => {
 
 .spinner-container p {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--text-secondary);
   margin: 0;
 }
+
+/* 响应式 - 竖屏适配 */
+@media (max-width: 768px) {
+  .content {
+    padding: 20px;
+    margin-left: 0;
+  }
+  
+  .content.sidebar-collapsed {
+    margin-left: 0;
+  }
+  
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-group,
+  .limit-group {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .filter-buttons {
+    flex-wrap: wrap;
+  }
+}
 </style>
+

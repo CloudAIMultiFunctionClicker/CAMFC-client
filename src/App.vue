@@ -259,14 +259,14 @@ onMounted(async () => {
     showToast('触发截图', '#3b82f6')
   })
   
-  // 监听显示主窗口 + note 页面命令（0x10）
+  // 监听显示主窗口 + 新建笔记命令（0x10）
   const showNoteUnlisten = await listen('show-note-command', async () => {
     if (route.path === '/float') {
       return
     }
-    console.log('收到显示主窗口 + note 命令（0x10）')
-    showToast('打开笔记', '#10b981')
-    // 显示主窗口并导航到 note 页面
+    console.log('收到显示主窗口 + 新建笔记命令（0x10）')
+    showToast('新建笔记', '#10b981')
+    // 显示主窗口并直接打开新建笔记窗口
     try {
       const { Window } = await import('@tauri-apps/api/window')
       const mainWindow = await Window.getByLabel('main')
@@ -275,13 +275,38 @@ onMounted(async () => {
         await mainWindow.unminimize()
         await mainWindow.setFocus()
       }
-      // 发送导航事件
-      const webview = await WebviewWindow.getByLabel('main')
-      if (webview) {
-        await webview.emit('navigate', '/notes')
-      }
+      
+      // 直接创建并打开新笔记（类似点击"新建笔记"按钮）
+      const uuid = crypto.randomUUID()
+      const now = new Date()
+      const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+      const defaultTitle = `未命名笔记_${timestamp}`
+      
+      const url = `/note-editor?uuid=${uuid}&title=${encodeURIComponent(defaultTitle)}`
+      const windowLabel = `note-editor-${uuid}`
+      
+      const webview = new WebviewWindow(windowLabel, {
+        url: url,
+        title: defaultTitle,
+        width: 900,
+        height: 600,
+        minWidth: 400,
+        minHeight: 300,
+        center: true,
+        decorations: false,
+        resizable: true
+      })
+      
+      webview.once('tauri://created', () => {
+        console.log('笔记编辑窗口创建成功:', windowLabel)
+      })
+      
+      webview.once('tauri://error', (e) => {
+        console.error('笔记编辑窗口创建失败:', e)
+        showToast('打开编辑窗口失败', '#ef4444')
+      })
     } catch (e) {
-      console.error('打开 note 页面失败:', e)
+      console.error('新建笔记失败:', e)
     }
   })
   
