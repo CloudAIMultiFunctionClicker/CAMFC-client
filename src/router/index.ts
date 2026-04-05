@@ -112,6 +112,12 @@ const router = createRouter({
       name: 'empty',
       // 空白页面
       component: () => import('../views/Empty.vue')
+    },
+    {
+      path: '/screenshot-window',
+      name: 'screenshotWindow',
+      // 截图窗口（独立窗口，不受路由守卫影响）
+      component: () => import('../views/ScreenshotWindow.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]
@@ -152,6 +158,12 @@ router.beforeEach((to, _from, next) => {
 
   // 空白窗口不需要蓝牙连接，直接放行
   if (to.path === '/empty') {
+    next()
+    return
+  }
+
+  // 截图窗口不需要蓝牙连接，直接放行
+  if (to.path === '/screenshot-window') {
     next()
     return
   }

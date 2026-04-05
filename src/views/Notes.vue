@@ -214,7 +214,7 @@ import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl } from '../config/backend.js'
 import { FileText } from 'lucide-vue-next'
 
-const timeOut = 3000
+const timeOut = 10000 // 10 秒超时
 
 async function getAuthHeader() {
   try {

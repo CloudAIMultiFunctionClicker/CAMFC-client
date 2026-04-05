@@ -471,86 +471,46 @@ async function handleScreenshot() {
  */
 async function openScreenshotWindow(screenshotData) {
   try {
-    // 获取主窗口
-    let mainWindow = await Window.getByLabel('main')
-
-    if (!mainWindow) {
-      // 创建新窗口
-      console.log('创建新的主窗口来显示截图')
-      const webview = new WebviewWindow('main', {
-        url: '/screenshot',
-        title: 'CAMFC Cloud',
-        width: 1152,
-        height: 648,
-        center: true
-      })
-
-      // 等待窗口创建完成后再发送截图数据
-      webview.once('tauri://created', async () => {
-        console.log('截图窗口创建成功，发送截图数据')
-        const webviewWindow = await WebviewWindow.getByLabel('main')
-        if (webviewWindow) {
-          await webviewWindow.emit('screenshot-data', screenshotData)
-        }
-        // 截图成功后创建一个新的空白窗口
-        createBlankWindow()
-      })
-
-      webview.once('tauri://error', (e) => {
-        console.error('截图窗口创建失败:', e)
-      })
-    } else {
-      // 窗口已存在，显示并导航到截图页面
-      console.log('使用现有主窗口显示截图')
-      await mainWindow.show()
-      await mainWindow.unminimize()
-      await mainWindow.center()
-      await mainWindow.setFocus()
-
-      // 发送导航事件
-      const webview = await WebviewWindow.getByLabel('main')
-      if (webview) {
-        // 先发送导航事件
-        await webview.emit('navigate', '/screenshot')
-        // 等待更长时间确保页面完全加载（第一次可能需要更多时间）
-        await new Promise(resolve => setTimeout(resolve, 300))
-        // 再发送截图数据
-        await webview.emit('screenshot-data', screenshotData)
-        console.log('截图数据已发送')
-        // 截图成功后创建一个新的空白窗口
-        createBlankWindow()
-      }
-    }
-  } catch (e) {
-    console.error('打开截图窗口失败:', e)
-  }
-}
-
-/**
- * 创建新的空白窗口
- */
-function createBlankWindow() {
-  console.log('创建新的空白窗口')
-  try {
-    const blankWindow = new WebviewWindow(`blank-${Date.now()}`, {
-      url: '/empty',
-      title: '空白窗口',
-      width: 800,
-      height: 600,
+    console.log('创建独立的截图窗口')
+    
+    const screenshotWindowLabel = `screenshot-${Date.now()}`
+    
+    const screenshotWindow = new WebviewWindow(screenshotWindowLabel, {
+      url: '/screenshot-window',
+      title: '截图',
+      width: 1152,
+      height: 648,
       center: true,
       decorations: false,
       resizable: true
     })
 
-    blankWindow.once('tauri://created', () => {
-      console.log('空白窗口创建成功')
+    screenshotWindow.once('tauri://created', async () => {
+      console.log('截图窗口创建成功')
+      
+      // 等待窗口完全加载
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      // 检查窗口是否仍然存在
+      try {
+        const windowExists = await Window.getByLabel(screenshotWindowLabel)
+        if (windowExists) {
+          console.log('发送截图数据')
+          await screenshotWindow.emit('screenshot-data', screenshotData)
+          console.log('截图数据已发送')
+        }
+      } catch (e) {
+        console.error('检查或发送数据失败:', e)
+      }
     })
 
-    blankWindow.once('tauri://error', (e) => {
-      console.error('空白窗口创建失败:', e)
+    screenshotWindow.once('tauri://error', (e) => {
+      console.error('截图窗口创建失败:', e)
     })
+    
+    console.log('截图窗口已创建，标签:', screenshotWindowLabel)
   } catch (e) {
-    console.error('创建空白窗口失败:', e)
+    console.error('打开截图窗口失败:', e)
   }
 }
 

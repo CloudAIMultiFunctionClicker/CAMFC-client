@@ -5,9 +5,13 @@
 
 <script setup>
 import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 onMounted(() => {
-  console.log('空白窗口已加载')
+  console.log('空白窗口已加载，重定向到截图页面')
+  router.push('/screenshot')
 })
 </script>
 

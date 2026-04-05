@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main", "float", "note-editor-*"],
+  "windows": ["main", "float", "note-editor-*", "screenshot-*"],
   "permissions": [
     "core:default",
     "opener:default",
@@ -23,6 +23,8 @@
     "core:window:allow-unmaximize",
     "core:window:allow-close",
     "core:window:allow-destroy",
-    "core:webview:allow-create-webview-window"
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-is-maximized",
+    "core:event:allow-listen"
   ]
 }
