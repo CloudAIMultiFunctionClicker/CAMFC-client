@@ -221,6 +221,7 @@ Email: admin@mc666.top
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { showToast } from '../components/layout/showToast.js'
 import AnnotatePanel from '../components/annotate/AnnotatePanel.vue'
 import { saveAnnotations, loadAnnotations, generateImageId } from '../utils/annotationStorage.js'
@@ -773,14 +774,10 @@ const saveToNotes = async () => {
     
     showToast('截图已保存到笔记', '#10b981')
     
-    // 关闭当前窗口
-    await closeWindow()
-    
-    // 主窗口跳转回主页面
-    window.location.href = '/' 
-    
-    // 子窗口打开笔记编辑页面
-    openNoteEditorWindow({ uuid, title: noteTitle, content: markdownContent })
+    // 等待 0.2 秒后打开笔记，不关闭截图窗口
+    setTimeout(() => {
+      openNoteEditorWindow({ uuid, title: noteTitle, content: markdownContent })
+    }, 200)
     
   } catch (error) {
     console.error('保存到笔记失败:', error)
@@ -792,6 +789,12 @@ const saveToNotes = async () => {
 const openNoteEditorWindow = (note) => {
   const windowLabel = `note-editor-${note.uuid}`
   const url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
+
+  console.log('准备打开笔记编辑窗口:', {
+    windowLabel,
+    url,
+    noteTitle: note.title
+  })
 
   const webview = new WebviewWindow(windowLabel, {
     url: url,
@@ -811,6 +814,7 @@ const openNoteEditorWindow = (note) => {
     setTimeout(async () => {
       try {
         await webview.emit('load-note-content', { content: note.content || '' })
+        console.log('已发送笔记内容到窗口')
       } catch (e) {
         console.error('发送笔记内容失败:', e)
       }
