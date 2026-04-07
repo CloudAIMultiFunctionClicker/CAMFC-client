@@ -105,15 +105,23 @@ const toggleTheme = async () => {
   
   localStorage.setItem('theme-preference', isLightMode.value ? 'light' : 'dark')
   
+  // 通知所有子窗口主题变化
   try {
     const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
-    const floatWindow = await WebviewWindow.getByLabel('float')
-    if (floatWindow) {
-      console.log('[主题切换] 正在通知悬浮窗...')
-      await floatWindow.emit('theme-changed', isLightMode.value ? 'light' : 'dark')
-      console.log('[主题切换] 已通知悬浮窗')
-    } else {
-      console.log('[主题切换] 悬浮窗不存在')
+    const theme = isLightMode.value ? 'light' : 'dark'
+    
+    // 获取所有可能的子窗口并发送事件
+    const windowLabels = ['float', 'float-normal', 'float-normal-empty']
+    for (const label of windowLabels) {
+      try {
+        const window = await WebviewWindow.getByLabel(label)
+        if (window) {
+          await window.emit('theme-changed', theme)
+          console.log(`已发送主题变化事件到窗口：${label}`)
+        }
+      } catch (e) {
+        console.log(`发送主题事件到 ${label} 失败:`, e)
+      }
     }
   } catch (e) {
     console.log('发送主题变化事件失败:', e)

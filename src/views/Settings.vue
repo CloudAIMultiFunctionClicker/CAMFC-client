@@ -858,7 +858,7 @@ onUnmounted(() => {
 
 .nav-item.active {
   background-color: var(--selected-bg, rgba(255, 255, 255, 0.1));
-  color: #333333;
+  color: var(--text-primary, #f0f6fc);
   font-weight: 700;
 }
 

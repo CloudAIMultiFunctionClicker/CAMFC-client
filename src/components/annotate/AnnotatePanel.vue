@@ -34,114 +34,6 @@ Email: admin@mc666.top
         }"
       ></canvas>
     </div>
-
-    <!-- 底部控制栏 -->
-    <div class="annotate-bottom-bar">
-      <!-- 左侧：标注工具栏 -->
-      <div class="annotate-toolbar">
-        <!-- 工具选择 -->
-        <div class="tool-group">
-          <button 
-            v-for="tool in tools" 
-            :key="tool.id"
-            :class="['tool-btn', { active: currentTool === tool.id }]"
-            @click="selectTool(tool.id)"
-            :title="tool.name"
-          >
-            <i :class="tool.icon"></i>
-          </button>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- 颜色选择 -->
-        <div class="tool-group">
-          <div class="color-picker">
-            <button 
-              v-for="color in colors" 
-              :key="color.value"
-              :class="['color-btn', { active: currentColor === color.value }]"
-              :style="{ backgroundColor: color.value }"
-              @click="selectColor(color.value)"
-              :title="color.name"
-            >
-              <i v-if="currentColor === color.value" class="ri-check-line"></i>
-            </button>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- 线条粗细 -->
-        <div class="tool-group">
-          <div class="stroke-width-picker">
-            <button 
-              v-for="width in strokeWidths" 
-              :key="width"
-              :class="['stroke-btn', { active: currentStrokeWidth === width }]"
-              @click="selectStrokeWidth(width)"
-              :title="`粗细：${width}px`"
-            >
-              <div 
-                class="stroke-preview" 
-                :style="{ 
-                  width: width + 'px', 
-                  height: width + 'px',
-                  backgroundColor: currentColor 
-                }"
-              ></div>
-            </button>
-          </div>
-        </div>
-
-        <div class="divider"></div>
-
-        <!-- 操作按钮 -->
-        <div class="tool-group">
-          <button 
-            class="action-btn"
-            @click="undo"
-            :disabled="!canUndo"
-            title="撤销 (Ctrl+Z)"
-          >
-            <i class="ri-arrow-go-back-line"></i>
-          </button>
-          <button 
-            class="action-btn"
-            @click="redo"
-            :disabled="!canRedo"
-            title="重做 (Ctrl+Y)"
-          >
-            <i class="ri-arrow-go-forward-line"></i>
-          </button>
-          <button 
-            class="action-btn"
-            @click="clearAll"
-            title="清除所有标注"
-          >
-            <i class="ri-delete-bin-line"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- 右侧：完成/取消按钮 -->
-      <div class="annotate-actions">
-        <button 
-          class="action-btn cancel-btn"
-          @click="cancelAnnotate"
-          title="取消标注"
-        >
-          <i class="ri-close-line"></i>
-        </button>
-        <button 
-          class="action-btn primary-btn"
-          @click="completeAnnotate"
-          title="完成标注"
-        >
-          <i class="ri-check-line"></i>
-        </button>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -838,37 +730,61 @@ const handleKeyDown = (e) => {
 
 // 完成标注
 const completeAnnotate = () => {
+  console.log('[AnnotatePanel] completeAnnotate 调用', {
+    hasCanvas: !!annotateCanvas.value,
+    canvasWidth: annotateCanvas.value?.width,
+    canvasHeight: annotateCanvas.value?.height,
+    annotationsCount: annotations.value.length,
+    hasCtx: !!ctx
+  })
+  
+  if (!annotateCanvas.value) {
+    console.error('[AnnotatePanel] canvas 不存在')
+    showToast('画布未初始化', '#ef4444')
+    return
+  }
+  
+  if (!ctx) {
+    console.error('[AnnotatePanel] canvas 上下文不存在')
+    showToast('画布未准备好', '#ef4444')
+    return
+  }
+  
   // 将标注绘制到 canvas 上并导出
   const canvas = document.createElement('canvas')
   canvas.width = annotateCanvas.value.width
   canvas.height = annotateCanvas.value.height
   const newCtx = canvas.getContext('2d')
   
+  if (!newCtx) {
+    console.error('[AnnotatePanel] 无法获取 canvas 上下文')
+    showToast('无法导出图片', '#ef4444')
+    return
+  }
+  
+  // 重新绘制背景图片和标注，确保内容完整
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.src = props.imageData
   
   img.onload = () => {
-    const scaleX = canvas.width / props.imageWidth
-    const scaleY = canvas.height / props.imageHeight
-    const scale = Math.min(scaleX, scaleY)
+    console.log('[AnnotatePanel] 导出图片 - 背景图片加载成功')
     
-    const width = props.imageWidth * scale
-    const height = props.imageHeight * scale
-    const x = (canvas.width - width) / 2
-    const y = (canvas.height - height) / 2
+    // 绘制背景
+    drawBackgroundOnContext(newCtx, img, canvas.width, canvas.height)
     
-    newCtx.drawImage(img, x, y, width, height)
-    
-    // 重绘所有标注
+    // 绘制所有标注
     annotations.value.forEach(annotation => {
-      const tempCtx = ctx
-      ctx = newCtx
-      drawAnnotation(annotation)
-      ctx = tempCtx
+      drawAnnotationOnContext(newCtx, annotation)
     })
     
     const annotatedData = canvas.toDataURL('image/png')
+    
+    console.log('[AnnotatePanel] 导出图片成功', {
+      dataLength: annotatedData?.length,
+      hasData: !!annotatedData
+    })
+    
     emit('complete', {
       imageData: annotatedData,
       annotations: annotations.value
@@ -876,6 +792,100 @@ const completeAnnotate = () => {
     if (annotations.value.length > 0) {
       showToast('标注已保存', '#10b981')
     }
+  }
+  
+  img.onerror = (err) => {
+    console.error('[AnnotatePanel] 导出图片 - 背景图片加载失败', err)
+    showToast('图片导出失败', '#ef4444')
+  }
+}
+
+// 在指定 context 上绘制背景
+const drawBackgroundOnContext = (context, img, width, height) => {
+  if (props.imageWidth && props.imageHeight) {
+    const scaleX = width / props.imageWidth
+    const scaleY = height / props.imageHeight
+    const scale = Math.min(scaleX, scaleY)
+    
+    const drawWidth = props.imageWidth * scale
+    const drawHeight = props.imageHeight * scale
+    const x = (width - drawWidth) / 2
+    const y = (height - drawHeight) / 2
+    
+    context.drawImage(img, x, y, drawWidth, drawHeight)
+  } else {
+    context.drawImage(img, 0, 0, width, height)
+  }
+}
+
+// 在指定 context 上绘制标注
+const drawAnnotationOnContext = (context, annotation) => {
+  context.strokeStyle = annotation.color
+  context.fillStyle = annotation.color
+  context.lineWidth = annotation.strokeWidth
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  
+  switch (annotation.type) {
+    case 'rect':
+      context.strokeRect(
+        annotation.x,
+        annotation.y,
+        annotation.width,
+        annotation.height
+      )
+      break
+    case 'circle':
+      context.beginPath()
+      context.ellipse(
+        annotation.x + annotation.width / 2,
+        annotation.y + annotation.height / 2,
+        Math.abs(annotation.width / 2),
+        Math.abs(annotation.height / 2),
+        0,
+        0,
+        2 * Math.PI
+      )
+      context.stroke()
+      break
+    case 'arrow':
+      const headLength = 15
+      const angle = Math.atan2(annotation.endY - annotation.startY, annotation.endX - annotation.startX)
+      
+      context.beginPath()
+      context.moveTo(annotation.startX, annotation.startY)
+      context.lineTo(annotation.endX, annotation.endY)
+      context.stroke()
+      
+      context.beginPath()
+      context.moveTo(annotation.endX, annotation.endY)
+      context.lineTo(
+        annotation.endX - headLength * Math.cos(angle - Math.PI / 6),
+        annotation.endY - headLength * Math.sin(angle - Math.PI / 6)
+      )
+      context.lineTo(
+        annotation.endX - headLength * Math.cos(angle + Math.PI / 6),
+        annotation.endY - headLength * Math.sin(angle + Math.PI / 6)
+      )
+      context.closePath()
+      context.fill()
+      break
+    case 'free':
+      if (!annotation.points || annotation.points.length < 2) return
+      
+      context.beginPath()
+      context.moveTo(annotation.points[0].x, annotation.points[0].y)
+      
+      for (let i = 1; i < annotation.points.length; i++) {
+        context.lineTo(annotation.points[i].x, annotation.points[i].y)
+      }
+      
+      context.stroke()
+      break
+    case 'text':
+      context.font = `${16 + annotation.strokeWidth}px Arial`
+      context.fillText(annotation.text, annotation.x, annotation.y)
+      break
   }
 }
 
@@ -916,6 +926,22 @@ watch(() => props.imageData, () => {
     initCanvas()
   }, 100)
 })
+
+// 暴露给父组件使用
+defineExpose({
+  currentTool,
+  currentColor,
+  currentStrokeWidth,
+  canUndo,
+  canRedo,
+  selectTool,
+  selectColor,
+  selectStrokeWidth,
+  undo,
+  redo,
+  clearAll,
+  completeAnnotate
+})
 </script>
 
 <style scoped>
@@ -924,195 +950,6 @@ watch(() => props.imageData, () => {
   display: flex;
   flex-direction: column;
   background-color: var(--bg-primary, #0f172a);
-}
-
-.annotate-bottom-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 16px;
-  background-color: var(--bg-secondary, #1e293b);
-  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.annotate-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-  flex-wrap: wrap;
-}
-
-.annotate-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.tool-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.divider {
-  width: 1px;
-  height: 32px;
-  background-color: var(--border-color, rgba(255, 255, 255, 0.1));
-}
-
-.tool-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background-color: transparent;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
-  color: var(--text-primary, #f1f5f9);
-  font-size: 20px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tool-btn:hover {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-  border-color: var(--accent-blue, #3178c6);
-}
-
-.tool-btn.active {
-  background-color: var(--accent-blue, #3178c6);
-  border-color: var(--accent-blue, #3178c6);
-  color: #fff;
-}
-
-.color-picker {
-  display: flex;
-  gap: 8px;
-}
-
-.color-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  position: relative;
-}
-
-.color-btn:hover {
-  transform: scale(1.1);
-}
-
-.color-btn.active {
-  border-color: #fff;
-  box-shadow: 0 0 0 2px var(--bg-secondary, #1e293b);
-}
-
-.color-btn i {
-  color: #fff;
-  font-size: 16px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.stroke-width-picker {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.stroke-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: .375rem;
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  background-color: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.stroke-btn:hover {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
-}
-
-.stroke-btn.active {
-  border-color: var(--accent-blue, #3178c6);
-  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
-}
-
-.stroke-preview {
-  border-radius: 50%;
-}
-
-.action-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background-color: var(--bg-primary, #0f172a);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
-  color: var(--text-primary, #f1f5f9);
-  font-size: 18px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.action-btn:hover:not(:disabled) {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.1));
-}
-
-.action-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* 工具栏中的操作按钮 */
-.annotate-toolbar .action-btn {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-}
-
-/* 底部操作栏的按钮 */
-.annotate-actions .action-btn {
-  width: 40px;
-  height: 40px;
-  font-size: 20px;
-  padding: 0;
-}
-
-.action-btn.primary-btn {
-  background-color: var(--accent-blue, #3178c6);
-  border-color: var(--accent-blue, #3178c6);
-  color: #fff;
-}
-
-.action-btn.primary-btn:hover {
-  background-color: var(--accent-blue-bright, #1f6feb);
-}
-
-.action-btn.cancel-btn {
-  background-color: var(--bg-primary, #0f172a);
-  color: var(--text-secondary, #94a3b8);
-}
-
-.action-btn.cancel-btn:hover {
-  background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border-color: #ef4444;
 }
 
 .annotate-canvas-wrapper {
@@ -1143,5 +980,86 @@ watch(() => props.imageData, () => {
 
 .annotate-canvas-wrapper.panning .annotate-canvas {
   cursor: grabbing !important;
+}
+
+/* 标注工具按钮样式（供 ScreenshotWindow 使用） */
+.annotate-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background-color: transparent;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  color: var(--text-primary, #f1f5f9);
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.annotate-tool-btn:hover {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
+  border-color: var(--accent-blue, #3178c6);
+}
+
+.annotate-tool-btn.active {
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
+  color: #fff;
+}
+
+.annotate-color-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.annotate-color-btn:hover {
+  transform: scale(1.1);
+}
+
+.annotate-color-btn.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--bg-secondary, #1e293b);
+}
+
+.annotate-color-btn i {
+  color: #fff;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.annotate-stroke-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.annotate-stroke-btn:hover {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
+}
+
+.annotate-stroke-btn.active {
+  border-color: var(--accent-blue, #3178c6);
+  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
+}
+
+.annotate-stroke-preview {
+  border-radius: 50%;
 }
 </style>
