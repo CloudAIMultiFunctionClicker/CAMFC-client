@@ -233,7 +233,7 @@ onMounted(async () => {
     await checkMainWindowVisibility()
   }, 500)
 
-  // 保持置顶（每5秒执行一次）
+  // 保持置顶（每 5 秒执行一次）
   keepOnTopInterval = setInterval(async () => {
     try {
       const floatWindow = await getCurrentWindow()
@@ -243,22 +243,39 @@ onMounted(async () => {
     }
   }, 5000)
 
-  // 限制窗口大小（禁止调整大小）
+  // 监听窗口大小变化并强制恢复（只限制宽高，不管位置）
   const limitWindowSize = async () => {
     try {
-      const floatWindow = await getCurrentWindow()
-      await floatWindow.setSize({ width: 300, height: 40 })
+      const { invoke } = await import('@tauri-apps/api/core')
+      await invoke('set_window_size_by_label', {
+        label: 'float-normal-empty',
+        width: 300,
+        height: 40
+      })
     } catch (e) {
       console.error('限制窗口大小失败:', e)
     }
   }
   
+  // 初始设置一次
   limitWindowSize()
-  const sizeCheckInterval = setInterval(limitWindowSize, 1000)
+  
+  // 使用 ResizeObserver 监听窗口大小变化
+  const resizeObserver = new ResizeObserver(() => {
+    // 窗口大小改变时立即恢复
+    limitWindowSize()
+  })
+  resizeObserver.observe(document.body)
+  
+  // 备用方案：定时检查（每 500ms）
+  const sizeCheckInterval = setInterval(limitWindowSize, 500)
 
   onUnmounted(() => {
     if (sizeCheckInterval) {
       clearInterval(sizeCheckInterval)
+    }
+    if (resizeObserver) {
+      resizeObserver.disconnect()
     }
     if (unlistenTheme) unlistenTheme()
     if (unlistenConnection) unlistenConnection()

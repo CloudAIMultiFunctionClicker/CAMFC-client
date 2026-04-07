@@ -29,6 +29,8 @@ mod event_emitter;
 mod screenshot;
 // 活动日志模块导入
 mod activity_log;
+// 窗口工具模块导入
+mod window_utils;
 
 // 托盘相关导入
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
@@ -44,6 +46,7 @@ use upload::UploadTask;
 use storage::{load_app_data, save_app_data, get_download_file_path, get_custom_download_path, set_custom_download_path, open_file, open_folder, load_download_path_to_cache, get_default_download_path};
 use event_emitter::set_app_handle;
 use activity_log::{get_recent_activities, record_upload_activity, record_download_activity, record_access_activity};
+use window_utils::{set_window_size_by_label, get_window_size_by_label};
 
 // 导入同步原语
 // 原来用tokio::sync::Mutex，继续用这个，适合异步环境
@@ -1519,6 +1522,9 @@ pub fn run() {
             record_upload_activity,
             record_download_activity,
             record_access_activity,
+            // 窗口工具命令
+            set_window_size_by_label,
+            get_window_size_by_label,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

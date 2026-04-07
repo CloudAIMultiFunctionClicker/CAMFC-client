@@ -17,31 +17,118 @@ Email: admin@mc666.top
 <template>
   <div class="screenshot-container">
     <!-- 顶部工具栏 -->
-    <div class="toolbar" v-show="!isCropMode && !isAnnotateMode">
-      <button class="zoom-btn" @click="zoomOut" :disabled="scale <= 0.1">
-        <i class="ri-zoom-out-line"></i>
-      </button>
-      <button class="zoom-scale-btn" @click="resetZoom">
-        {{ Math.round(scale * 100) }}%
-      </button>
-      <button class="zoom-btn" @click="zoomIn" :disabled="scale >= 3">
-        <i class="ri-zoom-in-line"></i>
-      </button>
+    <div class="toolbar" v-show="!isCropMode" @mousedown="startToolbarDrag">
+      <!-- 正常模式下的按钮 -->
+      <template v-if="!isAnnotateMode">
+        <button class="zoom-btn" @click="zoomOut" :disabled="scale <= 0.1">
+          <i class="ri-zoom-out-line"></i>
+        </button>
+        <button class="zoom-scale-btn" @click="resetZoom">
+          {{ Math.round(scale * 100) }}%
+        </button>
+        <button class="zoom-btn" @click="zoomIn" :disabled="scale >= 3">
+          <i class="ri-zoom-in-line"></i>
+        </button>
+        <div class="control-divider"></div>
+        <button class="zoom-btn" @click="saveToNotes" title="保存到笔记">
+          <i class="ri-sticky-note-line"></i>
+        </button>
+        <button class="zoom-btn" @click="saveScreenshot" title="保存">
+          <i class="ri-save-line"></i>
+        </button>
+        <button class="zoom-btn" @click="handleAnnotate" title="标注">
+          <i class="ri-edit-line"></i>
+        </button>
+        <button class="zoom-btn" @click="handleCrop" title="裁切">
+          <i class="ri-crop-line"></i>
+        </button>
+      </template>
+      
+      <!-- 标注模式下的工具 -->
+      <template v-else>
+        <!-- 工具选择 -->
+        <button 
+          :class="['zoom-btn', { active: annotateCurrentTool === 'select' }]"
+          @click="selectAnnotateTool('select')"
+          title="选择工具"
+        >
+          <i class="ri-cursor-line"></i>
+        </button>
+        <button 
+          :class="['zoom-btn', { active: annotateCurrentTool === 'free' }]"
+          @click="selectAnnotateTool('free')"
+          title="自由绘制"
+        >
+          <i class="ri-edit-line"></i>
+        </button>
+        <div class="control-divider"></div>
+        
+        <!-- 颜色选择 -->
+        <div class="color-picker-group">
+          <button 
+            v-for="color in annotateColors" 
+            :key="color.value"
+            :class="['annotate-color-btn', { active: annotateCurrentColor === color.value }]"
+            :style="{ backgroundColor: color.value }"
+            @click.stop="selectAnnotateColor(color.value)"
+            :title="color.name"
+          >
+            <i v-if="annotateCurrentColor === color.value" class="ri-check-line"></i>
+          </button>
+        </div>
+        <div class="control-divider"></div>
+        
+        <!-- 线条粗细 -->
+        <div class="stroke-width-group">
+          <button 
+            v-for="width in annotateStrokeWidths" 
+            :key="width"
+            :class="['annotate-stroke-btn', { active: annotateCurrentStrokeWidth === width }]"
+            @click.stop="selectAnnotateStrokeWidth(width)"
+            :title="`粗细：${width}px`"
+          >
+            <div 
+              class="annotate-stroke-preview" 
+              :style="{ 
+                width: width + 'px', 
+                height: width + 'px',
+                backgroundColor: annotateCurrentColor 
+              }"
+            ></div>
+          </button>
+        </div>
+        <div class="control-divider"></div>
+        
+        <!-- 操作按钮 -->
+        <button class="zoom-btn" @click="undoAnnotate" :disabled="!annotateCanUndo" title="撤销">
+          <i class="ri-arrow-go-back-line"></i>
+        </button>
+        <button class="zoom-btn" @click="redoAnnotate" :disabled="!annotateCanRedo" title="重做">
+          <i class="ri-arrow-go-forward-line"></i>
+        </button>
+        <button class="zoom-btn" @click="clearAnnotate" title="清除所有">
+          <i class="ri-delete-bin-line"></i>
+        </button>
+      </template>
+      
       <div class="control-divider"></div>
-      <button class="zoom-btn" @click="saveToNotes" title="保存到笔记">
-        <i class="ri-sticky-note-line"></i>
-      </button>
-      <button class="zoom-btn" @click="saveScreenshot" title="保存">
-        <i class="ri-save-line"></i>
-      </button>
-      <button class="zoom-btn" @click="handleAnnotate" title="标注">
-        <i class="ri-edit-line"></i>
-      </button>
-      <button class="zoom-btn" @click="handleCrop" title="裁切">
-        <i class="ri-crop-line"></i>
-      </button>
-      <div class="control-divider"></div>
-      <button class="zoom-btn close-btn" @click="closeWindow" title="关闭窗口">
+      
+      <!-- 右侧：完成/取消按钮（标注模式下显示） -->
+      <template v-if="isAnnotateMode">
+        <button class="zoom-btn cancel-btn" @click="handleAnnotateCancel" title="取消标注">
+          <i class="ri-close-line"></i>
+        </button>
+        <button class="zoom-btn primary-btn" @click="handleAnnotateComplete" title="完成标注">
+          <i class="ri-check-line"></i>
+        </button>
+        <div class="control-divider"></div>
+        <button class="zoom-btn close-btn" @click="closeWindow" title="关闭窗口">
+          <i class="ri-close-line"></i>
+        </button>
+      </template>
+      
+      <!-- 关闭按钮（正常模式显示） -->
+      <button v-else class="zoom-btn close-btn" @click="closeWindow" title="关闭窗口">
         <i class="ri-close-line"></i>
       </button>
     </div>
@@ -104,6 +191,7 @@ Email: admin@mc666.top
       <!-- 标注模式 -->
       <div v-if="isAnnotateMode" class="annotate-overlay">
         <AnnotatePanel
+          ref="annotatePanelRef"
           :image-data="screenshotData"
           :image-width="width"
           :image-height="height"
@@ -117,12 +205,15 @@ Email: admin@mc666.top
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { showToast } from '../components/layout/showToast.js'
 import AnnotatePanel from '../components/annotate/AnnotatePanel.vue'
 import { saveAnnotations, loadAnnotations, generateImageId } from '../utils/annotationStorage.js'
+
+// 引入 Tauri window API 用于拖动
+import { Window } from '@tauri-apps/api/window'
 
 const screenshotData = ref(null)
 const width = ref(0)
@@ -161,6 +252,52 @@ const isAnnotateMode = ref(false)
 const annotatedImageData = ref(null)
 const currentImageId = ref(null)
 const hasExistingAnnotations = ref(false)
+
+// 标注工具状态（通过 ref 访问 AnnotatePanel 实例）
+const annotatePanelRef = ref(null)
+
+// 标注工具配置
+const annotateColors = [
+  { value: '#ef4444', name: '红色' },
+  { value: '#3178c6', name: '蓝色' },
+  { value: '#10b981', name: '绿色' },
+  { value: '#f59e0b', name: '黄色' },
+  { value: '#8b5cf6', name: '紫色' }
+]
+
+const annotateStrokeWidths = [2, 4, 6, 8, 10]
+
+// 标注工具状态代理
+const annotateCurrentTool = computed(() => annotatePanelRef.value?.currentTool || 'free')
+const annotateCurrentColor = computed(() => annotatePanelRef.value?.currentColor || '#ef4444')
+const annotateCurrentStrokeWidth = computed(() => annotatePanelRef.value?.currentStrokeWidth || 4)
+const annotateCanUndo = computed(() => annotatePanelRef.value?.canUndo || false)
+const annotateCanRedo = computed(() => annotatePanelRef.value?.canRedo || false)
+
+// 标注工具方法
+const selectAnnotateTool = (tool) => {
+  annotatePanelRef.value?.selectTool(tool)
+}
+
+const selectAnnotateColor = (color) => {
+  annotatePanelRef.value?.selectColor(color)
+}
+
+const selectAnnotateStrokeWidth = (width) => {
+  annotatePanelRef.value?.selectStrokeWidth(width)
+}
+
+const undoAnnotate = () => {
+  annotatePanelRef.value?.undo()
+}
+
+const redoAnnotate = () => {
+  annotatePanelRef.value?.redo()
+}
+
+const clearAnnotate = () => {
+  annotatePanelRef.value?.clearAll()
+}
 
 // 监听截图数据事件
 let unlistenScreenshotData = null
@@ -301,34 +438,62 @@ const handleAnnotate = () => {
 }
 
 const handleAnnotateComplete = (data) => {
-  annotatedImageData.value = data.imageData
-  screenshotData.value = data.imageData
+  console.log('[ScreenshotView] 收到标注完成数据', {
+    hasData: !!data.imageData,
+    dataLength: data.imageData?.length,
+    imageDataPreview: data.imageData?.substring(0, 50)
+  })
   
-  // 更新宽高为标注后的图片尺寸
-  // 创建临时 Image 对象获取新图片的宽高
+  // 检查数据是否有效
+  if (!data.imageData || data.imageData.length === 0) {
+    console.error('[ScreenshotView] 标注数据为空')
+    showToast('标注数据无效', '#ef4444')
+    isAnnotateMode.value = false
+    return
+  }
+  
+  // 创建临时 Image 对象验证图片并获取尺寸
   const img = new Image()
   img.onload = () => {
+    console.log('[ScreenshotView] 标注图片加载成功', img.width, 'x', img.height)
+    
+    // 更新数据
+    annotatedImageData.value = data.imageData
+    screenshotData.value = data.imageData
     width.value = img.width
     height.value = img.height
-    console.log('[ScreenshotView] 标注完成，图片尺寸更新为:', img.width, 'x', img.height)
-  }
-  img.src = data.imageData
-  
-  // 保存标注数据
-  if (currentImageId.value) {
-    const success = saveAnnotations(
-      currentImageId.value,
-      data.annotations,
-      data.imageData
-    )
-    if (success) {
-      showToast('标注已保存', '#10b981')
-    } else {
-      showToast('保存失败', '#ef4444')
+    
+    // 保存标注数据
+    if (currentImageId.value) {
+      const success = saveAnnotations(
+        currentImageId.value,
+        data.annotations,
+        data.imageData
+      )
+      if (success) {
+        showToast('标注已保存', '#10b981')
+      } else {
+        showToast('保存失败', '#ef4444')
+      }
     }
+    
+    // 最后退出标注模式
+    isAnnotateMode.value = false
+    
+    // 重置缩放和平移状态
+    resetZoom()
   }
   
-  isAnnotateMode.value = false
+  img.onerror = () => {
+    console.error('[ScreenshotView] 标注图片加载失败', {
+      dataLength: data.imageData?.length,
+      hasData: !!data.imageData
+    })
+    showToast('图片保存失败', '#ef4444')
+    isAnnotateMode.value = false
+  }
+  
+  img.src = data.imageData
 }
 
 const handleAnnotateCancel = () => {
@@ -651,6 +816,57 @@ const closeWindow = async () => {
   }
 }
 
+// toolbar 拖动相关
+const isToolbarDragging = ref(false)
+const toolbarStartX = ref(0)
+const toolbarStartY = ref(0)
+const toolbarWindowStartX = ref(0)
+const toolbarWindowStartY = ref(0)
+
+const startToolbarDrag = async (e) => {
+  // 只有点击 toolbar 本身才拖动，不响应按钮点击
+  if (e.target.closest('.zoom-btn')) return
+  
+  isToolbarDragging.value = true
+  toolbarStartX.value = e.clientX
+  toolbarStartY.value = e.clientY
+  
+  try {
+    const currentWindow = await getCurrentWindow()
+    const position = await currentWindow.outerPosition()
+    toolbarWindowStartX.value = position.x
+    toolbarWindowStartY.value = position.y
+  } catch (err) {
+    console.log('获取窗口位置失败:', err)
+  }
+  
+  document.addEventListener('mousemove', onToolbarDrag)
+  document.addEventListener('mouseup', endToolbarDrag)
+}
+
+const onToolbarDrag = async (e) => {
+  if (!isToolbarDragging.value) return
+  
+  const dx = e.clientX - toolbarStartX.value
+  const dy = e.clientY - toolbarStartY.value
+  
+  try {
+    const currentWindow = await getCurrentWindow()
+    await currentWindow.setPosition({
+      x: toolbarWindowStartX.value + dx,
+      y: toolbarWindowStartY.value + dy
+    })
+  } catch (err) {
+    console.log('移动窗口失败:', err)
+  }
+}
+
+const endToolbarDrag = () => {
+  isToolbarDragging.value = false
+  document.removeEventListener('mousemove', onToolbarDrag)
+  document.removeEventListener('mouseup', endToolbarDrag)
+}
+
 // 键盘快捷键支持
 const handleKeyDown = (e) => {
   if (!isCropMode.value) return
@@ -744,10 +960,122 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   border-bottom: 1px solid var(--border-color, #334155);
   flex-shrink: 0;
+  box-sizing: border-box;
+  cursor: move;
+  -webkit-app-region: drag;
+  position: relative;
+  z-index: 200;
+}
+
+/* 按钮不参与拖动 */
+.toolbar .zoom-btn {
+  -webkit-app-region: no-drag;
+  cursor: pointer;
 }
 
 .toolbar > .zoom-btn.close-btn {
   margin-left: auto;
+}
+
+/* 标注工具按钮激活状态 */
+.toolbar .zoom-btn.active {
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
+  color: #fff;
+}
+
+/* 颜色选择器组 */
+.color-picker-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* 线条粗细选择器组 */
+.stroke-width-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* 标注颜色按钮 */
+.annotate-color-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  position: relative;
+  padding: 0;
+}
+
+.annotate-color-btn:hover {
+  transform: scale(1.1);
+}
+
+.annotate-color-btn.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--bg-secondary, #1e293b);
+}
+
+.annotate-color-btn i {
+  color: #fff;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 线条粗细按钮 */
+.annotate-stroke-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.annotate-stroke-btn:hover {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
+}
+
+.annotate-stroke-btn.active {
+  border-color: var(--accent-blue, #3178c6);
+  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
+}
+
+.annotate-stroke-preview {
+  border-radius: 50%;
+}
+
+/* 完成/取消按钮样式 */
+.toolbar .primary-btn {
+  background-color: var(--accent-blue, #3178c6);
+  border-color: var(--accent-blue, #3178c6);
+  color: #fff;
+}
+
+.toolbar .primary-btn:hover {
+  background-color: var(--accent-blue-bright, #1f6feb);
+}
+
+.toolbar .cancel-btn {
+  background-color: var(--bg-primary, #0f172a);
+  color: var(--text-secondary, #94a3b8);
+}
+
+.toolbar .cancel-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: #ef4444;
 }
 
 .screenshot-main {
@@ -958,7 +1286,7 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.8);
-  z-index: 100;
+  z-index: 50;
   display: flex;
   justify-content: center;
   align-items: center;
