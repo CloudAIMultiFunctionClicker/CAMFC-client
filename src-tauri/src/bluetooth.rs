@@ -633,7 +633,8 @@ impl BluetoothManager {
                             let is_button_event = notif.value.len() >= 1 && 
                                 (notif.value[0] == 0xAA || notif.value[0] == 0xAB || 
                                  notif.value[0] == 0xAC || notif.value[0] == 0xAD ||
-                                 notif.value[0] == 0x12 || notif.value[0] == 0x10 || notif.value[0] == 0x08);
+                                 notif.value[0] == 0x12 || notif.value[0] == 0x10 || 
+                                 notif.value[0] == 0x08 || notif.value[0] == 0x02);
                             
                             if is_button_event {
                                 let first_byte = notif.value[0];
@@ -684,6 +685,11 @@ impl BluetoothManager {
                                     tracing::info!("[BLUETOOTH] 收到打开云盘命令（0x08）");
                                     tokio::spawn(async move {
                                         crate::event_emitter::emit_open_cloud_command();
+                                    });
+                                } else if first_byte == 0x02 {
+                                    tracing::info!("[BLUETOOTH] 收到新建笔记命令（0x02）");
+                                    tokio::spawn(async move {
+                                        crate::event_emitter::emit_show_note_command();
                                     });
                                 }
                                 

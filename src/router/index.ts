@@ -19,6 +19,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 // @ts-ignore
 import { useBluetoothStore } from '../stores/bluetooth.js'
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 
 /**
  * 应用路由配置
@@ -137,27 +138,77 @@ const router = createRouter({
 
 // 路由守卫：蓝牙未连接时阻止跳转到其他路由
 // 简单粗暴：只要不是首页，就检查蓝牙连接状态
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
+  // 获取当前窗口标签
+  let windowLabel = ''
+  try {
+    const currentWindow = await getCurrentWebviewWindow()
+    windowLabel = currentWindow?.label || ''
+  } catch (e) {
+    // 获取失败时按主窗口处理
+    console.warn('[路由守卫] 获取窗口标签失败，按主窗口处理:', e)
+    windowLabel = 'main'
+  }
+
+  console.log(`[路由守卫] 当前窗口：${windowLabel}, 目标路由：${to.path}`)
+
+  // ========== 截图窗口白名单 ==========
+  // 截图窗口只允许访问截图相关路由
+  if (windowLabel.startsWith('screenshot-')) {
+    const allowedPaths = ['/screenshot-window', '/screenshot']
+    if (!allowedPaths.includes(to.path)) {
+      console.warn(`[路由守卫] 截图窗口禁止访问 ${to.path}，强制跳转到 /screenshot-window`)
+      next('/screenshot-window')
+      return
+    }
+    // 截图窗口不需要蓝牙检查，直接放行
+    next()
+    return
+  }
+
+  // ========== 笔记编辑窗口白名单 ==========
+  // 笔记编辑窗口只允许访问笔记编辑路由
+  if (windowLabel.startsWith('note-editor-')) {
+    const allowedPaths = ['/note-editor']
+    if (!allowedPaths.includes(to.path)) {
+      console.warn(`[路由守卫] 笔记编辑窗口禁止访问 ${to.path}，强制跳转到 /note-editor`)
+      next('/note-editor')
+      return
+    }
+    // 笔记编辑窗口不需要蓝牙检查，直接放行
+    next()
+    return
+  }
+
+  // ========== 悬浮窗相关窗口白名单 ==========
+  // 悬浮窗页面不需要蓝牙连接，直接放行
+  if (to.path === '/float' || to.path === '/float-normal' || to.path === '/float-normal-empty') {
+    next()
+    return
+  }
+
+  // ========== 空白窗口白名单 ==========
+  // 空白窗口不需要蓝牙连接，直接放行
+  if (to.path === '/empty') {
+    next()
+    return
+  }
+
+  // ========== 主窗口黑名单 ==========
+  // 主窗口禁止进入截图展示和笔记编辑路由
+  if (windowLabel === 'main') {
+    const forbiddenPaths = ['/screenshot-window', '/note-editor', '/screenshot']
+    if (forbiddenPaths.includes(to.path)) {
+      console.warn(`[路由守卫] 主窗口禁止访问 ${to.path}，强制跳转到 /`)
+      next('/')
+      return
+    }
+  }
+
+  // ========== 以下是首页和蓝牙检查逻辑 ==========
+  
   // 如果是首页，直接放行
   if (to.path === '/') {
-    next()
-    return
-  }
-
-  // 悬浮窗页面不需要蓝牙连接，直接放行
-  if (to.path === '/float') {
-    next()
-    return
-  }
-
-  // 悬浮窗页面（普通窗口样式）不需要蓝牙连接，直接放行
-  if (to.path === '/float-normal') {
-    next()
-    return
-  }
-
-  // 悬浮窗空白页不需要蓝牙连接，直接放行
-  if (to.path === '/float-normal-empty') {
     next()
     return
   }
@@ -176,12 +227,6 @@ router.beforeEach((to, _from, next) => {
 
   // 笔记编辑窗口不需要蓝牙连接，直接放行
   if (to.path === '/note-editor') {
-    next()
-    return
-  }
-
-  // 空白窗口不需要蓝牙连接，直接放行
-  if (to.path === '/empty') {
     next()
     return
   }
