@@ -264,6 +264,8 @@ const currentPageNotes = computed(() => {
 
 const loadedNotes = ref({})
 let unlistenNoteSaved = null
+let unlistenCreateNewNote = null
+let unlistenRefreshNotes = null
 
 onMounted(async () => {
   loadNotes()
@@ -272,11 +274,28 @@ onMounted(async () => {
   unlistenNoteSaved = await listen('note-saved', () => {
     loadNotes()
   })
+  
+  // 监听蓝牙新建笔记命令，调用 createAndOpenNote 方法
+  const { listen } = await import('@tauri-apps/api/event')
+  unlistenCreateNewNote = await listen('create-new-note', () => {
+    createAndOpenNote()
+  })
+  
+  // 监听刷新笔记列表事件（来自编辑器窗口）
+  unlistenRefreshNotes = await listen('refresh-notes', () => {
+    loadNotes()
+  })
 })
 
 onUnmounted(() => {
   if (unlistenNoteSaved) {
     unlistenNoteSaved()
+  }
+  if (unlistenCreateNewNote) {
+    unlistenCreateNewNote()
+  }
+  if (unlistenRefreshNotes) {
+    unlistenRefreshNotes()
   }
 })
 
@@ -387,7 +406,16 @@ async function createAndOpenNote() {
   const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
   const defaultTitle = `未命名笔记_${timestamp}`
   
-  // 只在本地创建，不保存到云端
+  // 先在云端创建空白笔记
+  try {
+    await apiRequest('/note/add', { uuid, title: defaultTitle, content: '' })
+  } catch (e) {
+    console.error('创建云端笔记失败:', e)
+    showToast('创建笔记失败: ' + (e.message || '网络错误'), '#ef4444')
+    return
+  }
+  
+  // 本地添加笔记
   const newNote = {
     uuid,
     title: defaultTitle,
@@ -397,7 +425,7 @@ async function createAndOpenNote() {
   }
   notes.value.unshift(newNote)
   
-  // 直接打开编辑窗口，用户点击保存时才保存
+  // 打开编辑窗口
   openNoteEditorWindow(newNote)
 }
 

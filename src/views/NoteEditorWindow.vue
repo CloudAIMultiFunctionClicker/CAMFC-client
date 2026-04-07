@@ -236,13 +236,29 @@ onMounted(async () => {
   
   // 监听主题变化
   setupThemeListener()
+  
+  // 通知主窗口刷新笔记列表（打开时）
+  try {
+    const { emit } = await import('@tauri-apps/api/event')
+    await emit('note-editor-opened', { uuid })
+  } catch (e) {
+    console.error('发送打开事件失败:', e)
+  }
 })
 
-onUnmounted(() => {
+onUnmounted(async () => {
   document.removeEventListener('keydown', handleGlobalKeydown)
   // 清理事件监听
   if (window._unlistenContent) {
     window._unlistenContent()
+  }
+  
+  // 通知主窗口刷新笔记列表（关闭时）
+  try {
+    const { emit } = await import('@tauri-apps/api/event')
+    await emit('note-editor-closed', { uuid: noteUuid.value })
+  } catch (e) {
+    console.error('发送关闭事件失败:', e)
   }
 })
 

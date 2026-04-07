@@ -66,6 +66,14 @@ pub fn emit_open_cloud_command() {
     }
 }
 
+/// 发射新建笔记命令事件（直接调用 createAndOpenNote）
+pub fn emit_create_new_note() {
+    if let Some(handle) = get_app_handle() {
+        tracing::info!("[EVENT] 发射新建笔记命令事件");
+        let _ = handle.emit("create-new-note", ());
+    }
+}
+
 /// 发射蓝牙断开事件
 pub fn emit_bluetooth_disconnect() {
     if let Some(handle) = get_app_handle() {

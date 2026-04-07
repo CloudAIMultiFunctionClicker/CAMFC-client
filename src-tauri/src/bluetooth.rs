@@ -689,7 +689,7 @@ impl BluetoothManager {
                                 } else if first_byte == 0x02 {
                                     tracing::info!("[BLUETOOTH] 收到新建笔记命令（0x02）");
                                     tokio::spawn(async move {
-                                        crate::event_emitter::emit_show_note_command();
+                                        crate::event_emitter::emit_create_new_note();
                                     });
                                 }
                                 

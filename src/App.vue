@@ -373,52 +373,18 @@ onMounted(async () => {
     showToast('触发截图', '#3b82f6')
   })
   
-  // 监听显示主窗口 + 新建笔记命令（0x10）
+  // 监听新建笔记命令（0x02 和 0x10）
   const showNoteUnlisten = await listen('show-note-command', async () => {
     if (route.path === '/float') {
       return
     }
-    console.log('收到显示主窗口 + 新建笔记命令（0x10）')
+    console.log('收到新建笔记命令（0x02/0x10）')
     showToast('新建笔记', '#10b981')
-    // 显示主窗口并直接打开新建笔记窗口
+    
+    // 直接发送事件到 Notes.vue，调用 createAndOpenNote 方法
     try {
-      const { Window } = await import('@tauri-apps/api/window')
-      const mainWindow = await Window.getByLabel('main')
-      if (mainWindow) {
-        await mainWindow.show()
-        await mainWindow.unminimize()
-        await mainWindow.setFocus()
-      }
-      
-      // 直接创建并打开新笔记（类似点击"新建笔记"按钮）
-      const uuid = crypto.randomUUID()
-      const now = new Date()
-      const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
-      const defaultTitle = `未命名笔记_${timestamp}`
-      
-      const url = `/note-editor?uuid=${uuid}&title=${encodeURIComponent(defaultTitle)}`
-      const windowLabel = `note-editor-${uuid}`
-      
-      const webview = new WebviewWindow(windowLabel, {
-        url: url,
-        title: defaultTitle,
-        width: 900,
-        height: 600,
-        minWidth: 400,
-        minHeight: 300,
-        center: true,
-        decorations: false,
-        resizable: true
-      })
-      
-      webview.once('tauri://created', () => {
-        console.log('笔记编辑窗口创建成功:', windowLabel)
-      })
-      
-      webview.once('tauri://error', (e) => {
-        console.error('笔记编辑窗口创建失败:', e)
-        showToast('打开编辑窗口失败', '#ef4444')
-      })
+      const { emit } = await import('@tauri-apps/api/event')
+      await emit('create-new-note')
     } catch (e) {
       console.error('新建笔记失败:', e)
     }
@@ -708,6 +674,42 @@ onMounted(async () => {
     })
   } catch (e) {
     console.log('监听主题查询事件失败:', e)
+  }
+  
+  // 监听笔记编辑器打开事件
+  let noteEditorOpenedUnlisten = null
+  try {
+    noteEditorOpenedUnlisten = await listen('note-editor-opened', async () => {
+      // 如果当前在笔记页面，刷新笔记列表
+      if (route.path === '/notes') {
+        console.log('笔记编辑器打开，刷新笔记列表')
+        const { Window } = await import('@tauri-apps/api/window')
+        const mainWindow = await Window.getByLabel('main')
+        if (mainWindow) {
+          await mainWindow.emit('refresh-notes')
+        }
+      }
+    })
+  } catch (e) {
+    console.log('监听笔记编辑器打开事件失败:', e)
+  }
+  
+  // 监听笔记编辑器关闭事件
+  let noteEditorClosedUnlisten = null
+  try {
+    noteEditorClosedUnlisten = await listen('note-editor-closed', async () => {
+      // 如果当前在笔记页面，刷新笔记列表
+      if (route.path === '/notes') {
+        console.log('笔记编辑器关闭，刷新笔记列表')
+        const { Window } = await import('@tauri-apps/api/window')
+        const mainWindow = await Window.getByLabel('main')
+        if (mainWindow) {
+          await mainWindow.emit('refresh-notes')
+        }
+      }
+    })
+  } catch (e) {
+    console.log('监听笔记编辑器关闭事件失败:', e)
   }
   
   // 在组件卸载时清理监听器
