@@ -213,6 +213,8 @@ onMounted(async () => {
   
   // 动态创建 float-normal 窗口（在 main 窗口创建后）
   // 之前在 tauri.conf.json 中静态配置，现在改为代码动态创建
+  // TODO: 暂时注释掉悬浮窗，后续需要再开启
+  /*
   setTimeout(async () => {
     try {
       const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
@@ -249,6 +251,50 @@ onMounted(async () => {
       console.error('创建 float-normal 窗口失败:', e)
     }
   }, 500)
+  */
+  
+  // 创建空白窗口（无任务栏图标、无原生标题栏）
+  setTimeout(async () => {
+    try {
+      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+      
+      const existingWindow = await WebviewWindow.getByLabel('float-normal-empty')
+      if (existingWindow) {
+        console.log('空白窗口已存在')
+        return
+      }
+      
+      const blankWindow = new WebviewWindow('float-normal-empty', {
+        url: '/float',
+        title: '',
+        width: 300,
+        height: 40,
+        x: 100,
+        y: 100,
+        decorations: false,
+        skipTaskbar: true
+      })
+      
+      blankWindow.once('tauri://created', async () => {
+        console.log('空白窗口创建成功')
+        try {
+          const { Window } = await import('@tauri-apps/api/window')
+          const window = await Window.getByLabel('float-normal-empty')
+          if (window) {
+            await window.setAlwaysOnTop(true)
+          }
+        } catch (e) {
+          console.error('设置置顶失败:', e)
+        }
+      })
+      
+      blankWindow.once('tauri://error', (e) => {
+        console.error('空白窗口创建失败:', e)
+      })
+    } catch (e) {
+      console.error('创建空白窗口失败:', e)
+    }
+  }, 600)
   
   // 蓝牙按键事件监听器引用
   let buttonEventUnlisten = null

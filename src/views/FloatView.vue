@@ -243,7 +243,23 @@ onMounted(async () => {
     }
   }, 5000)
 
+  // 限制窗口大小（禁止调整大小）
+  const limitWindowSize = async () => {
+    try {
+      const floatWindow = await getCurrentWindow()
+      await floatWindow.setSize({ width: 300, height: 40 })
+    } catch (e) {
+      console.error('限制窗口大小失败:', e)
+    }
+  }
+  
+  limitWindowSize()
+  const sizeCheckInterval = setInterval(limitWindowSize, 1000)
+
   onUnmounted(() => {
+    if (sizeCheckInterval) {
+      clearInterval(sizeCheckInterval)
+    }
     if (unlistenTheme) unlistenTheme()
     if (unlistenConnection) unlistenConnection()
     if (unlistenScreenshot) unlistenScreenshot()
@@ -628,6 +644,7 @@ html, body {
   cursor: move;
   user-select: none;
   overflow: hidden;
+  -webkit-app-region: drag;
 }
 
 .float-title {
