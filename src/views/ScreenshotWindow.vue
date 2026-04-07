@@ -15,35 +15,135 @@ Email: admin@mc666.top
 -->
 
 <template>
-  <div class="screenshot-container">
+  <div class="screenshot-container" :class="{ 'light-mode': isLightMode }">
     <!-- 顶部工具栏 -->
-    <div class="toolbar" v-show="!isCropMode && !isAnnotateMode">
-      <button class="zoom-btn" @click="zoomOut" :disabled="scale <= 0.1">
-        <i class="ri-zoom-out-line"></i>
-      </button>
-      <button class="zoom-scale-btn" @click="resetZoom">
-        {{ Math.round(scale * 100) }}%
-      </button>
-      <button class="zoom-btn" @click="zoomIn" :disabled="scale >= 3">
-        <i class="ri-zoom-in-line"></i>
-      </button>
-      <div class="control-divider"></div>
-      <button class="zoom-btn" @click="saveToNotes" title="保存到笔记">
-        <i class="ri-sticky-note-line"></i>
-      </button>
-      <button class="zoom-btn" @click="saveScreenshot" title="保存">
-        <i class="ri-save-line"></i>
-      </button>
-      <button class="zoom-btn" @click="handleAnnotate" title="标注">
-        <i class="ri-edit-line"></i>
-      </button>
-      <button class="zoom-btn" @click="handleCrop" title="裁切">
-        <i class="ri-crop-line"></i>
-      </button>
-      <div class="control-divider"></div>
-      <button class="zoom-btn close-btn" @click="closeWindow" title="关闭窗口">
-        <i class="ri-close-line"></i>
-      </button>
+    <div class="toolbar" v-show="!isCropMode" @mousedown="startToolbarDrag">
+      <!-- 正常模式下的按钮 -->
+      <template v-if="!isAnnotateMode">
+        <div class="toolbar-left">
+          <button class="zoom-btn" @click="zoomOut" :disabled="scale <= 0.1">
+            <i class="ri-zoom-out-line"></i>
+          </button>
+          <button class="zoom-scale-btn" @click="resetZoom">
+            {{ Math.round(scale * 100) }}%
+          </button>
+          <button class="zoom-btn" @click="zoomIn" :disabled="scale >= 3">
+            <i class="ri-zoom-in-line"></i>
+          </button>
+          <div class="control-divider"></div>
+          <button class="zoom-btn" @click="handleAnnotate" title="标注">
+            <i class="ri-edit-line"></i>
+          </button>
+          <button class="zoom-btn" @click="handleCrop" title="裁切">
+            <i class="ri-crop-line"></i>
+          </button>
+        </div>
+        <div class="toolbar-right">
+          <button class="zoom-btn" @click="saveToNotes" title="保存到笔记">
+            <i class="ri-sticky-note-line"></i>
+          </button>
+          <button class="zoom-btn" @click="saveScreenshot" title="保存">
+            <i class="ri-save-line"></i>
+          </button>
+          <div class="control-divider"></div>
+          <button class="zoom-btn window-control-btn" @click="minimizeWindow" title="最小化">
+            <i class="ri-subtract-line"></i>
+          </button>
+          <button class="zoom-btn window-control-btn" @click="maximizeWindow" title="最大化">
+            <i class="ri-rectangle-line"></i>
+          </button>
+          <button class="zoom-btn close-btn" @click="closeWindow" title="关闭">
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+      </template>
+      
+      <!-- 标注模式下的工具 -->
+      <template v-else>
+        <div class="toolbar-left">
+          <!-- 工具选择 -->
+          <button 
+            :class="['zoom-btn', { active: annotateCurrentTool === 'select' }]"
+            @click="selectAnnotateTool('select')"
+            title="选择工具"
+          >
+            <i class="ri-cursor-line"></i>
+          </button>
+          <button 
+            :class="['zoom-btn', { active: annotateCurrentTool === 'free' }]"
+            @click="selectAnnotateTool('free')"
+            title="自由绘制"
+          >
+            <i class="ri-edit-line"></i>
+          </button>
+          <div class="control-divider"></div>
+          
+          <!-- 颜色选择 -->
+          <div class="color-picker-group">
+            <button 
+              v-for="color in annotateColors" 
+              :key="color.value"
+              :class="['annotate-color-btn', { active: annotateCurrentColor === color.value }]"
+              :style="{ backgroundColor: color.value }"
+              @click.stop="selectAnnotateColor(color.value)"
+              :title="color.name"
+            >
+              <i v-if="annotateCurrentColor === color.value" class="ri-check-line"></i>
+            </button>
+          </div>
+          <div class="control-divider"></div>
+          
+          <!-- 线条粗细 -->
+          <div class="stroke-width-group">
+            <button 
+              v-for="width in annotateStrokeWidths" 
+              :key="width"
+              :class="['annotate-stroke-btn', { active: annotateCurrentStrokeWidth === width }]"
+              @click.stop="selectAnnotateStrokeWidth(width)"
+              :title="`粗细：${width}px`"
+            >
+              <div 
+                class="annotate-stroke-preview" 
+                :style="{ 
+                  width: width + 'px', 
+                  height: width + 'px',
+                  backgroundColor: annotateCurrentColor 
+                }"
+              ></div>
+            </button>
+          </div>
+          <div class="control-divider"></div>
+          
+          <!-- 操作按钮 -->
+          <button class="zoom-btn" @click="undoAnnotate" :disabled="!annotateCanUndo" title="撤销">
+            <i class="ri-arrow-go-back-line"></i>
+          </button>
+          <button class="zoom-btn" @click="redoAnnotate" :disabled="!annotateCanRedo" title="重做">
+            <i class="ri-arrow-go-forward-line"></i>
+          </button>
+          <button class="zoom-btn" @click="clearAnnotate" title="清除所有">
+            <i class="ri-delete-bin-line"></i>
+          </button>
+        </div>
+        <div class="toolbar-right">
+          <button class="zoom-btn cancel-btn" @click="handleAnnotateCancel" title="取消标注">
+            <i class="ri-close-line"></i>
+          </button>
+          <button class="zoom-btn primary-btn" @click="() => annotatePanelRef?.completeAnnotate()" title="完成标注">
+            <i class="ri-check-line"></i>
+          </button>
+          <div class="control-divider"></div>
+          <button class="zoom-btn window-control-btn" @click="minimizeWindow" title="最小化">
+            <i class="ri-subtract-line"></i>
+          </button>
+          <button class="zoom-btn window-control-btn" @click="maximizeWindow" title="最大化">
+            <i class="ri-rectangle-line"></i>
+          </button>
+          <button class="zoom-btn close-btn" @click="closeWindow" title="关闭">
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+      </template>
     </div>
     
     <!-- 图片显示区域 -->
@@ -104,6 +204,7 @@ Email: admin@mc666.top
       <!-- 标注模式 -->
       <div v-if="isAnnotateMode" class="annotate-overlay">
         <AnnotatePanel
+          ref="annotatePanelRef"
           :image-data="screenshotData"
           :image-width="width"
           :image-height="height"
@@ -117,12 +218,19 @@ Email: admin@mc666.top
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { showToast } from '../components/layout/showToast.js'
 import AnnotatePanel from '../components/annotate/AnnotatePanel.vue'
 import { saveAnnotations, loadAnnotations, generateImageId } from '../utils/annotationStorage.js'
+
+
+import { Window } from '@tauri-apps/api/window'
+
+// 主题状态
+const isLightMode = ref(false)
 
 const screenshotData = ref(null)
 const width = ref(0)
@@ -161,6 +269,52 @@ const isAnnotateMode = ref(false)
 const annotatedImageData = ref(null)
 const currentImageId = ref(null)
 const hasExistingAnnotations = ref(false)
+
+// 标注工具状态（通过 ref 访问 AnnotatePanel 实例）
+const annotatePanelRef = ref(null)
+
+// 标注工具配置
+const annotateColors = [
+  { value: '#ef4444', name: '红色' },
+  { value: '#3178c6', name: '蓝色' },
+  { value: '#10b981', name: '绿色' },
+  { value: '#f59e0b', name: '黄色' },
+  { value: '#8b5cf6', name: '紫色' }
+]
+
+const annotateStrokeWidths = [2, 4, 6, 8, 10]
+
+// 标注工具状态代理
+const annotateCurrentTool = computed(() => annotatePanelRef.value?.currentTool || 'free')
+const annotateCurrentColor = computed(() => annotatePanelRef.value?.currentColor || '#ef4444')
+const annotateCurrentStrokeWidth = computed(() => annotatePanelRef.value?.currentStrokeWidth || 4)
+const annotateCanUndo = computed(() => annotatePanelRef.value?.canUndo || false)
+const annotateCanRedo = computed(() => annotatePanelRef.value?.canRedo || false)
+
+// 标注工具方法
+const selectAnnotateTool = (tool) => {
+  annotatePanelRef.value?.selectTool(tool)
+}
+
+const selectAnnotateColor = (color) => {
+  annotatePanelRef.value?.selectColor(color)
+}
+
+const selectAnnotateStrokeWidth = (width) => {
+  annotatePanelRef.value?.selectStrokeWidth(width)
+}
+
+const undoAnnotate = () => {
+  annotatePanelRef.value?.undo()
+}
+
+const redoAnnotate = () => {
+  annotatePanelRef.value?.redo()
+}
+
+const clearAnnotate = () => {
+  annotatePanelRef.value?.clearAll()
+}
 
 // 监听截图数据事件
 let unlistenScreenshotData = null
@@ -301,34 +455,62 @@ const handleAnnotate = () => {
 }
 
 const handleAnnotateComplete = (data) => {
-  annotatedImageData.value = data.imageData
-  screenshotData.value = data.imageData
+  console.log('[ScreenshotView] 收到标注完成数据', {
+    hasData: !!data.imageData,
+    dataLength: data.imageData?.length,
+    imageDataPreview: data.imageData?.substring(0, 50)
+  })
   
-  // 更新宽高为标注后的图片尺寸
-  // 创建临时 Image 对象获取新图片的宽高
+  // 检查数据是否有效
+  if (!data.imageData || data.imageData.length === 0) {
+    console.error('[ScreenshotView] 标注数据为空')
+    showToast('标注数据无效', '#ef4444')
+    isAnnotateMode.value = false
+    return
+  }
+  
+  // 创建临时 Image 对象验证图片并获取尺寸
   const img = new Image()
   img.onload = () => {
+    console.log('[ScreenshotView] 标注图片加载成功', img.width, 'x', img.height)
+    
+    // 更新数据
+    annotatedImageData.value = data.imageData
+    screenshotData.value = data.imageData
     width.value = img.width
     height.value = img.height
-    console.log('[ScreenshotView] 标注完成，图片尺寸更新为:', img.width, 'x', img.height)
-  }
-  img.src = data.imageData
-  
-  // 保存标注数据
-  if (currentImageId.value) {
-    const success = saveAnnotations(
-      currentImageId.value,
-      data.annotations,
-      data.imageData
-    )
-    if (success) {
-      showToast('标注已保存', '#10b981')
-    } else {
-      showToast('保存失败', '#ef4444')
+    
+    // 保存标注数据
+    if (currentImageId.value) {
+      const success = saveAnnotations(
+        currentImageId.value,
+        data.annotations,
+        data.imageData
+      )
+      if (success) {
+        showToast('标注已保存', '#10b981')
+      } else {
+        showToast('保存失败', '#ef4444')
+      }
     }
+    
+    // 最后退出标注模式
+    isAnnotateMode.value = false
+    
+    // 重置缩放和平移状态
+    resetZoom()
   }
   
-  isAnnotateMode.value = false
+  img.onerror = () => {
+    console.error('[ScreenshotView] 标注图片加载失败', {
+      dataLength: data.imageData?.length,
+      hasData: !!data.imageData
+    })
+    showToast('图片保存失败', '#ef4444')
+    isAnnotateMode.value = false
+  }
+  
+  img.src = data.imageData
 }
 
 const handleAnnotateCancel = () => {
@@ -592,14 +774,10 @@ const saveToNotes = async () => {
     
     showToast('截图已保存到笔记', '#10b981')
     
-    // 关闭当前窗口
-    await closeWindow()
-    
-    // 主窗口跳转回主页面
-    window.location.href = '/' 
-    
-    // 子窗口打开笔记编辑页面
-    openNoteEditorWindow({ uuid, title: noteTitle, content: markdownContent })
+    // 等待 0.2 秒后打开笔记，不关闭截图窗口
+    setTimeout(() => {
+      openNoteEditorWindow({ uuid, title: noteTitle, content: markdownContent })
+    }, 200)
     
   } catch (error) {
     console.error('保存到笔记失败:', error)
@@ -611,6 +789,12 @@ const saveToNotes = async () => {
 const openNoteEditorWindow = (note) => {
   const windowLabel = `note-editor-${note.uuid}`
   const url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
+
+  console.log('准备打开笔记编辑窗口:', {
+    windowLabel,
+    url,
+    noteTitle: note.title
+  })
 
   const webview = new WebviewWindow(windowLabel, {
     url: url,
@@ -630,6 +814,7 @@ const openNoteEditorWindow = (note) => {
     setTimeout(async () => {
       try {
         await webview.emit('load-note-content', { content: note.content || '' })
+        console.log('已发送笔记内容到窗口')
       } catch (e) {
         console.error('发送笔记内容失败:', e)
       }
@@ -642,6 +827,24 @@ const openNoteEditorWindow = (note) => {
   })
 }
 
+const minimizeWindow = async () => {
+  try {
+    const currentWindow = await getCurrentWindow()
+    await currentWindow.minimize()
+  } catch (e) {
+    console.error('最小化窗口失败:', e)
+  }
+}
+
+const maximizeWindow = async () => {
+  try {
+    const currentWindow = await getCurrentWindow()
+    await currentWindow.maximize()
+  } catch (e) {
+    console.error('最大化窗口失败:', e)
+  }
+}
+
 const closeWindow = async () => {
   try {
     const currentWindow = await getCurrentWindow()
@@ -649,6 +852,57 @@ const closeWindow = async () => {
   } catch (e) {
     console.error('关闭窗口失败:', e)
   }
+}
+
+// toolbar 拖动相关
+const isToolbarDragging = ref(false)
+const toolbarStartX = ref(0)
+const toolbarStartY = ref(0)
+const toolbarWindowStartX = ref(0)
+const toolbarWindowStartY = ref(0)
+
+const startToolbarDrag = async (e) => {
+  // 只有点击 toolbar 本身才拖动，不响应按钮点击
+  if (e.target.closest('.zoom-btn')) return
+  
+  isToolbarDragging.value = true
+  toolbarStartX.value = e.clientX
+  toolbarStartY.value = e.clientY
+  
+  try {
+    const currentWindow = await getCurrentWindow()
+    const position = await currentWindow.outerPosition()
+    toolbarWindowStartX.value = position.x
+    toolbarWindowStartY.value = position.y
+  } catch (err) {
+    console.log('获取窗口位置失败:', err)
+  }
+  
+  document.addEventListener('mousemove', onToolbarDrag)
+  document.addEventListener('mouseup', endToolbarDrag)
+}
+
+const onToolbarDrag = async (e) => {
+  if (!isToolbarDragging.value) return
+  
+  const dx = e.clientX - toolbarStartX.value
+  const dy = e.clientY - toolbarStartY.value
+  
+  try {
+    const currentWindow = await getCurrentWindow()
+    await currentWindow.setPosition({
+      x: toolbarWindowStartX.value + dx,
+      y: toolbarWindowStartY.value + dy
+    })
+  } catch (err) {
+    console.log('移动窗口失败:', err)
+  }
+}
+
+const endToolbarDrag = () => {
+  isToolbarDragging.value = false
+  document.removeEventListener('mousemove', onToolbarDrag)
+  document.removeEventListener('mouseup', endToolbarDrag)
 }
 
 // 键盘快捷键支持
@@ -708,6 +962,36 @@ const stopCropDrag = () => {
   document.removeEventListener('mouseup', stopCropDrag)
 }
 
+// 初始化主题
+function initTheme() {
+  try {
+    const savedTheme = localStorage.getItem('theme-preference')
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      isLightMode.value = savedTheme === 'light'
+    } else {
+      // 检测系统偏好
+      isLightMode.value = window.matchMedia('(prefers-color-scheme: light)').matches
+    }
+  } catch (e) {
+    console.error('初始化主题失败:', e)
+    isLightMode.value = false
+  }
+}
+
+// 监听主题变化
+function setupThemeListener() {
+  try {
+    // 监听来自主窗口的主题变化事件
+    listen('theme-changed', (event) => {
+      const theme = event.payload
+      isLightMode.value = theme === 'light'
+      console.log('收到主题变化事件:', theme)
+    })
+  } catch (e) {
+    console.error('设置主题监听失败:', e)
+  }
+}
+
 onMounted(() => {
   setupScreenshotListener().then(() => {
     console.log('截图监听器设置完成')
@@ -715,6 +999,12 @@ onMounted(() => {
     console.error('设置截图监听器失败:', e)
   })
   document.addEventListener('keydown', handleKeyDown)
+  
+  // 初始化主题
+  initTheme()
+  
+  // 监听主题变化
+  setupThemeListener()
 })
 
 onUnmounted(() => {
@@ -726,13 +1016,66 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 主题变量定义 */
+.screenshot-container {
+  /* 暗色主题（默认） */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-header: #161b22;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --border-color: #30363d;
+  --accent-blue: #58a6ff;
+  --accent-blue-rgb: 88, 166, 255;
+  --accent-blue-bright: #1f6feb;
+  --accent-green: #3fb950;
+  --accent-green-rgb: 63, 185, 80;
+  --accent-red: #f85149;
+  --accent-red-rgb: 248, 81, 73;
+  --hover-bg: rgba(255, 255, 255, 0.08);
+  --danger-btn-bg: rgba(248, 81, 73, 0.1);
+  --danger-btn-text: #f85149;
+  --danger-btn-border: rgba(248, 81, 73, 0.4);
+  --danger-btn-hover-bg: #f85149;
+  --danger-btn-hover-text: #ffffff;
+  --danger-btn-hover-border: #f85149;
+}
+
+.screenshot-container.light-mode {
+  /* 亮色主题 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --bg-tertiary: #eaeef2;
+  --bg-header: #f6f8fa;
+  --text-primary: #24292f;
+  --text-secondary: #57606a;
+  --text-muted: #8c959f;
+  --border-color: #d0d7de;
+  --accent-blue: #0969da;
+  --accent-blue-rgb: 9, 105, 218;
+  --accent-blue-bright: #0550ae;
+  --accent-green: #2da44e;
+  --accent-green-rgb: 45, 164, 78;
+  --accent-red: #cf222e;
+  --accent-red-rgb: 207, 34, 46;
+  --hover-bg: #f3f4f6;
+  --danger-btn-bg: #ffebe9;
+  --danger-btn-text: #cf222e;
+  --danger-btn-border: rgba(207, 34, 46, 0.4);
+  --danger-btn-hover-bg: #cf222e;
+  --danger-btn-hover-text: #ffffff;
+  --danger-btn-hover-border: #cf222e;
+}
+
 .screenshot-container {
   width: 100vw;
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: var(--bg-primary, #0f172a);
+  background-color: var(--bg-primary);
 }
 
 .toolbar {
@@ -740,14 +1083,155 @@ onUnmounted(() => {
   padding: 8px 12px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background-color: var(--bg-secondary, #1e293b);
-  border-bottom: 1px solid var(--border-color, #334155);
+  justify-content: space-between;
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
+  box-sizing: border-box;
+  cursor: move;
+  -webkit-app-region: drag;
+  position: relative;
+  z-index: 200;
 }
 
-.toolbar > .zoom-btn.close-btn {
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-right {
   margin-left: auto;
+}
+
+/* 按钮不参与拖动 */
+.toolbar .zoom-btn {
+  -webkit-app-region: no-drag;
+  cursor: pointer;
+}
+
+.toolbar .zoom-btn.window-control-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+}
+
+.toolbar .zoom-btn.window-control-btn:hover {
+  background-color: var(--hover-bg);
+  border-color: var(--accent-blue);
+}
+
+.toolbar .zoom-btn.close-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+}
+
+.toolbar .zoom-btn.close-btn:hover {
+  background-color: var(--accent-red);
+  border-color: var(--accent-red);
+  color: #fff;
+}
+
+/* 标注工具按钮激活状态 */
+.toolbar .zoom-btn.active {
+  background-color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+
+/* 颜色选择器组 */
+.color-picker-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* 线条粗细选择器组 */
+.stroke-width-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* 标注颜色按钮 */
+.annotate-color-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  position: relative;
+  padding: 0;
+}
+
+.annotate-color-btn:hover {
+  transform: scale(1.1);
+}
+
+.annotate-color-btn.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--bg-secondary, #1e293b);
+}
+
+.annotate-color-btn i {
+  color: #fff;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 线条粗细按钮 */
+.annotate-stroke-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  padding: 0;
+}
+
+.annotate-stroke-btn:hover {
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.05));
+}
+
+.annotate-stroke-btn.active {
+  border-color: var(--accent-blue, #3178c6);
+  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
+}
+
+.annotate-stroke-preview {
+  border-radius: 50%;
+}
+
+/* 完成/取消按钮样式 */
+.toolbar .primary-btn {
+  background-color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
+}
+
+.toolbar .primary-btn:hover {
+  background-color: var(--accent-blue-bright);
+}
+
+.toolbar .cancel-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.toolbar .cancel-btn:hover {
+  background-color: rgba(207, 34, 46, 0.1);
+  color: var(--accent-red);
+  border-color: var(--accent-red);
 }
 
 .screenshot-main {
@@ -757,7 +1241,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: var(--bg-primary, #0f172a);
+  background-color: var(--bg-primary);
 }
 
 .image-wrapper {
@@ -890,8 +1374,8 @@ onUnmounted(() => {
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  background-color: var(--bg-secondary, #1e293b);
-  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
 }
 
 .zoom-btn {
@@ -899,8 +1383,8 @@ onUnmounted(() => {
   height: 36px;
   border: none;
   border-radius: 6px;
-  background-color: var(--bg-tertiary, #334155);
-  color: var(--text-primary, #f1f5f9);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -910,7 +1394,7 @@ onUnmounted(() => {
 }
 
 .zoom-btn:hover:not(:disabled) {
-  background-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue);
   color: white;
 }
 
@@ -920,12 +1404,13 @@ onUnmounted(() => {
 }
 
 .zoom-btn.close-btn {
-  background-color: #ef4444;
+  background-color: var(--accent-red);
   color: white;
 }
 
 .zoom-btn.close-btn:hover {
-  background-color: #dc2626;
+  background-color: var(--accent-red);
+  filter: brightness(0.9);
 }
 
 .zoom-scale-btn {
@@ -933,22 +1418,22 @@ onUnmounted(() => {
   height: 36px;
   border: none;
   border-radius: 6px;
-  background-color: var(--bg-tertiary, #334155);
-  color: var(--text-primary, #f1f5f9);
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
 }
 
 .zoom-scale-btn:hover {
-  background-color: var(--accent-blue, #3b82f6);
+  background-color: var(--accent-blue);
   color: white;
 }
 
 .control-divider {
   width: 1px;
   height: 24px;
-  background-color: var(--border-color, rgba(255, 255, 255, 0.1));
+  background-color: var(--border-color);
 }
 
 .annotate-overlay {
@@ -958,7 +1443,7 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.8);
-  z-index: 100;
+  z-index: 50;
   display: flex;
   justify-content: center;
   align-items: center;

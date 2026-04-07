@@ -15,7 +15,7 @@ Email: admin@mc666.top
 -->
 
 <template>
-  <div class="editor-window">
+  <div class="editor-window" :class="{ 'light-mode': isLightMode }">
     <div class="editor-header" data-tauri-drag-region>
       <input 
         v-model="noteTitle" 
@@ -24,6 +24,12 @@ Email: admin@mc666.top
         type="text"
       />
       <div class="editor-actions">
+        <button class="action-btn window-btn" @click="minimizeWindow" title="最小化">
+          <i class="ri-subtract-line"></i>
+        </button>
+        <button class="action-btn window-btn" @click="toggleMaximize" :title="isMaximized ? '还原' : '最大化'">
+          <i :class="isMaximized ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line'"></i>
+        </button>
         <button class="action-btn save-btn" @click="saveAndClose" title="保存">
           <i class="ri-check-line"></i>
         </button>
@@ -158,6 +164,13 @@ const editorTextarea = ref(null)
 const isDraggingOver = ref(false)
 const showSaveConfirmModal = ref(false)
 
+// 窗口状态
+const isMaximized = ref(false)
+const currentWindow = getCurrentWindow()
+
+// 主题状态
+const isLightMode = ref(false)
+
 // 获取认证头
 async function getAuthHeader() {
   try {
@@ -214,6 +227,15 @@ onMounted(async () => {
   
   // 监听保存快捷键
   document.addEventListener('keydown', handleGlobalKeydown)
+  
+  // 检查窗口状态
+  checkWindowState()
+  
+  // 初始化主题
+  initTheme()
+  
+  // 监听主题变化
+  setupThemeListener()
 })
 
 onUnmounted(() => {
@@ -223,6 +245,71 @@ onUnmounted(() => {
     window._unlistenContent()
   }
 })
+
+// 检查窗口状态
+async function checkWindowState() {
+  try {
+    isMaximized.value = await currentWindow.isMaximized()
+  } catch (error) {
+    console.error('检查窗口状态失败:', error)
+  }
+}
+
+// 最小化窗口
+async function minimizeWindow() {
+  try {
+    await currentWindow.minimize()
+  } catch (error) {
+    console.error('最小化窗口失败:', error)
+  }
+}
+
+// 切换最大化
+async function toggleMaximize() {
+  try {
+    if (isMaximized.value) {
+      await currentWindow.unmaximize()
+    } else {
+      await currentWindow.maximize()
+    }
+    // 等待一小段时间让窗口状态更新
+    setTimeout(() => {
+      checkWindowState()
+    }, 50)
+  } catch (error) {
+    console.error('切换最大化失败:', error)
+  }
+}
+
+// 初始化主题
+function initTheme() {
+  try {
+    const savedTheme = localStorage.getItem('theme-preference')
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      isLightMode.value = savedTheme === 'light'
+    } else {
+      // 检测系统偏好
+      isLightMode.value = window.matchMedia('(prefers-color-scheme: light)').matches
+    }
+  } catch (e) {
+    console.error('初始化主题失败:', e)
+    isLightMode.value = false
+  }
+}
+
+// 监听主题变化
+function setupThemeListener() {
+  try {
+    // 监听来自主窗口的主题变化事件
+    listen('theme-changed', (event) => {
+      const theme = event.payload
+      isLightMode.value = theme === 'light'
+      console.log('收到主题变化事件:', theme)
+    })
+  } catch (e) {
+    console.error('设置主题监听失败:', e)
+  }
+}
 
 // 全局键盘事件（Ctrl+S 保存）
 function handleGlobalKeydown(e) {
@@ -524,12 +611,51 @@ function insertMarkdown(type) {
 </script>
 
 <style scoped>
+/* 主题变量定义 */
+.editor-window {
+  /* 暗色主题（默认） */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --text-primary: #c9d1d9;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --border-color: #30363d;
+  --accent-blue: #58a6ff;
+  --accent-blue-rgb: 88, 166, 255;
+  --accent-blue-bright: #1f6feb;
+  --accent-green: #3fb950;
+  --accent-green-rgb: 63, 185, 80;
+  --accent-red: #f85149;
+  --accent-red-rgb: 248, 81, 73;
+  --hover-bg: rgba(255, 255, 255, 0.08);
+}
+
+.editor-window.light-mode {
+  /* 亮色主题 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f8fa;
+  --bg-tertiary: #eaeef2;
+  --text-primary: #24292f;
+  --text-secondary: #57606a;
+  --text-muted: #8c959f;
+  --border-color: #d0d7de;
+  --accent-blue: #0969da;
+  --accent-blue-rgb: 9, 105, 218;
+  --accent-blue-bright: #0550ae;
+  --accent-green: #2da44e;
+  --accent-green-rgb: 45, 164, 78;
+  --accent-red: #cf222e;
+  --accent-red-rgb: 207, 34, 46;
+  --hover-bg: #f3f4f6;
+}
+
 .editor-window {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: var(--bg-primary, #0d1117);
-  color: var(--text-primary, #c9d1d9);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .editor-header {
@@ -537,15 +663,15 @@ function insertMarkdown(type) {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  background-color: var(--bg-secondary, #161b22);
-  border-bottom: 1px solid var(--border-color, #30363d);
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
   -webkit-app-region: drag;
 }
 
 .editor-title-input {
   font-size: 15px;
   font-weight: 500;
-  color: var(--text-primary, #c9d1d9);
+  color: var(--text-primary);
   background-color: transparent;
   border: none;
   outline: none;
@@ -557,11 +683,11 @@ function insertMarkdown(type) {
 }
 
 .editor-title-input:focus {
-  background-color: var(--bg-primary, #0d1117);
+  background-color: var(--bg-primary);
 }
 
 .editor-title-input::placeholder {
-  color: var(--text-muted, #6e7681);
+  color: var(--text-muted);
 }
 
 .editor-actions {
@@ -601,6 +727,15 @@ function insertMarkdown(type) {
   background-color: rgba(248, 81, 73, 0.15);
 }
 
+.window-btn {
+  color: var(--text-secondary);
+}
+
+.window-btn:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+}
+
 .editor-body {
   flex: 1;
   overflow: hidden;
@@ -614,7 +749,7 @@ function insertMarkdown(type) {
 }
 
 .editor-container.dragging-over {
-  border: 2px dashed var(--accent-blue, #58a6ff);
+  border: 2px dashed var(--accent-blue);
   background-color: rgba(88, 166, 255, 0.1);
   border-radius: .375rem;
 }
@@ -624,7 +759,7 @@ function insertMarkdown(type) {
   min-height: 100%;
   background: none;
   border: none;
-  color: var(--text-primary, #c9d1d9);
+  color: var(--text-primary);
   font-size: 15px;
   line-height: 1.7;
   outline: none;
