@@ -51,6 +51,24 @@ Email: admin@mc666.top
         <div class="setting-card">
           <div class="setting-item">
             <div class="setting-label">
+              <span class="label-text">使用 HTTPS 连接</span>
+              <span class="label-desc">启用后将使用 HTTPS 协议与服务端通信，提高安全性</span>
+            </div>
+            <div class="setting-control">
+              <button 
+                class="toggle-btn" 
+                :class="{ active: useHttps }"
+                @click="toggleHttps"
+              >
+                <span class="toggle-slider"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="setting-card">
+          <div class="setting-item">
+            <div class="setting-label">
               <div class="label-with-tooltip">
                 <span class="label-text">心跳包</span>
                 <div class="tooltip-wrapper">
@@ -310,6 +328,35 @@ const storageSettings = ref({
 const hardwareSettings = ref({
   keepAliveInterval: 30
 })
+
+const useHttps = ref(false)
+
+// 切换 HTTPS 设置
+const toggleHttps = async () => {
+  useHttps.value = !useHttps.value
+  try {
+    await saveAppData('use_https', JSON.stringify({ useHttps: useHttps.value }))
+    showToast(`HTTPS 连接已${useHttps.value ? '启用' : '禁用'}`, '#3b82f6')
+    console.log('[设置页面] HTTPS 设置已保存:', useHttps.value)
+  } catch (e) {
+    console.error('保存 HTTPS 设置失败:', e)
+    showToast('保存设置失败', '#ef4444')
+  }
+}
+
+// 加载 HTTPS 设置
+const loadHttpsSetting = async () => {
+  try {
+    const saved = await loadAppData('use_https')
+    if (saved) {
+      const data = JSON.parse(saved)
+      useHttps.value = data.useHttps || false
+    }
+  } catch (e) {
+    console.warn('加载 HTTPS 设置失败:', e)
+    useHttps.value = false
+  }
+}
 
 const cpenBluetoothVersion = ref('未连接')
 const localBluetoothVersion = ref('5.0')
@@ -783,6 +830,7 @@ const formatSize = (bytes) => {
 onMounted(() => {
   loadSettings()
   loadHardwareSettings()
+  loadHttpsSetting()
   fetchBluetoothVersions()
   checkFilesystemLogin()
   getCacheSize()

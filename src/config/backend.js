@@ -39,10 +39,30 @@ export async function initBackendConfig() {
     const { invoke } = await import('@tauri-apps/api/core')
     const config = await invoke('get_backend_config')
     
+    // 检查是否启用了 HTTPS
+    let useHttps = false
+    try {
+      const { loadAppData } = await import('../components/data/storage.js')
+      const saved = await loadAppData('use_https')
+      if (saved) {
+        const data = JSON.parse(saved)
+        useHttps = data.useHttps || false
+      }
+    } catch (e) {
+      console.warn('加载 HTTPS 设置失败:', e)
+    }
+    
+    // 如果启用了 HTTPS，将 http://替换为 https://
+    let baseUrl = config.base_url
+    if (useHttps && baseUrl.startsWith('http://')) {
+      baseUrl = baseUrl.replace('http://', 'https://')
+      console.log('已启用 HTTPS 连接')
+    }
+    
     backendConfig.value = {
-      base_url: config.base_url,
+      base_url: baseUrl,
       port: config.port,
-      full_url: config.full_url
+      full_url: `${baseUrl}:${config.port}`
     }
     
     isConfigLoaded.value = true
@@ -54,6 +74,7 @@ export async function initBackendConfig() {
     console.log('Base URL:', backendConfig.value.base_url)
     console.log('Port:', backendConfig.value.port)
     console.log('Full URL:', backendConfig.value.full_url)
+    console.log('HTTPS:', useHttps ? '已启用' : '未启用')
     console.log('='.repeat(50))
   } catch (error) {
     console.error('加载后端配置失败:', error)
