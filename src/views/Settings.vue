@@ -223,6 +223,14 @@ Email: admin@mc666.top
                 <i class="ri-mail-line"></i>
                 <span>发送邮件</span>
               </button>
+              <div class="email-container">
+                <span class="email-address" @click="switchEmail" title="点击切换邮箱">
+                  {{ developerEmails[currentEmailIndex] }}
+                </span>
+                <button class="copy-btn" @click="copyEmail" title="复制邮箱">
+                  <i class="ri-file-copy-line"></i>
+                </button>
+              </div>
             </div>
             <div class="feedback-actions">
               <button class="action-btn" @click="showFeedbackOptions = true" v-if="!showFeedbackOptions">提交问题或反馈</button>
@@ -321,6 +329,15 @@ const showFaq = () => {
 }
 const isLightMode = ref(false)
 const floatWindowEnabled = ref(true)
+
+// 开发者邮箱列表
+const developerEmails = [
+  'admin@mc666.top',
+  'ANTmmmmm@outlook.com',
+  'abc.cxh2009@foxmail.com',
+  '1220594170@qq.com'
+]
+const currentEmailIndex = ref(0)
 
 // 监听主题变化
 watch(() => theme?.isLightMode, (newVal) => {
@@ -653,6 +670,21 @@ const openEmail = () => {
   const subject = encodeURIComponent('CAMFC Cloud 客户端反馈')
   const body = encodeURIComponent('您好，我有一些反馈想与您分享：\n\n')
   window.location.href = `mailto:abc.cxh2009@foxmail.com?subject=${subject}&body=${body}`
+}
+
+const copyEmail = async () => {
+  try {
+    const email = developerEmails[currentEmailIndex.value]
+    await navigator.clipboard.writeText(email)
+    showToast('邮箱复制成功', '#10b981')
+  } catch (e) {
+    console.error('复制邮箱失败:', e)
+    showToast('复制失败', '#ef4444')
+  }
+}
+
+const switchEmail = () => {
+  currentEmailIndex.value = (currentEmailIndex.value + 1) % developerEmails.length
 }
 
 const selectDownloadPath = async () => {
@@ -1490,6 +1522,7 @@ onUnmounted(() => {
   border: 1px solid var(--border-color, #d0d7de);
   border-radius: .375rem;
   animation: fadeIn 0.3s ease-out;
+  align-items: center;
 }
 
 .feedback-options .action-btn {
@@ -1515,6 +1548,54 @@ onUnmounted(() => {
 }
 
 .feedback-options .action-btn i {
+  font-size: 14px;
+}
+
+.email-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+}
+
+.email-address {
+  font-size: 13px;
+  color: var(--text-secondary, #57606a);
+  font-family: inherit;
+  white-space: nowrap;
+  padding: 8px 0;
+  margin-top: 13px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.email-address:hover {
+  color: var(--accent-blue, #0969da);
+}
+
+.copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-top: 11px;
+  background-color: transparent;
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  color: var(--text-secondary, #57606a);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.copy-btn:hover {
+  background-color: var(--hover-bg, #f3f4f6);
+  color: var(--text-primary, #24292f);
+  border-color: var(--accent-blue, #0969da);
+}
+
+.copy-btn i {
   font-size: 14px;
 }
 
