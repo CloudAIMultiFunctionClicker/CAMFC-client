@@ -89,7 +89,9 @@ const isLightMode = ref(getInitialTheme())
 
 // 切换主题函数
 const toggleTheme = async () => {
+  console.log('[主题切换] 用户点击切换主题，当前主题:', isLightMode.value ? '浅色' : '深色')
   isLightMode.value = !isLightMode.value
+  console.log('[主题切换] 新主题:', isLightMode.value ? '浅色' : '深色')
   updateBodyClass()
   
   localStorage.setItem('theme-preference', isLightMode.value ? 'light' : 'dark')
@@ -98,7 +100,11 @@ const toggleTheme = async () => {
     const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
     const floatWindow = await WebviewWindow.getByLabel('float')
     if (floatWindow) {
+      console.log('[主题切换] 正在通知悬浮窗...')
       await floatWindow.emit('theme-changed', isLightMode.value ? 'light' : 'dark')
+      console.log('[主题切换] 已通知悬浮窗')
+    } else {
+      console.log('[主题切换] 悬浮窗不存在')
     }
   } catch (e) {
     console.log('发送主题变化事件失败:', e)
@@ -520,11 +526,22 @@ onMounted(async () => {
   // 监听系统主题变化，如果用户没有手动设置过，就跟着系统变
   const lightMediaQuery = window.matchMedia('(prefers-color-scheme: light)')
   
-  const handleSystemThemeChange = (e) => {
+  const handleSystemThemeChange = async (e) => {
     const hasUserPreference = localStorage.getItem('theme-preference') !== null
     if (!hasUserPreference) {
       isLightMode.value = e.matches
       updateBodyClass()
+      
+      // 通知悬浮窗主题变化
+      try {
+        const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+        const floatWindow = await WebviewWindow.getByLabel('float')
+        if (floatWindow) {
+          await floatWindow.emit('theme-changed', isLightMode.value ? 'light' : 'dark')
+        }
+      } catch (e) {
+        console.log('发送主题变化事件失败:', e)
+      }
     }
   }
   

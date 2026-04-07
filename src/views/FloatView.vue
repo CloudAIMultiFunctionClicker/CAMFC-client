@@ -131,7 +131,6 @@ const hideWindowBeforeScreenshot = ref(true)
 
 let keepOnTopInterval = null
 let visibilityCheckInterval = null
-let themeCheckInterval = null
 let unlistenTheme = null
 let unlistenConnection = null
 
@@ -153,8 +152,10 @@ onMounted(async () => {
 
   unlistenTheme = await listen('theme-changed', (event) => {
     const newTheme = event.payload
+    console.log('[悬浮窗] 收到主题变化事件:', newTheme)
     isLightMode.value = newTheme === 'light'
-    localStorage.setItem('theme-preference', newTheme)
+    console.log('[悬浮窗] 主题已更新为:', isLightMode.value ? '浅色' : '深色')
+    // 不再写入 localStorage，由主窗口统一管理主题状态
   })
 
   unlistenConnection = await listen('connection-status', (event) => {
@@ -193,22 +194,8 @@ onMounted(async () => {
     console.error('[悬浮窗] 监听悬浮窗状态变化失败:', e)
   }
 
-  const checkMainWindowTheme = async () => {
-    try {
-      const mainWindow = await Window.getByLabel('main')
-      if (mainWindow) {
-        const webview = await WebviewWindow.getByLabel('main')
-        if (webview) {
-          await webview.emit('get-theme')
-        }
-      }
-    } catch (e) {
-      console.error('检查主窗口主题失败:', e)
-    }
-  }
-
-  checkMainWindowTheme()
-  themeCheckInterval = setInterval(checkMainWindowTheme, 2000)
+  // 不再主动查询主题，由主窗口在主题切换时主动通知悬浮窗
+  // 避免了双向通信导致的主题状态循环更新问题
 
   // 检查主窗口可见性状态
   const checkMainWindowVisibility = async () => {
@@ -253,9 +240,6 @@ onMounted(async () => {
     }
     if (visibilityCheckInterval) {
       clearInterval(visibilityCheckInterval)
-    }
-    if (themeCheckInterval) {
-      clearInterval(themeCheckInterval)
     }
   })
 })
