@@ -939,7 +939,8 @@ defineExpose({
   selectStrokeWidth,
   undo,
   redo,
-  clearAll
+  clearAll,
+  completeAnnotate
 })
 </script>
 
