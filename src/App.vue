@@ -29,6 +29,12 @@ const router = useRouter()
 
 const isFloatPage = computed(() => route.path === '/float')
 
+// 判断是否在悬浮窗（普通窗口样式）
+const isFloatNormalPage = computed(() => route.path === '/float-normal')
+
+// 判断是否在悬浮窗空白页
+const isFloatNormalEmptyPage = computed(() => route.path === '/float-normal-empty')
+
 // 判断是否在笔记编辑器子窗口
 const isNoteEditorPage = computed(() => route.path === '/note-editor')
 
@@ -38,8 +44,8 @@ const isEmptyPage = computed(() => route.path === '/empty')
 // 判断是否在截图窗口
 const isScreenshotWindowPage = computed(() => route.path === '/screenshot-window')
 
-// 判断是否需要隐藏标题栏（笔记编辑器、空白窗口和截图窗口）
-const shouldHideTitleBar = computed(() => isNoteEditorPage.value || isEmptyPage.value || isScreenshotWindowPage.value)
+// 判断是否需要隐藏标题栏（笔记编辑器、空白窗口、截图窗口和悬浮窗空白页）
+const shouldHideTitleBar = computed(() => isNoteEditorPage.value || isEmptyPage.value || isScreenshotWindowPage.value || isFloatNormalEmptyPage.value)
 
 // TOTP定时刷新
 let totpRefreshInterval = null
@@ -204,6 +210,45 @@ onMounted(async () => {
   setTimeout(async () => {
     await initBackendConfig()
   }, 100)
+  
+  // 动态创建 float-normal 窗口（在 main 窗口创建后）
+  // 之前在 tauri.conf.json 中静态配置，现在改为代码动态创建
+  setTimeout(async () => {
+    try {
+      const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+      
+      // 检查 float-normal 窗口是否已存在
+      const existingWindow = await WebviewWindow.getByLabel('float-normal')
+      if (existingWindow) {
+        console.log('float-normal 窗口已存在')
+        return
+      }
+      
+      // 创建 float-normal 窗口
+      const floatNormalWindow = new WebviewWindow('float-normal', {
+        url: '/float-normal-empty',
+        title: 'CAMFC Cloud - 悬浮窗',
+        width: 400,
+        height: 120,
+        x: 100,
+        y: 100,
+        minWidth: 300,
+        minHeight: 40,
+        decorations: false,
+        resizable: false
+      })
+      
+      floatNormalWindow.once('tauri://created', () => {
+        console.log('float-normal 窗口创建成功')
+      })
+      
+      floatNormalWindow.once('tauri://error', (e) => {
+        console.error('float-normal 窗口创建失败:', e)
+      })
+    } catch (e) {
+      console.error('创建 float-normal 窗口失败:', e)
+    }
+  }, 500)
   
   // 蓝牙按键事件监听器引用
   let buttonEventUnlisten = null

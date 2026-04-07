@@ -21,19 +21,6 @@
         "decorations": false,
         "resizable": true,
         "url": "/"
-      },
-      {
-        "label": "float",
-        "width": 360,
-        "height": 40,
-        "x": 100,
-        "y": 100,
-        "alwaysOnTop": true,
-        "decorations": false,
-        "transparent": true,
-        "resizable": false,
-        "skipTaskbar": true,
-        "url": "/float"
       }
     ],
     "security": {
@@ -50,7 +37,7 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["SimpChinese", "English"],
+        "languages": ["SimpChinese"],
         "displayLanguageSelector": false
       },
       "wix": null

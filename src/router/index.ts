@@ -90,6 +90,12 @@ const router = createRouter({
       component: () => import('../views/FloatView.vue')
     },
     {
+      path: '/float-normal',
+      name: 'float-normal',
+      // 悬浮窗页面（普通窗口样式）
+      component: () => import('../views/FloatNormalView.vue')
+    },
+    {
       path: '/screenshot',
       name: 'screenshot',
       // 截图预览页面
@@ -118,6 +124,12 @@ const router = createRouter({
       name: 'screenshotWindow',
       // 截图窗口（独立窗口，不受路由守卫影响）
       component: () => import('../views/ScreenshotWindow.vue')
+    },
+    {
+      path: '/float-normal-empty',
+      name: 'float-normal-empty',
+      // 悬浮窗空白页（独立窗口，不受路由守卫影响）
+      component: () => import('../views/FloatNormalEmpty.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]
@@ -134,6 +146,18 @@ router.beforeEach((to, _from, next) => {
 
   // 悬浮窗页面不需要蓝牙连接，直接放行
   if (to.path === '/float') {
+    next()
+    return
+  }
+
+  // 悬浮窗页面（普通窗口样式）不需要蓝牙连接，直接放行
+  if (to.path === '/float-normal') {
+    next()
+    return
+  }
+
+  // 悬浮窗空白页不需要蓝牙连接，直接放行
+  if (to.path === '/float-normal-empty') {
     next()
     return
   }
