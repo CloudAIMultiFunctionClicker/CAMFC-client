@@ -539,37 +539,69 @@ onMounted(async () => {
           justify-content: center;
           z-index: 99999;
           backdrop-filter: blur(4px);
+          opacity: 0;
+          animation: fadeIn 0.3s ease forwards;
         }
-        
+
+        .disconnect-dialog.fade-out {
+          animation: fadeOut 0.3s ease forwards;
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+
         .disconnect-dialog-content {
-  background-color: var(--bg-secondary, #1e293b);
-  border-radius: .375rem;
-  padding: 32px;
-  max-width: 400px;
-  text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-}
-        
+          background-color: var(--bg-secondary, #1e293b);
+          border-radius: .375rem;
+          padding: 32px;
+          max-width: 400px;
+          text-align: center;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+          border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+          transform: scale(0.9);
+          animation: scaleIn 0.3s ease forwards;
+        }
+
+        .disconnect-dialog.fade-out .disconnect-dialog-content {
+          animation: scaleOut 0.3s ease forwards;
+        }
+
+        @keyframes scaleIn {
+          from { transform: scale(0.9); }
+          to { transform: scale(1); }
+        }
+
+        @keyframes scaleOut {
+          from { transform: scale(1); }
+          to { transform: scale(0.9); }
+        }
+
         .disconnect-dialog-content h3 {
           font-size: 20px;
           font-weight: 600;
           color: var(--text-primary, #f1f5f9);
           margin: 0 0 12px 0;
         }
-        
+
         .disconnect-dialog-content p {
           font-size: 14px;
           color: var(--text-secondary, #94a3b8);
           margin: 0 0 24px 0;
         }
-        
+
         .disconnect-dialog-actions {
           display: flex;
           gap: 12px;
           justify-content: center;
         }
-        
+
         .disconnect-btn {
           padding: 10px 32px;
           border-radius: .375rem;
@@ -579,12 +611,12 @@ onMounted(async () => {
           transition: all 0.2s;
           border: none;
         }
-        
+
         .disconnect-btn.confirm {
           background-color: var(--accent-blue, #3b82f6);
           color: #fff;
         }
-        
+
         .disconnect-btn.confirm:hover {
           background-color: #2563eb;
         }
@@ -595,15 +627,18 @@ onMounted(async () => {
       
       // 绑定按钮事件
       const confirmBtn = dialog.querySelector('.confirm')
-      
+
       const closeDialog = () => {
-        dialog.remove()
-        style.remove()
+        dialog.classList.add('fade-out')
+        setTimeout(() => {
+          dialog.remove()
+          style.remove()
+        }, 300)
       }
-      
+
       confirmBtn.addEventListener('click', () => {
         closeDialog()
-        resolve(true)
+        setTimeout(() => resolve(true), 300)
       })
     })
   }

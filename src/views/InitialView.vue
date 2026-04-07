@@ -256,23 +256,7 @@ async function selectDevice(device) {
  * 开始倒计时
  */
 function startCountdown() {
-  showCountdown.value = true
-  countdownSeconds.value = 5
-  countdownProgress.value = 100
-  
-  if (countdownTimer) {
-    clearInterval(countdownTimer)
-  }
-  
-  countdownTimer = setInterval(() => {
-    countdownSeconds.value--
-    countdownProgress.value = countdownSeconds.value * 20
-    
-    if (countdownSeconds.value <= 0) {
-      clearInterval(countdownTimer)
-      jumpToMain()
-    }
-  }, 1000)
+  jumpToMain()
 }
 
 /**
@@ -333,8 +317,8 @@ onMounted(async () => {
 <style scoped>
 .initial-container {
   display: flex;
-  height: 100vh;
-  width: 100vw;
+  height: calc(100vh - 48px);
+  width: 100%;
   background: var(--bg-primary);
   overflow: hidden;
 }

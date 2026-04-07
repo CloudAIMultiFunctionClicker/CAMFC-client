@@ -792,7 +792,7 @@ onUnmounted(() => {
 .sidebar-title {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary, #24292f);
+  color: var(--text-primary, #333333);
   margin: 0 0 24px 8px;
   padding: 0 8px;
 }
@@ -812,7 +812,7 @@ onUnmounted(() => {
   background: none;
   border: none;
   border-radius: .375rem;
-  color: var(--text-secondary, #57606a);
+  color: var(--text-primary, #4a4a4a);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -821,12 +821,12 @@ onUnmounted(() => {
 
 .nav-item:hover {
   background-color: var(--hover-bg, #f3f4f6);
-  color: var(--text-primary, #24292f);
+  color: var(--text-primary, #333333);
 }
 
 .nav-item.active {
   background-color: var(--selected-bg, rgba(255, 255, 255, 0.1));
-  color: #ffffff;
+  color: #333333;
   font-weight: 700;
 }
 

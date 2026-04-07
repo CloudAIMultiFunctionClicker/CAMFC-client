@@ -92,9 +92,11 @@ function goToRecentActivities() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 100px);
+  height: calc(100vh - 48px);
+  width: 100%;
   padding: 40px 20px;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .dashboard-title {

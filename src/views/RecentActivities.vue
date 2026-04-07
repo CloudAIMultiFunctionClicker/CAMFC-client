@@ -299,7 +299,7 @@ watch([activeTab, limit], () => {
 
 .recent-activities-container {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - 48px);
   background-color: var(--bg-primary);
 }
 
