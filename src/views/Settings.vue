@@ -669,7 +669,8 @@ const toggleFloatWindow = async () => {
               decorations: false,
               transparent: true,
               resizable: false,
-              skipTaskbar: true
+              skipTaskbar: true,
+              maximizable: false
             })
             console.log('[设置页面] 悬浮窗创建成功')
           } catch (createError) {

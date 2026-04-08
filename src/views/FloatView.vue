@@ -646,6 +646,7 @@ html, body {
   user-select: none;
   overflow: hidden;
   -webkit-app-region: drag;
+  position: relative;
 }
 
 .float-title {
@@ -861,18 +862,19 @@ html, body {
 }
 
 .menu-item.back:hover {
-  background-color: #fff5f5;
+  background-color: var(--float-btn-hover-bg, rgba(0, 0, 0, 0.06));
 }
 
 .menu-item.back:hover i {
   color: #ef4444;
 }
 
-/* 未连接提示框 - 居中显示 */
+/* 未连接提示框 - 在 float-container 内居中显示 */
 .connect-tip {
-  position: fixed;
+  position: absolute;
   left: 50%;
   top: 50%;
+  transform: translate(-50%, -50%);
   background-color: var(--float-tip-bg, #ffffff);
   border: 1px solid var(--float-menu-border, #e5e5e5);
   border-radius: .375rem;
@@ -896,13 +898,13 @@ html, body {
 
 .connect-tip i {
   font-size: 16px;
-  color: #737373;
+  color: var(--float-menu-text, #737373);
 }
 
 .connect-tip span {
   font-size: 13px;
   font-weight: 500;
-  color: #171717;
+  color: var(--float-menu-text, #171717);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -914,14 +916,12 @@ html, body {
   }
   100% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
   }
 }
 
 @keyframes tip-fade-out {
   0% {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
   }
   100% {
     opacity: 0;

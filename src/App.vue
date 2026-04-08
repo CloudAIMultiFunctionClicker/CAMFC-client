@@ -286,9 +286,10 @@ onMounted(async () => {
         x: 100,
         y: 100,
         decorations: false,
-        skipTaskbar: true
+        skipTaskbar: true,
+        maximizable: false
       })
-      
+
       blankWindow.once('tauri://created', async () => {
         console.log('空白窗口创建成功')
         try {
