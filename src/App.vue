@@ -331,10 +331,10 @@ onMounted(async () => {
     
     // GPIO10 处理 -> 右箭头
     if (eventType === 'button_press') {
-      showToast('GPIO10 按下', '#3b82f6')
+      showToast('下一页 按下', '#3b82f6')
       window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: true } }))
     } else if (eventType === 'button_release') {
-      showToast('GPIO10 松开', '#10b981')
+      showToast('下一页 松开', '#10b981')
       window.dispatchEvent(new CustomEvent('button-state', { detail: { pressed: false } }))
       // 模拟右箭头键
       try {
@@ -348,10 +348,10 @@ onMounted(async () => {
     
     // GPIO9 处理 -> 左箭头
     else if (eventType === 'button_press_left') {
-      showToast('GPIO9 按下', '#8b5cf6')
+      showToast('上一页 按下', '#8b5cf6')
       window.dispatchEvent(new CustomEvent('button-state-left', { detail: { pressed: true } }))
     } else if (eventType === 'button_release_left') {
-      showToast('GPIO9 松开', '#f59e0b')
+      showToast('上一页 松开', '#f59e0b')
       window.dispatchEvent(new CustomEvent('button-state-left', { detail: { pressed: false } }))
       // 模拟左箭头键
       try {
