@@ -65,6 +65,17 @@ Email: admin@mc666.top
         </div>
       </div>
       
+      <!-- 网络错误提示 -->
+      <div v-else-if="hasError" class="error-state">
+        <AlertCircle :size="48" class="error-icon" />
+        <p class="error-message">网络连接错误</p>
+        <p class="error-desc">请检查网络连接是否正常</p>
+        <button class="retry-btn" @click="loadNotes">
+          <i class="ri-refresh-line"></i>
+          重试
+        </button>
+      </div>
+      
       <div v-else-if="notes.length === 0" class="empty-state">
         <FileText :size="48" class="empty-icon" />
         <p class="empty-message">还没有笔记</p>
@@ -223,7 +234,7 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { listen } from '@tauri-apps/api/event'
 import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl } from '../config/backend.js'
-import { FileText } from 'lucide-vue-next'
+import { FileText, AlertCircle } from 'lucide-vue-next'
 
 const timeOut = 10000 // 10 秒超时
 
@@ -265,6 +276,7 @@ const pageSize = 9
 const currentPage = ref(1)
 const isLoading = ref(false)
 const pageLoading = ref(false)
+const hasError = ref(false)
 
 const totalPages = computed(() => Math.ceil(notes.value.length / pageSize) || 1)
 
@@ -313,6 +325,7 @@ onUnmounted(() => {
 
 async function loadNotes() {
   isLoading.value = true
+  hasError.value = false
   try {
     const data = await apiRequest('/note/query', { num: 100 })
     let notesList = data
@@ -325,6 +338,7 @@ async function loadNotes() {
     }
   } catch (e) {
     console.error('加载笔记失败:', e)
+    hasError.value = true
     showToast('加载笔记失败: ' + (e.message || '网络错误'), '#ef4444')
     notes.value = []
   }
@@ -405,10 +419,16 @@ async function openNoteEditorWindow(note) {
       }
     }, 300)
   })
-  
+
   webview.once('tauri://error', (e) => {
     console.error('笔记编辑窗口创建失败:', e)
     showToast('打开编辑窗口失败', '#ef4444')
+  })
+
+  // 监听子窗口关闭事件，刷新笔记列表
+  webview.listen('note-editor-closed', async () => {
+    console.log('收到笔记编辑窗口关闭事件:', windowLabel)
+    await refreshNotes()
   })
 }
 
@@ -924,6 +944,54 @@ function importNotes() {
   50% {
     opacity: 0.6;
   }
+}
+
+.error-state {
+  text-align: center;
+  padding: 80px 20px;
+  background-color: var(--bg-secondary);
+  border-radius: .375rem;
+  border: 1px solid var(--border-color);
+}
+
+.error-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+  color: var(--danger-btn-text, #ef4444);
+}
+
+.error-message {
+  font-size: 20px;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+.error-desc {
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+.retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background-color: var(--accent-blue);
+  color: white;
+  border: none;
+  border-radius: .375rem;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0 auto;
+}
+
+.retry-btn:hover {
+  background-color: var(--accent-blue-bright, #1f6feb);
+}
+
+.retry-btn i {
+  font-size: 16px;
 }
 
 .loading-overlay {

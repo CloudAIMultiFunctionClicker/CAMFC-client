@@ -252,14 +252,6 @@ onUnmounted(async () => {
   if (window._unlistenContent) {
     window._unlistenContent()
   }
-  
-  // 通知主窗口刷新笔记列表（关闭时）
-  try {
-    const { emit } = await import('@tauri-apps/api/event')
-    await emit('note-editor-closed', { uuid: noteUuid.value })
-  } catch (e) {
-    console.error('发送关闭事件失败:', e)
-  }
 })
 
 // 检查窗口状态
@@ -338,6 +330,16 @@ function handleGlobalKeydown(e) {
 // 关闭窗口
 async function closeWindow() {
   try {
+    // 先通知主窗口刷新笔记列表
+    try {
+      const { emit } = await import('@tauri-apps/api/event')
+      await emit('note-editor-closed', { uuid: noteUuid.value })
+    } catch (e) {
+      console.error('发送关闭事件失败:', e)
+    }
+    // 等待 0.1s 让主窗口刷新
+    await new Promise(resolve => setTimeout(resolve, 100))
+    // 再关闭子窗口
     const appWindow = getCurrentWindow()
     await appWindow.close()
   } catch (e) {
