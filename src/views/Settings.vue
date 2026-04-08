@@ -661,8 +661,8 @@ const toggleFloatWindow = async () => {
           try {
             const newFloatWindow = new WebviewWindow('float', {
               url: '/float',
-              width: 300,
-              height: 40,
+              width: 450,
+              height: 60,
               x: 100,
               y: 100,
               alwaysOnTop: true,

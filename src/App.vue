@@ -281,8 +281,8 @@ onMounted(async () => {
       const blankWindow = new WebviewWindow('float-normal-empty', {
         url: '/float',
         title: '',
-        width: 300,
-        height: 40,
+        width: 450,
+        height: 60,
         x: 100,
         y: 100,
         decorations: false,

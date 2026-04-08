@@ -236,8 +236,8 @@ onMounted(async () => {
       const { invoke } = await import('@tauri-apps/api/core')
       await invoke('set_window_size_by_label', {
         label: 'float-normal-empty',
-        width: 300,
-        height: 40
+        width: 450,
+        height: 60
       })
     } catch (e) {
       console.error('限制窗口大小失败:', e)
