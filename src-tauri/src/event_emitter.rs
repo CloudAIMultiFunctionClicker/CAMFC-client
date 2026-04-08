@@ -66,11 +66,19 @@ pub fn emit_open_cloud_command() {
     }
 }
 
-/// 发射新建笔记命令事件（直接调用 createAndOpenNote）
-pub fn emit_create_new_note() {
+/// 发射跳转到笔记列表事件
+pub fn emit_navigate_to_notes() {
     if let Some(handle) = get_app_handle() {
-        tracing::info!("[EVENT] 发射新建笔记命令事件");
-        let _ = handle.emit("create-new-note", ());
+        tracing::info!("[EVENT] 发射跳转到笔记列表事件");
+        let _ = handle.emit("navigate-to-notes", ());
+    }
+}
+
+/// 发射新建笔记事件
+pub fn emit_create_note() {
+    if let Some(handle) = get_app_handle() {
+        tracing::info!("[EVENT] 发射新建笔记事件");
+        let _ = handle.emit("create-note", ());
     }
 }
 

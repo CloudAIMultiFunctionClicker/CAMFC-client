@@ -373,23 +373,6 @@ onMounted(async () => {
     showToast('触发截图', '#3b82f6')
   })
   
-  // 监听新建笔记命令（0x02 和 0x10）
-  const showNoteUnlisten = await listen('show-note-command', async () => {
-    if (route.path === '/float') {
-      return
-    }
-    console.log('收到新建笔记命令（0x02/0x10）')
-    showToast('新建笔记', '#10b981')
-    
-    // 直接发送事件到 Notes.vue，调用 createAndOpenNote 方法
-    try {
-      const { emit } = await import('@tauri-apps/api/event')
-      await emit('create-new-note')
-    } catch (e) {
-      console.error('新建笔记失败:', e)
-    }
-  })
-  
   // 监听打开云盘页面命令（0x08）
   const openCloudUnlisten = await listen('open-cloud-command', async () => {
     if (route.path === '/float') {
@@ -413,6 +396,53 @@ onMounted(async () => {
       }
     } catch (e) {
       console.error('打开云盘页面失败:', e)
+    }
+  })
+  
+  // 监听跳转到笔记列表命令（0x10/10）
+  const navigateToNotesUnlisten = await listen('navigate-to-notes', async () => {
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到跳转到笔记列表命令（0x10/10）')
+    showToast('跳转到笔记列表', '#3b82f6')
+    // 显示主窗口
+    try {
+      const { Window } = await import('@tauri-apps/api/window')
+      const mainWindow = await Window.getByLabel('main')
+      if (mainWindow) {
+        await mainWindow.show()
+        await mainWindow.unminimize()
+        await mainWindow.setFocus()
+      }
+      // 导航到笔记页面
+      router.push('/notes')
+    } catch (e) {
+      console.error('跳转到笔记列表失败:', e)
+    }
+  })
+  
+  // 监听新建笔记命令（0x02/2）
+  const createNoteUnlisten = await listen('create-note', async () => {
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到新建笔记命令（0x02/2）')
+    showToast('新建笔记', '#10b981')
+    // 显示主窗口
+    try {
+      const { Window } = await import('@tauri-apps/api/window')
+      const mainWindow = await Window.getByLabel('main')
+      if (mainWindow) {
+        await mainWindow.show()
+        await mainWindow.unminimize()
+        await mainWindow.setFocus()
+      }
+      // 发送事件到 Notes.vue，调用 createAndOpenNote 方法
+      const { emit } = await import('@tauri-apps/api/event')
+      await emit('create-new-note')
+    } catch (e) {
+      console.error('新建笔记失败:', e)
     }
   })
   
@@ -733,8 +763,11 @@ onMounted(async () => {
     if (screenshotUnlisten) {
       screenshotUnlisten()
     }
-    if (showNoteUnlisten) {
-      showNoteUnlisten()
+    if (navigateToNotesUnlisten) {
+      navigateToNotesUnlisten()
+    }
+    if (createNoteUnlisten) {
+      createNoteUnlisten()
     }
     if (openCloudUnlisten) {
       openCloudUnlisten()

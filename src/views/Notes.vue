@@ -22,6 +22,10 @@ Email: admin@mc666.top
         笔记
       </h1>
       <div class="header-actions">
+        <button class="refresh-btn" @click="refreshNotes">
+          <i class="ri-refresh-line"></i>
+          刷新
+        </button>
         <button class="add-btn" @click="createAndOpenNote">
           <i class="ri-add-line"></i>
           新建笔记
@@ -49,9 +53,16 @@ Email: admin@mc666.top
     </div>
 
     <div class="notes-content">
-      <div v-if="isLoading" class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>正在加载笔记...</p>
+      <!-- 骨架屏：加载时显示灰色占位块 -->
+      <div v-if="isLoading" class="skeleton-grid">
+        <div v-for="i in 12" :key="i" class="skeleton-card">
+          <div class="skeleton-title"></div>
+          <div class="skeleton-preview"></div>
+          <div class="skeleton-meta">
+            <div class="skeleton-date"></div>
+            <div class="skeleton-more"></div>
+          </div>
+        </div>
       </div>
       
       <div v-else-if="notes.length === 0" class="empty-state">
@@ -248,6 +259,7 @@ const titleInput = ref(null)
 const cardTitleInput = ref(null)
 const showImportExportMenu = ref(false)
 const isConfirmingDelete = ref(false)
+const refreshBtnSpinning = ref(false)
 
 const pageSize = 9
 const currentPage = ref(1)
@@ -594,6 +606,19 @@ function exportNotes() {
   }
 }
 
+async function refreshNotes() {
+  refreshBtnSpinning.value = true
+  try {
+    await loadNotes()
+    showToast('刷新成功', '#10b981')
+  } catch (e) {
+    console.error('刷新失败:', e)
+    showToast('刷新失败: ' + (e.message || '网络错误'), '#ef4444')
+  } finally {
+    refreshBtnSpinning.value = false
+  }
+}
+
 function importNotes() {
   showImportExportMenu.value = false
   const input = document.createElement('input')
@@ -687,6 +712,39 @@ function importNotes() {
 
 .add-btn i {
   font-size: 18px;
+}
+
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background-color: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.refresh-btn:hover {
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
+  border-color: var(--accent-blue);
+}
+
+.refresh-btn i {
+  font-size: 16px;
+}
+
+.refresh-btn.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .header-actions {
@@ -804,6 +862,68 @@ function importNotes() {
 .loading-state p {
   color: var(--text-secondary);
   margin-top: 16px;
+}
+
+/* 骨架屏样式 */
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.skeleton-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  padding: 20px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-title {
+  height: 24px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  margin-bottom: 10px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-preview {
+  height: 42px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  margin-bottom: 15px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.skeleton-date {
+  height: 14px;
+  width: 80px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-more {
+  height: 20px;
+  width: 20px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .loading-overlay {
