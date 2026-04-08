@@ -52,7 +52,7 @@ pub async fn init_config() -> Result<()> {
     tracing::info!("开始初始化后端配置...");
     
     // 1. 先尝试从环境变量读取
-    if let Some(config) = try_load_from_env() {
+    if let Some(config) = try_load_from_env().await {
         tracing::info!("从环境变量加载配置: {}", config.get_full_url());
         
         // 检测环境变量指定的服务器是否可用
@@ -93,9 +93,6 @@ pub async fn init_config() -> Result<()> {
 
 // 检测环境变量指定的服务器是否可用
 async fn check_env_backend_available(config: &BackendConfig) -> bool {
-    let test_url = format!("{}:{}/test", config.base_url, config.port);
-    tracing::info!("检测后端可用性: {}", test_url);
-    
     let client = match reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(5))
         .build()
@@ -107,38 +104,64 @@ async fn check_env_backend_available(config: &BackendConfig) -> bool {
         }
     };
     
-    match client.get(&test_url).send().await {
+    // 优先检测 HTTPS
+    let https_test_url = format!("{}:{}/test", config.base_url.replace("http://", "https://"), config.port);
+    tracing::info!("检测 HTTPS 后端可用性: {}", https_test_url);
+    
+    match client.get(&https_test_url).send().await {
         Ok(response) => {
             if response.status().is_success() {
                 match response.text().await {
                     Ok(text) => {
                         if serde_json::from_str::<serde_json::Value>(&text).is_ok() {
-                            tracing::info!("后端可用，返回合法 JSON: {}", text);
-                            true
-                        } else {
-                            tracing::info!("后端响应不是合法 JSON: {}", text);
-                            false
+                            tracing::info!("HTTPS 后端可用");
+                            return true;
                         }
                     }
                     Err(e) => {
-                        tracing::info!("读取响应失败: {}", e);
-                        false
+                        tracing::info!("读取 HTTPS 响应失败: {}", e);
                     }
                 }
-            } else {
-                tracing::info!("后端返回错误状态: {}", response.status());
-                false
             }
         }
         Err(e) => {
-            tracing::info!("检测后端失败: {}", e);
-            false
+            tracing::info!("检测 HTTPS 后端失败: {}", e);
         }
     }
+    
+    tracing::info!("HTTPS 后端不可用，尝试 HTTP");
+    
+    // HTTPS 失败，尝试 HTTP
+    let http_test_url = format!("{}:{}/test", config.base_url, config.port);
+    tracing::info!("检测 HTTP 后端可用性: {}", http_test_url);
+    
+    match client.get(&http_test_url).send().await {
+        Ok(response) => {
+            if response.status().is_success() {
+                match response.text().await {
+                    Ok(text) => {
+                        if serde_json::from_str::<serde_json::Value>(&text).is_ok() {
+                            tracing::info!("HTTP 后端可用");
+                            return true;
+                        }
+                    }
+                    Err(e) => {
+                        tracing::info!("读取 HTTP 响应失败: {}", e);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            tracing::info!("检测 HTTP 后端失败: {}", e);
+        }
+    }
+    
+    tracing::info!("HTTP 和 HTTPS 后端都不可用");
+    false
 }
 
 // 尝试从环境变量加载配置
-fn try_load_from_env() -> Option<BackendConfig> {
+async fn try_load_from_env() -> Option<BackendConfig> {
     // 尝试从 .env 文件加载环境变量
     dotenv::dotenv().ok();
     
@@ -147,14 +170,103 @@ fn try_load_from_env() -> Option<BackendConfig> {
     
     let port = port_str.parse::<u16>().ok()?;
     
+    // 解析 base_url，确保有协议前缀
     let base_url = if base_url.starts_with("http://") || base_url.starts_with("https://") {
-        base_url
+        base_url.clone()
     } else {
         format!("http://{}", base_url)
     };
+    
     tracing::info!("从环境变量加载配置: {}", base_url);
     tracing::info!("端口号: {}", port);
     
+    // 如果已经有 https://，直接返回
+    if base_url.starts_with("https://") {
+        return Some(BackendConfig {
+            base_url,
+            port,
+        });
+    }
+    
+    // 尝试 HTTPS，如果失败则使用 HTTP
+    let https_url = base_url.replace("http://", "https://");
+    
+    // 创建客户端进行检测
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::error!("创建HTTP客户端失败: {}", e);
+            return Some(BackendConfig {
+                base_url,
+                port,
+            });
+        }
+    };
+    
+    // 优先检测 HTTPS
+    let https_test_url = format!("{}:{}/test", https_url, port);
+    tracing::info!("检测 HTTPS 后端可用性: {}", https_test_url);
+    
+    match client.get(&https_test_url).send().await {
+        Ok(response) => {
+            if response.status().is_success() {
+                match response.text().await {
+                    Ok(text) => {
+                        if serde_json::from_str::<serde_json::Value>(&text).is_ok() {
+                            tracing::info!("HTTPS 后端可用，使用 HTTPS 连接");
+                            return Some(BackendConfig {
+                                base_url: https_url,
+                                port,
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        tracing::info!("读取 HTTPS 响应失败: {}", e);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            tracing::info!("检测 HTTPS 后端失败: {}", e);
+        }
+    }
+    
+    tracing::info!("HTTPS 后端不可用，尝试 HTTP");
+    
+    // HTTPS 失败，尝试 HTTP
+    let http_test_url = format!("{}:{}/test", base_url, port);
+    tracing::info!("检测 HTTP 后端可用性: {}", http_test_url);
+    
+    match client.get(&http_test_url).send().await {
+        Ok(response) => {
+            if response.status().is_success() {
+                match response.text().await {
+                    Ok(text) => {
+                        if serde_json::from_str::<serde_json::Value>(&text).is_ok() {
+                            tracing::info!("HTTP 后端可用，使用 HTTP 连接");
+                            return Some(BackendConfig {
+                                base_url,
+                                port,
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        tracing::info!("读取 HTTP 响应失败: {}", e);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            tracing::info!("检测 HTTP 后端失败: {}", e);
+        }
+    }
+    
+    tracing::info!("HTTP 和 HTTPS 后端都不可用，使用配置中的 URL");
+    
+    // 都不可用，返回配置中的 URL（可能是 HTTP）
     Some(BackendConfig {
         base_url,
         port,
@@ -197,8 +309,31 @@ async fn try_load_from_remote() -> Result<BackendConfig> {
     for (index, candidate) in remote_config.base_url.iter().enumerate() {
         tracing::info!("检测候选地址 [{}/{}]: {}", index + 1, remote_config.base_url.len(), candidate);
         
+        // 对每个候选地址，优先检测 HTTPS，然后检测 HTTP
+        let https_candidate = if candidate.starts_with("http://") {
+            candidate.replace("http://", "https://")
+        } else {
+            candidate.to_string()
+        };
+        
+        // 优先检测 HTTPS
+        if check_backend_available(&client, &https_candidate).await {
+            tracing::info!("HTTPS 候选地址可用: {}", https_candidate);
+            
+            // 解析 base_url 和 port
+            let (base_url, port) = parse_backend_url(&https_candidate)?;
+            
+            return Ok(BackendConfig {
+                base_url,
+                port,
+            });
+        } else {
+            tracing::info!("HTTPS 候选地址不可用: {}", https_candidate);
+        }
+        
+        // HTTPS 失败，尝试 HTTP
         if check_backend_available(&client, candidate).await {
-            tracing::info!("候选地址可用: {}", candidate);
+            tracing::info!("HTTP 候选地址可用: {}", candidate);
             
             // 解析 base_url 和 port
             let (base_url, port) = parse_backend_url(candidate)?;
@@ -208,7 +343,7 @@ async fn try_load_from_remote() -> Result<BackendConfig> {
                 port,
             });
         } else {
-            tracing::info!("候选地址不可用: {}", candidate);
+            tracing::info!("HTTP 候选地址不可用: {}", candidate);
         }
     }
     
