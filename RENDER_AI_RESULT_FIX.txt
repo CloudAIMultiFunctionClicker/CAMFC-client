@@ -1,0 +1,106 @@
+// 渲染 AI 结果
+function renderAiResult(result) {
+  let html = '<div class="ai-results-list">'
+  
+  for (const imageResult of result.images) {
+    html += `<div class="ai-image-result">
+      <div class="ai-image-info">
+        <span class="ai-image-name">${imageResult.filename}</span>
+        <span class="ai-image-status ${imageResult.analyzed ? 'analyzed' : 'not-analyzed'}">
+          ${imageResult.analyzed ? '已分析' : '未分析'}
+        </span>
+      </div>`
+    
+    if (imageResult.error) {
+      html += `<div class="ai-image-error">错误：${imageResult.error}</div>`
+    } else if (imageResult.status && imageResult.status.analysis_info) {
+      const analysis = imageResult.status.analysis_info
+      const aiData = analysis.result || analysis // 兼容两种格式
+      
+      if (aiData && aiData.summary) {
+        // 显示完整的 AI 分析内容
+        html += `<div class="ai-analysis-content">
+          <div class="ai-summary">
+            <strong>📝 摘要：</strong>
+            <p>${aiData.summary}</p>
+          </div>`
+        
+        if (aiData.content_type) {
+          html += `<div class="ai-detail-item">
+            <span class="ai-detail-label">类型:</span>
+            <span class="ai-detail-value">${aiData.content_type}</span>
+          </div>`
+        }
+        
+        if (aiData.subject) {
+          html += `<div class="ai-detail-item">
+            <span class="ai-detail-label">主题:</span>
+            <span class="ai-detail-value">${aiData.subject}</span>
+          </div>`
+        }
+        
+        if (aiData.key_points && aiData.key_points.length > 0) {
+          html += `<div class="ai-key-points">
+            <strong>🔑 关键点：</strong>
+            <ul>`
+          for (const point of aiData.key_points) {
+            html += `<li>${point}</li>`
+          }
+          html += `</ul></div>`
+        }
+        
+        if (aiData.difficulty) {
+          html += `<div class="ai-detail-item">
+            <span class="ai-detail-label">难度:</span>
+            <span class="ai-detail-value">${aiData.difficulty}</span>
+          </div>`
+        }
+        
+        if (aiData.confidence) {
+          html += `<div class="ai-detail-item">
+            <span class="ai-detail-label">置信度:</span>
+            <span class="ai-detail-value">${(aiData.confidence * 100).toFixed(1)}%</span>
+          </div>`
+        }
+        
+        if (analysis.last_analyzed_at) {
+          html += `<div class="ai-detail-item">
+            <span class="ai-detail-label">分析时间:</span>
+            <span class="ai-detail-value">${new Date(analysis.last_analyzed_at).toLocaleString('zh-CN')}</span>
+          </div>`
+        }
+        
+        html += `</div>`
+      } else if (analysis.analyzed && analysis.last_analyzed_at) {
+        // 旧格式：只显示元数据
+        html += `<div class="ai-image-details">
+          <div class="ai-detail-item">
+            <span class="ai-detail-label">最后分析时间:</span>
+            <span class="ai-detail-value">${analysis.last_analyzed_at}</span>
+          </div>`
+        if (analysis.analysis_file) {
+          html += `<div class="ai-detail-item">
+            <span class="ai-detail-label">分析文件:</span>
+            <span class="ai-detail-value">${analysis.analysis_file}</span>
+          </div>`
+        }
+        html += `</div>`
+      }
+    }
+    
+    html += '</div>'
+  }
+  
+  html += '</div>'
+  
+  if (result.analyzedCount < result.total) {
+    html += `<div class="ai-action-area">
+      <button class="ai-reanalyze-btn" onclick="window.__reanalyzeAllImages()">
+        <i class="ri-refresh-line"></i>
+        重新分析所有图片
+      </button>
+    </div>`
+  }
+  
+  return html
+}

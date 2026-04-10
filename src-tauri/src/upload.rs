@@ -21,7 +21,7 @@
 // 3. 支持断点续传，可以查询已上传分片
 // 4. 提供上传进度信息
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -37,6 +37,7 @@ use crate::download::AuthInfo;
 // 导入配置模块
 use crate::config;
 use crate::activity_log::{ActivityLogManager, ActivityType};
+use crate::ai_analysis::{load_index, save_index, get_hash_for_file_path, add_or_update_image, is_file_analyzed, calculate_file_hash};
 
 // 默认分片大小 256KB
 const CHUNK_SIZE: u64 = 256 * 1024; // 256KB
@@ -242,7 +243,100 @@ impl ChunkUploader {
         let response_text = response.text().await.context("读取完成响应失败")?;
          tracing::error!("[finish_upload] 上传完成响应: {}", response_text);
         
+        // AI 分析逻辑：检查文件哈希
+        let ai_already_analyzed = self.check_ai_analysis_status(filename, target_path).await?;
+        
+         tracing::error!("[finish_upload] AI 分析状态: {}", ai_already_analyzed);
+        
         Ok(format!("上传完成: {}", filename))
+    }
+    
+    // 检查 AI 分析状态
+    async fn check_ai_analysis_status(&self, filename: &str, target_path: Option<&str>) -> Result<bool> {
+        let file_path = match target_path {
+            Some(path) => Path::new(path),
+            None => {
+                tracing::warn!("没有提供目标路径，跳过 AI 分析");
+                return Ok(false);
+            }
+        };
+        
+        // 只处理图片文件
+        let is_image = filename.ends_with(".jpg") 
+            || filename.ends_with(".jpeg") 
+            || filename.ends_with(".png") 
+            || filename.ends_with(".gif") 
+            || filename.ends_with(".bmp") 
+            || filename.ends_with(".webp") 
+            || filename.ends_with(".svg");
+        
+        if !is_image {
+            return Ok(false);
+        }
+        
+        // 计算文件哈希
+        let file_hash = match calculate_file_hash(file_path) {
+            Ok(hash) => hash,
+            Err(e) => {
+                tracing::warn!("计算文件哈希失败: {}", e);
+                return Ok(false);
+            }
+        };
+        
+        // 加载索引
+        let mut index = match load_index().await {
+            Ok(idx) => idx,
+            Err(e) => {
+                tracing::warn!("加载 AI 索引失败: {}", e);
+                return Ok(false);
+            }
+        };
+        
+        // 检查文件是否已存在于索引中
+        let existing_hash = match get_hash_for_file_path(&index, file_path.to_str().unwrap_or("")).await {
+            Ok(Some(h)) => Some(h),
+            Ok(None) => None,
+            Err(e) => {
+                tracing::warn!("检查文件哈希失败: {}", e);
+                None
+            }
+        };
+        
+        // 如果哈希匹配，说明是相同内容的文件
+        let already_analyzed = if let Some(ref existing_hash) = existing_hash {
+            existing_hash == &file_hash
+        } else {
+            // 新文件，添加到索引
+            if let Err(e) = add_or_update_image(&mut index, file_path.to_str().unwrap_or(""), &file_hash).await {
+                tracing::warn!("添加文件到索引失败: {}", e);
+            }
+            
+            // 检查是否已分析
+            match is_file_analyzed(&index, &file_hash).await {
+                Ok(analyzed) => {
+                    if analyzed {
+                        tracing::info!("相同内容的图片已完成 AI 解析");
+                        if let Err(e) = save_index(&index).await {
+                            tracing::warn!("保存索引失败: {}", e);
+                        }
+                        return Ok(true);
+                    }
+                    false
+                }
+                Err(e) => {
+                    tracing::warn!("检查文件分析状态失败: {}", e);
+                    false
+                }
+            }
+        };
+        
+        if already_analyzed {
+            if let Err(e) = save_index(&index).await {
+                tracing::warn!("保存索引失败: {}", e);
+            }
+        }
+        
+        Ok(already_analyzed)
     }
     
     // 查询上传状态 - 调用 /upload/status/{upload_id}

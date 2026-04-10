@@ -116,6 +116,17 @@ Email: admin@mc666.top
             <div class="note-preview">{{ (note.content || '').substring(0, 50) }}...</div>
             <div class="note-meta">
               <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
+              <div class="note-meta-extra">
+                <span 
+                  v-if="note.aiAnalysisStatus" 
+                  class="ai-status-indicator"
+                  :title="getAiStatusText(note)"
+                  @click.stop="openAiAnalysis(note)"
+                >
+                  <i class="ri-robot-line"></i>
+                  <span class="ai-status-text">{{ getAiStatusText(note) }}</span>
+                </span>
+              </div>
               <div class="more-wrapper">
                 <button class="more-btn" @click.stop="openMoreMenu(note, $event)">
                   <i class="ri-more-fill"></i>
@@ -232,6 +243,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { listen } from '@tauri-apps/api/event'
+import { invoke } from '@tauri-apps/api/core'
 import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl } from '../config/backend.js'
 import { FileText, AlertCircle } from 'lucide-vue-next'
@@ -247,6 +259,83 @@ async function getAuthHeader() {
   } catch {
     return {}
   }
+}
+
+async function getNoteAiStatus(note) {
+  try {
+    const authHeader = await getAuthHeader()
+    const deviceId = authHeader.Id
+    const totp = authHeader.Totp
+    
+    // 提取笔记中的所有图片
+    const images = extractImagesFromContent(note.content || '')
+    
+    if (images.length === 0) {
+      return { analyzed: false, totalCount: 0, analyzedCount: 0 }
+    }
+    
+    // 检查每张图片的分析状态
+    let analyzedCount = 0
+    for (const imageInfo of images) {
+      try {
+        const status = await invoke('ai_analysis_hash_status', {
+          filePath: imageInfo.filename
+        })
+        
+        if (status.analyzed) {
+          analyzedCount++
+        }
+      } catch (e) {
+        console.error(`检查图片 ${imageInfo.filename} 状态失败:`, e)
+      }
+    }
+    
+    return {
+      analyzed: analyzedCount > 0,
+      totalCount: images.length,
+      analyzedCount: analyzedCount
+    }
+  } catch (e) {
+    console.error('获取笔记 AI 状态失败:', e)
+    return null
+  }
+}
+
+// 从笔记内容中提取图片
+function extractImagesFromContent(content) {
+  const images = []
+  // 匹配 Markdown 图片语法 ![alt](url)
+  const markdownImageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g
+  let match
+  while ((match = markdownImageRegex.exec(content)) !== null) {
+    images.push({
+      alt: match[1],
+      url: match[2],
+      filename: match[2].split('/').pop() || 'image.png'
+    })
+  }
+  // 匹配 HTML 图片标签
+  const htmlImageRegex = /<img[^>]+src="([^"]+)"[^>]*>/g
+  while ((match = htmlImageRegex.exec(content)) !== null) {
+    const url = match[1]
+    if (!url.startsWith('data:')) {
+      images.push({
+        alt: '',
+        url: url,
+        filename: url.split('/').pop() || 'image.png'
+      })
+    }
+  }
+  // 去重
+  const uniqueImages = []
+  const seenUrls = new Set()
+  for (const img of images) {
+    if (!seenUrls.has(img.url)) {
+      seenUrls.add(img.url)
+      uniqueImages.push(img)
+    }
+  }
+  return uniqueImages
 }
 
 async function apiRequest(url, data = {}) {
@@ -333,6 +422,18 @@ async function loadNotes() {
       notesList = data.data || data.notes || data.result || []
     }
     notes.value = Array.isArray(notesList) ? notesList : []
+    
+    // 获取每张笔记的 AI 分析状态
+    await Promise.all(notes.value.map(async (note) => {
+      try {
+        const aiStatus = await getNoteAiStatus(note)
+        note.aiAnalysisStatus = aiStatus
+      } catch (e) {
+        console.error(`获取笔记 ${note.uuid} 的 AI 状态失败:`, e)
+        note.aiAnalysisStatus = null
+      }
+    }))
+    
     if (notes.value.length === 0) {
       await createDefaultNote()
     }
@@ -414,6 +515,16 @@ async function openNoteEditorWindow(note) {
     setTimeout(async () => {
       try {
         await webview.emit('load-note-content', { content: note.content || '' })
+        // 如果笔记有 AI 分析状态，自动触发分析
+        if (note.aiAnalysisStatus && note.aiAnalysisStatus.totalCount > 0) {
+          setTimeout(async () => {
+            try {
+              await webview.emit('auto-ai-analyze', { noteUuid: note.uuid })
+            } catch (e) {
+              console.error('发送自动分析指令失败:', e)
+            }
+          }, 500)
+        }
       } catch (e) {
         console.error('发送笔记内容失败:', e)
       }
@@ -604,6 +715,61 @@ function formatDate(dateStr) {
     return ''
   }
   return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+function getAiStatusText(note) {
+  if (!note.aiAnalysisStatus) return ''
+  const status = note.aiAnalysisStatus
+  if (status.analyzed) {
+    return `已分析 ${status.analyzedCount || 0}/${status.totalCount || 0} 张图片`
+  }
+  return '未分析'
+}
+
+async function openAiAnalysis(note) {
+  try {
+    const windowLabel = `note-editor-${note.uuid}`
+    const url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
+    
+    const webview = new WebviewWindow(windowLabel, {
+      url: url,
+      title: note.title || '编辑笔记',
+      width: 900,
+      height: 600,
+      minWidth: 400,
+      minHeight: 300,
+      center: true,
+      decorations: false,
+      resizable: true
+    })
+    
+    webview.once('tauri://created', async () => {
+      console.log('笔记编辑窗口创建成功:', windowLabel)
+      setTimeout(async () => {
+        try {
+          await webview.emit('load-note-content', { content: note.content || '' })
+          // 发送自动分析指令
+          setTimeout(async () => {
+            try {
+              await webview.emit('auto-ai-analyze', { noteUuid: note.uuid })
+            } catch (e) {
+              console.error('发送自动分析指令失败:', e)
+            }
+          }, 500)
+        } catch (e) {
+          console.error('发送笔记内容失败:', e)
+        }
+      }, 300)
+    })
+    
+    webview.once('tauri://error', (e) => {
+      console.error('笔记编辑窗口创建失败:', e)
+      showToast('打开编辑窗口失败', '#ef4444')
+    })
+  } catch (e) {
+    console.error('打开 AI 分析失败:', e)
+    showToast('打开编辑窗口失败: ' + (e.message || '网络错误'), '#ef4444')
+  }
 }
 
 function exportNotes() {
@@ -1473,6 +1639,48 @@ function importNotes() {
     gap: 15px;
     align-items: flex-start;
   }
+}
+
+.note-meta-extra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 8px;
+}
+
+.ai-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background-color: var(--ai-status-bg, rgba(59, 130, 246, 0.1));
+  color: var(--ai-status-text, #3b82f6);
+  border-radius: 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-status-indicator:hover {
+  background-color: var(--ai-status-hover-bg, rgba(59, 130, 246, 0.2));
+  transform: scale(1.05);
+}
+
+.ai-status-indicator i {
+  font-size: 14px;
+}
+
+.ai-status-text {
+  font-weight: 500;
+}
+
+.ai-status-indicator:hover {
+  background-color: var(--ai-status-hover-bg, rgba(59, 130, 246, 0.2));
+  transform: scale(1.05);
+}
+
+.ai-status-indicator:active {
+  transform: scale(0.95);
 }
 
 .modal-enter-active,

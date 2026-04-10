@@ -29,8 +29,12 @@ mod event_emitter;
 mod screenshot;
 // 活动日志模块导入
 mod activity_log;
+// AI 图片分析模块导入
+mod ai_analysis;
 // 窗口工具模块导入
 mod window_utils;
+// 笔记图片模块导入
+mod note_image;
 
 // 托盘相关导入
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
@@ -45,7 +49,8 @@ use download::{DownloadTask, AuthInfo, get_app_data_dir};
 use upload::UploadTask;
 use storage::{load_app_data, save_app_data, get_download_file_path, get_custom_download_path, set_custom_download_path, open_file, open_folder, load_download_path_to_cache, get_default_download_path};
 use event_emitter::set_app_handle;
-use activity_log::{get_recent_activities, record_upload_activity, record_download_activity, record_access_activity};
+use activity_log::{get_recent_activities, record_upload_activity, record_download_activity, record_access_activity, ai_analysis_hash_status, ai_analysis_reanalyze, note_image_upload, note_image_list, note_image_delete};
+use ai_analysis::{get_hash_for_file_path, add_or_update_image, check_reanalyze_lock, is_file_analyzed, get_image_status, load_index, save_index, calculate_file_hash};
 use window_utils::{set_window_size_by_label, get_window_size_by_label};
 
 // 导入同步原语
@@ -1522,6 +1527,13 @@ pub fn run() {
             record_upload_activity,
             record_download_activity,
             record_access_activity,
+            // AI 图片分析命令
+            ai_analysis_hash_status,
+            ai_analysis_reanalyze,
+            // 笔记图片命令
+            note_image_upload,
+            note_image_list,
+            note_image_delete,
             // 窗口工具命令
             set_window_size_by_label,
             get_window_size_by_label,
