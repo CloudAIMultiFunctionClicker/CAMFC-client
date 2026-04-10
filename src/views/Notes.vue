@@ -249,6 +249,37 @@ async function getAuthHeader() {
   }
 }
 
+async function checkMeetingStatus() {
+  try {
+    const authHeader = await getAuthHeader()
+    const response = await axios.get(getBackendUrl() + '/meeting/status', {
+      headers: authHeader,
+      timeout: 5000
+    })
+    return response.data.in_meeting === true
+  } catch (error) {
+    console.error('获取会议状态失败:', error)
+    return false
+  }
+}
+
+async function sendNoteToBackend(title, content) {
+  try {
+    const authHeader = await getAuthHeader()
+    const response = await axios.post(getBackendUrl() + '/meeting/note/add', {
+      title: title,
+      content: content
+    }, {
+      headers: authHeader,
+      timeout: 10000
+    })
+    return response.data
+  } catch (error) {
+    console.error('发送会议笔记失败:', error)
+    throw error
+  }
+}
+
 async function apiRequest(url, data = {}) {
   const authHeader = await getAuthHeader()
   const response = await axios.post(getBackendUrl() + url, data, {
@@ -393,7 +424,10 @@ function nextPage() {
 async function openNoteEditorWindow(note) {
   const windowLabel = `note-editor-${note.uuid}`
   // 不传 content，避免 URL 过长导致 431 错误
-  const url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
+  let url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
+  if (note.isMeetingNote) {
+    url += '&isMeetingNote=true'
+  }
   
   const webview = new WebviewWindow(windowLabel, {
     url: url,
@@ -437,6 +471,24 @@ async function createAndOpenNote() {
   const now = new Date()
   const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
   const defaultTitle = `未命名笔记_${timestamp}`
+  
+  // 检查会议状态
+  const meetingActive = await checkMeetingStatus()
+  
+  if (meetingActive) {
+    // 会议进行中，打开编辑窗口但标记为会议笔记（不添加到笔记列表）
+    console.log('会议进行中，打开会议笔记编辑窗口')
+    const newNote = {
+      uuid,
+      title: defaultTitle,
+      content: '',
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+      isMeetingNote: true
+    }
+    openNoteEditorWindow(newNote)
+    return
+  }
   
   // 先在云端创建空白笔记
   try {

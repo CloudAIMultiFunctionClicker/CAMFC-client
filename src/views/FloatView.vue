@@ -25,6 +25,10 @@ Email: admin@mc666.top
       {{ isConnected ? '已连接' : '未连接' }}
     </span>
     <div class="float-buttons">
+      <button v-if="!isMainWindowVisible" class="float-btn open-main-btn" @click.stop="openMainWindow" title="打开主窗口">
+        <i class="ri-home-2-line"></i>
+        <span class="btn-text">主窗口</span>
+      </button>
       <button class="float-btn" @click.stop="openMainPage('/fileView')" title="云盘">
         <i class="ri-cloud-line"></i>
       </button>
@@ -37,9 +41,9 @@ Email: admin@mc666.top
       <button class="float-btn" @click.stop="openMainPage('/settings')" title="设置">
         <i class="ri-settings-3-line"></i>
       </button>
-      <button v-if="!isMainWindowVisible" class="float-btn open-main-btn" @click.stop="openMainWindow" title="打开主窗口">
-        <i class="ri-home-2-line"></i>
-        <span class="btn-text">主窗口</span>
+      <button class="float-btn meeting-btn" @click.stop="toggleMeeting" :title="meetingActive ? '下会' : '开会'">
+        <i :class="meetingActive ? 'ri-stop-circle-line' : 'ri-play-circle-line'"></i>
+        <span class="btn-text">{{ meetingActive ? '下会' : '开会' }}</span>
       </button>
     </div>
 
@@ -78,9 +82,12 @@ import { getCurrentWindow, Window } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 import { showToast } from '../components/layout/showToast.js'
+import axios from 'axios'
+import { getBackendUrl } from '../config/backend.js'
 
 const isConnected = ref(false)
 const isMainWindowVisible = ref(true)
+const meetingActive = ref(false)
 const showConnectTip = ref(false)
 let connectTipTimer = null
 
@@ -440,6 +447,44 @@ function toggleHideWindowOption() {
 }
 
 /**
+ * 切换会议状态（开会/下会）
+ */
+async function toggleMeeting() {
+  console.log('切换会议状态，当前状态:', meetingActive.value)
+  
+  try {
+    const authHeader = await getAuthHeader()
+    const url = getBackendUrl() + '/meeting/' + (meetingActive.value ? 'stop' : 'start')
+    
+    const response = await axios.get(url, {
+      headers: authHeader,
+      timeout: 5000
+    })
+    
+    meetingActive.value = !meetingActive.value
+    console.log('会议状态已切换:', meetingActive.value ? '会议开始' : '会议结束')
+    showToast(meetingActive.value ? '会议已开始' : '会议已结束', '#10b981')
+  } catch (error) {
+    console.error('切换会议状态失败:', error)
+    showToast('切换会议状态失败', '#ef4444')
+  }
+}
+
+/**
+ * 获取认证头信息
+ */
+async function getAuthHeader() {
+  try {
+    const { getDeviceId, getTotp } = await import('../components/data/bluetooth.js')
+    const deviceId = await getDeviceId()
+    const currentTotp = await getTotp()
+    return { "Id": deviceId, "Totp": currentTotp }
+  } catch {
+    return {}
+  }
+}
+
+/**
  * 处理屏幕截图
  * 根据用户选择决定是否隐藏主窗口，截图完成后再打开显示截图结果
  */
@@ -448,6 +493,25 @@ async function handleScreenshot() {
   closeScreenshotMenu()
 
   try {
+    // 先调用后端接口检查会议状态
+    console.log('检查会议状态...')
+    let meetingActive = false
+    
+    try {
+      const authHeader = await getAuthHeader()
+      const response = await axios.get(getBackendUrl() + '/meeting/status', {
+        headers: authHeader,
+        timeout: 5000
+      })
+      
+      meetingActive = response.data.in_meeting === true
+      console.log('会议状态:', meetingActive ? '进行中' : '未进行')
+    } catch (error) {
+      console.error('获取会议状态失败:', error)
+      // 如果接口调用失败，默认允许截图
+      meetingActive = true
+    }
+
     // 获取主窗口
     const mainWindow = await Window.getByLabel('main')
     let wasVisible = false
@@ -468,8 +532,17 @@ async function handleScreenshot() {
     const result = await invoke('capture_screen')
 
     if (result.success) {
-      console.log('截图成功，打开主窗口显示截图')
-      // 截图成功，打开主窗口并传递截图数据
+      console.log('截图成功')
+      
+      // 如果会议进行中，直接发送截图到后端（非阻塞）
+      if (meetingActive) {
+        console.log('会议进行中，发送截图到后端（非阻塞）')
+        sendScreenshotToBackend(result.image_data)
+        return
+      }
+      
+      // 会议未进行，打开截图窗口显示
+      console.log('打开主窗口显示截图')
       await openScreenshotWindow(result)
     } else {
       console.error('截图失败:', result.error)
@@ -480,6 +553,27 @@ async function handleScreenshot() {
     }
   } catch (e) {
     console.error('截图过程出错:', e)
+  }
+}
+
+/**
+ * 发送截图到后端
+ */
+async function sendScreenshotToBackend(imageData) {
+  try {
+    const authHeader = await getAuthHeader()
+    const response = await axios.post(getBackendUrl() + '/meeting/screenshot/add', {
+      image: imageData
+    }, {
+      headers: authHeader,
+      timeout: 10000
+    })
+    
+    console.log('截图发送成功:', response.data)
+    showToast('截图已发送到后端', '#10b981')
+  } catch (error) {
+    console.error('发送截图失败:', error)
+    showToast('发送截图失败', '#ef4444')
   }
 }
 
@@ -684,7 +778,6 @@ html, body {
 .float-buttons {
   display: flex;
   gap: 4px;
-  margin-left: auto;
 }
 
 .float-btn {
@@ -725,6 +818,27 @@ html, body {
 .open-main-btn:hover {
   background-color: rgba(76, 175, 80, 0.2);
   color: #2e7d32;
+}
+
+/* 会议按钮样式 */
+.meeting-btn {
+  background-color: rgba(255, 152, 0, 0.1);
+  color: #ff9800;
+}
+
+.meeting-btn:hover {
+  background-color: rgba(255, 152, 0, 0.2);
+  color: #f57c00;
+}
+
+.meeting-btn.active {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+}
+
+.meeting-btn.active:hover {
+  background-color: rgba(244, 67, 54, 0.2);
+  color: #d32f2f;
 }
 
 /* 按钮文字样式 */

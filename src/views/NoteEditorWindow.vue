@@ -386,11 +386,21 @@ async function saveNote() {
   if (!noteUuid.value) return
   
   try {
-    await apiRequest('/note/update', { 
-      uuid: noteUuid.value, 
-      content: noteContent.value || '',
-      title: noteTitle.value 
-    })
+    // 检查是否是会议笔记
+    const isMeetingNote = route.query.isMeetingNote === 'true'
+    
+    if (isMeetingNote) {
+      // 会议笔记，发送到后端接口
+      await sendMeetingNoteToBackend()
+    } else {
+      // 普通笔记，调用原有接口
+      await apiRequest('/note/update', { 
+        uuid: noteUuid.value, 
+        content: noteContent.value || '',
+        title: noteTitle.value 
+      })
+    }
+    
     originalContent.value = noteContent.value
     showToast('保存成功', '#10b981')
     
@@ -399,6 +409,24 @@ async function saveNote() {
   } catch (e) {
     console.error('保存笔记失败:', e)
     showToast('保存失败: ' + (e.message || '网络错误'), '#ef4444')
+  }
+}
+
+// 发送会议笔记到后端
+async function sendMeetingNoteToBackend() {
+  try {
+    const authHeader = await getAuthHeader()
+    const response = await axios.post(getBackendUrl() + '/meeting/note/add', {
+      title: noteTitle.value,
+      content: noteContent.value || ''
+    }, {
+      headers: authHeader,
+      timeout: 10000
+    })
+    console.log('会议笔记发送成功:', response.data)
+  } catch (error) {
+    console.error('发送会议笔记失败:', error)
+    throw error
   }
 }
 
