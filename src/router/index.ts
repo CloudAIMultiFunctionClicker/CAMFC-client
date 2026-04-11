@@ -109,6 +109,12 @@ const router = createRouter({
       component: () => import('../views/NoteEditorWindow.vue')
     },
     {
+      path: '/meeting-editor',
+      name: 'meetingEditor',
+      // 会议记录编辑窗口页面
+      component: () => import('../views/MeetingEditorWindow.vue')
+    },
+    {
       path: '/recent-activities',
       name: 'recentActivities',
       // 最近活动记录页面
@@ -180,6 +186,20 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
+  // ========== 会议记录编辑窗口白名单 ==========
+  // 会议记录编辑窗口只允许访问会议记录编辑路由
+  if (windowLabel.startsWith('meeting-editor-')) {
+    const allowedPaths = ['/meeting-editor']
+    if (!allowedPaths.includes(to.path)) {
+      console.warn(`[路由守卫] 会议记录编辑窗口禁止访问 ${to.path}，强制跳转到 /meeting-editor`)
+      next('/meeting-editor')
+      return
+    }
+    // 会议记录编辑窗口不需要蓝牙检查，直接放行
+    next()
+    return
+  }
+
   // ========== 悬浮窗相关窗口白名单 ==========
   // 悬浮窗页面不需要蓝牙连接，直接放行
   if (to.path === '/float' || to.path === '/float-normal' || to.path === '/float-normal-empty') {
@@ -227,6 +247,12 @@ router.beforeEach(async (to, _from, next) => {
 
   // 笔记编辑窗口不需要蓝牙连接，直接放行
   if (to.path === '/note-editor') {
+    next()
+    return
+  }
+
+  // 会议记录编辑窗口不需要蓝牙连接，直接放行
+  if (to.path === '/meeting-editor') {
     next()
     return
   }

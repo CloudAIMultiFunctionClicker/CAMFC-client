@@ -38,14 +38,17 @@ const isFloatNormalEmptyPage = computed(() => route.path === '/float-normal-empt
 // 判断是否在笔记编辑器子窗口
 const isNoteEditorPage = computed(() => route.path === '/note-editor')
 
+// 判断是否在会议编辑器子窗口
+const isMeetingEditorPage = computed(() => route.path === '/meeting-editor')
+
 // 判断是否在空白窗口
 const isEmptyPage = computed(() => route.path === '/empty')
 
 // 判断是否在截图窗口
 const isScreenshotWindowPage = computed(() => route.path === '/screenshot-window')
 
-// 判断是否需要隐藏标题栏（笔记编辑器、空白窗口、截图窗口和悬浮窗空白页）
-const shouldHideTitleBar = computed(() => isNoteEditorPage.value || isEmptyPage.value || isScreenshotWindowPage.value || isFloatNormalEmptyPage.value)
+// 判断是否需要隐藏标题栏（笔记编辑器、会议编辑器、空白窗口、截图窗口和悬浮窗空白页）
+const shouldHideTitleBar = computed(() => isNoteEditorPage.value || isMeetingEditorPage.value || isEmptyPage.value || isScreenshotWindowPage.value || isFloatNormalEmptyPage.value)
 
 // TOTP定时刷新
 let totpRefreshInterval = null

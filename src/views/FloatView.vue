@@ -628,11 +628,120 @@ async function openScreenshotWindow(screenshotData) {
 
 /**
  * 处理笔记管理
- * 打开主窗口的笔记管理页面
+ * 开会模式下直接新建会议笔记，否则打开主窗口的笔记管理页面
  */
 async function handleNoteManager() {
-  console.log('打开笔记管理')
-  await openMainPage('/notes')
+  console.log('处理笔记按钮点击')
+  
+  // 检查会议状态
+  let meetingActive = false
+  try {
+    const authHeader = await getAuthHeader()
+    const response = await axios.get(getBackendUrl() + '/meeting/status', {
+      headers: authHeader,
+      timeout: 5000
+    })
+    meetingActive = response.data.in_meeting === true
+    console.log('会议状态:', meetingActive ? '进行中' : '未进行')
+  } catch (error) {
+    console.error('获取会议状态失败:', error)
+    // 如果接口调用失败，默认会议未进行
+    meetingActive = false
+  }
+  
+  if (meetingActive) {
+    // 会议进行中，直接创建会议笔记
+    console.log('会议进行中，创建会议笔记')
+    await createMeetingNote()
+  } else {
+    // 会议未进行，打开笔记管理页面
+    console.log('会议未进行，打开笔记管理页面')
+    await openMainPage('/notes')
+  }
+}
+
+/**
+ * 创建会议笔记
+ * 调用 /meeting/note/add API 创建笔记并打开编辑窗口
+ */
+async function createMeetingNote() {
+  const uuid = crypto.randomUUID()
+  const now = new Date()
+  const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+  const defaultTitle = `会议笔记_${timestamp}`
+  
+  try {
+    // 调用后端 API 创建会议笔记
+    const authHeader = await getAuthHeader()
+    const response = await axios.post(getBackendUrl() + '/meeting/note/add', {
+      title: defaultTitle,
+      content: ''
+    }, {
+      headers: authHeader,
+      timeout: 10000
+    })
+    console.log('会议笔记创建成功:', response.data)
+    showToast('会议笔记已创建', '#10b981')
+    
+    // 打开笔记编辑窗口
+    openNoteEditorWindow({
+      uuid,
+      title: defaultTitle,
+      content: '',
+      isMeetingNote: true
+    })
+  } catch (error) {
+    console.error('创建会议笔记失败:', error)
+    showToast('创建会议笔记失败', '#ef4444')
+  }
+}
+
+/**
+ * 打开笔记编辑窗口
+ */
+function openNoteEditorWindow(note) {
+  const windowLabel = `note-editor-${note.uuid}`
+  let url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
+  if (note.isMeetingNote) {
+    url += '&isMeetingNote=true'
+  }
+  
+  const webview = new WebviewWindow(windowLabel, {
+    url: url,
+    title: note.title || '编辑笔记',
+    width: 900,
+    height: 600,
+    minWidth: 400,
+    minHeight: 300,
+    center: true,
+    decorations: false,
+    resizable: true
+  })
+  
+  webview.once('tauri://created', async () => {
+    console.log('笔记编辑窗口创建成功:', windowLabel)
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    try {
+      if (note.isMeetingNote) {
+        await webview.emit('load-note-content', { 
+          content: note.content || '' 
+        })
+      }
+    } catch (e) {
+      console.error('发送笔记内容失败:', e)
+    }
+  })
+
+  webview.once('tauri://error', (e) => {
+    console.error('笔记编辑窗口创建失败:', e)
+    const errorMsg = e?.payload || ''
+    if (typeof errorMsg === 'string' && errorMsg.includes('already exists')) {
+      showToast('该笔记编辑窗口已打开', '#f59e0b')
+    } else {
+      showToast('打开编辑窗口失败', '#ef4444')
+    }
+  })
 }
 
 /**

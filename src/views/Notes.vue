@@ -17,20 +17,40 @@ Email: admin@mc666.top
 <template>
   <div class="notes-container">
     <div class="notes-header">
-      <h1 class="page-title">
-        <i class="ri-sticky-note-line page-title-icon"></i>
-        笔记
-      </h1>
+      <div class="header-left">
+        <h1 class="page-title">
+          <i :class="currentTab === 'notes' ? 'ri-sticky-note-line' : 'ri-team-line'" class="page-title-icon"></i>
+          {{ currentTab === 'notes' ? '笔记' : '会议记录' }}
+        </h1>
+        <div class="tab-switch">
+          <button 
+            class="tab-btn" 
+            :class="{ active: currentTab === 'notes' }"
+            @click="switchTab('notes')"
+          >
+            <i class="ri-sticky-note-line"></i>
+            笔记
+          </button>
+          <button 
+            class="tab-btn" 
+            :class="{ active: currentTab === 'meetings' }"
+            @click="switchTab('meetings')"
+          >
+            <i class="ri-team-line"></i>
+            会议记录
+          </button>
+        </div>
+      </div>
       <div class="header-actions">
         <button class="refresh-btn" @click="refreshNotes">
           <i class="ri-refresh-line"></i>
           刷新
         </button>
-        <button class="add-btn" @click="createAndOpenNote">
+        <button v-if="currentTab === 'notes'" class="add-btn" @click="createAndOpenNote">
           <i class="ri-add-line"></i>
           新建笔记
         </button>
-        <div class="dropdown-wrapper" @mouseenter="showImportExportMenu = true" @mouseleave="showImportExportMenu = false">
+        <div v-if="currentTab === 'notes'" class="dropdown-wrapper" @mouseenter="showImportExportMenu = true" @mouseleave="showImportExportMenu = false">
           <button class="action-btn">
             <i class="ri-upload-download-line"></i>
             导入/导出
@@ -76,75 +96,143 @@ Email: admin@mc666.top
         </button>
       </div>
       
-      <div v-else-if="notes.length === 0" class="empty-state">
-        <FileText :size="48" class="empty-icon" />
-        <p class="empty-message">还没有笔记</p>
-        <p class="empty-desc">点击上方按钮创建您的第一个笔记</p>
-      </div>
-
-      <div v-else>
-        <div v-if="pageLoading" class="loading-overlay">
-          <div class="loading-spinner"></div>
-          <p>正在加载...</p>
+      <!-- 笔记列表 -->
+      <template v-else-if="currentTab === 'notes'">
+        <div v-if="notes.length === 0" class="empty-state">
+          <FileText :size="48" class="empty-icon" />
+          <p class="empty-message">还没有笔记</p>
+          <p class="empty-desc">点击上方按钮创建您的第一个笔记</p>
         </div>
-        <div v-else class="notes-grid">
-          <div
-            v-for="note in currentPageNotes"
-            :key="note.uuid"
-            class="note-card"
-            :class="{ active: false }"
-            @click="selectNote(note)"
-          >
-            <div class="note-title-wrapper">
-              <input
-                v-if="editingCardNote === note.uuid"
-                ref="cardTitleInput"
-                v-model="note.title"
-                class="card-title-edit-input"
-                @blur="saveCardTitleEdit(note)"
-                @keyup.enter="saveCardTitleEdit(note)"
-                @keyup.escape="cancelCardTitleEdit"
-                @click.stop
-              />
-              <span 
-                v-else 
-                class="note-title"
-                @dblclick.stop="startCardTitleEdit(note)"
-                title="双击编辑标题"
-              >{{ note.title }}</span>
-            </div>
-            <div class="note-preview">{{ (note.content || '').substring(0, 50) }}...</div>
-            <div class="note-meta">
-              <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
-              <div class="more-wrapper">
-                <button class="more-btn" @click.stop="openMoreMenu(note, $event)">
-                  <i class="ri-more-fill"></i>
-                </button>
+
+        <div v-else>
+          <div v-if="pageLoading" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p>正在加载...</p>
+          </div>
+          <div v-else class="notes-grid">
+            <div
+              v-for="note in currentPageNotes"
+              :key="note.uuid"
+              class="note-card"
+              :class="{ active: false }"
+              @click="selectNote(note)"
+            >
+              <div class="note-title-wrapper">
+                <input
+                  v-if="editingCardNote === note.uuid"
+                  ref="cardTitleInput"
+                  v-model="note.title"
+                  class="card-title-edit-input"
+                  @blur="saveCardTitleEdit(note)"
+                  @keyup.enter="saveCardTitleEdit(note)"
+                  @keyup.escape="cancelCardTitleEdit"
+                  @click.stop
+                />
+                <span 
+                  v-else 
+                  class="note-title"
+                  @dblclick.stop="startCardTitleEdit(note)"
+                  title="双击编辑标题"
+                >{{ note.title }}</span>
+              </div>
+              <div class="note-preview">{{ (note.content || '').substring(0, 50) }}...</div>
+              <div class="note-meta">
+                <span class="note-date">{{ formatDate(note.updatedAt) }}</span>
+                <div class="more-wrapper">
+                  <button class="more-btn" @click.stop="openMoreMenu(note, $event)">
+                    <i class="ri-more-fill"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        
-        <div v-if="totalPages > 1" class="pagination">
-          <button class="page-btn" :disabled="currentPage === 1" @click="prevPage">
-            <i class="ri-arrow-left-s-line"></i>
-          </button>
-          <div class="page-numbers">
-            <button
-              v-for="page in totalPages"
-              :key="page"
-              class="page-num"
-              :class="{ active: page === currentPage }"
-              @click="goToPage(page)"
-            >
-              {{ page }}
+          
+          <div v-if="totalPages > 1" class="pagination">
+            <button class="page-btn" :disabled="currentPage === 1" @click="prevPage">
+              <i class="ri-arrow-left-s-line"></i>
+            </button>
+            <div class="page-numbers">
+              <button
+                v-for="page in totalPages"
+                :key="page"
+                class="page-num"
+                :class="{ active: page === currentPage }"
+                @click="goToPage(page)"
+              >
+                {{ page }}
+              </button>
+            </div>
+            <button class="page-btn" :disabled="currentPage === totalPages" @click="nextPage">
+              <i class="ri-arrow-right-s-line"></i>
             </button>
           </div>
-          <button class="page-btn" :disabled="currentPage === totalPages" @click="nextPage">
-            <i class="ri-arrow-right-s-line"></i>
-          </button>
         </div>
-      </div>
+      </template>
+
+      <!-- 会议记录列表 -->
+      <template v-else-if="currentTab === 'meetings'">
+        <div v-if="meetings.length === 0" class="empty-state">
+          <i class="ri-team-line empty-icon" style="font-size: 64px;"></i>
+          <p class="empty-message">还没有会议记录</p>
+          <p class="empty-desc">会议中创建的笔记将自动保存为会议记录</p>
+        </div>
+
+        <div v-else>
+          <div v-if="pageLoading" class="loading-overlay">
+            <div class="loading-spinner"></div>
+            <p>正在加载...</p>
+          </div>
+          <div v-else class="notes-grid">
+            <div
+              v-for="meeting in meetings"
+              :key="meeting.meeting_uuid"
+              class="note-card meeting-card"
+              @click="selectMeeting(meeting)"
+            >
+              <div class="note-title-wrapper">
+                <span class="note-title">{{ meeting.title }}</span>
+              </div>
+              <div class="meeting-stats">
+                <span class="stat-item">
+                  <i class="ri-sticky-note-line"></i>
+                  {{ meeting.note_count }} 条笔记
+                </span>
+                <span class="stat-item">
+                  <i class="ri-image-line"></i>
+                  {{ meeting.screenshot_count }} 张截图
+                </span>
+              </div>
+              <div class="meeting-time">
+                <span class="time-item">
+                  <i class="ri-time-line"></i>
+                  {{ formatMeetingTime(meeting.start_time) }}
+                </span>
+                <span class="duration">{{ formatDuration(meeting.start_time, meeting.end_time) }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="meetingTotalPages > 1" class="pagination">
+            <button class="page-btn" :disabled="meetingCurrentPage === 1" @click="prevMeetingPage">
+              <i class="ri-arrow-left-s-line"></i>
+            </button>
+            <div class="page-numbers">
+              <button
+                v-for="page in meetingTotalPages"
+                :key="page"
+                class="page-num"
+                :class="{ active: page === meetingCurrentPage }"
+                @click="goToMeetingPage(page)"
+              >
+                {{ page }}
+              </button>
+            </div>
+            <button class="page-btn" :disabled="meetingCurrentPage === meetingTotalPages" @click="nextMeetingPage">
+              <i class="ri-arrow-right-s-line"></i>
+            </button>
+          </div>
+        </div>
+      </template>
     </div>
 
     <Transition name="modal">
@@ -289,6 +377,7 @@ async function apiRequest(url, data = {}) {
   return response.data
 }
 const notes = ref([])
+const meetings = ref([])
 const showAddModal = ref(false)
 const newNoteTitle = ref('')
 const showDeleteModal = ref(false)
@@ -303,12 +392,20 @@ const showImportExportMenu = ref(false)
 const isConfirmingDelete = ref(false)
 const refreshBtnSpinning = ref(false)
 
+// 当前标签页：'notes' 或 'meetings'
+const currentTab = ref('notes')
+
 const pageSize = 9
 const currentPage = ref(1)
 const isLoading = ref(false)
 const pageLoading = ref(false)
 const hasError = ref(false)
 const totalPages = ref(1)
+
+// 会议记录分页
+const meetingPageSize = 9
+const meetingCurrentPage = ref(1)
+const meetingTotalPages = ref(1)
 
 // 后端已经返回了当前页的数据，直接使用 notes.value 即可
 const currentPageNotes = computed(() => {
@@ -322,23 +419,175 @@ let unlistenRefreshNotes = null
 
 onMounted(async () => {
   loadNotes()
-  
+
   // 监听笔记保存事件，刷新列表 (不显示 toast)
   unlistenNoteSaved = await listen('note-saved', () => {
     loadNotes(false)
   })
-  
+
   // 监听蓝牙新建笔记命令，调用 createAndOpenNote 方法
   const { listen } = await import('@tauri-apps/api/event')
   unlistenCreateNewNote = await listen('create-new-note', () => {
     createAndOpenNote()
   })
-  
+
   // 监听刷新笔记列表事件（来自编辑器窗口，不显示 toast）
   unlistenRefreshNotes = await listen('refresh-notes', () => {
     loadNotes(false)
   })
 })
+
+// 切换标签页
+function switchTab(tab) {
+  if (currentTab.value === tab) return
+  currentTab.value = tab
+  currentPage.value = 1
+  meetingCurrentPage.value = 1
+  if (tab === 'meetings') {
+    loadMeetings()
+  } else {
+    loadNotes()
+  }
+}
+
+// 加载会议记录列表
+async function loadMeetings(showSuccessToast = false) {
+  isLoading.value = true
+  hasError.value = false
+  try {
+    const response = await axios.get(getBackendUrl() + '/meeting/history/query_by_page', {
+      params: {
+        page: meetingCurrentPage.value,
+        page_size: meetingPageSize
+      },
+      headers: await getAuthHeader(),
+      timeout: timeOut
+    })
+
+    const data = response.data
+    if (data && data.success) {
+      meetings.value = data.meetings || []
+      meetingTotalPages.value = data.total_page || 1
+    } else {
+      meetings.value = []
+      meetingTotalPages.value = 1
+    }
+
+    if (showSuccessToast) {
+      showToast('刷新成功', '#10b981')
+    }
+  } catch (e) {
+    console.error('加载会议记录失败:', e)
+    hasError.value = true
+    showToast('加载会议记录失败: ' + (e.message || '网络错误'), '#ef4444')
+    meetings.value = []
+  }
+  isLoading.value = false
+}
+
+// 会议记录分页
+function goToMeetingPage(page) {
+  if (page < 1 || page > meetingTotalPages.value) return
+  meetingCurrentPage.value = page
+  loadMeetings()
+}
+
+function prevMeetingPage() {
+  goToMeetingPage(meetingCurrentPage.value - 1)
+}
+
+function nextMeetingPage() {
+  goToMeetingPage(meetingCurrentPage.value + 1)
+}
+
+// 格式化会议时间
+function formatMeetingTime(timeStr) {
+  if (!timeStr) return ''
+  const date = new Date(timeStr)
+  if (isNaN(date.getTime())) return ''
+  return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+// 格式化会议时长
+function formatDuration(startTime, endTime) {
+  if (!startTime || !endTime) return ''
+  const start = new Date(startTime)
+  const end = new Date(endTime)
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return ''
+  const durationMs = end - start
+  const minutes = Math.floor(durationMs / 60000)
+  const hours = Math.floor(minutes / 60)
+  const remainingMinutes = minutes % 60
+  if (hours > 0) {
+    return `${hours}小时${remainingMinutes}分钟`
+  }
+  return `${minutes}分钟`
+}
+
+// 选择会议记录
+async function selectMeeting(meeting) {
+  try {
+    const response = await axios.get(getBackendUrl() + '/meeting/history/query_by_uuid', {
+      params: {
+        meeting_uuid: meeting.meeting_uuid
+      },
+      headers: await getAuthHeader(),
+      timeout: timeOut
+    })
+
+    const data = response.data
+    if (data && data.success && data.meeting) {
+      openMeetingEditorWindow(data.meeting)
+    } else {
+      showToast('获取会议记录详情失败', '#ef4444')
+    }
+  } catch (e) {
+    console.error('获取会议记录详情失败:', e)
+    showToast('获取会议记录详情失败: ' + (e.message || '网络错误'), '#ef4444')
+  }
+}
+
+// 打开会议记录编辑窗口
+async function openMeetingEditorWindow(meeting) {
+  const windowLabel = `meeting-editor-${meeting.meeting_uuid}`
+  const url = `/meeting-editor?uuid=${meeting.meeting_uuid}&title=${encodeURIComponent(meeting.title)}`
+
+  const webview = new WebviewWindow(windowLabel, {
+    url: url,
+    title: meeting.title || '会议记录',
+    width: 900,
+    height: 600,
+    minWidth: 400,
+    minHeight: 300,
+    center: true,
+    decorations: false,
+    resizable: true
+  })
+
+  webview.once('tauri://created', async () => {
+    console.log('会议记录编辑窗口创建成功:', windowLabel)
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    try {
+      await webview.emit('load-meeting-content', {
+        content: meeting.content || '',
+        screenshots: meeting.screenshots || []
+      })
+    } catch (e) {
+      console.error('发送会议记录内容失败:', e)
+    }
+  })
+
+  webview.once('tauri://error', (e) => {
+    console.error('会议记录编辑窗口创建失败:', e)
+    const errorMsg = e?.payload || ''
+    if (typeof errorMsg === 'string' && errorMsg.includes('already exists')) {
+      showToast('该会议记录编辑窗口已打开', '#f59e0b')
+    } else {
+      showToast('打开编辑窗口失败', '#ef4444')
+    }
+  })
+}
 
 onUnmounted(() => {
   if (unlistenNoteSaved) {
@@ -730,7 +979,11 @@ function exportNotes() {
 async function refreshNotes() {
   refreshBtnSpinning.value = true
   try {
-    await loadNotes(true)
+    if (currentTab.value === 'meetings') {
+      await loadMeetings(true)
+    } else {
+      await loadNotes(true)
+    }
   } catch (e) {
     console.error('刷新失败:', e)
     showToast('刷新失败: ' + (e.message || '网络错误'), '#ef4444')
@@ -790,6 +1043,51 @@ function importNotes() {
   top: 0;
   background-color: var(--bg-primary);
   z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+/* 标签切换样式 */
+.tab-switch {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--bg-secondary);
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--hover-bg);
+}
+
+.tab-btn.active {
+  background-color: var(--accent-blue);
+  color: white;
+}
+
+.tab-btn i {
+  font-size: 16px;
 }
 
 .notes-content {
@@ -1211,6 +1509,70 @@ function importNotes() {
 .note-card.active {
   border-color: var(--accent-blue);
   box-shadow: 0 4px 12px rgba(var(--accent-blue-rgb), 0.15);
+}
+
+/* 会议记录卡片样式 */
+.meeting-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.meeting-card .note-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meeting-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.stat-item i {
+  font-size: 14px;
+  color: var(--accent-blue);
+}
+
+.meeting-time {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.time-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.time-item i {
+  font-size: 12px;
+}
+
+.duration {
+  font-size: 12px;
+  color: var(--accent-blue);
+  background-color: rgba(var(--accent-blue-rgb), 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
 }
 
 .note-title-wrapper {

@@ -22,6 +22,9 @@ Email: admin@mc666.top
         class="editor-title-input" 
         placeholder="未命名笔记"
         type="text"
+        :disabled="isMeetingNote"
+        :class="{ 'disabled': isMeetingNote }"
+        title="会议笔记不允许修改标题"
       />
       <div class="editor-actions">
         <button class="action-btn window-btn" @click="minimizeWindow" title="最小化">
@@ -91,6 +94,7 @@ const noteUuid = ref('')
 const noteTitle = ref('')
 const noteContent = ref('')
 const originalContent = ref('')
+const isMeetingNote = ref(false)
 
 // 编辑器引用
 const genericEditor = ref(null)
@@ -141,12 +145,11 @@ onMounted(async () => {
   noteTitle.value = title || '未命名笔记'
   noteContent.value = ''
   originalContent.value = ''
+  isMeetingNote.value = route.query.isMeetingNote === 'true'
   
   // 获取笔记内容
   const fetchNoteContent = async () => {
-    const isMeetingNote = route.query.isMeetingNote === 'true'
-    
-    if (isMeetingNote) {
+    if (isMeetingNote.value) {
       noteContent.value = ''
       originalContent.value = ''
       return
@@ -432,6 +435,16 @@ async function sendMeetingNoteToBackend() {
 
 .editor-title-input::placeholder {
   color: var(--text-secondary, #94a3b8);
+}
+
+.editor-title-input:disabled {
+  background: rgba(0, 0, 0, 0.05);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.light-mode .editor-title-input:disabled {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .editor-actions {
