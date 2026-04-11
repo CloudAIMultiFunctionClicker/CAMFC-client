@@ -451,19 +451,20 @@ function toggleHideWindowOption() {
  */
 async function toggleMeeting() {
   console.log('切换会议状态，当前状态:', meetingActive.value)
-  
+
   try {
     const authHeader = await getAuthHeader()
     const url = getBackendUrl() + '/meeting/' + (meetingActive.value ? 'stop' : 'start')
-    
+
     const response = await axios.get(url, {
       headers: authHeader,
       timeout: 5000
     })
-    
-    meetingActive.value = !meetingActive.value
-    console.log('会议状态已切换:', meetingActive.value ? '会议开始' : '会议结束')
-    showToast(meetingActive.value ? '会议已开始' : '会议已结束', '#10b981')
+
+    const newState = !meetingActive.value
+    meetingActive.value = newState
+    console.log('会议状态已切换:', newState ? '会议开始' : '会议结束')
+    showToast(newState ? '会议已开始' : '会议已结束', '#10b981')
   } catch (error) {
     console.error('切换会议状态失败:', error)
     showToast('切换会议状态失败', '#ef4444')
@@ -734,7 +735,6 @@ html, body {
   padding: 0 12px;
   gap: 8px;
   background-color: var(--float-bg, #f5f5f5);
-  border-radius: .375rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   cursor: move;
   user-select: none;

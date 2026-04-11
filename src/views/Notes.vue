@@ -308,13 +308,11 @@ const currentPage = ref(1)
 const isLoading = ref(false)
 const pageLoading = ref(false)
 const hasError = ref(false)
+const totalPages = ref(1)
 
-const totalPages = computed(() => Math.ceil(notes.value.length / pageSize) || 1)
-
+// 后端已经返回了当前页的数据，直接使用 notes.value 即可
 const currentPageNotes = computed(() => {
-  const start = (currentPage.value - 1) * pageSize
-  const end = start + pageSize
-  return notes.value.slice(start, end)
+  return notes.value
 })
 
 const loadedNotes = ref({})
@@ -325,9 +323,9 @@ let unlistenRefreshNotes = null
 onMounted(async () => {
   loadNotes()
   
-  // 监听笔记保存事件，刷新列表
+  // 监听笔记保存事件，刷新列表 (不显示 toast)
   unlistenNoteSaved = await listen('note-saved', () => {
-    loadNotes()
+    loadNotes(false)
   })
   
   // 监听蓝牙新建笔记命令，调用 createAndOpenNote 方法
@@ -336,9 +334,9 @@ onMounted(async () => {
     createAndOpenNote()
   })
   
-  // 监听刷新笔记列表事件（来自编辑器窗口）
+  // 监听刷新笔记列表事件（来自编辑器窗口，不显示 toast）
   unlistenRefreshNotes = await listen('refresh-notes', () => {
-    loadNotes()
+    loadNotes(false)
   })
 })
 
@@ -354,18 +352,38 @@ onUnmounted(() => {
   }
 })
 
-async function loadNotes() {
+async function loadNotes(showSuccessToast = false) {
   isLoading.value = true
   hasError.value = false
   try {
-    const data = await apiRequest('/note/query', { num: 100 })
+    const response = await axios.get(getBackendUrl() + '/note/query_by_page', {
+      params: {
+        page: currentPage.value,
+        page_size: pageSize
+      },
+      headers: await getAuthHeader(),
+      timeout: timeOut
+    })
+    
+    const data = response.data
     let notesList = data
     if (data && typeof data === 'object' && !Array.isArray(data)) {
       notesList = data.data || data.notes || data.result || []
     }
     notes.value = Array.isArray(notesList) ? notesList : []
+    
+    // 更新总页数（后端返回 total_page 字段）
+    if (data && typeof data === 'object' && 'total_page' in data) {
+      totalPages.value = data.total_page || 1
+    }
+    
     if (notes.value.length === 0) {
       await createDefaultNote()
+    }
+    
+    // 只在手动刷新时显示成功提示
+    if (showSuccessToast) {
+      showToast('刷新成功', '#10b981')
     }
   } catch (e) {
     console.error('加载笔记失败:', e)
@@ -409,7 +427,7 @@ function loadCurrentPageNotes() {
 function goToPage(page) {
   if (page < 1 || page > totalPages.value) return
   currentPage.value = page
-  loadCurrentPageNotes()
+  loadNotes()
 }
 
 function prevPage() {
@@ -420,10 +438,25 @@ function nextPage() {
   goToPage(currentPage.value + 1)
 }
 
+// 获取单个笔记内容
+async function getNoteContent(uuid) {
+  try {
+    const data = await apiRequest('/note/query_by_uuid', { uuid })
+    let noteData = data
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      noteData = data.data || data.note || data.result || {}
+    }
+    return noteData
+  } catch (e) {
+    console.error('获取笔记内容失败:', e)
+    showToast('获取笔记内容失败: ' + (e.message || '网络错误'), '#ef4444')
+    return null
+  }
+}
+
 // 打开笔记编辑窗口
 async function openNoteEditorWindow(note) {
   const windowLabel = `note-editor-${note.uuid}`
-  // 不传 content，避免 URL 过长导致 431 错误
   let url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
   if (note.isMeetingNote) {
     url += '&isMeetingNote=true'
@@ -443,26 +476,42 @@ async function openNoteEditorWindow(note) {
   
   webview.once('tauri://created', async () => {
     console.log('笔记编辑窗口创建成功:', windowLabel)
-    // 窗口创建后再发送内容，避免 URL 过长
-    // 延迟一点确保窗口已加载
-    setTimeout(async () => {
-      try {
-        await webview.emit('load-note-content', { content: note.content || '' })
-      } catch (e) {
-        console.error('发送笔记内容失败:', e)
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    try {
+      if (note.isMeetingNote) {
+        await webview.emit('load-note-content', { 
+          content: note.content || '' 
+        })
+      } else {
+        const noteData = await getNoteContent(note.uuid)
+        if (noteData) {
+          await webview.emit('load-note-content', { 
+            content: noteData.content || '' 
+          })
+        }
       }
-    }, 300)
+    } catch (e) {
+      console.error('获取或发送笔记内容失败:', e)
+    }
   })
 
   webview.once('tauri://error', (e) => {
     console.error('笔记编辑窗口创建失败:', e)
-    showToast('打开编辑窗口失败', '#ef4444')
+    const errorMsg = e?.payload || ''
+    if (typeof errorMsg === 'string' && errorMsg.includes('already exists')) {
+      showToast('该笔记编辑窗口已打开', '#f59e0b')
+    } else {
+      showToast('打开编辑窗口失败', '#ef4444')
+    }
   })
 
-  // 监听子窗口关闭事件，刷新笔记列表
-  webview.listen('note-editor-closed', async () => {
+  const unlistenEditorClosed = await webview.listen('note-editor-closed', async () => {
     console.log('收到笔记编辑窗口关闭事件:', windowLabel)
     await refreshNotes()
+    if (unlistenEditorClosed) {
+      unlistenEditorClosed()
+    }
   })
 }
 
@@ -681,8 +730,7 @@ function exportNotes() {
 async function refreshNotes() {
   refreshBtnSpinning.value = true
   try {
-    await loadNotes()
-    showToast('刷新成功', '#10b981')
+    await loadNotes(true)
   } catch (e) {
     console.error('刷新失败:', e)
     showToast('刷新失败: ' + (e.message || '网络错误'), '#ef4444')
@@ -1073,12 +1121,16 @@ function importNotes() {
 }
 
 .pagination {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 12px;
-  margin-top: 30px;
   padding: 20px 0;
+  z-index: 50;
 }
 
 .page-btn {

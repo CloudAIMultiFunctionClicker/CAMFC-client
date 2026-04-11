@@ -1022,7 +1022,7 @@ onUnmounted(() => {
   --bg-primary: #0d1117;
   --bg-secondary: #161b22;
   --bg-tertiary: #21262d;
-  --bg-header: #161b22;
+  --bg-header: #0d0d0d;
   --text-primary: #c9d1d9;
   --text-secondary: #8b949e;
   --text-muted: #6e7681;
@@ -1052,7 +1052,7 @@ onUnmounted(() => {
   --text-primary: #24292f;
   --text-secondary: #57606a;
   --text-muted: #8c959f;
-  --border-color: #d0d7de;
+  --border-color: rgba(0, 0, 0, 0.1);
   --accent-blue: #0969da;
   --accent-blue-rgb: 9, 105, 218;
   --accent-blue-bright: #0550ae;
@@ -1060,7 +1060,7 @@ onUnmounted(() => {
   --accent-green-rgb: 45, 164, 78;
   --accent-red: #cf222e;
   --accent-red-rgb: 207, 34, 46;
-  --hover-bg: #f3f4f6;
+  --hover-bg: rgba(0, 0, 0, 0.05);
   --danger-btn-bg: #ffebe9;
   --danger-btn-text: #cf222e;
   --danger-btn-border: rgba(207, 34, 46, 0.4);
@@ -1080,11 +1080,12 @@ onUnmounted(() => {
 
 .toolbar {
   width: 100%;
-  padding: 8px 12px;
+  height: 48px;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-header);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
   box-sizing: border-box;
@@ -1094,15 +1095,18 @@ onUnmounted(() => {
   z-index: 200;
 }
 
-.toolbar-left,
-.toolbar-right {
+.toolbar-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0;
   margin-left: auto;
+  margin-right: -16px;
 }
 
 /* 按钮不参与拖动 */
@@ -1111,31 +1115,19 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.toolbar .zoom-btn.window-control-btn {
-  background-color: transparent;
-  border: 1px solid var(--border-color);
-}
-
 .toolbar .zoom-btn.window-control-btn:hover {
-  background-color: var(--hover-bg);
-  border-color: var(--accent-blue);
-}
-
-.toolbar .zoom-btn.close-btn {
-  background-color: transparent;
-  border: 1px solid var(--border-color);
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #f8fafc);
 }
 
 .toolbar .zoom-btn.close-btn:hover {
   background-color: var(--accent-red);
-  border-color: var(--accent-red);
-  color: #fff;
+  color: white;
 }
 
 /* 标注工具按钮激活状态 */
 .toolbar .zoom-btn.active {
-  background-color: var(--accent-blue);
-  border-color: var(--accent-blue);
+  background-color: #3b82f6;
   color: #fff;
 }
 
@@ -1213,25 +1205,18 @@ onUnmounted(() => {
 
 /* 完成/取消按钮样式 */
 .toolbar .primary-btn {
-  background-color: var(--accent-blue);
-  border-color: var(--accent-blue);
+  background-color: #10b981;
   color: #fff;
 }
 
 .toolbar .primary-btn:hover {
-  background-color: var(--accent-blue-bright);
-}
-
-.toolbar .cancel-btn {
-  background-color: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-secondary);
+  background-color: #059669;
+  color: white;
 }
 
 .toolbar .cancel-btn:hover {
-  background-color: rgba(207, 34, 46, 0.1);
-  color: var(--accent-red);
-  border-color: var(--accent-red);
+  background-color: #ef4444;
+  color: white;
 }
 
 .screenshot-main {
@@ -1382,20 +1367,20 @@ onUnmounted(() => {
   width: 36px;
   height: 36px;
   border: none;
-  border-radius: 6px;
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--text-secondary, #cbd5e1);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
   font-size: 16px;
 }
 
 .zoom-btn:hover:not(:disabled) {
-  background-color: var(--accent-blue);
-  color: white;
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #f8fafc);
 }
 
 .zoom-btn:disabled {
@@ -1403,31 +1388,26 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.zoom-btn.close-btn {
-  background-color: var(--accent-red);
-  color: white;
-}
-
 .zoom-btn.close-btn:hover {
   background-color: var(--accent-red);
-  filter: brightness(0.9);
+  color: white;
 }
 
 .zoom-scale-btn {
   min-width: 60px;
   height: 36px;
   border: none;
-  border-radius: 6px;
-  background-color: var(--bg-tertiary);
-  color: var(--text-primary);
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--text-secondary, #cbd5e1);
   cursor: pointer;
   font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .zoom-scale-btn:hover {
-  background-color: var(--accent-blue);
-  color: white;
+  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
+  color: var(--text-primary, #f8fafc);
 }
 
 .control-divider {
