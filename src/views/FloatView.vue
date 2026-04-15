@@ -177,6 +177,12 @@ onMounted(async () => {
     await handleScreenshot()
   })
 
+  // 监听会议切换命令（来自 0x02 按键）
+  const unlistenToggleMeeting = await listen('toggle-meeting', async () => {
+    console.log('悬浮窗收到会议切换命令（0x02）')
+    await toggleMeeting()
+  })
+
   // 监听悬浮窗开关状态变化
   let unlistenFloatToggle = null
   try {
@@ -274,6 +280,7 @@ onMounted(async () => {
     if (unlistenTheme) unlistenTheme()
     if (unlistenConnection) unlistenConnection()
     if (unlistenScreenshot) unlistenScreenshot()
+    if (unlistenToggleMeeting) unlistenToggleMeeting()
     if (unlistenFloatToggle) unlistenFloatToggle()
     if (keepOnTopInterval) {
       clearInterval(keepOnTopInterval)

@@ -82,6 +82,14 @@ pub fn emit_create_note() {
     }
 }
 
+/// 发射会议切换事件（开会/下会）
+pub fn emit_toggle_meeting() {
+    if let Some(handle) = get_app_handle() {
+        tracing::info!("[EVENT] 发射会议切换事件");
+        let _ = handle.emit("toggle-meeting", ());
+    }
+}
+
 /// 发射蓝牙断开事件
 pub fn emit_bluetooth_disconnect() {
     if let Some(handle) = get_app_handle() {

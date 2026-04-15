@@ -42,7 +42,7 @@ Email: admin@mc666.top
           <span>{{ loadError }}</span>
         </div>
         <div v-else class="viewer-content" v-html="renderedContent"></div>
-        
+
         <div v-if="aiAnalysisData" class="ai-analysis-container" :class="{ 'light-mode': isLightMode }">
           <div class="ai-header">
             <i class="ri-robot-2-line"></i>
@@ -53,13 +53,13 @@ Email: admin@mc666.top
           </div>
           <div class="ai-content" v-html="aiAnalysisContent"></div>
         </div>
-        
+
         <div v-if="!aiAnalysisData && !isAnalyzing" class="analyze-action">
           <button class="analyze-btn" @click="startAnalysis">
             <i class="ri-robot-2-line"></i>AI 分析会议内容
           </button>
         </div>
-        
+
         <div v-if="isAnalyzing" class="analyzing-state">
           <i class="ri-loader-4-line spin"></i>
           <span>AI 正在分析中...</span>
@@ -249,7 +249,7 @@ async function loadMeetingContent() {
 async function startAnalysis() {
   try {
     isAnalyzing.value = true
-    
+
     const response = await axios.post(
       getBackendUrl() + '/meeting/ai_analyze',
       {
@@ -260,23 +260,23 @@ async function startAnalysis() {
         timeout: 60000
       }
     )
-    
+
     console.log('AI 分析响应完整数据:', response)
     console.log('AI 分析响应数据:', response.data)
-    
+
     if (response.data && response.data.status === 'success') {
       aiAnalysisData.value = response.data
-      
+
       // 解析 analysis 字段（可能是对象或 JSON 字符串）
       if (response.data.analysis) {
         try {
           let analysisData = response.data.analysis
-          
+
           // 如果是字符串，先解析
           if (typeof analysisData === 'string') {
             analysisData = JSON.parse(analysisData.replace(/'/g, '"'))
           }
-          
+
           // 格式化 individual_analyses 到对应位置
           if (analysisData.individual_analyses && Array.isArray(analysisData.individual_analyses)) {
             // 先按时间戳排序
@@ -285,21 +285,21 @@ async function startAnalysis() {
               const timeB = new Date(b.timestamp || 0).getTime()
               return timeA - timeB
             })
-            
+
             // 按顺序处理每个分析项
             sortedAnalyses.forEach((item, idx) => {
               const placeholder = document.querySelector(`.meeting-item-placeholder[data-index="${idx}"]`)
               if (placeholder) {
                 placeholder.innerHTML = `
                   <div class="ai-note-analysis">
-                    <div class="ai-summary"><strong>概括：</strong>${item.summary || '无'}</div>
-                    <div class="ai-detail"><strong>解析：</strong>${item.analysis || '无'}</div>
+                    <div class="ai-summary"><strong>概括：</strong>${renderMarkdownText(item.summary) || '无'}</div>
+                    <div class="ai-detail"><strong>解析：</strong>${renderMarkdownText(item.analysis) || '无'}</div>
                   </div>
                 `
               }
             })
           }
-          
+
           // 整体分析结果还是显示在底部
           let analysisContent = `## ${analysisData.title || '分析结果'}\n\n`
           if (analysisData.type) analysisContent += `**类型**: ${analysisData.type}\n\n`
@@ -326,12 +326,14 @@ async function startAnalysis() {
           if (analysisData.confidence !== undefined) {
             analysisContent += `**置信度**: ${(analysisData.confidence * 100).toFixed(1)}%\n\n`
           }
-          
+
           aiAnalysisContent.value = renderMarkdown(analysisContent)
         } catch (e) {
           console.error('解析 analysis 失败:', e)
-          aiAnalysisContent.value = typeof response.data.analysis === 'string' 
-            ? response.data.analysis 
+
+          console.info('原始 analysis:', response.data.analysis)
+          aiAnalysisContent.value = typeof response.data.analysis === 'string'
+            ? response.data.analysis
             : JSON.stringify(response.data.analysis, null, 2)
         }
       }
@@ -584,8 +586,13 @@ function initTheme() {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 查看器内容 */
