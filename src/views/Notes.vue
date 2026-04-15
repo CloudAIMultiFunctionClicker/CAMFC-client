@@ -1578,6 +1578,7 @@ function importNotes() {
 .note-title-wrapper {
   margin-bottom: 10px;
   position: relative;
+  min-width: 0;
 }
 
 .note-title {

@@ -155,6 +155,8 @@ onMounted(async () => {
       return
     }
     
+    // TODO: 这里可能会重复请求，主窗口已经发过内容了
+    // 但暂时保留作为备用方案（主窗口发送失败时）
     try {
       const noteData = await apiRequest('/note/query_by_uuid', { uuid })
       let content = ''
@@ -165,6 +167,11 @@ onMounted(async () => {
       noteContent.value = content
       originalContent.value = content
     } catch (e) {
+      // 404 错误可能是主窗口已经发送过内容了，不用提示
+      if (e.response?.status === 404) {
+        console.log('笔记内容已通过事件加载，跳过直接请求')
+        return
+      }
       console.error('获取笔记内容失败:', e)
       showToast('获取笔记内容失败: ' + (e.message || '网络错误'), '#ef4444')
     }
@@ -427,6 +434,9 @@ async function sendMeetingNoteToBackend() {
   -webkit-app-region: no-drag;
   min-width: 0;
   letter-spacing: 0.5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .light-mode .editor-title-input {
