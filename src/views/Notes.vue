@@ -206,8 +206,12 @@ Email: admin@mc666.top
                 <span class="time-item">
                   <i class="ri-time-line"></i>
                   {{ formatMeetingTime(meeting.start_time) }}
+                  <span class="duration">{{ formatDuration(meeting.start_time, meeting.end_time) }}</span>
                 </span>
-                <span class="duration">{{ formatDuration(meeting.start_time, meeting.end_time) }}</span>
+              </div>
+              <div v-if="meeting.key_words && meeting.key_words.length > 0" class="key-words-row">
+                <i class="ri-tag-line"></i>
+                <span class="key-words-text">{{ meeting.key_words.slice(0, 3).join(', ') }}</span>
               </div>
             </div>
           </div>
@@ -468,6 +472,9 @@ async function loadMeetings(showSuccessToast = false) {
     if (data && data.success) {
       meetings.value = data.meetings || []
       meetingTotalPages.value = data.total_page || 1
+      
+      // 获取每个会议的关键词
+      await loadMeetingKeyWords()
     } else {
       meetings.value = []
       meetingTotalPages.value = 1
@@ -483,6 +490,37 @@ async function loadMeetings(showSuccessToast = false) {
     meetings.value = []
   }
   isLoading.value = false
+}
+
+// 获取会议关键词
+async function loadMeetingKeyWords() {
+  try {
+    for (const meeting of meetings.value) {
+      try {
+        const response = await axios.post(
+          getBackendUrl() + '/meeting/ai_key_words',
+          {
+            meeting_uuid: meeting.meeting_uuid
+          },
+          {
+            headers: await getAuthHeader(),
+            timeout: 10000
+          }
+        )
+        
+        if (response.data && response.data.status === 'success') {
+          meeting.key_words = response.data.key_words || []
+        } else {
+          meeting.key_words = []
+        }
+      } catch (error) {
+        console.error(`获取会议 ${meeting.meeting_uuid} 的关键词失败:`, error)
+        meeting.key_words = []
+      }
+    }
+  } catch (e) {
+    console.error('获取会议关键词失败:', e)
+  }
 }
 
 // 会议记录分页
@@ -1573,6 +1611,31 @@ function importNotes() {
   background-color: rgba(var(--accent-blue-rgb), 0.1);
   padding: 2px 8px;
   border-radius: 4px;
+  margin-left: 8px;
+}
+
+.key-words-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+  font-size: 12px;
+  color: var(--accent-green);
+}
+
+.key-words-row i {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.key-words-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .note-title-wrapper {

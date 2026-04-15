@@ -354,27 +354,25 @@ async fn try_load_from_remote() -> Result<BackendConfig> {
 fn parse_backend_url(url: &str) -> Result<(String, u16)> {
     let url = url.trim();
     
-    // 如果包含端口，则分离
-    if let Some((host, port_str)) = url.split_once(':') {
+    // 先处理协议前缀
+    let (protocol, rest) = if let Some(rest) = url.strip_prefix("https://") {
+        ("https://", rest)
+    } else if let Some(rest) = url.strip_prefix("http://") {
+        ("http://", rest)
+    } else {
+        ("http://", url)
+    };
+    
+    // 在剩余部分中查找端口
+    if let Some((host, port_str)) = rest.split_once(':') {
         let port = port_str.parse::<u16>()
             .context(format!("无效的端口号: {}", port_str))?;
         
-        // 检查是否已经有协议前缀
-        let base_url = if host.starts_with("http://") || host.starts_with("https://") {
-            host.to_string()
-        } else {
-            format!("http://{}", host)
-        };
-        
+        let base_url = format!("{}{}", protocol, host);
         Ok((base_url, port))
     } else {
         // 没有端口，默认使用 8005
-        let base_url = if url.starts_with("http://") || url.starts_with("https://") {
-            url.to_string()
-        } else {
-            format!("http://{}", url)
-        };
-        
+        let base_url = format!("{}{}", protocol, rest);
         Ok((base_url, 8005))
     }
 }

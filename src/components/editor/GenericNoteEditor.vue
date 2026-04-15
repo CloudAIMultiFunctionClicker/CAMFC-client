@@ -141,7 +141,8 @@ const emit = defineEmits([
   'input',
   'titleInput',
   'save',
-  'imageInserted'
+  'imageInserted',
+  'imageBlocked'
 ])
 
 // 本地状态
@@ -326,6 +327,10 @@ async function handlePaste(event) {
   for (let i = 0; i < items.length; i++) {
     if (items[i].type.startsWith('image/')) {
       event.preventDefault()
+      if (!props.enableImage) {
+        emit('imageBlocked')
+        return
+      }
       const blob = items[i].getAsFile()
       if (blob) {
         await insertImageFromBlob(blob)
@@ -397,12 +402,20 @@ async function handleDrop(e) {
   const file = files[0]
   if (!file.type.startsWith('image/')) return
 
+  if (!props.enableImage) {
+    emit('imageBlocked')
+    return
+  }
+
   await insertImageFromBlob(file)
 }
 
 // 图片按钮点击
 function handleImageClick() {
-  if (!props.enableImage) return
+  if (!props.enableImage) {
+    emit('imageBlocked')
+    return
+  }
   
   navigator.clipboard.read().then(items => {
     for (const item of items) {

@@ -49,7 +49,11 @@ Email: admin@mc666.top
         v-model:title="noteTitle"
         :show-title="false"
         :is-light-mode="isLightMode"
+        :enable-image="!isMeetingNote"
+        :enable-paste="!isMeetingNote"
+        :enable-drag-drop="!isMeetingNote"
         @save="handleSaveShortcut"
+        @image-blocked="handleImageBlocked"
       />
     </div>
     
@@ -338,6 +342,11 @@ function cancelClose() {
 // 处理保存快捷键
 function handleSaveShortcut() {
   saveNote()
+}
+
+// 会议模式禁止插入图片提示
+function handleImageBlocked() {
+  showToast('会议模式下不允许插入图片', '#f59e0b')
 }
 
 // 保存笔记

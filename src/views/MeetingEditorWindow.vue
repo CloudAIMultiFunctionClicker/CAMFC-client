@@ -74,8 +74,15 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import axios from 'axios'
+import MarkdownIt from 'markdown-it'
 import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl, initBackendConfig } from '../config/backend.js'
+
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true
+})
 
 const route = useRoute()
 
@@ -183,35 +190,7 @@ function formatTime(timestamp) {
 // Markdown 渲染
 function renderMarkdown(text) {
   if (!text) return ''
-
-  let html = text
-    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-    .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-    .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-    .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-    .replace(/\*(.*)\*/gim, '<em>$1</em>')
-    .replace(/~~(.*)~~/gim, '<del>$1</del>')
-    .replace(/`([^`]+)`/gim, '<code>$1</code>')
-    .replace(/^- (.*$)/gim, '<li>$1</li>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<div class="markdown-image-wrapper"><img src="$2" alt="$1" class="markdown-image"></div>')
-    .replace(/\n/gim, '<br>')
-
-  return html
-}
-
-// 纯文本 Markdown 渲染（不解析标题）
-function renderMarkdownText(text) {
-  if (!text) return ''
-
-  let html = text
-    .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-    .replace(/\*(.*)\*/gim, '<em>$1</em>')
-    .replace(/~~(.*)~~/gim, '<del>$1</del>')
-    .replace(/`([^`]+)`/gim, '<code>$1</code>')
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<div class="markdown-image-wrapper"><img src="$2" alt="$1" class="markdown-image"></div>')
-    .replace(/\n/gim, '<br>')
-
-  return html
+  return md.render(text)
 }
 
 // 加载会议内容
@@ -292,8 +271,8 @@ async function startAnalysis() {
               if (placeholder) {
                 placeholder.innerHTML = `
                   <div class="ai-note-analysis">
-                    <div class="ai-summary"><strong>概括：</strong>${renderMarkdownText(item.summary) || '无'}</div>
-                    <div class="ai-detail"><strong>解析：</strong>${renderMarkdownText(item.analysis) || '无'}</div>
+                    <div class="ai-summary"><strong>概括：</strong>${renderMarkdown(item.summary) || '无'}</div>
+                    <div class="ai-detail"><strong>解析：</strong>${renderMarkdown(item.analysis) || '无'}</div>
                   </div>
                 `
               }
@@ -350,9 +329,117 @@ async function startAnalysis() {
 
 // 重新生成分析
 async function regenerateAnalysis() {
-  aiAnalysisData.value = null
-  aiAnalysisContent.value = ''
-  await startAnalysis()
+  try {
+    isAnalyzing.value = true
+
+    // 先删除旧的AI分析结果
+    try {
+      await axios.post(
+        getBackendUrl() + '/meeting/ai_delete',
+        {
+          meeting_uuid: meetingUuid.value
+        },
+        {
+          headers: await getAuthHeader(),
+          timeout: 10000
+        }
+      )
+      console.log('旧AI分析结果已删除')
+    } catch (deleteError) {
+      console.warn('删除旧AI分析结果失败（可能没有旧结果）:', deleteError)
+    }
+
+    aiAnalysisData.value = null
+    aiAnalysisContent.value = ''
+
+    // 重新请求分析
+    const response = await axios.post(
+      getBackendUrl() + '/meeting/ai_analyze',
+      {
+        meeting_uuid: meetingUuid.value
+      },
+      {
+        headers: await getAuthHeader(),
+        timeout: 60000
+      }
+    )
+
+    console.log('AI 分析响应完整数据:', response)
+    console.log('AI 分析响应数据:', response.data)
+
+    if (response.data && response.data.status === 'success') {
+      aiAnalysisData.value = response.data
+
+      if (response.data.analysis) {
+        try {
+          let analysisData = response.data.analysis
+          if (typeof analysisData === 'string') {
+            analysisData = JSON.parse(analysisData.replace(/'/g, '"'))
+          }
+
+          if (analysisData.individual_analyses && Array.isArray(analysisData.individual_analyses)) {
+            const sortedAnalyses = [...analysisData.individual_analyses].sort((a, b) => {
+              const timeA = new Date(a.timestamp || 0).getTime()
+              const timeB = new Date(b.timestamp || 0).getTime()
+              return timeA - timeB
+            })
+
+            sortedAnalyses.forEach((item, idx) => {
+              const placeholder = document.querySelector(`.meeting-item-placeholder[data-index="${idx}"]`)
+              if (placeholder) {
+                placeholder.innerHTML = `
+                  <div class="ai-note-analysis">
+                    <div class="ai-summary"><strong>概括：</strong>${renderMarkdown(item.summary) || '无'}</div>
+                    <div class="ai-detail"><strong>解析：</strong>${renderMarkdown(item.analysis) || '无'}</div>
+                  </div>
+                `
+              }
+            })
+          }
+
+          let analysisContent = `## ${analysisData.title || '分析结果'}\n\n`
+          if (analysisData.type) analysisContent += `**类型**: ${analysisData.type}\n\n`
+          if (analysisData.key_topics && analysisData.key_topics.length > 0) {
+            analysisContent += `**主要议题**:\n${analysisData.key_topics.map(t => `- ${t}`).join('\n')}\n\n`
+          }
+          if (analysisData.key_knowledge_points && analysisData.key_knowledge_points.length > 0) {
+            analysisContent += `**关键知识点**:\n${analysisData.key_knowledge_points.map(p => `- ${p}`).join('\n')}\n\n`
+          }
+          if (analysisData.decisions && analysisData.decisions.length > 0) {
+            analysisContent += `**决策**:\n${analysisData.decisions.map(d => `- ${d}`).join('\n')}\n\n`
+          }
+          if (analysisData.action_items && analysisData.action_items.length > 0) {
+            analysisContent += `**行动项**:\n${analysisData.action_items.map(a => `- ${a}`).join('\n')}\n\n`
+          }
+          if (analysisData.summary) analysisContent += `**总结**:\n${analysisData.summary}\n\n`
+          if (analysisData.key_points && analysisData.key_points.length > 0) {
+            analysisContent += `**重点内容**:\n${analysisData.key_points.map(p => `- ${p}`).join('\n')}\n\n`
+          }
+          if (analysisData.review_points && analysisData.review_points.length > 0) {
+            analysisContent += `**复习要点**:\n${analysisData.review_points.map(p => `- ${p}`).join('\n')}\n\n`
+          }
+          if (analysisData.progress) analysisContent += `**进展**:\n${analysisData.progress}\n\n`
+          if (analysisData.confidence !== undefined) {
+            analysisContent += `**置信度**: ${(analysisData.confidence * 100).toFixed(1)}%\n\n`
+          }
+
+          aiAnalysisContent.value = renderMarkdown(analysisContent)
+        } catch (e) {
+          console.error('解析 analysis 失败:', e)
+          aiAnalysisContent.value = typeof response.data.analysis === 'string'
+            ? response.data.analysis
+            : JSON.stringify(response.data.analysis, null, 2)
+        }
+      }
+    } else {
+      showToast('重新生成失败:' + (response.data?.message || '未知错误'), '#ef4444')
+    }
+  } catch (e) {
+    console.error('重新生成分析失败:', e)
+    showToast('重新生成失败:' + (e.message || '网络错误'), '#ef4444')
+  } finally {
+    isAnalyzing.value = false
+  }
 }
 
 // 初始化
@@ -824,16 +911,21 @@ function initTheme() {
   background: var(--bg-tertiary, #e2e8f0);
 }
 
-.viewer-content :deep(.ai-summary strong),
-.viewer-content :deep(.ai-detail strong) {
-  color: #3b82f6;
+.viewer-content :deep(.ai-summary strong) {
+  color: var(--text-primary, #f8fafc);
   display: block;
   margin-bottom: 6px;
 }
 
+.viewer-content :deep(.ai-detail strong) {
+  color: var(--text-primary, #f8fafc);
+  display: inline;
+  margin-bottom: 0;
+}
+
 .light-mode .viewer-content :deep(.ai-summary strong),
 .light-mode .viewer-content :deep(.ai-detail strong) {
-  color: #2563eb;
+  color: var(--text-primary, #1e293b);
 }
 
 /* AI 分析容器 */
@@ -864,7 +956,7 @@ function initTheme() {
 }
 
 .ai-header i {
-  color: #3b82f6;
+  color: var(--text-secondary, #94a3b8);
   font-size: 20px;
   margin-right: 8px;
 }
@@ -885,10 +977,10 @@ function initTheme() {
   gap: 4px;
   padding: 4px 12px;
   font-size: 12px;
-  border: 1px solid #3b82f6;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.3));
   border-radius: 4px;
   background: transparent;
-  color: #3b82f6;
+  color: inherit;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -947,7 +1039,7 @@ function initTheme() {
 
 .ai-content :deep(strong) {
   font-weight: 600;
-  color: #3b82f6;
+  color: var(--text-primary, #f8fafc);
 }
 
 .ai-content :deep(em) {
@@ -969,7 +1061,7 @@ function initTheme() {
   content: '•';
   position: absolute;
   left: 4px;
-  color: #3b82f6;
+  color: var(--text-secondary, #94a3b8);
 }
 
 .ai-content :deep(.markdown-image) {

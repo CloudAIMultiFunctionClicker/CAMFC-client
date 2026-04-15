@@ -577,11 +577,11 @@ async function sendScreenshotToBackend(imageData) {
       timeout: 10000
     })
     
-    console.log('截图发送成功:', response.data)
-    showToast('截图已发送到后端', '#10b981')
+    console.log('会议截图发送成功:', response.data)
+    showToast('会议截图已保存', '#10b981')
   } catch (error) {
-    console.error('发送截图失败:', error)
-    showToast('发送截图失败', '#ef4444')
+    console.error('发送会议截图失败:', error)
+    showToast('截图保存失败', '#ef4444')
   }
 }
 
