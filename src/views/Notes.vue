@@ -323,6 +323,7 @@ Email: admin@mc666.top
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { Window } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
 import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl } from '../config/backend.js'
@@ -616,11 +617,24 @@ async function openMeetingEditorWindow(meeting) {
     }
   })
 
-  webview.once('tauri://error', (e) => {
+  webview.once('tauri://error', async (e) => {
     console.error('会议记录编辑窗口创建失败:', e)
     const errorMsg = e?.payload || ''
     if (typeof errorMsg === 'string' && errorMsg.includes('already exists')) {
-      showToast('该会议记录编辑窗口已打开', '#f59e0b')
+      // 窗口已存在，获取并置顶
+      try {
+        const existingWindow = await Window.getByLabel(windowLabel)
+        if (existingWindow) {
+          await existingWindow.setFocus()
+          await existingWindow.setAlwaysOnTop(true)
+          setTimeout(async () => {
+            await existingWindow.setAlwaysOnTop(false)
+          }, 100)
+          console.log('会议记录窗口已置顶')
+        }
+      } catch (err) {
+        console.error('设置窗口置顶失败:', err)
+      }
     } else {
       showToast('打开编辑窗口失败', '#ef4444')
     }
@@ -783,11 +797,24 @@ async function openNoteEditorWindow(note) {
     }
   })
 
-  webview.once('tauri://error', (e) => {
+  webview.once('tauri://error', async (e) => {
     console.error('笔记编辑窗口创建失败:', e)
     const errorMsg = e?.payload || ''
     if (typeof errorMsg === 'string' && errorMsg.includes('already exists')) {
-      showToast('该笔记编辑窗口已打开', '#f59e0b')
+      // 窗口已存在，获取并置顶
+      try {
+        const existingWindow = await Window.getByLabel(windowLabel)
+        if (existingWindow) {
+          await existingWindow.setFocus()
+          await existingWindow.setAlwaysOnTop(true)
+          setTimeout(async () => {
+            await existingWindow.setAlwaysOnTop(false)
+          }, 100)
+          console.log('笔记窗口已置顶')
+        }
+      } catch (err) {
+        console.error('设置窗口置顶失败:', err)
+      }
     } else {
       showToast('打开编辑窗口失败', '#ef4444')
     }
