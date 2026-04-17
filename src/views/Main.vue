@@ -33,6 +33,12 @@ Email: admin@mc666.top
         <h3 class="card-title">笔记</h3>
       </button>
       
+      <!-- 群组管理按钮 -->
+      <button class="nav-card group-manager" @click="goToGroupManager">
+        <Users :size="48" class="card-icon" />
+        <h3 class="card-title">群组管理</h3>
+      </button>
+      
       <!-- 最近活动按钮 -->
       <button class="nav-card recent-activities" @click="goToRecentActivities">
         <History :size="48" class="card-icon" />
@@ -54,7 +60,7 @@ Email: admin@mc666.top
 // 后续可以加动画效果，但现在先保证基本功能能用
 
 import { useRouter } from 'vue-router'
-import { Cloud, FileText, Settings, History } from 'lucide-vue-next'
+import { Cloud, FileText, Settings, History, Users } from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -82,6 +88,12 @@ function goToRecentActivities() {
   router.push('/recent-activities')
 }
 
+// 跳转到群组管理页面
+function goToGroupManager() {
+  console.log('跳转到群组管理页面')
+  router.push('/group-manager')
+}
+
 // 注：这里没有onMounted之类的生命周期，因为就是个静态导航页
 // 如果以后要加数据加载，可以再加
 </script>
@@ -105,15 +117,24 @@ function goToRecentActivities() {
   color: var(--text-primary, #f0f6fc);
 }
 
-/* 导航网格布局 */
+/* 导航网格布局 - 5 个按钮：第一行 3 个，第二行 2 个居中 */
 .nav-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 25px;
-  max-width: 1000px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  max-width: 700px;
   width: 100%;
-  margin-bottom: 40px;
+  margin: 0 auto 40px auto;
+  justify-content: center;
 }
+
+/* 每个按钮的宽度相同 */
+.nav-card {
+  flex: 0 0 calc(33.333% - 14px);
+  max-width: 180px;
+}
+
+/* 第二行的按钮自动居中 */
 
 /* 导航卡片样式 */
 .nav-card {
@@ -152,6 +173,11 @@ function goToRecentActivities() {
 /* 笔记卡片特殊样式 */
 .notes:hover {
   box-shadow: 0 8px 20px rgba(var(--accent-purple-rgb, 188, 140, 255), 0.2);
+}
+
+/* 群组管理卡片特殊样式 */
+.group-manager:hover {
+  box-shadow: 0 8px 20px rgba(var(--accent-blue-rgb, 31, 119, 198), 0.2);
 }
 
 /* 最近活动卡片特殊样式 */
@@ -198,10 +224,10 @@ function goToRecentActivities() {
   line-height: 1.5;
 }
 
-/* 响应式调整 - 小屏幕时改为单列 */
+/* 响应式调整 - 小屏幕时改为 2 列 */
 @media (max-width: 768px) {
   .nav-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     max-width: 400px;
   }
   

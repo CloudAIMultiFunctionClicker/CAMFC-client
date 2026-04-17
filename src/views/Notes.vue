@@ -1581,15 +1581,20 @@ function importNotes() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-width: 0;
 }
 
 .meeting-card .note-title {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .meeting-stats {
@@ -1676,9 +1681,13 @@ function importNotes() {
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 10px;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  word-break: break-word;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1933,7 +1942,11 @@ function importNotes() {
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .more-menu-title-input {

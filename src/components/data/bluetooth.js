@@ -215,11 +215,11 @@ export async function getConnectionStatus() {
  */
 export async function isConnected() {
   try {
-    console.info('检查稳定连接状态...')
+    // console.info('检查稳定连接状态...')
     
     const connected = await invoke('is_connected')
     
-    console.info(`稳定连接状态: ${connected ? '已连接' : '未连接'}`)
+    // console.info(`稳定连接状态: ${connected ? '已连接' : '未连接'}`)
     
     return connected
   } catch (error) {

@@ -137,6 +137,12 @@ const router = createRouter({
       name: 'float-normal-empty',
       // 悬浮窗空白页（独立窗口，不受路由守卫影响）
       component: () => import('../views/FloatNormalEmpty.vue')
+    },
+    {
+      path: '/group-manager',
+      name: 'groupManager',
+      // 群组管理页面
+      component: () => import('../views/GroupManager.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]
@@ -241,6 +247,12 @@ router.beforeEach(async (to, _from, next) => {
 
   // 笔记页面不需要蓝牙连接，直接放行
   if (to.path === '/notes') {
+    next()
+    return
+  }
+
+  // 群组管理页面不需要蓝牙连接，直接放行
+  if (to.path === '/group-manager') {
     next()
     return
   }
