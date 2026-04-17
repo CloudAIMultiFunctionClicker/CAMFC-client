@@ -51,6 +51,12 @@ Email: admin@mc666.top
         <h3 class="card-title">设置</h3>
       </button>
     </div>
+    
+    <!-- 自动执行按钮 -->
+    <button class="agent-btn" @click="openAgentWindow">
+      <Bot :size="24" class="agent-icon" />
+      <span>自动执行</span>
+    </button>
   </div>
 </template>
 
@@ -60,7 +66,8 @@ Email: admin@mc666.top
 // 后续可以加动画效果，但现在先保证基本功能能用
 
 import { useRouter } from 'vue-router'
-import { Cloud, FileText, Settings, History, Users } from 'lucide-vue-next'
+import { Cloud, FileText, Settings, History, Users, Bot } from 'lucide-vue-next'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 
 const router = useRouter()
 
@@ -94,7 +101,38 @@ function goToGroupManager() {
   router.push('/group-manager')
 }
 
-// 注：这里没有onMounted之类的生命周期，因为就是个静态导航页
+// 打开 agent 自动化窗口
+async function openAgentWindow() {
+  console.log('打开 agent 自动化窗口')
+  
+  const agentWindow = new WebviewWindow('agent-window', {
+    url: '/agent-window',
+    title: '自动执行 - CAMFC',
+    width: 600,
+    height: 700,
+    resizable: true,
+    center: true,
+    decorations: true,   // 启用系统标题栏
+    maximizable: false,  // 禁用最大化按钮
+    fullscreen: false,   // 禁止全屏
+  })
+  
+  agentWindow.once('tauri://created', () => {
+    console.log('agent 窗口已创建')
+  })
+  
+  agentWindow.once('tauri://error', (e) => {
+    console.error('创建 agent 窗口失败:', e)
+    // 如果窗口已存在，则获取并显示它
+    const existingWindow = WebviewWindow.getByLabel('agent-window')
+    if (existingWindow) {
+      existingWindow.show()
+      existingWindow.setFocus()
+    }
+  })
+}
+
+// 注：这里没有 onMounted 之类的生命周期，因为就是个静态导航页
 // 如果以后要加数据加载，可以再加
 </script>
 
@@ -208,6 +246,37 @@ function goToGroupManager() {
 }
 
 /* 卡片提示 */
+
+/* 自动执行按钮 */
+.agent-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 28px;
+  background-color: var(--accent-purple, #bc8cff);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(188, 140, 255, 0.2);
+}
+
+.agent-btn:hover {
+  background-color: #a576e6;
+  box-shadow: 0 6px 16px rgba(188, 140, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.agent-btn:active {
+  transform: translateY(0);
+}
+
+.agent-icon {
+  color: white !important;
+}
 .card-hint {
   font-size: 12px;
   color: var(--text-muted);

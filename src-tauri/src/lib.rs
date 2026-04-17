@@ -31,6 +31,8 @@ mod screenshot;
 mod activity_log;
 // 窗口工具模块导入
 mod window_utils;
+// agent 自动化模块导入
+mod agent;
 
 // 托盘相关导入
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
@@ -60,6 +62,10 @@ use tracing;
 static DOWNLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<download::DownloadTask>>>> = OnceLock::new();
 // 上传任务管理器
 static UPLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<upload::UploadTask>>>> = OnceLock::new();
+// Agent 停止标志
+static AGENT_STOP_FLAG: OnceLock<Mutex<bool>> = OnceLock::new();
+// Agent 热键配置
+static AGENT_HOTKEY: OnceLock<Mutex<String>> = OnceLock::new();
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -1363,6 +1369,89 @@ fn press_left_key() -> Result<(), String> {
     Ok(())
 }
 
+/// 运行 GUI 自动化 agent
+/// 
+/// instruction: 用户指令，例如"打开 bilibili"
+/// max_step: 最大执行步数
+#[tauri::command]
+async fn run_agent_automation(instruction: String, max_step: usize) -> Result<String, String> {
+    tracing::info!("启动 agent 自动化，指令：{}", instruction);
+    
+    // 初始化并重置停止标志
+    if AGENT_STOP_FLAG.get().is_none() {
+        AGENT_STOP_FLAG.set(Mutex::new(false))
+            .map_err(|_| "停止标志已初始化".to_string())?;
+    } else {
+        let mut flag = AGENT_STOP_FLAG.get().unwrap().lock().await;
+        *flag = false;
+    }
+    
+    match agent::run_gui_automation(&instruction, max_step).await {
+        Ok(log) => {
+            tracing::info!("agent 自动化完成");
+            Ok(log)
+        }
+        Err(e) => {
+            tracing::error!("agent 自动化失败：{}", e);
+            Err(format!("自动化执行失败：{}", e))
+        }
+    }
+}
+
+/// 停止正在运行的 agent 自动化
+#[tauri::command]
+async fn stop_agent_automation() -> Result<String, String> {
+    tracing::info!("收到停止 agent 自动化请求");
+    
+    if let Some(stop_flag) = AGENT_STOP_FLAG.get() {
+        let mut flag = stop_flag.lock().await;
+        *flag = true;
+        tracing::info!("已设置停止标志");
+        Ok("已发送停止指令".to_string())
+    } else {
+        Err("Agent 未运行".to_string())
+    }
+}
+
+/// 检查 agent 是否正在运行
+#[tauri::command]
+async fn is_agent_running() -> Result<bool, String> {
+    if let Some(stop_flag) = AGENT_STOP_FLAG.get() {
+        let flag = stop_flag.lock().await;
+        Ok(!*flag)
+    } else {
+        Ok(false)
+    }
+}
+
+/// 设置 agent 停止热键
+#[tauri::command]
+async fn set_agent_hotkey(hotkey: String) -> Result<String, String> {
+    tracing::info!("设置 agent 停止热键：{}", hotkey);
+    
+    if AGENT_HOTKEY.get().is_none() {
+        AGENT_HOTKEY.set(Mutex::new(hotkey.clone()))
+            .map_err(|_| "热键配置已初始化".to_string())?;
+    } else {
+        let mut key = AGENT_HOTKEY.get().unwrap().lock().await;
+        *key = hotkey.clone();
+    }
+    
+    Ok(format!("热键已设置为：{}", hotkey))
+}
+
+/// 获取当前设置的 agent 停止热键
+#[tauri::command]
+async fn get_agent_hotkey() -> Result<String, String> {
+    if let Some(hotkey) = AGENT_HOTKEY.get() {
+        let key = hotkey.lock().await;
+        Ok(key.clone())
+    } else {
+        // 默认热键
+        Ok("Escape".to_string())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // 初始化tracing日志
@@ -1525,6 +1614,12 @@ pub fn run() {
             // 窗口工具命令
             set_window_size_by_label,
             get_window_size_by_label,
+            // agent 自动化命令
+            run_agent_automation,
+            stop_agent_automation,
+            is_agent_running,
+            set_agent_hotkey,
+            get_agent_hotkey,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
