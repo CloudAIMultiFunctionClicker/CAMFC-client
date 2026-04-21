@@ -551,6 +551,13 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 防止文本缩放导致的布局变化 */
+  text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  /* 防止 DPI 缩放影响 */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 #app {
@@ -560,6 +567,8 @@ html, body {
   align-items: center;
   justify-content: center;
   background: transparent;
+  /* 确保内容不受系统缩放影响 */
+  zoom: 1;
 }
 </style>
 

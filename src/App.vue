@@ -286,11 +286,16 @@ onMounted(async () => {
         title: '',
         width: 450,
         height: 60,
+        minWidth: 450,
+        maxWidth: 450,
+        minHeight: 60,
+        maxHeight: 60,
         x: 100,
         y: 100,
         decorations: false,
         skipTaskbar: true,
-        maximizable: false
+        maximizable: false,
+        resizable: false
       })
 
       blankWindow.once('tauri://created', async () => {

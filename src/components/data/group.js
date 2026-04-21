@@ -247,7 +247,7 @@ async function getMessageList() {
     const authHeader = await getAuthHeader();
     
     const requestPromise = axios.get(
-      getBackendUrl() + "/group/messages",
+      getBackendUrl() + "/group/messages?status=pending",
       {
         headers: authHeader,
       }
@@ -269,4 +269,258 @@ async function getMessageList() {
   }
 }
 
-export { createGroup, deleteGroup, queryMessage, allowApplication, getGroupList, getMessageList };
+/**
+ * 批准加入申请
+ * @param {string} uuid - 消息 UUID
+ * @returns {Promise<Object|null>} - 成功返回 {success: true}，失败返回 null
+ */
+async function approveJoin(uuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.post(
+      getBackendUrl() + "/group/approve_join",
+      { message_uuid: uuid },
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('批准加入申请成功:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('批准加入申请失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
+/**
+ * 拒绝加入申请
+ * @param {string} uuid - 消息 UUID
+ * @returns {Promise<Object|null>} - 成功返回 {success: true}，失败返回 null
+ */
+async function rejectJoin(uuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.post(
+      getBackendUrl() + "/group/reject_join",
+      { message_uuid: uuid },
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('拒绝加入申请成功:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('拒绝加入申请失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
+/**
+ * 批准退出申请
+ * @param {string} uuid - 消息 UUID
+ * @returns {Promise<Object|null>} - 成功返回 {success: true}，失败返回 null
+ */
+async function approveQuit(uuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.post(
+      getBackendUrl() + "/group/approve_quit",
+      { message_uuid: uuid },
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('批准退出申请成功:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('批准退出申请失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
+/**
+ * 分享笔记到群组
+ * @param {string} noteUuid - 笔记 UUID
+ * @param {string} groupUuid - 群组 UUID
+ * @param {string} noteType - 笔记类型："personal" 或 "meeting"
+ * @param {string} [meetingUuid] - 会议 UUID（当 noteType 为 "meeting" 时必需）
+ * @returns {Promise<Object|null>} - 成功返回 {success: true, share_uuid: "xxx"}，失败返回 null
+ */
+async function shareNoteToGroup(noteUuid, groupUuid, noteType, meetingUuid = null) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestBody = {
+      note_uuid: noteUuid,
+      group_uuid: groupUuid,
+      note_type: noteType
+    };
+    
+    if (noteType === "meeting" && meetingUuid) {
+      requestBody.meeting_uuid = meetingUuid;
+    }
+    
+    const requestPromise = axios.post(
+      getBackendUrl() + "/group/share/note",
+      requestBody,
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('分享笔记到群组成功:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('分享笔记到群组失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
+/**
+ * 获取群组共享笔记列表
+ * @param {string} groupUuid - 群组 UUID
+ * @returns {Promise<Array>} - 返回共享笔记列表
+ */
+async function getSharedNotes(groupUuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.get(
+      getBackendUrl() + `/group/share/notes?group_uuid=${groupUuid}`,
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('获取群组共享笔记列表:', response.data);
+    
+    return response.data?.notes || [];
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return [];
+    } else {
+      console.error('获取群组共享笔记列表失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
+/**
+ * 获取共享笔记详情
+ * @param {string} shareUuid - 分享 UUID
+ * @param {string} groupUuid - 群组 UUID
+ * @returns {Promise<Object|null>} - 返回共享笔记详情，失败返回 null
+ */
+async function getSharedNoteDetail(shareUuid, groupUuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.post(
+      getBackendUrl() + "/group/share/note/detail",
+      { share_uuid: shareUuid, group_uuid: groupUuid },
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('获取共享笔记详情:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('获取共享笔记详情失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
+export { 
+  createGroup, 
+  deleteGroup, 
+  queryMessage, 
+  allowApplication, 
+  getGroupList, 
+  getMessageList, 
+  approveJoin, 
+  rejectJoin, 
+  approveQuit,
+  shareNoteToGroup,
+  getSharedNotes,
+  getSharedNoteDetail
+};

@@ -213,6 +213,12 @@ Email: admin@mc666.top
                 <i class="ri-tag-line"></i>
                 <span class="key-words-text">{{ meeting.key_words.slice(0, 3).join(', ') }}</span>
               </div>
+              <div class="meeting-actions">
+                <button class="share-meeting-btn" @click.stop="openMeetingShareModal(meeting)" title="分享到群组">
+                  <i class="ri-share-line"></i>
+                  <span>分享</span>
+                </button>
+              </div>
             </div>
           </div>
           
@@ -307,9 +313,115 @@ Email: admin@mc666.top
               <i class="ri-edit-line"></i>
               <span>重命名</span>
             </button>
+            <button class="more-menu-item" @click="openShareModal">
+              <i class="ri-share-line"></i>
+              <span>分享到群组</span>
+            </button>
             <button class="more-menu-item danger" :class="{ 'confirming': isConfirmingDelete }" @click="handleDeleteClick">
               <i :class="isConfirmingDelete ? 'ri-question-line' : 'ri-delete-bin-line'"></i>
               <span>{{ isConfirmingDelete ? '确认删除' : '删除' }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="modal">
+      <div v-if="showShareModal" class="modal-overlay" @click="closeShareModal">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h3><i class="ri-share-line"></i> 分享到群组</h3>
+            <button class="close-btn" @click="closeShareModal">
+              <i class="ri-close-line"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div v-if="shareGroupsLoading" class="loading-state">
+              <div class="loading-spinner"></div>
+              <p>正在加载群组列表...</p>
+            </div>
+            <div v-else-if="shareGroups.length === 0" class="empty-state">
+              <i class="ri-team-line" style="font-size: 48px; color: var(--text-tertiary);"></i>
+              <p class="empty-message">您还没有加入任何群组</p>
+              <p class="empty-desc">请先加入群组后再进行分享</p>
+            </div>
+            <div v-else class="share-groups-list">
+              <div
+                v-for="group in shareGroups"
+                :key="group.uid"
+                class="share-group-item"
+                :class="{ active: selectedShareGroup === group.uid }"
+                @click="selectedShareGroup = group.uid"
+              >
+                <div class="share-group-info">
+                  <span class="share-group-name">{{ group.name }}</span>
+                  <span class="share-group-uid">UID: {{ group.uid }}</span>
+                </div>
+                <i v-if="selectedShareGroup === group.uid" class="ri-checkbox-circle-fill" style="color: var(--color-primary); font-size: 24px;"></i>
+                <i v-else class="ri-checkbox-blank-circle-line" style="color: var(--text-tertiary); font-size: 24px;"></i>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="cancel-btn" @click="closeShareModal">取消</button>
+            <button 
+              class="confirm-btn" 
+              @click="confirmShareToGroup"
+              :disabled="!selectedShareGroup || shareSubmitting"
+            >
+              <i v-if="shareSubmitting" class="ri-loader-4-line ri-spin"></i>
+              <span v-else>分享</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <Transition name="modal">
+      <div v-if="showMeetingShareModal" class="modal-overlay" @click="closeMeetingShareModal">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h3><i class="ri-share-line"></i> 分享会议记录到群组</h3>
+            <button class="close-btn" @click="closeMeetingShareModal">
+              <i class="ri-close-line"></i>
+            </button>
+          </div>
+          <div class="modal-body">
+            <div v-if="shareGroupsLoading" class="loading-state">
+              <div class="loading-spinner"></div>
+              <p>正在加载群组列表...</p>
+            </div>
+            <div v-else-if="shareGroups.length === 0" class="empty-state">
+              <i class="ri-team-line" style="font-size: 48px; color: var(--text-tertiary);"></i>
+              <p class="empty-message">您还没有加入任何群组</p>
+              <p class="empty-desc">请先加入群组后再进行分享</p>
+            </div>
+            <div v-else class="share-groups-list">
+              <div
+                v-for="group in shareGroups"
+                :key="group.uid"
+                class="share-group-item"
+                :class="{ active: selectedShareGroup === group.uid }"
+                @click="selectedShareGroup = group.uid"
+              >
+                <div class="share-group-info">
+                  <span class="share-group-name">{{ group.name }}</span>
+                  <span class="share-group-uid">UID: {{ group.uid }}</span>
+                </div>
+                <i v-if="selectedShareGroup === group.uid" class="ri-checkbox-circle-fill" style="color: var(--color-primary); font-size: 24px;"></i>
+                <i v-else class="ri-checkbox-blank-circle-line" style="color: var(--text-tertiary); font-size: 24px;"></i>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="cancel-btn" @click="closeMeetingShareModal">取消</button>
+            <button 
+              class="confirm-btn" 
+              @click="confirmShareMeetingToGroup"
+              :disabled="!selectedShareGroup || shareSubmitting"
+            >
+              <i v-if="shareSubmitting" class="ri-loader-4-line ri-spin"></i>
+              <span v-else>分享</span>
             </button>
           </div>
         </div>
@@ -328,6 +440,7 @@ import { listen } from '@tauri-apps/api/event'
 import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl } from '../config/backend.js'
 import { FileText, AlertCircle } from 'lucide-vue-next'
+import { getGroupList, shareNoteToGroup } from '../components/data/group.js'
 
 const timeOut = 10000 // 10 秒超时
 
@@ -396,6 +509,15 @@ const cardTitleInput = ref(null)
 const showImportExportMenu = ref(false)
 const isConfirmingDelete = ref(false)
 const refreshBtnSpinning = ref(false)
+
+// 分享相关
+const showShareModal = ref(false)
+const showMeetingShareModal = ref(false)
+const shareGroups = ref([])
+const shareGroupsLoading = ref(false)
+const selectedShareGroup = ref(null)
+const shareSubmitting = ref(false)
+const selectedMeetingToShare = ref(null)
 
 // 当前标签页：'notes' 或 'meetings'
 const currentTab = ref('notes')
@@ -1085,6 +1207,124 @@ function importNotes() {
     reader.readAsText(file)
   }
   input.click()
+}
+
+// 分享相关函数
+async function openShareModal() {
+  closeMoreMenu()
+  showShareModal.value = true
+  shareGroupsLoading.value = true
+  shareGroups.value = []
+  selectedShareGroup.value = null
+  
+  try {
+    const groups = await getGroupList()
+    shareGroups.value = groups || []
+  } catch (error) {
+    console.error('获取群组列表失败:', error)
+    showToast('获取群组列表失败', '#ef4444')
+  } finally {
+    shareGroupsLoading.value = false
+  }
+}
+
+function closeShareModal() {
+  showShareModal.value = false
+  shareGroups.value = []
+  selectedShareGroup.value = null
+  shareSubmitting.value = false
+}
+
+async function confirmShareToGroup() {
+  if (!selectedShareGroup.value || !moreMenuNote.value) return
+  
+  shareSubmitting.value = true
+  
+  try {
+    const result = await shareNoteToGroup(
+      moreMenuNote.value.uuid,
+      selectedShareGroup.value,
+      'personal'
+    )
+    
+    if (result && result.success) {
+      showToast('分享成功', '#10b981')
+      closeShareModal()
+    } else {
+      showToast('分享失败：' + (result?.message || '未知错误'), '#ef4444')
+    }
+  } catch (error) {
+    console.error('分享失败:', error)
+    const errorMsg = error.response?.data?.detail || error.message || '分享失败'
+    showToast(errorMsg, '#ef4444')
+  } finally {
+    shareSubmitting.value = false
+  }
+}
+
+async function openMeetingShareModal(meeting) {
+  showMeetingShareModal.value = true
+  selectedMeetingToShare.value = meeting
+  shareGroupsLoading.value = true
+  shareGroups.value = []
+  selectedShareGroup.value = null
+  
+  try {
+    const groups = await getGroupList()
+    shareGroups.value = groups || []
+  } catch (error) {
+    console.error('获取群组列表失败:', error)
+    showToast('获取群组列表失败', '#ef4444')
+  } finally {
+    shareGroupsLoading.value = false
+  }
+}
+
+function closeMeetingShareModal() {
+  showMeetingShareModal.value = false
+  selectedMeetingToShare.value = null
+  shareGroups.value = []
+  selectedShareGroup.value = null
+  shareSubmitting.value = false
+}
+
+async function confirmShareMeetingToGroup() {
+  console.log('开始分享会议记录')
+  console.log('selectedShareGroup:', selectedShareGroup.value)
+  console.log('selectedMeetingToShare:', selectedMeetingToShare.value)
+  
+  if (!selectedShareGroup.value || !selectedMeetingToShare.value) {
+    console.error('缺少必要参数')
+    return
+  }
+  
+  shareSubmitting.value = true
+  
+  try {
+    console.log('调用 shareNoteToGroup API')
+    const result = await shareNoteToGroup(
+      selectedMeetingToShare.value.meeting_uuid,
+      selectedShareGroup.value,
+      'meeting',
+      selectedMeetingToShare.value.meeting_uuid
+    )
+    
+    console.log('API 返回结果:', result)
+    
+    if (result && result.success) {
+      showToast('分享成功', '#10b981')
+      closeMeetingShareModal()
+    } else {
+      showToast('分享失败：' + (result?.message || '未知错误'), '#ef4444')
+    }
+  } catch (error) {
+    console.error('分享失败:', error)
+    console.error('错误详情:', error.response?.data)
+    const errorMsg = error.response?.data?.detail || error.message || '分享失败'
+    showToast(errorMsg, '#ef4444')
+  } finally {
+    shareSubmitting.value = false
+  }
 }
 </script>
 
@@ -2064,5 +2304,84 @@ function importNotes() {
 .modal-leave-to .modal-content {
   transform: scale(0.9);
   opacity: 0;
+}
+
+/* 分享弹窗样式 */
+.share-groups-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.share-group-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin-bottom: 8px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.share-group-item:hover {
+  border-color: var(--accent-blue);
+  background-color: var(--bg-secondary);
+}
+
+.share-group-item.active {
+  border-color: var(--color-primary);
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.share-group-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.share-group-name {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.share-group-uid {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* 会议记录分享按钮 */
+.meeting-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px 0;
+  margin-top: -8px;
+}
+
+.share-meeting-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.share-meeting-btn:hover {
+  background-color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: white;
+}
+
+.share-meeting-btn i {
+  font-size: 16px;
 }
 </style>
