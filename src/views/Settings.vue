@@ -637,7 +637,8 @@ const toggleFloatWindow = async () => {
     try {
       const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
       console.log('[设置页面] 尝试获取悬浮窗...')
-      const floatWindow = await WebviewWindow.getByLabel('float')
+      // 检查正确的窗口 label：float-normal-empty
+      const floatWindow = await WebviewWindow.getByLabel('float-normal-empty')
       console.log('[设置页面] 悬浮窗获取成功:', floatWindow)
       if (floatWindow) {
         console.log('[设置页面] 发送悬浮窗状态变化事件...')
@@ -659,22 +660,16 @@ const toggleFloatWindow = async () => {
         if (floatWindowEnabled.value) {
           console.log('[设置页面] 悬浮窗不存在，尝试创建...')
           try {
-            const newFloatWindow = new WebviewWindow('float', {
+            const newFloatWindow = new WebviewWindow('float-normal-empty', {
               url: '/float',
               width: 450,
               height: 60,
-              minWidth: 450,
-              maxWidth: 450,
-              minHeight: 60,
-              maxHeight: 60,
               x: 100,
               y: 100,
               alwaysOnTop: true,
               decorations: false,
               transparent: true,
-              resizable: false,
-              skipTaskbar: true,
-              maximizable: false
+              skipTaskbar: true
             })
             console.log('[设置页面] 悬浮窗创建成功')
           } catch (createError) {

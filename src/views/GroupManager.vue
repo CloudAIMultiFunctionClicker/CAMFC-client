@@ -133,7 +133,7 @@ Email: admin@mc666.top
     <div class="shared-notes-section">
       <div class="section-header">
         <h2 class="section-title">群组共享笔记</h2>
-        <select v-model="selectedGroupForNotes" class="group-select" @change="loadSharedNotes">
+        <select v-model="selectedGroupForNotes" class="group-select" @change="handleGroupSelect">
           <option value="">选择群组</option>
           <option v-for="group in groups" :key="group.uid" :value="group.uid">
             {{ group.name }} ({{ group.uid }})
@@ -236,6 +236,58 @@ Email: admin@mc666.top
                 <h4><i class="ri-brain-line"></i> AI 分析</h4>
                 <div class="ai-analysis-content" v-html="formatAIAnalysis(selectedNoteDetail.ai_analysis)"></div>
               </div>
+              
+              <!-- 学生互动数据 -->
+              <div v-if="noteInteractionsData && !interactionsLoading" class="interactions-section">
+                <h4><i class="ri-user-star-line"></i> 学生互动数据</h4>
+                
+                <!-- 阅读记录 -->
+                <div class="interaction-stats">
+                  <div class="stat-item read-record">
+                    <span class="stat-label">📖 已读：</span>
+                    <span class="stat-value" :class="{ 'has-data': noteInteractionsData.read_by && noteInteractionsData.read_by.length > 0 }">
+                      {{ noteInteractionsData.read_by && noteInteractionsData.read_by.length > 0 ? noteInteractionsData.read_by.join(', ') : '暂无' }}
+                    </span>
+                  </div>
+                </div>
+                
+                <!-- 全文收藏统计 -->
+                <div class="interaction-stats">
+                  <div class="stat-item full-text">
+                    <span class="stat-label">⭐ 收藏：</span>
+                    <span class="stat-value" :class="{ 'has-data': noteInteractionsData.note_favorited_by && noteInteractionsData.note_favorited_by.length > 0 }">
+                      {{ noteInteractionsData.note_favorited_by && noteInteractionsData.note_favorited_by.length > 0 ? noteInteractionsData.note_favorited_by.join(', ') : '暂无' }}
+                    </span>
+                  </div>
+                </div>
+                
+                <!-- 分块互动数据 -->
+                <div v-if="noteInteractionsData.blocks && Object.keys(noteInteractionsData.blocks).length > 0" class="block-interactions">
+                  <div v-for="(blockData, blockIndex) in noteInteractionsData.blocks" :key="blockIndex" class="block-interaction-item">
+                    <div class="block-header">
+                      <span class="block-index">第{{ parseInt(blockIndex) + 1 }}个内容块</span>
+                    </div>
+                    <div class="block-stats">
+                      <div class="stat-item">
+                        <span class="stat-label">⭐ 收藏：</span>
+                        <span class="stat-value" :class="{ 'has-data': blockData.favorited_by && blockData.favorited_by.length > 0 }">
+                          {{ blockData.favorited_by && blockData.favorited_by.length > 0 ? blockData.favorited_by.join(', ') : '暂无' }}
+                        </span>
+                      </div>
+                      <div class="stat-item">
+                        <span class="stat-label">❓ 提问：</span>
+                        <span class="stat-value" :class="{ 'has-data': blockData.question_by && blockData.question_by.length > 0 }">
+                          {{ blockData.question_by && blockData.question_by.length > 0 ? blockData.question_by.join(', ') : '暂无' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div v-else-if="!noteInteractionsData.note_favorited_by || noteInteractionsData.note_favorited_by.length === 0" class="no-interactions">
+                  <p>暂无学生互动数据</p>
+                </div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
@@ -253,7 +305,7 @@ Email: admin@mc666.top
 // 注：所有请求都会 console.info 输出
 
 import { ref, onMounted } from 'vue'
-import { createGroup, deleteGroup, queryMessage, approveJoin, rejectJoin, approveQuit, getGroupList, getMessageList, getSharedNotes, getSharedNoteDetail } from '../components/data/group.js'
+import { createGroup, deleteGroup, queryMessage, approveJoin, rejectJoin, approveQuit, getGroupList, getMessageList, getSharedNotes, getSharedNoteDetail, getNoteInteractions, recordNoteRead } from '../components/data/group.js'
 import { showToast } from '../components/layout/showToast.js'
 
 // 群组管理页面现在不需要蓝牙连接也能访问（和笔记页面一样）
@@ -271,6 +323,10 @@ const sharedNotesLoading = ref(false)
 const showNoteDetailModal = ref(false)
 const selectedNoteDetail = ref(null)
 const noteDetailLoading = ref(false)
+
+// 笔记互动数据相关
+const noteInteractionsData = ref(null)
+const interactionsLoading = ref(false)
 
 // 创建群组
 async function handleCreateGroup() {
@@ -385,6 +441,15 @@ function formatTime(timestamp) {
   }
 }
 
+// 处理群组选择
+function handleGroupSelect() {
+  if (selectedGroupForNotes.value) {
+    loadSharedNotes()
+  } else {
+    sharedNotes.value = []
+  }
+}
+
 // 加载共享笔记
 async function loadSharedNotes() {
   if (!selectedGroupForNotes.value) {
@@ -407,24 +472,41 @@ async function loadSharedNotes() {
 
 // 查看共享笔记详情
 async function viewSharedNoteDetail(shareUuid) {
-  if (!selectedGroupForNotes.value) return
+  // 教师端不需要记录阅读状态，只获取笔记详情和互动数据
+  if (!selectedGroupForNotes.value || !shareUuid) {
+    console.error('参数错误:', { shareUuid, groupUuid: selectedGroupForNotes.value })
+    showToast('参数错误', '#ef4444')
+    return
+  }
+  
+  console.info('查看笔记详情:', { shareUuid, groupUuid: selectedGroupForNotes.value })
   
   noteDetailLoading.value = true
+  interactionsLoading.value = true
   showNoteDetailModal.value = true
   selectedNoteDetail.value = null
+  noteInteractionsData.value = null
   
   try {
+    // 获取笔记详情（使用 TOTP 验证）
     const result = await getSharedNoteDetail(shareUuid, selectedGroupForNotes.value)
     if (result && result.success && result.note) {
       selectedNoteDetail.value = result.note
+      
+      // 获取学生互动数据（使用 TOTP 验证）
+      const interactionResult = await getNoteInteractions(shareUuid, selectedGroupForNotes.value)
+      if (interactionResult && interactionResult.success) {
+        noteInteractionsData.value = interactionResult.data
+      }
     } else {
       showToast('获取笔记详情失败', '#ef4444')
     }
   } catch (error) {
     console.error('获取笔记详情失败:', error)
-    showToast('获取笔记详情失败', '#ef4444')
+    showToast('获取笔记详情失败: ' + (error.response?.data?.detail || error.message), '#ef4444')
   } finally {
     noteDetailLoading.value = false
+    interactionsLoading.value = false
   }
 }
 
@@ -433,6 +515,8 @@ function closeNoteDetailModal() {
   showNoteDetailModal.value = false
   selectedNoteDetail.value = null
   noteDetailLoading.value = false
+  noteInteractionsData.value = null
+  interactionsLoading.value = false
 }
 
 // 格式化笔记内容（处理换行）
@@ -495,6 +579,20 @@ async function loadData() {
     console.info('群组列表响应:', groupData)
     groups.value = Array.isArray(groupData) ? groupData : []
     console.info(`加载了 ${groups.value.length} 个群组`)
+    
+    // 如果有群组，自动选择第一个群组并加载共享笔记
+    if (groups.value.length > 0 && !selectedGroupForNotes.value) {
+      selectedGroupForNotes.value = groups.value[0].uid
+      sharedNotesLoading.value = true
+      try {
+        const notes = await getSharedNotes(selectedGroupForNotes.value)
+        sharedNotes.value = notes || []
+      } catch (error) {
+        console.error('加载默认群组共享笔记失败:', error)
+      } finally {
+        sharedNotesLoading.value = false
+      }
+    }
     
     // 获取消息列表
     console.info('请求消息列表...')
@@ -1081,5 +1179,96 @@ onMounted(() => {
   .page-title {
     font-size: 24px;
   }
+}
+
+/* 学生互动数据区域 */
+.interactions-section {
+  border-top: 1px solid var(--border-color, #30363d);
+  padding-top: 16px;
+  margin-top: 16px;
+}
+
+.interactions-section h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #f0f6fc);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.interaction-stats {
+  margin-bottom: 16px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.stat-item.read-record {
+        padding: 10px 12px;
+        background-color: var(--bg-tertiary, rgba(240, 246, 252, 0.08));
+        border-radius: 6px;
+      }
+      
+      .stat-item.full-text {
+        padding: 10px 12px;
+        background-color: var(--bg-tertiary, rgba(240, 246, 252, 0.08));
+        border-radius: 6px;
+      }
+
+.stat-label {
+  font-weight: 500;
+  color: var(--text-secondary, #c9d1d9);
+  min-width: 80px;
+}
+
+.stat-value {
+  color: var(--text-muted, #8b949e);
+  font-size: 14px;
+}
+
+.stat-value.has-data {
+  color: #a78bfa;
+  font-weight: 500;
+}
+
+.block-interactions {
+  margin-top: 12px;
+}
+
+.block-interaction-item {
+  margin-bottom: 12px;
+  padding: 12px;
+  background-color: var(--bg-tertiary, rgba(240, 246, 252, 0.08));
+  border-radius: 8px;
+  border-left: 3px solid var(--border-color, #30363d);
+}
+
+.block-header {
+  margin-bottom: 8px;
+}
+
+.block-index {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary, #c9d1d9);
+}
+
+.block-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.no-interactions {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted, #8b949e);
+  font-size: 14px;
 }
 </style>

@@ -510,6 +510,83 @@ async function getSharedNoteDetail(shareUuid, groupUuid) {
   }
 }
 
+/**
+ * 获取共享笔记的学生互动数据（星标、问题标记、阅读记录）
+ * @param {string} shareUuid - 分享 UUID
+ * @param {string} groupUuid - 群组 UUID
+ * @returns {Promise<Object|null>} - 返回互动数据，失败返回 null
+ */
+async function getNoteInteractions(shareUuid, groupUuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.get(
+      getBackendUrl() + `/student/note-interactions/teacher/all?group_uid=${groupUuid}&share_uuid=${shareUuid}`,
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('获取笔记互动数据:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('获取笔记互动数据失败:', error.response?.data || error.message);
+      return null;
+    }
+  }
+}
+
+/**
+ * 记录学生已阅读笔记
+ * @param {string} shareUuid - 分享 UUID
+ * @param {string} groupUuid - 群组 UUID
+ * @returns {Promise<Object|null>} - 返回操作结果，失败返回 null
+ */
+async function recordNoteRead(shareUuid, groupUuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.post(
+      getBackendUrl() + '/student/note-interactions/read',
+      { share_uuid: shareUuid, group_uid: groupUuid },
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('记录阅读成功:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('记录阅读失败:', error.response?.data || error.message);
+      return null;
+    }
+  }
+}
+
 export { 
   createGroup, 
   deleteGroup, 
@@ -522,5 +599,7 @@ export {
   approveQuit,
   shareNoteToGroup,
   getSharedNotes,
-  getSharedNoteDetail
+  getSharedNoteDetail,
+  getNoteInteractions,
+  recordNoteRead
 };
