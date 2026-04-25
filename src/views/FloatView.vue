@@ -41,9 +41,9 @@ Email: admin@mc666.top
       <button class="float-btn" @click.stop="openMainPage('/settings')" title="设置">
         <i class="ri-settings-3-line"></i>
       </button>
-      <button class="float-btn meeting-btn" @click.stop="toggleMeeting" :title="meetingActive ? '下会' : '开会'">
+      <button class="float-btn meeting-btn" @click.stop="toggleMeeting" :title="meetingActive ? '下课' : '上课'">
         <i :class="meetingActive ? 'ri-stop-circle-line' : 'ri-play-circle-line'"></i>
-        <span class="btn-text">{{ meetingActive ? '下会' : '开会' }}</span>
+        <span class="btn-text">{{ meetingActive ? '下课' : '上课' }}</span>
       </button>
     </div>
 
@@ -454,7 +454,7 @@ function toggleHideWindowOption() {
 }
 
 /**
- * 切换会议状态（开会/下会）
+ * 切换课堂状态（上课/下课）
  */
 async function toggleMeeting() {
   console.log('切换会议状态，当前状态:', meetingActive.value)
@@ -470,11 +470,11 @@ async function toggleMeeting() {
 
     const newState = !meetingActive.value
     meetingActive.value = newState
-    console.log('会议状态已切换:', newState ? '会议开始' : '会议结束')
-    showToast(newState ? '会议已开始' : '会议已结束', '#10b981')
+    console.log('课堂状态已切换:', newState ? '课堂开始' : '课堂结束')
+    showToast(newState ? '课堂已开始' : '课堂已结束', '#10b981')
   } catch (error) {
-    console.error('切换会议状态失败:', error)
-    showToast('切换会议状态失败', '#ef4444')
+    console.error('切换课堂状态失败:', error)
+    showToast('切换课堂状态失败', '#ef4444')
   }
 }
 
@@ -549,7 +549,7 @@ async function handleScreenshot() {
         return
       }
       
-      // 会议未进行，打开截图窗口显示
+      // 课堂未进行，打开截图窗口显示
       console.log('打开主窗口显示截图')
       await openScreenshotWindow(result)
     } else {
@@ -577,10 +577,10 @@ async function sendScreenshotToBackend(imageData) {
       timeout: 10000
     })
     
-    console.log('会议截图发送成功:', response.data)
-    showToast('会议截图已保存', '#10b981')
+    console.log('课堂截图发送成功:', response.data)
+    showToast('课堂截图已保存', '#10b981')
   } catch (error) {
-    console.error('发送会议截图失败:', error)
+    console.error('发送课堂截图失败:', error)
     showToast('截图保存失败', '#ef4444')
   }
 }
@@ -657,8 +657,8 @@ async function handleNoteManager() {
   }
   
   if (meetingActive) {
-    // 会议进行中，直接创建会议笔记
-    console.log('会议进行中，创建会议笔记')
+    // 课堂进行中，直接创建课堂笔记
+    console.log('课堂进行中，创建课堂笔记')
     await createMeetingNote()
   } else {
     // 会议未进行，打开笔记管理页面
@@ -678,7 +678,7 @@ async function createMeetingNote() {
   const defaultTitle = `会议笔记_${timestamp}`
   
   try {
-    // 调用后端 API 创建会议笔记
+    // 调用后端 API 创建课堂笔记
     const authHeader = await getAuthHeader()
     const response = await axios.post(getBackendUrl() + '/meeting/note/add', {
       title: defaultTitle,
@@ -945,7 +945,7 @@ html, body {
   color: #2e7d32;
 }
 
-/* 会议按钮样式 */
+/* 课堂按钮样式 */
 .meeting-btn {
   background-color: rgba(255, 152, 0, 0.1);
   color: #ff9800;

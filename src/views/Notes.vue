@@ -20,7 +20,7 @@ Email: admin@mc666.top
       <div class="header-left">
         <h1 class="page-title">
           <i :class="currentTab === 'notes' ? 'ri-sticky-note-line' : 'ri-team-line'" class="page-title-icon"></i>
-          {{ currentTab === 'notes' ? '笔记' : '会议记录' }}
+          {{ currentTab === 'notes' ? '笔记' : '课堂记录' }}
         </h1>
         <div class="tab-switch">
           <button 
@@ -37,9 +37,22 @@ Email: admin@mc666.top
             @click="switchTab('meetings')"
           >
             <i class="ri-team-line"></i>
-            会议记录
+            课堂记录
           </button>
         </div>
+      </div>
+      <div class="search-wrapper">
+        <i class="ri-search-line search-icon"></i>
+        <input
+          v-model="searchKeyword"
+          type="text"
+          class="search-input"
+          :placeholder="currentTab === 'notes' ? '搜索笔记标题...' : '搜索课堂记录...'"
+          @input="onSearchInput"
+        />
+        <button v-if="searchKeyword" class="search-clear-btn" @click="clearSearch">
+          <i class="ri-close-line"></i>
+        </button>
       </div>
       <div class="header-actions">
         <button class="refresh-btn" @click="refreshNotes">
@@ -98,7 +111,13 @@ Email: admin@mc666.top
       
       <!-- 笔记列表 -->
       <template v-else-if="currentTab === 'notes'">
-        <div v-if="notes.length === 0" class="empty-state">
+        <div v-if="filteredNotes.length === 0 && notes.length > 0" class="empty-state">
+          <i class="ri-search-line empty-icon" style="font-size: 64px;"></i>
+          <p class="empty-message">未找到匹配的笔记</p>
+          <p class="empty-desc">尝试其他关键词</p>
+        </div>
+
+        <div v-else-if="notes.length === 0" class="empty-state">
           <FileText :size="48" class="empty-icon" />
           <p class="empty-message">还没有笔记</p>
           <p class="empty-desc">点击上方按钮创建您的第一个笔记</p>
@@ -111,7 +130,7 @@ Email: admin@mc666.top
           </div>
           <div v-else class="notes-grid">
             <div
-              v-for="note in currentPageNotes"
+              v-for="note in filteredNotes"
               :key="note.uuid"
               class="note-card"
               :class="{ active: false }"
@@ -171,10 +190,16 @@ Email: admin@mc666.top
 
       <!-- 会议记录列表 -->
       <template v-else-if="currentTab === 'meetings'">
-        <div v-if="meetings.length === 0" class="empty-state">
+        <div v-if="filteredMeetings.length === 0 && meetings.length > 0" class="empty-state">
+          <i class="ri-search-line empty-icon" style="font-size: 64px;"></i>
+          <p class="empty-message">未找到匹配的课堂记录</p>
+          <p class="empty-desc">尝试其他关键词</p>
+        </div>
+
+        <div v-else-if="meetings.length === 0" class="empty-state">
           <i class="ri-team-line empty-icon" style="font-size: 64px;"></i>
-          <p class="empty-message">还没有会议记录</p>
-          <p class="empty-desc">会议中创建的笔记将自动保存为会议记录</p>
+          <p class="empty-message">还没有课堂记录</p>
+          <p class="empty-desc">课堂中创建的笔记将自动保存为课堂记录</p>
         </div>
 
         <div v-else>
@@ -184,7 +209,7 @@ Email: admin@mc666.top
           </div>
           <div v-else class="notes-grid">
             <div
-              v-for="meeting in meetings"
+              v-for="meeting in filteredMeetings"
               :key="meeting.meeting_uuid"
               class="note-card meeting-card"
               @click="selectMeeting(meeting)"
@@ -381,7 +406,7 @@ Email: admin@mc666.top
       <div v-if="showMeetingShareModal" class="modal-overlay" @click="closeMeetingShareModal">
         <div class="modal-content" @click.stop>
           <div class="modal-header">
-            <h3><i class="ri-share-line"></i> 分享会议记录到群组</h3>
+            <h3><i class="ri-share-line"></i> 分享课堂记录到群组</h3>
             <button class="close-btn" @click="closeMeetingShareModal">
               <i class="ri-close-line"></i>
             </button>
@@ -464,7 +489,7 @@ async function checkMeetingStatus() {
     })
     return response.data.in_meeting === true
   } catch (error) {
-    console.error('获取会议状态失败:', error)
+    console.error('获取课堂状态失败:', error)
     return false
   }
 }
@@ -520,7 +545,32 @@ const shareSubmitting = ref(false)
 const selectedMeetingToShare = ref(null)
 
 // 当前标签页：'notes' 或 'meetings'
-const currentTab = ref('notes')
+const currentTab = ref('meetings')
+
+// 搜索关键词
+const searchKeyword = ref('')
+
+// 过滤后的笔记列表（按标题搜索）
+const filteredNotes = computed(() => {
+  if (!searchKeyword.value.trim()) return notes.value
+  const keyword = searchKeyword.value.toLowerCase().trim()
+  return notes.value.filter(note =>
+    note.title?.toLowerCase().includes(keyword)
+  )
+})
+
+// 过滤后的课堂记录列表（按标题和关键词搜索）
+const filteredMeetings = computed(() => {
+  if (!searchKeyword.value.trim()) return meetings.value
+  const keyword = searchKeyword.value.toLowerCase().trim()
+  return meetings.value.filter(meeting => {
+    const titleMatch = meeting.title?.toLowerCase().includes(keyword)
+    const keyWordsMatch = meeting.key_words?.some(kw =>
+      kw.toLowerCase().includes(keyword)
+    )
+    return titleMatch || keyWordsMatch
+  })
+})
 
 const pageSize = 9
 const currentPage = ref(1)
@@ -545,7 +595,7 @@ let unlistenCreateNewNote = null
 let unlistenRefreshNotes = null
 
 onMounted(async () => {
-  loadNotes()
+  loadMeetings()
 
   // 监听笔记保存事件，刷新列表 (不显示 toast)
   unlistenNoteSaved = await listen('note-saved', () => {
@@ -568,6 +618,7 @@ onMounted(async () => {
 function switchTab(tab) {
   if (currentTab.value === tab) return
   currentTab.value = tab
+  searchKeyword.value = ''
   currentPage.value = 1
   meetingCurrentPage.value = 1
   if (tab === 'meetings') {
@@ -575,6 +626,12 @@ function switchTab(tab) {
   } else {
     loadNotes()
   }
+}
+
+function onSearchInput() {}
+
+function clearSearch() {
+  searchKeyword.value = ''
 }
 
 // 加载会议记录列表
@@ -615,7 +672,7 @@ async function loadMeetings(showSuccessToast = false) {
   isLoading.value = false
 }
 
-// 获取会议关键词
+// 获取课堂关键词
 async function loadMeetingKeyWords() {
   try {
     for (const meeting of meetings.value) {
@@ -661,7 +718,7 @@ function nextMeetingPage() {
   goToMeetingPage(meetingCurrentPage.value + 1)
 }
 
-// 格式化会议时间
+// 格式化课堂时间
 function formatMeetingTime(timeStr) {
   if (!timeStr) return ''
   const date = new Date(timeStr)
@@ -700,11 +757,11 @@ async function selectMeeting(meeting) {
     if (data && data.success && data.meeting) {
       openMeetingEditorWindow(data.meeting)
     } else {
-      showToast('获取会议记录详情失败', '#ef4444')
+      showToast('获取课堂记录详情失败', '#ef4444')
     }
   } catch (e) {
-    console.error('获取会议记录详情失败:', e)
-    showToast('获取会议记录详情失败: ' + (e.message || '网络错误'), '#ef4444')
+    console.error('获取课堂记录详情失败:', e)
+    showToast('获取课堂记录详情失败：' + (e.message || '网络错误'), '#ef4444')
   }
 }
 
@@ -715,7 +772,7 @@ async function openMeetingEditorWindow(meeting) {
 
   const webview = new WebviewWindow(windowLabel, {
     url: url,
-    title: meeting.title || '会议记录',
+    title: meeting.title || '课堂记录',
     width: 900,
     height: 600,
     minWidth: 400,
@@ -752,7 +809,7 @@ async function openMeetingEditorWindow(meeting) {
           setTimeout(async () => {
             await existingWindow.setAlwaysOnTop(false)
           }, 100)
-          console.log('会议记录窗口已置顶')
+          console.log('课堂记录窗口已置顶')
         }
       } catch (err) {
         console.error('设置窗口置顶失败:', err)
@@ -1289,7 +1346,7 @@ function closeMeetingShareModal() {
 }
 
 async function confirmShareMeetingToGroup() {
-  console.log('开始分享会议记录')
+  console.log('开始分享课堂记录')
   console.log('selectedShareGroup:', selectedShareGroup.value)
   console.log('selectedMeetingToShare:', selectedMeetingToShare.value)
   
@@ -1348,6 +1405,8 @@ async function confirmShareMeetingToGroup() {
   top: 0;
   background-color: var(--bg-primary);
   z-index: 10;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
 .header-left {
@@ -1393,6 +1452,68 @@ async function confirmShareMeetingToGroup() {
 
 .tab-btn i {
   font-size: 16px;
+}
+
+/* 搜索框样式 */
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  min-width: 220px;
+  max-width: 320px;
+  transition: all 0.2s ease;
+}
+
+.search-wrapper:focus-within {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.search-icon {
+  font-size: 16px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  min-width: 0;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.search-clear-btn:hover {
+  color: var(--text-primary);
+  background-color: var(--hover-bg);
+}
+
+.search-clear-btn i {
+  font-size: 14px;
 }
 
 .notes-content {
@@ -1816,7 +1937,7 @@ async function confirmShareMeetingToGroup() {
   box-shadow: 0 4px 12px rgba(var(--accent-blue-rgb), 0.15);
 }
 
-/* 会议记录卡片样式 */
+/* 课堂记录卡片样式 */
 .meeting-card {
   display: flex;
   flex-direction: column;

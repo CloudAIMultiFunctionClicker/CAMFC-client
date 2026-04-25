@@ -307,6 +307,7 @@ Email: admin@mc666.top
 import { ref, onMounted } from 'vue'
 import { createGroup, deleteGroup, queryMessage, approveJoin, rejectJoin, approveQuit, getGroupList, getMessageList, getSharedNotes, getSharedNoteDetail, getNoteInteractions, recordNoteRead } from '../components/data/group.js'
 import { showToast } from '../components/layout/showToast.js'
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 
 // 群组管理页面现在不需要蓝牙连接也能访问（和笔记页面一样）
 // 但实际 API 调用需要 TOTP 认证
@@ -470,43 +471,65 @@ async function loadSharedNotes() {
   }
 }
 
-// 查看共享笔记详情
+// 查看共享笔记详情（打开独立窗口）
 async function viewSharedNoteDetail(shareUuid) {
-  // 教师端不需要记录阅读状态，只获取笔记详情和互动数据
   if (!selectedGroupForNotes.value || !shareUuid) {
     console.error('参数错误:', { shareUuid, groupUuid: selectedGroupForNotes.value })
     showToast('参数错误', '#ef4444')
     return
   }
-  
-  console.info('查看笔记详情:', { shareUuid, groupUuid: selectedGroupForNotes.value })
-  
-  noteDetailLoading.value = true
-  interactionsLoading.value = true
-  showNoteDetailModal.value = true
-  selectedNoteDetail.value = null
-  noteInteractionsData.value = null
-  
+
+  console.info('打开笔记查看窗口:', { shareUuid, groupUuid: selectedGroupForNotes.value })
+
+  // 获取笔记标题（用于窗口标题）
+  const note = sharedNotes.value.find(n => n.share_uuid === shareUuid)
+  const noteTitle = note?.title || '共享笔记'
+
+  const windowLabel = `note-viewer-${shareUuid}`
+  const url = `/note-viewer?shareUuid=${shareUuid}&groupUuid=${selectedGroupForNotes.value}&title=${encodeURIComponent(noteTitle)}`
+
   try {
-    // 获取笔记详情（使用 TOTP 验证）
-    const result = await getSharedNoteDetail(shareUuid, selectedGroupForNotes.value)
-    if (result && result.success && result.note) {
-      selectedNoteDetail.value = result.note
-      
-      // 获取学生互动数据（使用 TOTP 验证）
-      const interactionResult = await getNoteInteractions(shareUuid, selectedGroupForNotes.value)
-      if (interactionResult && interactionResult.success) {
-        noteInteractionsData.value = interactionResult.data
+    const webview = new WebviewWindow(windowLabel, {
+      url: url,
+      title: noteTitle,
+      width: 900,
+      height: 700,
+      minWidth: 600,
+      minHeight: 400,
+      center: true,
+      decorations: false,
+      resizable: true
+    })
+
+    webview.once('tauri://created', async () => {
+      console.log('笔记查看窗口创建成功:', windowLabel)
+    })
+
+    webview.once('tauri://error', async (e) => {
+      console.error('笔记查看窗口创建失败:', e)
+      const errorMsg = e?.payload || ''
+      if (typeof errorMsg === 'string' && errorMsg.includes('already exists')) {
+        // 窗口已存在，获取并置顶
+        try {
+          const existingWindow = await WebviewWindow.getByLabel(windowLabel)
+          if (existingWindow) {
+            await existingWindow.setFocus()
+            await existingWindow.setAlwaysOnTop(true)
+            setTimeout(async () => {
+              await existingWindow.setAlwaysOnTop(false)
+            }, 100)
+            console.log('笔记查看窗口已置顶')
+          }
+        } catch (err) {
+          console.error('设置窗口置顶失败:', err)
+        }
+      } else {
+        showToast('打开笔记查看窗口失败', '#ef4444')
       }
-    } else {
-      showToast('获取笔记详情失败', '#ef4444')
-    }
+    })
   } catch (error) {
-    console.error('获取笔记详情失败:', error)
-    showToast('获取笔记详情失败: ' + (error.response?.data?.detail || error.message), '#ef4444')
-  } finally {
-    noteDetailLoading.value = false
-    interactionsLoading.value = false
+    console.error('创建笔记查看窗口失败:', error)
+    showToast('打开笔记查看窗口失败: ' + (error.message || '未知错误'), '#ef4444')
   }
 }
 

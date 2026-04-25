@@ -149,6 +149,12 @@ const router = createRouter({
       name: 'agentWindow',
       // agent 自动化窗口（独立窗口，不受路由守卫影响）
       component: () => import('../views/AgentWindow.vue')
+    },
+    {
+      path: '/note-viewer',
+      name: 'noteViewer',
+      // 笔记查看窗口（独立窗口，不受路由守卫影响）
+      component: () => import('../views/NoteViewerWindow.vue')
     }
     // TODO: 可以在这里添加更多路由，比如设置页面、文件详情页等
   ]
@@ -236,6 +242,20 @@ router.beforeEach(async (to, _from, next) => {
       return
     }
     // agent 窗口不需要蓝牙检查，直接放行
+    next()
+    return
+  }
+
+  // ========== 笔记查看窗口白名单 ==========
+  // 笔记查看窗口不需要蓝牙连接，直接放行
+  if (windowLabel.startsWith('note-viewer-')) {
+    const allowedPaths = ['/note-viewer']
+    if (!allowedPaths.includes(to.path)) {
+      console.warn(`[路由守卫] 笔记查看窗口禁止访问 ${to.path}，强制跳转到 /note-viewer`)
+      next('/note-viewer')
+      return
+    }
+    // 笔记查看窗口不需要蓝牙检查，直接放行
     next()
     return
   }

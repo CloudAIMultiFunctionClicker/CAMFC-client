@@ -43,26 +43,69 @@ Email: admin@mc666.top
         </div>
         <div v-else class="viewer-content" v-html="renderedContent"></div>
 
-        <div v-if="aiAnalysisData" class="ai-analysis-container" :class="{ 'light-mode': isLightMode }">
+        <div v-if="aiAnalysisData" class="ai-analysis-container" :class="{ 'light-mode': isLightMode, 'analyzing': isAnalyzing }">
           <div class="ai-header">
             <i class="ri-robot-2-line"></i>
             <span>AI 分析</span>
-            <button v-if="canRegenerate" class="regenerate-btn" @click="regenerateAnalysis">
+            <button v-if="canRegenerate && !isAnalyzing" class="regenerate-btn" @click="regenerateAnalysis">
               <i class="ri-refresh-line"></i>重新生成
             </button>
+            <span v-if="isAnalyzing" class="regenerating-hint">
+              <i class="ri-loader-4-line spin"></i>正在重新思考...
+            </span>
           </div>
-          <div class="ai-content" v-html="aiAnalysisContent"></div>
+
+          <template v-if="isAnalyzing">
+            <div class="skeleton-placeholder">
+              <div class="sk-line sk-title"></div>
+              <div class="sk-line sk-subtitle"></div>
+              <div class="sk-line"></div>
+              <div class="sk-line sk-short"></div>
+              <div class="sk-line"></div>
+              <div class="sk-line sk-medium"></div>
+              <div class="sk-line"></div>
+              <div class="sk-line sk-short"></div>
+              <div class="sk-line"></div>
+              <div class="sk-line sk-long"></div>
+            </div>
+          </template>
+          <div v-else class="ai-content" v-html="aiAnalysisContent"></div>
         </div>
 
         <div v-if="!aiAnalysisData && !isAnalyzing" class="analyze-action">
           <button class="analyze-btn" @click="startAnalysis">
-            <i class="ri-robot-2-line"></i>AI 分析会议内容
+            <i class="ri-robot-2-line"></i>AI 分析课堂内容
           </button>
         </div>
 
-        <div v-if="isAnalyzing" class="analyzing-state">
+        <div v-if="isAnalyzing && !aiAnalysisData" class="analyzing-state">
           <i class="ri-loader-4-line spin"></i>
           <span>AI 正在分析中...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 题目详情弹窗 -->
+  <div v-if="showQuestionDetail" class="question-modal" @click="closeQuestion">
+    <div class="question-modal-content" @click.stop>
+      <div class="question-modal-header">
+        <h3>题目详情</h3>
+        <button class="close-btn" @click="closeQuestion">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+      <div class="question-modal-body">
+        <div class="question-section">
+          <h4>题干</h4>
+          <div class="question-text-content" v-html="renderMarkdown(currentQuestionData?.question_text || currentQuestionData?.analysis || '')"></div>
+        </div>
+        <button v-if="!showQuestionAnswer" class="reveal-answer-btn" @click="revealAnswer">
+          揭示答案
+        </button>
+        <div v-else class="answer-section">
+          <h4>参考答案</h4>
+          <div class="answer-text-content" v-html="renderMarkdown(currentQuestionData?.question_answer || '')"></div>
         </div>
       </div>
     </div>
@@ -70,16 +113,18 @@ Email: admin@mc666.top
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import axios from 'axios'
 import MarkdownIt from 'markdown-it'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 import { showToast } from '../components/layout/showToast.js'
 import { getBackendUrl, initBackendConfig } from '../config/backend.js'
 
 const md = new MarkdownIt({
-  html: false,
+  html: true,
   linkify: true,
   typographer: true
 })
@@ -109,6 +154,11 @@ const renderedContent = computed(() => {
 const aiAnalysisData = ref(null)
 const aiAnalysisContent = ref('')
 const isAnalyzing = ref(false)
+
+// 题目展示相关
+const showQuestionDetail = ref(false)
+const showQuestionAnswer = ref(false)
+const currentQuestionData = ref(null)
 
 // 是否可以重新生成（有缓存内容）
 const canRegenerate = computed(() => {
@@ -187,10 +237,66 @@ function formatTime(timestamp) {
   }
 }
 
-// Markdown 渲染
+// 使用 KaTeX 渲染 LaTeX 公式
+function renderLatex(text) {
+  if (!text) return ''
+  
+  // 行内公式 $...$
+  text = text.replace(/\$([^$]+)\$/g, (match, formula) => {
+    try {
+      return katex.renderToString(formula.trim(), {
+        throwOnError: false,
+        displayMode: false
+      })
+    } catch (e) {
+      console.error('行内公式渲染失败:', e)
+      return match
+    }
+  })
+  
+  // 块级公式 $$...$$
+  text = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
+    try {
+      return `<div style="text-align: center; margin: 12px 0;">${katex.renderToString(formula.trim(), {
+        throwOnError: false,
+        displayMode: true
+      })}</div>`
+    } catch (e) {
+      console.error('块级公式渲染失败:', e)
+      return match
+    }
+  })
+  
+  return text
+}
+
+// 渲染 Markdown
 function renderMarkdown(text) {
   if (!text) return ''
+  // 高亮 [题目] 标记
+  text = text.replace(/\[题目\]/g, '<span class="question-tag">题目</span>')
+  // 先处理 LaTeX
+  text = renderLatex(text)
   return md.render(text)
+}
+
+// 显示题目详情
+function showQuestion(item) {
+  currentQuestionData.value = item
+  showQuestionDetail.value = true
+  showQuestionAnswer.value = false
+}
+
+// 关闭题目详情
+function closeQuestion() {
+  showQuestionDetail.value = false
+  showQuestionAnswer.value = false
+  currentQuestionData.value = null
+}
+
+// 揭示答案
+function revealAnswer() {
+  showQuestionAnswer.value = true
 }
 
 // 加载会议内容
@@ -210,14 +316,14 @@ async function loadMeetingContent() {
     const data = response.data
     console.log('API 返回数据:', data)
     if (data && data.success && data.meeting) {
-      console.log('会议对象:', data.meeting)
-      meetingTitle.value = data.meeting.title || '会议记录'
+      console.log('课堂对象:', data.meeting)
+      meetingTitle.value = data.meeting.title || '课堂记录'
       meetingData.value = data.meeting
     } else {
-      loadError.value = '获取会议内容失败'
+      loadError.value = '获取课堂内容失败'
     }
   } catch (e) {
-    console.error('加载会议内容失败:', e)
+    console.error('加载课堂内容失败:', e)
     loadError.value = '加载失败: ' + (e.message || '网络错误')
   } finally {
     isLoading.value = false
@@ -251,9 +357,15 @@ async function startAnalysis() {
         try {
           let analysisData = response.data.analysis
 
-          // 如果是字符串，先解析
+          // 如果是字符串，先解析（兼容旧格式缓存）
           if (typeof analysisData === 'string') {
-            analysisData = JSON.parse(analysisData.replace(/'/g, '"'))
+            let cleaned = analysisData.trim()
+            cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '')
+            try {
+              analysisData = JSON.parse(cleaned)
+            } catch {
+              analysisData = JSON.parse(cleaned.replace(/'/g, '"'))
+            }
           }
 
           // 格式化 individual_analyses 到对应位置
@@ -269,10 +381,18 @@ async function startAnalysis() {
             sortedAnalyses.forEach((item, idx) => {
               const placeholder = document.querySelector(`.meeting-item-placeholder[data-index="${idx}"]`)
               if (placeholder) {
+                const hasQuestion = item.has_question || (item.summary && item.summary.includes('[题目]'))
+                const questionBtn = hasQuestion
+                  ? `<button class="question-display-btn" onclick="window.__showQuestionByIndex(${idx})">查看题目</button>`
+                  : ''
+                // 先渲染 markdown 获取 HTML
+                const summaryHtml = renderMarkdown(item.summary) || '无'
+                const analysisHtml = renderMarkdown(item.analysis) || '无'
                 placeholder.innerHTML = `
                   <div class="ai-note-analysis">
-                    <div class="ai-summary"><strong>概括：</strong>${renderMarkdown(item.summary) || '无'}</div>
-                    <div class="ai-detail"><strong>解析：</strong>${renderMarkdown(item.analysis) || '无'}</div>
+                    <div class="ai-summary"><strong>概括：</strong>${summaryHtml}</div>
+                    <div class="ai-detail"><strong>解析：</strong>${analysisHtml}</div>
+                    ${questionBtn}
                   </div>
                 `
               }
@@ -374,7 +494,14 @@ async function regenerateAnalysis() {
         try {
           let analysisData = response.data.analysis
           if (typeof analysisData === 'string') {
-            analysisData = JSON.parse(analysisData.replace(/'/g, '"'))
+            // 移除所有 Markdown 代码块标记
+            let cleaned = analysisData.trim()
+            cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '')
+            try {
+              analysisData = JSON.parse(cleaned)
+            } catch {
+              analysisData = JSON.parse(cleaned.replace(/'/g, '"'))
+            }
           }
 
           if (analysisData.individual_analyses && Array.isArray(analysisData.individual_analyses)) {
@@ -387,10 +514,18 @@ async function regenerateAnalysis() {
             sortedAnalyses.forEach((item, idx) => {
               const placeholder = document.querySelector(`.meeting-item-placeholder[data-index="${idx}"]`)
               if (placeholder) {
+                const hasQuestion = item.has_question || (item.summary && item.summary.includes('[题目]'))
+                const questionBtn = hasQuestion
+                  ? `<button class="question-display-btn" onclick="window.__showQuestionByIndex(${idx})">查看题目</button>`
+                  : ''
+                // 先渲染 markdown 获取 HTML
+                const summaryHtml = renderMarkdown(item.summary) || '无'
+                const analysisHtml = renderMarkdown(item.analysis) || '无'
                 placeholder.innerHTML = `
                   <div class="ai-note-analysis">
-                    <div class="ai-summary"><strong>概括：</strong>${renderMarkdown(item.summary) || '无'}</div>
-                    <div class="ai-detail"><strong>解析：</strong>${renderMarkdown(item.analysis) || '无'}</div>
+                    <div class="ai-summary"><strong>概括：</strong>${summaryHtml}</div>
+                    <div class="ai-detail"><strong>解析：</strong>${analysisHtml}</div>
+                    ${questionBtn}
                   </div>
                 `
               }
@@ -467,6 +602,16 @@ onMounted(async () => {
 
   // 检查窗口状态
   checkWindowState()
+
+  // 注册全局题目展示函数
+  window.__showQuestionByIndex = (idx) => {
+    if (aiAnalysisData.value?.analysis?.individual_analyses) {
+      const item = aiAnalysisData.value.analysis.individual_analyses[idx]
+      if (item) {
+        showQuestion(item)
+      }
+    }
+  }
 })
 
 // 检查窗口状态
@@ -928,6 +1073,28 @@ function initTheme() {
   color: var(--text-primary, #1e293b);
 }
 
+/* 查看题目按钮 */
+.viewer-content :deep(.question-display-btn) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.viewer-content :deep(.question-display-btn:hover) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
 /* AI 分析容器 */
 .ai-analysis-container {
   margin-top: 24px;
@@ -1120,5 +1287,270 @@ function initTheme() {
 
 .analyzing-state i {
   font-size: 28px;
+}
+
+/* 重新生成中提示 */
+.regenerating-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--accent-blue, #3b82f6);
+}
+
+.regenerating-hint i {
+  font-size: 14px;
+}
+
+/* AI分析容器 - 分析中状态 */
+.ai-analysis-container.analyzing {
+  opacity: 0.85;
+}
+
+.ai-analysis-container.analyzing .ai-content {
+  display: none;
+}
+
+/* 骨架屏占位 */
+.skeleton-placeholder {
+  padding: 4px 0;
+}
+
+.sk-line {
+  height: 14px;
+  background: linear-gradient(
+    90deg,
+    rgba(128, 128, 128, 0.15) 0%,
+    rgba(128, 128, 128, 0.25) 40%,
+    rgba(128, 128, 128, 0.15) 60%,
+    rgba(128, 128, 128, 0.08) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  width: 100%;
+}
+
+.sk-title {
+  height: 20px;
+  width: 45%;
+  margin-bottom: 14px;
+}
+
+.sk-subtitle {
+  height: 16px;
+  width: 65%;
+  margin-bottom: 12px;
+}
+
+.sk-short {
+  width: 55%;
+}
+
+.sk-medium {
+  width: 75%;
+}
+
+.sk-long {
+  width: 90%;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.light-mode .sk-line {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.06) 0%,
+    rgba(0, 0, 0, 0.12) 40%,
+    rgba(0, 0, 0, 0.06) 60%,
+    rgba(0, 0, 0, 0.03) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* [题目]标记高亮样式 */
+.question-tag {
+  display: inline-block;
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 2px;
+  vertical-align: middle;
+}
+
+/* 查看题目按钮 */
+.question-display-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.question-display-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+/* KaTeX 公式样式优化 */
+.viewer-content :deep(.katex) {
+  font-size: 1.1em;
+  line-height: 1.6;
+}
+
+.viewer-content :deep(.katex-display) {
+  margin: 16px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.light-mode .viewer-content :deep(.katex) {
+  color: #1e293b;
+}
+
+.viewer-content :deep(.katex) {
+  color: #f8fafc;
+}
+
+/* 题目弹窗样式 */
+.question-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.question-modal-content {
+  background: var(--bg-secondary, #161b22);
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.light-mode .question-modal-content {
+  background: var(--bg-secondary, #f1f5f9);
+  border-color: var(--border-color, rgba(0, 0, 0, 0.1));
+}
+
+.question-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%);
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.question-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #f8fafc);
+}
+
+.light-mode .question-modal-header h3 {
+  color: var(--text-primary, #1e293b);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary, #94a3b8);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.close-btn:hover {
+  color: var(--text-primary, #f8fafc);
+}
+
+.question-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.question-section {
+  margin-bottom: 20px;
+}
+
+.question-section h4,
+.answer-section h4 {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f59e0b;
+}
+
+.question-text-content,
+.answer-text-content {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--text-primary, #f8fafc);
+}
+
+.light-mode .question-text-content,
+.light-mode .answer-text-content {
+  color: var(--text-primary, #1e293b);
+}
+
+.reveal-answer-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 20px;
+}
+
+.reveal-answer-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.answer-section {
+  background: var(--bg-primary, #0d1117);
+  border-radius: 8px;
+  padding: 16px;
+  border-left: 3px solid #4f46e5;
+}
+
+.light-mode .answer-section {
+  background: var(--bg-primary, #ffffff);
 }
 </style>
