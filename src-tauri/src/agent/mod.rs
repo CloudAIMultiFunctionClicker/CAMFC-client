@@ -14,7 +14,7 @@ use std::sync::OnceLock;
 use api::ApiClient;
 use gui::ComputerTools;
 use parser::ToolCallParser;
-use screenshot::{smart_resize, ScreenshotTool};
+use screenshot::ScreenshotTool;
 
 // 全局停止标志
 static STOP_FLAG: OnceLock<Mutex<bool>> = OnceLock::new();

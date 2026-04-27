@@ -20,7 +20,7 @@ use tokio::time::{sleep, timeout};
 use std::error::Error;
 use uuid::Uuid;
 use serde::{Serialize, Deserialize};
-use crate::event_emitter::{emit_button_event, emit_show_note_command, emit_open_cloud_command, emit_navigate_to_notes, emit_create_note, emit_toggle_meeting};
+use crate::event_emitter::{emit_button_event, emit_navigate_to_notes, emit_toggle_meeting};
 
 // Windows蓝牙API - 用来检测和开启蓝牙无线电
 // 注意：暂时只支持Windows平台，后面如果跨平台再考虑兼容

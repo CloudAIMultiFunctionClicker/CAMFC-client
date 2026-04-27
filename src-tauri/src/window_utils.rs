@@ -14,7 +14,7 @@
 
 use tauri::{AppHandle, Manager};
 use windows::Win32::Foundation::{HWND, RECT};
-use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, MoveWindow, FindWindowW};
+use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, MoveWindow};
 
 /// 通过 WinAPI 设置窗口大小和位置
 /// 

@@ -578,11 +578,13 @@ const isLoading = ref(false)
 const pageLoading = ref(false)
 const hasError = ref(false)
 const totalPages = ref(1)
+const isPageChanging = ref(false)
 
 // 会议记录分页
 const meetingPageSize = 9
 const meetingCurrentPage = ref(1)
 const meetingTotalPages = ref(1)
+const isMeetingPageChanging = ref(false)
 
 // 后端已经返回了当前页的数据，直接使用 notes.value 即可
 const currentPageNotes = computed(() => {
@@ -666,10 +668,14 @@ async function loadMeetings(showSuccessToast = false) {
   } catch (e) {
     console.error('加载会议记录失败:', e)
     hasError.value = true
-    showToast('加载会议记录失败: ' + (e.message || '网络错误'), '#ef4444')
+    showToast('加载会议记录失败：' + (e.message || '网络错误'), '#ef4444')
     meetings.value = []
   }
   isLoading.value = false
+  isMeetingPageChanging.value = true
+  setTimeout(() => {
+    isMeetingPageChanging.value = false
+  }, 500)
 }
 
 // 获取课堂关键词
@@ -706,6 +712,7 @@ async function loadMeetingKeyWords() {
 // 会议记录分页
 function goToMeetingPage(page) {
   if (page < 1 || page > meetingTotalPages.value) return
+  if (isMeetingPageChanging.value) return
   meetingCurrentPage.value = page
   loadMeetings()
 }
@@ -868,10 +875,14 @@ async function loadNotes(showSuccessToast = false) {
   } catch (e) {
     console.error('加载笔记失败:', e)
     hasError.value = true
-    showToast('加载笔记失败: ' + (e.message || '网络错误'), '#ef4444')
+    showToast('加载笔记失败：' + (e.message || '网络错误'), '#ef4444')
     notes.value = []
   }
   isLoading.value = false
+  isPageChanging.value = true
+  setTimeout(() => {
+    isPageChanging.value = false
+  }, 500)
   loadCurrentPageNotes()
 }
 
@@ -906,6 +917,7 @@ function loadCurrentPageNotes() {
 
 function goToPage(page) {
   if (page < 1 || page > totalPages.value) return
+  if (isPageChanging.value) return
   currentPage.value = page
   loadNotes()
 }
@@ -2110,7 +2122,7 @@ async function confirmShareMeetingToGroup() {
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  z-index: 100;
+  z-index: 99999;
 }
 
 .close-btn {
@@ -2141,7 +2153,7 @@ async function confirmShareMeetingToGroup() {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 99999;
 }
 
 .modal-content {

@@ -1033,7 +1033,7 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.95);
-  z-index: 1000;
+  z-index: 99999;
   overflow: hidden;
 }
 
@@ -1166,7 +1166,7 @@ onUnmounted(() => {
   display: flex;
   gap: 8px;
   pointer-events: auto !important;
-  z-index: 1000;
+  z-index: 99999;
 }
 
 .crop-selection-actions button {
