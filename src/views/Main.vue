@@ -33,10 +33,10 @@ Email: admin@mc666.top
         <h3 class="card-title">笔记</h3>
       </button>
       
-      <!-- 群组管理按钮 -->
+      <!-- 班级管理按钮 -->
       <button class="nav-card group-manager" @click="goToGroupManager">
         <Users :size="48" class="card-icon" />
-        <h3 class="card-title">群组管理</h3>
+        <h3 class="card-title">班级管理</h3>
       </button>
       
       <!-- 最近活动按钮 -->
@@ -95,9 +95,9 @@ function goToRecentActivities() {
   router.push('/recent-activities')
 }
 
-// 跳转到群组管理页面
+// 跳转到班级管理页面
 function goToGroupManager() {
-  console.log('跳转到群组管理页面')
+  console.log('跳转到班级管理页面')
   router.push('/group-manager')
 }
 
@@ -213,7 +213,7 @@ async function openAgentWindow() {
   box-shadow: 0 8px 20px rgba(var(--accent-purple-rgb, 188, 140, 255), 0.2);
 }
 
-/* 群组管理卡片特殊样式 */
+/* 班级管理卡片特殊样式 */
 .group-manager:hover {
   box-shadow: 0 8px 20px rgba(var(--accent-blue-rgb, 31, 119, 198), 0.2);
 }

@@ -89,6 +89,7 @@ pub struct BluetoothManager {
     last_connected_state: Option<bool>,
     response_rx: Option<tokio::sync::mpsc::Receiver<BluetoothResponse>>,
     button_rx: Option<tokio::sync::mpsc::Receiver<BluetoothResponse>>,
+    last_button_state: std::sync::Arc<tokio::sync::Mutex<Option<String>>>,
 }
 
 impl BluetoothManager {
@@ -100,6 +101,7 @@ impl BluetoothManager {
             last_connected_state: None,
             response_rx: None,
             button_rx: None,
+            last_button_state: std::sync::Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 
@@ -600,7 +602,7 @@ impl BluetoothManager {
             let (response_tx, response_rx) = tokio::sync::mpsc::channel(50);
             let (button_tx, button_rx) = tokio::sync::mpsc::channel(50);
             
-            let mut last_button_state: Option<String> = None;
+            let last_button_state_clone = self.last_button_state.clone();
             
             let handle = tokio::spawn(async move {
                 tracing::info!("[BLUETOOTH] 等待通知流...");
@@ -638,35 +640,36 @@ impl BluetoothManager {
                             
                             if is_button_event {
                                 let first_byte = notif.value[0];
+                                let mut state_guard = last_button_state_clone.lock().await;
                                 
                                 if first_byte == 0xAA {
-                                    if last_button_state.as_ref().map_or(true, |s| s != "press") {
+                                    if state_guard.as_ref().map_or(true, |s| s != "press") {
                                         tracing::info!("[BLUETOOTH] 上一页（GPIO10 按下 0xAA）");
-                                        last_button_state = Some("press".to_string());
+                                        *state_guard = Some("press".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_press_left");
                                         });
                                     }
                                 } else if first_byte == 0xAB {
-                                    if last_button_state.as_ref().map_or(true, |s| s != "release") {
+                                    if state_guard.as_ref().map_or(true, |s| s != "release") {
                                         tracing::info!("[BLUETOOTH] 上一页松开（GPIO10 松开 0xAB）");
-                                        last_button_state = Some("release".to_string());
+                                        *state_guard = Some("release".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_release_left");
                                         });
                                     }
                                 } else if first_byte == 0xAC {
-                                    if last_button_state.as_ref().map_or(true, |s| s != "press_left") {
+                                    if state_guard.as_ref().map_or(true, |s| s != "press_left") {
                                         tracing::info!("[BLUETOOTH] 下一页（GPIO9 按下 0xAC）");
-                                        last_button_state = Some("press_left".to_string());
+                                        *state_guard = Some("press_left".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_press");
                                         });
                                     }
                                 } else if first_byte == 0xAD {
-                                    if last_button_state.as_ref().map_or(true, |s| s != "release_left") {
+                                    if state_guard.as_ref().map_or(true, |s| s != "release_left") {
                                         tracing::info!("[BLUETOOTH] 下一页松开（GPIO9 松开 0xAD）");
-                                        last_button_state = Some("release_left".to_string());
+                                        *state_guard = Some("release_left".to_string());
                                         tokio::spawn(async move {
                                             emit_button_event("button_release");
                                         });
@@ -692,6 +695,8 @@ impl BluetoothManager {
                                         emit_toggle_meeting();
                                     });
                                 }
+                                
+                                drop(state_guard);
                                 
                                 let _ = button_tx.try_send(BluetoothResponse::ButtonEvent(first_byte));
                             } else {

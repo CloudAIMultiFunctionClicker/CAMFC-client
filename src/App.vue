@@ -322,11 +322,34 @@ onMounted(async () => {
   // 导航事件监听器引用
   let navigateEventUnlisten = null
   
-  // 监听蓝牙按键事件
+  // 获取当前窗口标签，只允许主窗口监听蓝牙按键事件
+  let currentWindowLabel = 'main'
+  try {
+    const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow')
+    const currentWindow = await getCurrentWebviewWindow()
+    if (currentWindow && currentWindow.label) {
+      currentWindowLabel = currentWindow.label
+    }
+  } catch (e) {
+    console.warn('获取窗口标签失败，默认为 main:', e)
+  }
+  
+  console.log('[事件监听] 当前窗口标签:', currentWindowLabel)
+  
+  // 监听蓝牙按键事件（只在主窗口监听）
   const { listen } = await import('@tauri-apps/api/event')
   buttonEventUnlisten = await listen('button-event', async (event) => {
+    console.log('[按钮事件] 收到事件，当前窗口:', currentWindowLabel, '路由:', route.path)
+    
+    // 只允许主窗口处理按键事件
+    if (currentWindowLabel !== 'main') {
+      console.log('[按钮事件] 非主窗口，忽略事件')
+      return
+    }
+    
     // 悬浮窗不处理按键事件
     if (route.path === '/float') {
+      console.log('[按钮事件] 悬浮窗页面，忽略事件')
       return
     }
     
@@ -367,8 +390,11 @@ onMounted(async () => {
     }
   })
   
-  // 监听截图命令（0x12）- 只在非悬浮窗页面显示 toast
+  // 监听截图命令（0x12）- 只在主窗口处理
   const screenshotUnlisten = await listen('screenshot-command', async () => {
+    if (currentWindowLabel !== 'main') {
+      return
+    }
     if (route.path === '/float') {
       return
     }
@@ -376,8 +402,11 @@ onMounted(async () => {
     showToast('触发截图', '#3b82f6')
   })
   
-  // 监听打开云盘页面命令（0x08）
+  // 监听打开云盘页面命令（0x08）- 只在主窗口处理
   const openCloudUnlisten = await listen('open-cloud-command', async () => {
+    if (currentWindowLabel !== 'main') {
+      return
+    }
     if (route.path === '/float') {
       return
     }
@@ -402,8 +431,11 @@ onMounted(async () => {
     }
   })
   
-  // 监听跳转到笔记列表命令（0x10/10）
+  // 监听跳转到笔记列表命令（0x10/10）- 只在主窗口处理
   const navigateToNotesUnlisten = await listen('navigate-to-notes', async () => {
+    if (currentWindowLabel !== 'main') {
+      return
+    }
     if (route.path === '/float') {
       return
     }
@@ -425,8 +457,11 @@ onMounted(async () => {
     }
   })
   
-  // 监听新建笔记命令（0x02/2）
+  // 监听新建笔记命令（0x02/2）- 只在主窗口处理
   const createNoteUnlisten = await listen('create-note', async () => {
+    if (currentWindowLabel !== 'main') {
+      return
+    }
     if (route.path === '/float') {
       return
     }
@@ -491,8 +526,11 @@ onMounted(async () => {
     }
   }
   
-  // 监听蓝牙断开事件（实时检测）
+  // 监听蓝牙断开事件（实时检测）- 只在主窗口处理
   bluetoothDisconnectUnlisten = await listen('bluetooth-disconnect', async () => {
+    if (currentWindowLabel !== 'main') {
+      return
+    }
     console.log('收到蓝牙断开事件')
     
     // 如果当前是已连接状态，显示提示
@@ -709,10 +747,13 @@ onMounted(async () => {
     console.log('监听主题查询事件失败:', e)
   }
   
-  // 监听笔记编辑器打开事件
+  // 监听笔记编辑器打开事件 - 只在主窗口处理
   let noteEditorOpenedUnlisten = null
   try {
     noteEditorOpenedUnlisten = await listen('note-editor-opened', async () => {
+      if (currentWindowLabel !== 'main') {
+        return
+      }
       // 如果当前在笔记页面，刷新笔记列表
       if (route.path === '/notes') {
         console.log('笔记编辑器打开，刷新笔记列表')
@@ -727,10 +768,13 @@ onMounted(async () => {
     console.log('监听笔记编辑器打开事件失败:', e)
   }
   
-  // 监听笔记编辑器关闭事件
+  // 监听笔记编辑器关闭事件 - 只在主窗口处理
   let noteEditorClosedUnlisten = null
   try {
     noteEditorClosedUnlisten = await listen('note-editor-closed', async () => {
+      if (currentWindowLabel !== 'main') {
+        return
+      }
       // 如果当前在笔记页面，刷新笔记列表
       if (route.path === '/notes') {
         console.log('笔记编辑器关闭，刷新笔记列表')
@@ -747,7 +791,7 @@ onMounted(async () => {
   
   // 在组件卸载时清理监听器
   onUnmounted(() => {
-    // 停止TOTP定时刷新
+    // 停止 TOTP 定时刷新
     stopTotpRefresh()
     
     lightMediaQuery.removeEventListener('change', handleSystemThemeChange)
@@ -774,6 +818,12 @@ onMounted(async () => {
     }
     if (openCloudUnlisten) {
       openCloudUnlisten()
+    }
+    if (noteEditorOpenedUnlisten) {
+      noteEditorOpenedUnlisten()
+    }
+    if (noteEditorClosedUnlisten) {
+      noteEditorClosedUnlisten()
     }
   })
   

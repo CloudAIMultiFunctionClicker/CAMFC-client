@@ -472,6 +472,20 @@ async function toggleMeeting() {
     meetingActive.value = newState
     console.log('课堂状态已切换:', newState ? '课堂开始' : '课堂结束')
     showToast(newState ? '课堂已开始' : '课堂已结束', '#10b981')
+    
+    // 显示 Windows 原生通知
+    if (newState) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core')
+        await invoke('show_windows_notification', {
+          title: '上课模式已开启',
+          message: '课堂记录功能已启动，系统将自动记录课堂内容'
+        })
+        console.log('Windows 通知显示成功')
+      } catch (error) {
+        console.error('显示 Windows 通知失败:', error)
+      }
+    }
   } catch (error) {
     console.error('切换课堂状态失败:', error)
     showToast('切换课堂状态失败', '#ef4444')

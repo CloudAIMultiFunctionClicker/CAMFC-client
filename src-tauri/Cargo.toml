@@ -30,6 +30,8 @@ windows = { version = "0.58", features = [
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
     "Win32_Foundation",
+    "UI_Notifications",
+    "Data_Xml_Dom",
 ] }
 uuid = "1.19.0"
 chrono = { version = "0.4", features = ["serde"] }

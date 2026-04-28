@@ -141,7 +141,7 @@ const router = createRouter({
     {
       path: '/group-manager',
       name: 'groupManager',
-      // 群组管理页面
+      // 班级管理页面
       component: () => import('../views/GroupManager.vue')
     },
     {
@@ -291,7 +291,7 @@ router.beforeEach(async (to, _from, next) => {
     return
   }
 
-  // 群组管理页面不需要蓝牙连接，直接放行
+  // 班级管理页面不需要蓝牙连接，直接放行
   if (to.path === '/group-manager') {
     next()
     return

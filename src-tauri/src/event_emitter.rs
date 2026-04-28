@@ -14,7 +14,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::OnceLock;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 static APP_HANDLE: OnceLock<tauri::AppHandle> = OnceLock::new();
 
@@ -38,7 +38,13 @@ pub fn emit_button_event(event_type: &str) {
             event_type: event_type.to_string(),
             timestamp: chrono::Utc::now().timestamp(),
         };
-        let _ = handle.emit("button-event", event);
+        // 只发送到主窗口
+        if let Some(main_window) = handle.get_webview_window("main") {
+            tracing::info!("[EVENT] 发送按钮事件到主窗口：{}", event_type);
+            let _ = main_window.emit("button-event", event);
+        } else {
+            tracing::warn!("主窗口不存在，无法发送按钮事件");
+        }
     }
 }
 
@@ -46,7 +52,12 @@ pub fn emit_button_event(event_type: &str) {
 pub fn emit_screenshot_command() {
     if let Some(handle) = get_app_handle() {
         tracing::info!("[EVENT] 发射截图命令事件");
-        let _ = handle.emit("screenshot-command", ());
+        // 只发送到主窗口
+        if let Some(main_window) = handle.get_webview_window("main") {
+            let _ = main_window.emit("screenshot-command", ());
+        } else {
+            tracing::warn!("主窗口不存在，无法发送截图命令");
+        }
     }
 }
 
@@ -62,7 +73,12 @@ pub fn emit_show_note_command() {
 pub fn emit_open_cloud_command() {
     if let Some(handle) = get_app_handle() {
         tracing::info!("[EVENT] 发射打开云盘命令事件");
-        let _ = handle.emit("open-cloud-command", ());
+        // 只发送到主窗口
+        if let Some(main_window) = handle.get_webview_window("main") {
+            let _ = main_window.emit("open-cloud-command", ());
+        } else {
+            tracing::warn!("主窗口不存在，无法发送打开云盘命令");
+        }
     }
 }
 
@@ -70,7 +86,12 @@ pub fn emit_open_cloud_command() {
 pub fn emit_navigate_to_notes() {
     if let Some(handle) = get_app_handle() {
         tracing::info!("[EVENT] 发射跳转到笔记列表事件");
-        let _ = handle.emit("navigate-to-notes", ());
+        // 只发送到主窗口
+        if let Some(main_window) = handle.get_webview_window("main") {
+            let _ = main_window.emit("navigate-to-notes", ());
+        } else {
+            tracing::warn!("主窗口不存在，无法发送跳转笔记列表命令");
+        }
     }
 }
 
@@ -78,7 +99,12 @@ pub fn emit_navigate_to_notes() {
 pub fn emit_create_note() {
     if let Some(handle) = get_app_handle() {
         tracing::info!("[EVENT] 发射新建笔记事件");
-        let _ = handle.emit("create-note", ());
+        // 只发送到主窗口
+        if let Some(main_window) = handle.get_webview_window("main") {
+            let _ = main_window.emit("create-note", ());
+        } else {
+            tracing::warn!("主窗口不存在，无法发送新建笔记命令");
+        }
     }
 }
 
@@ -86,7 +112,12 @@ pub fn emit_create_note() {
 pub fn emit_toggle_meeting() {
     if let Some(handle) = get_app_handle() {
         tracing::info!("[EVENT] 发射会议切换事件");
-        let _ = handle.emit("toggle-meeting", ());
+        // 只发送到主窗口
+        if let Some(main_window) = handle.get_webview_window("main") {
+            let _ = main_window.emit("toggle-meeting", ());
+        } else {
+            tracing::warn!("主窗口不存在，无法发送会议切换命令");
+        }
     }
 }
 
@@ -94,6 +125,11 @@ pub fn emit_toggle_meeting() {
 pub fn emit_bluetooth_disconnect() {
     if let Some(handle) = get_app_handle() {
         tracing::info!("[EVENT] 发射蓝牙断开事件");
-        let _ = handle.emit("bluetooth-disconnect", ());
+        // 只发送到主窗口
+        if let Some(main_window) = handle.get_webview_window("main") {
+            let _ = main_window.emit("bluetooth-disconnect", ());
+        } else {
+            tracing::warn!("主窗口不存在，无法发送蓝牙断开事件");
+        }
     }
 }

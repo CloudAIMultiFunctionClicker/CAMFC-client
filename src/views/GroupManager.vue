@@ -17,7 +17,7 @@ Email: admin@mc666.top
 <template>
   <div class="group-manager-container">
     <div class="page-header">
-      <h1 class="page-title">群组管理</h1>
+      <h1 class="page-title">班级管理</h1>
       <button 
         class="refresh-btn" 
         @click="loadData"
@@ -300,7 +300,7 @@ Email: admin@mc666.top
 </template>
 
 <script setup>
-// 群组管理页面
+// 班级管理页面
 // 功能：创建/删除群组、处理入群/退群申请
 // 注：所有请求都会 console.info 输出
 
@@ -309,7 +309,7 @@ import { createGroup, deleteGroup, queryMessage, approveJoin, rejectJoin, approv
 import { showToast } from '../components/layout/showToast.js'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 
-// 群组管理页面现在不需要蓝牙连接也能访问（和笔记页面一样）
+// 班级管理页面现在不需要蓝牙连接也能访问（和笔记页面一样）
 // 但实际 API 调用需要 TOTP 认证
 
 const newGroupName = ref('')
@@ -593,7 +593,7 @@ function formatAIAnalysis(analysis) {
 // 加载群组和消息数据
 async function loadData() {
   isLoading.value = true
-  console.info('========== 开始加载群组管理数据 ==========')
+  console.info('========== 开始加载班级管理数据 ==========')
   
   try {
     // 获取群组列表（如果后端未实现，不会报错）
@@ -635,7 +635,7 @@ async function loadData() {
 
 // 页面加载时自动加载数据
 onMounted(() => {
-  console.info('群组管理页面已加载')
+  console.info('班级管理页面已加载')
   loadData()
 })
 </script>

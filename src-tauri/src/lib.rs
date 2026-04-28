@@ -33,6 +33,8 @@ mod activity_log;
 mod window_utils;
 // agent 自动化模块导入
 mod agent;
+// 通知模块导入
+mod notification;
 
 // 托盘相关导入
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
@@ -48,6 +50,7 @@ use upload::UploadTask;
 use storage::{load_app_data, save_app_data, get_download_file_path, get_custom_download_path, set_custom_download_path, open_file, open_folder, load_download_path_to_cache, get_default_download_path};
 use event_emitter::set_app_handle;
 use activity_log::{get_recent_activities, record_upload_activity, record_download_activity, record_access_activity};
+use notification::show_notification;
 use window_utils::{set_window_size_by_label, get_window_size_by_label};
 
 // 导入同步原语
@@ -1452,9 +1455,18 @@ async fn get_agent_hotkey() -> Result<String, String> {
     }
 }
 
+/// 显示 Windows 原生通知
+/// 
+/// 用于在特定事件（如开启上课模式）时显示系统通知
+#[tauri::command]
+fn show_windows_notification(title: String, message: String) -> Result<(), String> {
+    tracing::info!("[通知] 收到显示通知请求：{} - {}", title, message);
+    show_notification(&title, &message)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // 初始化tracing日志
+    // 初始化 tracing 日志
     tracing_subscriber::fmt()
         .with_timer(tracing_subscriber::fmt::time::ChronoLocal::new("%H:%M:%S%.3f".to_string()))
         .with_target(false)
@@ -1462,18 +1474,30 @@ pub fn run() {
         .with_file(true)
         .init();
 
-    // 初始化后端配置（必须在其他模块使用之前）
-    let rt = tokio::runtime::Runtime::new().expect("创建运行时失败");
-    rt.block_on(async {
-        if let Err(e) = config::init_config().await {
-             tracing::error!("配置初始化失败: {}", e);
-        }
-    });
-    drop(rt);
-
     tauri::Builder::default()
         .setup(|app| {
             set_app_handle(app.handle().clone());
+
+            // 先显示主窗口
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.show() {
+                    tracing::error!("显示主窗口失败：{}", e);
+                }
+                if let Err(e) = window.set_focus() {
+                    tracing::error!("设置主窗口焦点失败：{}", e);
+                }
+            }
+
+            // 在后台异步初始化后端配置
+            let app_handle = app.handle().clone();
+            tokio::spawn(async move {
+                tracing::info!("后台开始初始化后端配置...");
+                if let Err(e) = config::init_config().await {
+                    tracing::error!("配置初始化失败：{}", e);
+                } else {
+                    tracing::info!("后端配置初始化完成");
+                }
+            });
 
             // 创建托盘右键菜单
             // 提供"显示主窗口"和"退出"两个选项
@@ -1620,6 +1644,8 @@ pub fn run() {
             is_agent_running,
             set_agent_hotkey,
             get_agent_hotkey,
+            // 通知命令
+            show_windows_notification,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
