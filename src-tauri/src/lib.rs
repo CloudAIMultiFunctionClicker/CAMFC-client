@@ -1489,8 +1489,7 @@ pub fn run() {
             }
 
             // 在后台异步初始化后端配置
-            let app_handle = app.handle().clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 tracing::info!("后台开始初始化后端配置...");
                 if let Err(e) = config::init_config().await {
                     tracing::error!("配置初始化失败：{}", e);
