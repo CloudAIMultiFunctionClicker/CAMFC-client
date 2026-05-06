@@ -23,6 +23,7 @@ import { uploadFilesFromPaths, selectFiles } from '../data/upload.js'
 import { getFileIcon } from '../../utils/fileIcon.js'
 import { openFile } from '../data/storage.js'
 import { getDownloadProgress } from '../data/download.js'
+import { shareFileToGroup, getGroupList } from '../data/group.js'
 
 
 // TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
@@ -53,6 +54,12 @@ const newFolderName = ref('')
 // 删除确认弹窗相关状态
 const showDeleteModal = ref(false)
 const deleteCount = ref(0)
+
+// 分享文件到群组弹窗相关状态
+const showShareModal = ref(false)
+const shareTargetFile = ref(null)
+const groupList = ref([])
+const selectedGroup = ref(null)
 
 // 文件选择相关状态
 const selectedFiles = ref(new Set()) // 用Set存储选中的文件路径，因为Set查询更快
@@ -388,6 +395,81 @@ const handleDeleteClick = async () => {
   
   deleteCount.value = selectedCount
   showDeleteModal.value = true
+}
+
+// 分享文件到群组
+const handleShareClick = async () => {
+  const selectedCount = selectedFiles.value.size
+  if (selectedCount === 0) {
+    showToast('请先选择要分享的文件', '#f59e0b')
+    return
+  }
+  
+  if (selectedCount > 1) {
+    showToast('暂不支持批量分享，请选择单个文件', '#f59e0b')
+    return
+  }
+  
+  // 获取选中的文件
+  const selectedPath = Array.from(selectedFiles.value)[0]
+  const selectedItem = fileList.value.find(item => item.path === selectedPath)
+  
+  if (!selectedItem || selectedItem.is_dir) {
+    showToast('只能分享文件，不能分享文件夹', '#f59e0b')
+    return
+  }
+  
+  shareTargetFile.value = selectedItem
+  showShareModal.value = true
+  selectedGroup.value = null
+  
+  // 加载群组列表
+  try {
+    const groups = await getGroupList()
+    groupList.value = groups
+    console.log('加载群组列表:', groups)
+  } catch (error) {
+    console.error('加载群组列表失败:', error)
+    showToast('加载群组列表失败', '#ef4444')
+  }
+}
+
+const confirmShare = async () => {
+  if (!selectedGroup.value) {
+    showToast('请选择要分享到的群组', '#f59e0b')
+    return
+  }
+  
+  if (!shareTargetFile.value) {
+    showToast('没有要分享的文件', '#ef4444')
+    return
+  }
+  
+  try {
+    const result = await shareFileToGroup(shareTargetFile.value.path, selectedGroup.value.uuid)
+    
+    if (result && result.success) {
+      showToast(`文件已分享到群组 "${selectedGroup.value.name}"`, '#10b981')
+      console.log('分享成功:', result)
+    } else {
+      showToast('分享失败，请重试', '#ef4444')
+    }
+  } catch (error) {
+    console.error('分享失败:', error)
+    showToast(`分享失败：${error.response?.data?.detail || error.message}`, '#ef4444')
+  }
+  
+  showShareModal.value = false
+  shareTargetFile.value = null
+  selectedGroup.value = null
+  groupList.value = []
+}
+
+const cancelShare = () => {
+  showShareModal.value = false
+  shareTargetFile.value = null
+  selectedGroup.value = null
+  groupList.value = []
 }
 
 const confirmDelete = async () => {
@@ -866,6 +948,47 @@ const isFileSelected = (itemPath) => {
       </div>
     </div>
 
+    <!-- 分享文件到群组弹窗 -->
+    <div v-if="showShareModal" class="upload-modal-overlay" @click.self="cancelShare">
+      <div class="upload-modal">
+        <div class="modal-header">
+          <h3><i class="ri-share-line"></i> 分享到群组</h3>
+          <button class="modal-close" @click="cancelShare">
+            <i class="ri-close-line"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="share-info">将文件 <strong>{{ shareTargetFile?.name }}</strong> 分享到：</p>
+          
+          <!-- 群组列表 -->
+          <div v-if="groupList.length > 0" class="group-list">
+            <div 
+              v-for="group in groupList" 
+              :key="group.uuid"
+              class="group-item"
+              :class="{ 'selected': selectedGroup?.uuid === group.uuid }"
+              @click="selectedGroup = group"
+            >
+              <i class="ri-group-line"></i>
+              <span class="group-name">{{ group.name }}</span>
+              <i v-if="selectedGroup?.uuid === group.uuid" class="ri-check-line check-icon"></i>
+            </div>
+          </div>
+          
+          <!-- 没有群组时的提示 -->
+          <div v-else class="no-groups">
+            <i class="ri-group-line"></i>
+            <p>暂无群组</p>
+            <p class="hint">请先创建或加入群组</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="cancelShare">取消</button>
+          <button class="btn-confirm" @click="confirmShare">确认分享</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 路径导航栏 -->
     <div class="path-nav">
       <button @click="goUp" :disabled="!currentPath" class="nav-btn">
@@ -918,6 +1041,10 @@ const isFileSelected = (itemPath) => {
         <button class="btn-delete" @click="handleDeleteClick">
           <i class="ri-delete-bin-line"></i>
           <span class="btn-text">删除</span>
+        </button>
+        <button class="btn-share" @click="handleShareClick">
+          <i class="ri-share-line"></i>
+          <span class="btn-text">分享</span>
         </button>
       </div>
     </div>
@@ -1383,6 +1510,19 @@ const isFileSelected = (itemPath) => {
   border-color: var(--danger-btn-hover-border, #f85149);
 }
 
+/* 分享按钮 - 紫色 */
+.btn-share {
+  background-color: var(--bg-secondary, #f6f8fa);
+  color: var(--text-primary, #24292f);
+  border: 1px solid var(--border-color, #d0d7de);
+}
+
+.btn-share:hover {
+  background-color: var(--hover-bg, #f3f4f6);
+  border-color: var(--text-muted, #8c959f);
+  color: var(--accent-purple, #8250df);
+}
+
 /* 删除按钮图标 - 继承按钮颜色 */
 .btn-delete i,
 .btn-delete svg {
@@ -1790,6 +1930,93 @@ const isFileSelected = (itemPath) => {
 
 .file-remove:hover {
   color: var(--accent-red, #cf222e);
+}
+
+/* 分享弹窗样式 */
+.share-info {
+  font-size: 15px;
+  color: var(--text-primary, #24292f);
+  margin: 0 0 16px 0;
+}
+
+.share-info strong {
+  color: var(--accent-blue, #0969da);
+}
+
+.group-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  background: var(--bg-tertiary, #f6f8fa);
+}
+
+.group-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-color, #d0d7de);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.group-item:last-child {
+  border-bottom: none;
+}
+
+.group-item:hover {
+  background: var(--hover-bg, #f3f4f6);
+}
+
+.group-item.selected {
+  background: var(--selected-bg, #ddf4ff);
+  border-left: 3px solid var(--accent-blue, #0969da);
+}
+
+.group-item i {
+  font-size: 20px;
+  color: var(--text-muted, #8c959f);
+}
+
+.group-name {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-primary, #24292f);
+  font-weight: 500;
+}
+
+.check-icon {
+  color: var(--accent-blue, #0969da);
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.no-groups {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--text-muted, #8c959f);
+  text-align: center;
+}
+
+.no-groups i {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.no-groups p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.no-groups .hint {
+  font-size: 13px;
+  color: var(--text-muted, #8c959f);
+  margin-top: 8px;
 }
 
 .modal-footer {

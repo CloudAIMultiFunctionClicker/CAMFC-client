@@ -587,6 +587,162 @@ async function recordNoteRead(shareUuid, groupUuid) {
   }
 }
 
+/**
+ * 分享文件到群组
+ * @param {string} filePath - 文件路径（相对于用户存储目录）
+ * @param {string} groupUuid - 群组 UUID
+ * @returns {Promise<Object|null>} - 成功返回 {success: true, share_uuid: "xxx"}，失败返回 null
+ */
+async function shareFileToGroup(filePath, groupUuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.post(
+      getBackendUrl() + "/group/share/file",
+      {
+        file_path: filePath,
+        group_uuid: groupUuid
+      },
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('分享文件到群组成功:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('分享文件到群组失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
+/**
+ * 获取群组共享文件列表（学生端）
+ * @param {string} groupUuid - 群组 UUID
+ * @returns {Promise<Array>} - 返回共享文件列表
+ */
+async function getSharedFiles(groupUuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.get(
+      getBackendUrl() + `/student/share/files?group_uuid=${groupUuid}`,
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('获取群组共享文件列表:', response.data);
+    
+    return response.data?.files || [];
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return [];
+    } else {
+      console.error('获取群组共享文件列表失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
+/**
+ * 获取共享文件详情（学生端）
+ * @param {string} shareUuid - 分享 UUID
+ * @param {string} groupUuid - 群组 UUID
+ * @returns {Promise<Object|null>} - 返回共享文件详情，失败返回 null
+ */
+async function getSharedFileDetail(shareUuid, groupUuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.post(
+      getBackendUrl() + "/student/share/file/detail",
+      { share_uuid: shareUuid, group_uuid: groupUuid },
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('获取共享文件详情:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('获取共享文件详情失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
+/**
+ * 获取共享文件下载信息（学生端）
+ * @param {string} shareUuid - 分享 UUID
+ * @param {string} groupUuid - 群组 UUID
+ * @returns {Promise<Object|null>} - 返回下载信息，包含文件路径等，失败返回 null
+ */
+async function getSharedFileDownloadInfo(shareUuid, groupUuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.get(
+      getBackendUrl() + `/student/share/file/download?share_uuid=${shareUuid}&group_uuid=${groupUuid}`,
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('获取共享文件下载信息:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('获取共享文件下载信息失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
 export { 
   createGroup, 
   deleteGroup, 
@@ -601,5 +757,9 @@ export {
   getSharedNotes,
   getSharedNoteDetail,
   getNoteInteractions,
-  recordNoteRead
+  recordNoteRead,
+  shareFileToGroup,
+  getSharedFiles,
+  getSharedFileDetail,
+  getSharedFileDownloadInfo
 };
