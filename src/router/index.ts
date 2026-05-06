@@ -145,6 +145,12 @@ const router = createRouter({
       component: () => import('../views/GroupManager.vue')
     },
     {
+      path: '/group-detail',
+      name: 'groupDetail',
+      // 群组详情页面
+      component: () => import('../views/GroupDetail.vue')
+    },
+    {
       path: '/agent-window',
       name: 'agentWindow',
       // agent 自动化窗口（独立窗口，不受路由守卫影响）

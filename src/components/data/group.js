@@ -645,7 +645,7 @@ async function getSharedFiles(groupUuid) {
     const authHeader = await getAuthHeader();
     
     const requestPromise = axios.get(
-      getBackendUrl() + `/student/share/files?group_uuid=${groupUuid}`,
+      getBackendUrl() + `/group/share/files?group_uuid=${groupUuid}`,
       {
         headers: authHeader,
       }
@@ -743,6 +743,44 @@ async function getSharedFileDownloadInfo(shareUuid, groupUuid) {
   }
 }
 
+/**
+ * 删除共享文件
+ * @param {string} shareUuid - 分享 UUID
+ * @param {string} groupUuid - 群组 UUID
+ * @returns {Promise<Object|null>} - 返回删除结果，失败返回 null
+ */
+async function deleteSharedFile(shareUuid, groupUuid) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Request timeout"));
+      }, timeOut);
+    });
+
+    const authHeader = await getAuthHeader();
+    
+    const requestPromise = axios.delete(
+      getBackendUrl() + `/group/share/file?share_uuid=${shareUuid}&group_uuid=${groupUuid}`,
+      {
+        headers: authHeader,
+      }
+    );
+
+    const response = await Promise.race([requestPromise, timeoutPromise]);
+    console.info('删除共享文件:', response.data);
+    
+    return response.data;
+  } catch (error) {
+    if (error.message === "Request timeout") {
+      console.warn(`请求超时 (${timeOut}ms)`);
+      return null;
+    } else {
+      console.error('删除共享文件失败:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+}
+
 export { 
   createGroup, 
   deleteGroup, 
@@ -761,5 +799,6 @@ export {
   shareFileToGroup,
   getSharedFiles,
   getSharedFileDetail,
-  getSharedFileDownloadInfo
+  getSharedFileDownloadInfo,
+  deleteSharedFile
 };

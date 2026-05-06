@@ -1447,12 +1447,13 @@ const isFileSelected = (itemPath) => {
   flex-wrap: nowrap;
 }
 
-/* 按钮基础样式 - 参考AppHeader的样式 */
+/* 按钮基础样式 - 参考 AppHeader 的样式 */
 .btn-refresh,
 .btn-upload,
 .btn-download,
 .btn-new-folder,
-.btn-delete {
+.btn-delete,
+.btn-share {
   border: none;
   border-radius: .375rem;
   padding: 8px 16px;
@@ -1510,7 +1511,7 @@ const isFileSelected = (itemPath) => {
   border-color: var(--danger-btn-hover-border, #f85149);
 }
 
-/* 分享按钮 - 紫色 */
+/* 分享按钮 - 中性色，与其他按钮保持一致 */
 .btn-share {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
@@ -1520,7 +1521,7 @@ const isFileSelected = (itemPath) => {
 .btn-share:hover {
   background-color: var(--hover-bg, #f3f4f6);
   border-color: var(--text-muted, #8c959f);
-  color: var(--accent-purple, #8250df);
+  color: var(--text-primary, #24292f);
 }
 
 /* 删除按钮图标 - 继承按钮颜色 */
