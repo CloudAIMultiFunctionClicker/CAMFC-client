@@ -171,7 +171,7 @@ Email: admin@mc666.top
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getSharedNotes, getSharedFiles, getSharedFileDownloadInfo, deleteSharedFile } from '../components/data/group.js'
+import { getSharedNotes, getSharedFiles, getSharedFileDetail, getSharedFileDetailForTeacher, getSharedFileDownloadInfo, getSharedFileDownloadInfoForTeacher, deleteSharedFile } from '../components/data/group.js'
 import { showToast } from '../components/layout/showToast.js'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { invoke } from '@tauri-apps/api/core'
@@ -331,7 +331,28 @@ function isCurrentUser(sharedBy) {
 // 下载文件
 async function downloadFile(file) {
   try {
-    const downloadInfo = await getSharedFileDownloadInfo(file.share_uuid, groupUid.value)
+    // 先尝试获取 TOTP，判断是否为教师端
+    let downloadInfo = null
+    let isTeacher = false
+    
+    try {
+      const { getTotp } = await import('../components/data/bluetooth.js')
+      const totp = await getTotp()
+      if (totp) {
+        isTeacher = true
+      }
+    } catch (error) {
+      console.log('无法获取 TOTP，使用学生端 API')
+      isTeacher = false
+    }
+    
+    // 根据用户角色调用不同的 API
+    if (isTeacher) {
+      downloadInfo = await getSharedFileDownloadInfoForTeacher(file.share_uuid, groupUid.value)
+    } else {
+      downloadInfo = await getSharedFileDownloadInfo(file.share_uuid, groupUid.value)
+    }
+    
     if (!downloadInfo || !downloadInfo.success) {
       showToast('获取下载信息失败', '#ef4444')
       return

@@ -21,10 +21,12 @@ import { createPinia } from 'pinia'  // 导入Pinia
 import App from "./App.vue";
 import router from "./router"; // 导入路由配置
 
-// 导入本地样式文件 - 这样Vite会正确打包这些资源
-// 1. Remix Icon 图标库 - 之前用CDN，现在用本地npm包
+// 导入本地样式文件 - 这样 Vite 会正确打包这些资源
+// 1. 全局字体配置 - 确保中文字符正确渲染
+import "./styles/global.css";
+// 2. Remix Icon 图标库 - 之前用 CDN，现在用本地 npm 包
 import "remixicon/fonts/remixicon.css";
-// 2. Normalize.css - 样式重置，避免CDN依赖
+// 3. Normalize.css - 样式重置，避免 CDN 依赖
 import "normalize.css";
 
 document.addEventListener('contextmenu', e => e.preventDefault());

@@ -147,7 +147,7 @@ Email: admin@mc666.top
             <div class="application-details">
               <p class="student-email">
                 <i class="ri-user-line"></i>
-                申请人：{{ message.student_email }}
+                申请人：{{ message.student_username }}
               </p>
               <p class="group-name-detail">
                 <i class="ri-group-line"></i>
