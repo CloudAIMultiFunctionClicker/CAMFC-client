@@ -19,7 +19,8 @@ import { getBackendUrl } from "../../config/backend.js";
 
 const timeOut = 3000;
 
-// 获取认证头信息（和 fileSystem.js 保持一致）
+// 获取认证头信息
+// 优先使用教师认证（Id + Totp），如果没有蓝牙设备则使用学生认证（Username + Password）
 async function getAuthHeader() {
   try {
     const { getDeviceId, getTotp } = await import('./bluetooth.js');
@@ -27,19 +28,45 @@ async function getAuthHeader() {
     const deviceId = await getDeviceId();
     const currentTotp = await getTotp();
     
-    console.info({
-      "Id": deviceId,
-      "Totp": currentTotp
-    });
-
-    return {
-      "Id": deviceId,
-      "Totp": currentTotp
-    };
+    // 如果能获取到 TOTP，说明是教师端
+    if (currentTotp && deviceId) {
+      console.info('使用教师认证:', {
+        "Id": deviceId,
+        "Totp": currentTotp
+      });
+      
+      return {
+        "Id": deviceId,
+        "Totp": currentTotp
+      };
+    }
   } catch (error) {
-    console.warn('无法获取设备 ID 或 TOTP，使用空 header:', error);
-    return {};
+    console.log('无法获取蓝牙设备信息，尝试学生认证');
   }
+  
+  // 尝试使用学生认证
+  try {
+    const { loadAppData } = await import('./storage.js');
+    const studentUsername = await loadAppData('student_username');
+    const studentPassword = await loadAppData('student_password');
+    
+    if (studentUsername && studentPassword) {
+      console.info('使用学生认证:', {
+        "Username": studentUsername
+        // 不打印密码
+      });
+      
+      return {
+        "Username": studentUsername,
+        "Password": studentPassword
+      };
+    }
+  } catch (error) {
+    console.warn('无法获取学生认证信息:', error);
+  }
+  
+  console.warn('无法获取任何认证信息，使用空 header');
+  return {};
 }
 
 /**
@@ -667,7 +694,7 @@ async function getSharedFiles(groupUuid) {
 }
 
 /**
- * 获取共享文件详情（学生端）
+ * 获取共享文件详情
  * @param {string} shareUuid - 分享 UUID
  * @param {string} groupUuid - 群组 UUID
  * @returns {Promise<Object|null>} - 返回共享文件详情，失败返回 null
@@ -683,7 +710,7 @@ async function getSharedFileDetail(shareUuid, groupUuid) {
     const authHeader = await getAuthHeader();
     
     const requestPromise = axios.post(
-      getBackendUrl() + "/student/share/file/detail",
+      getBackendUrl() + "/group/share/file/detail",
       { share_uuid: shareUuid, group_uuid: groupUuid },
       {
         headers: authHeader,
@@ -710,6 +737,7 @@ async function getSharedFileDetail(shareUuid, groupUuid) {
  * @param {string} shareUuid - 分享 UUID
  * @param {string} groupUuid - 群组 UUID
  * @returns {Promise<Object|null>} - 返回共享文件详情，失败返回 null
+ * @deprecated 学生和教师使用相同的 API，请改用 getSharedFileDetail
  */
 async function getSharedFileDetailForTeacher(shareUuid, groupUuid) {
   try {
@@ -745,7 +773,7 @@ async function getSharedFileDetailForTeacher(shareUuid, groupUuid) {
 }
 
 /**
- * 获取共享文件下载信息（学生端）
+ * 获取共享文件下载信息
  * @param {string} shareUuid - 分享 UUID
  * @param {string} groupUuid - 群组 UUID
  * @returns {Promise<Object|null>} - 返回下载信息，包含文件路径等，失败返回 null
@@ -761,7 +789,7 @@ async function getSharedFileDownloadInfo(shareUuid, groupUuid) {
     const authHeader = await getAuthHeader();
     
     const requestPromise = axios.get(
-      getBackendUrl() + `/student/share/file/download?share_uuid=${shareUuid}&group_uuid=${groupUuid}`,
+      getBackendUrl() + `/group/share/file/download?share_uuid=${shareUuid}&group_uuid=${groupUuid}`,
       {
         headers: authHeader,
       }
@@ -787,6 +815,7 @@ async function getSharedFileDownloadInfo(shareUuid, groupUuid) {
  * @param {string} shareUuid - 分享 UUID
  * @param {string} groupUuid - 群组 UUID
  * @returns {Promise<Object|null>} - 返回下载信息，包含文件路径等，失败返回 null
+ * @deprecated 学生和教师使用相同的 API，请改用 getSharedFileDownloadInfo
  */
 async function getSharedFileDownloadInfoForTeacher(shareUuid, groupUuid) {
   try {
@@ -879,5 +908,6 @@ export {
   getSharedFileDetailForTeacher,
   getSharedFileDownloadInfo,
   getSharedFileDownloadInfoForTeacher,
-  deleteSharedFile
+  deleteSharedFile,
+  getAuthHeader
 };

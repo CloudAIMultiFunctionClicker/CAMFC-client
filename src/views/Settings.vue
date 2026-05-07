@@ -146,6 +146,54 @@ Email: admin@mc666.top
         </div>
       </div>
 
+      <div v-else-if="activeNav === 'student'" class="settings-panel">
+        <h3>学生认证设置</h3>
+        <div class="setting-card">
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="label-text">学生用户名</span>
+              <span class="label-desc">用于访问群组共享文件的学生账号</span>
+            </div>
+            <div class="setting-control">
+              <input 
+                type="text" 
+                v-model="studentUsername"
+                class="text-input"
+                placeholder="请输入学生用户名"
+              />
+            </div>
+          </div>
+          <div class="setting-item">
+            <div class="setting-label">
+              <span class="label-text">学生密码</span>
+              <span class="label-desc">用于访问群组共享文件的学生密码</span>
+            </div>
+            <div class="setting-control">
+              <input 
+                type="password" 
+                v-model="studentPassword"
+                class="text-input"
+                placeholder="请输入学生密码"
+              />
+            </div>
+          </div>
+          <div class="setting-actions">
+            <button class="action-btn" @click="saveStudentCredentials">
+              <i class="ri-save-line"></i>
+              <span>保存认证信息</span>
+            </button>
+            <button class="action-btn danger" @click="clearStudentCredentials">
+              <i class="ri-delete-bin-line"></i>
+              <span>清除认证信息</span>
+            </button>
+          </div>
+          <div class="setting-tip">
+            <i class="ri-information-line"></i>
+            <span>设置后，学生可以使用用户名密码访问群组共享文件。如果没有蓝牙设备，将自动使用学生认证。</span>
+          </div>
+        </div>
+      </div>
+
       <div v-else-if="activeNav === 'application'" class="settings-panel">
         <h3>应用设置</h3>
         <div class="setting-card">
@@ -331,6 +379,54 @@ const hardwareSettings = ref({
 
 const useHttps = ref(false)
 
+// 学生认证
+const studentUsername = ref('')
+const studentPassword = ref('')
+
+// 保存学生认证信息
+const saveStudentCredentials = async () => {
+  if (!studentUsername.value || !studentPassword.value) {
+    showToast('请输入用户名和密码', '#f59e0b')
+    return
+  }
+  
+  try {
+    await saveAppData('student_username', studentUsername.value)
+    await saveAppData('student_password', studentPassword.value)
+    showToast('学生认证信息已保存', '#10b981')
+    console.log('[设置页面] 学生认证信息已保存')
+  } catch (error) {
+    console.error('保存学生认证信息失败:', error)
+    showToast('保存失败', '#ef4444')
+  }
+}
+
+// 清除学生认证信息
+const clearStudentCredentials = async () => {
+  try {
+    await saveAppData('student_username', '')
+    await saveAppData('student_password', '')
+    studentUsername.value = ''
+    studentPassword.value = ''
+    showToast('学生认证信息已清除', '#10b981')
+    console.log('[设置页面] 学生认证信息已清除')
+  } catch (error) {
+    console.error('清除学生认证信息失败:', error)
+    showToast('清除失败', '#ef4444')
+  }
+}
+
+// 加载学生认证信息
+const loadStudentCredentials = async () => {
+  try {
+    studentUsername.value = await loadAppData('student_username') || ''
+    studentPassword.value = await loadAppData('student_password') || ''
+    console.log('[设置页面] 学生认证信息已加载')
+  } catch (error) {
+    console.error('加载学生认证信息失败:', error)
+  }
+}
+
 // 切换 HTTPS 设置
 const toggleHttps = async () => {
   useHttps.value = !useHttps.value
@@ -396,6 +492,7 @@ watch(() => theme?.isLightMode, (newVal) => {
 const navItems = [
   { id: 'cpen', label: 'Cpen 设置', icon: 'ri-settings-3-line' },
   { id: 'hardware', label: '连接设置', icon: 'ri-link' },
+  { id: 'student', label: '学生认证', icon: 'ri-user-line' },
   { id: 'download', label: '下载设置', icon: 'ri-download-line' },
   { id: 'application', label: '应用设置', icon: 'ri-apps-line' },
   { id: 'theme', label: '深色模式', icon: 'ri-moon-line' },
@@ -445,6 +542,9 @@ const loadSettings = async () => {
       console.warn('加载悬浮窗状态失败:', e)
       floatWindowEnabled.value = true
     }
+    
+    // 加载学生认证信息
+    await loadStudentCredentials()
   } catch (error) {
     console.error('加载设置失败:', error)
   }
@@ -1711,6 +1811,56 @@ onUnmounted(() => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* 学生认证设置样式 */
+.setting-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color, #d0d7de);
+}
+
+.setting-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: var(--bg-tertiary, #f6f8fa);
+  border-radius: .375rem;
+  border: 1px solid var(--border-color, #d0d7de);
+  font-size: 13px;
+  color: var(--text-secondary, #57606a);
+}
+
+.setting-tip i {
+  font-size: 16px;
+  color: var(--accent-blue, #0969da);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.text-input {
+  width: 100%;
+  padding: 10px 14px;
+  background-color: var(--bg-primary, #ffffff);
+  border: 1px solid var(--border-color, #d0d7de);
+  border-radius: .375rem;
+  color: var(--text-primary, #24292f);
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.text-input:focus {
+  outline: none;
+  border-color: var(--accent-blue, #0969da);
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.1);
+}
+
+.text-input::placeholder {
+  color: var(--text-muted, #8c959f);
 }
 
 </style>

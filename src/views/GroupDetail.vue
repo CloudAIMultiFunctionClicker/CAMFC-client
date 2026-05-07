@@ -171,7 +171,7 @@ Email: admin@mc666.top
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getSharedNotes, getSharedFiles, getSharedFileDetail, getSharedFileDetailForTeacher, getSharedFileDownloadInfo, getSharedFileDownloadInfoForTeacher, deleteSharedFile } from '../components/data/group.js'
+import { getSharedNotes, getSharedFiles, getSharedFileDetail, getSharedFileDownloadInfo, deleteSharedFile, getAuthHeader } from '../components/data/group.js'
 import { showToast } from '../components/layout/showToast.js'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { invoke } from '@tauri-apps/api/core'
@@ -331,27 +331,8 @@ function isCurrentUser(sharedBy) {
 // 下载文件
 async function downloadFile(file) {
   try {
-    // 先尝试获取 TOTP，判断是否为教师端
-    let downloadInfo = null
-    let isTeacher = false
-    
-    try {
-      const { getTotp } = await import('../components/data/bluetooth.js')
-      const totp = await getTotp()
-      if (totp) {
-        isTeacher = true
-      }
-    } catch (error) {
-      console.log('无法获取 TOTP，使用学生端 API')
-      isTeacher = false
-    }
-    
-    // 根据用户角色调用不同的 API
-    if (isTeacher) {
-      downloadInfo = await getSharedFileDownloadInfoForTeacher(file.share_uuid, groupUid.value)
-    } else {
-      downloadInfo = await getSharedFileDownloadInfo(file.share_uuid, groupUid.value)
-    }
+    // 获取文件下载信息
+    const downloadInfo = await getSharedFileDownloadInfo(file.share_uuid, groupUid.value)
     
     if (!downloadInfo || !downloadInfo.success) {
       showToast('获取下载信息失败', '#ef4444')
@@ -362,12 +343,27 @@ async function downloadFile(file) {
     const groupUuid = downloadInfo.group_uuid
     const fileName = downloadInfo.file_name
     
-    // 调用后端下载接口
-    const downloadUrl = `${getBackendUrl()}/download?storage_path=${encodeURIComponent(storagePath)}&group_uuid=${groupUuid}`
+    // 调用后端下载接口 - 使用路径参数格式
+    // 正确的格式：/download/{file_path:path}?group_uuid={group_uuid}
+    const encodedPath = encodeURIComponent(storagePath)
+    const downloadUrl = `${getBackendUrl()}/download/${encodedPath}?group_uuid=${groupUuid}`
+    
+    console.log('下载 URL:', downloadUrl)
+    
+    // 获取认证头
+    const authHeader = await getAuthHeader()
+    console.log('认证头信息:', authHeader)
+    
+    // 检查是否有认证信息
+    if (!authHeader.Username && !authHeader.Id) {
+      console.error('缺少认证信息！请检查是否设置了学生用户名密码或连接了蓝牙设备')
+      showToast('缺少认证信息，请先设置学生账号或连接蓝牙设备', '#f59e0b')
+      return
+    }
     
     // 使用 Tauri 的 fetch 下载文件
     const response = await fetch(downloadUrl, {
-      headers: await getAuthHeader()
+      headers: authHeader
     })
     
     if (!response.ok) {
