@@ -694,7 +694,7 @@ onUnmounted(() => {
   flex: 1;
   background: var(--bg-primary, #0f172a);
   padding: 24px;
-  padding-left: 280px; /* 侧边栏宽度 + 额外留白 */
+  padding-left: 24px;
   margin-left: 0;
   box-sizing: border-box;
   overflow: hidden; /* 内容区域不可滚动，让传输列表自己滚动 */

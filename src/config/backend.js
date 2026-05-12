@@ -20,9 +20,9 @@ import { ref } from 'vue'
 
 // 后端配置
 const backendConfig = ref({
-  base_url: '',
-  port: 0,
-  full_url: ''
+  base_url: 'https://camfc.seven-cloud.cn',
+  port: 8005,
+  full_url: 'https://camfc.seven-cloud.cn:8005'
 })
 
 // 配置是否已加载
@@ -35,6 +35,17 @@ export async function initBackendConfig() {
     return
   }
 
+  // 使用硬编码配置
+  backendConfig.value = {
+    base_url: 'https://camfc.seven-cloud.cn',
+    port: 8005,
+    full_url: 'https://camfc.seven-cloud.cn:8005'
+  }
+  isConfigLoaded.value = true
+  console.log('后端配置已加载:', backendConfig.value.full_url)
+  
+  // 以下为原配置加载逻辑（已禁用）
+  /*
   try {
     const { invoke } = await import('@tauri-apps/api/core')
     const config = await invoke('get_backend_config')
@@ -59,6 +70,7 @@ export async function initBackendConfig() {
     isConfigLoaded.value = true
     console.log('使用默认后端配置:', backendConfig.value.full_url)
   }
+  */
 }
 
 // 获取后端完整 URL

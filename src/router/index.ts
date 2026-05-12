@@ -42,10 +42,10 @@ const router = createRouter({
       name: 'fileView',
       component: () => import('../views/FileView.vue')
     },
-    {path:'/main',
-      name: 'main',
-      component: () => import('../views/Main.vue')
-    },
+    // {path:'/main',
+    //   name: 'main',
+    //   component: () => import('../views/Main.vue')
+    // },
     {
       path: '/about',
       name: 'about',
@@ -61,9 +61,47 @@ const router = createRouter({
     },
     {
       path: '/settings',
-      name: 'settings',
-      // 懒加载：联系页面
-      component: () => import('../views/Settings.vue')
+      redirect: '/settings_cpen'
+    },
+    {
+      path: '/settings_cpen',
+      name: 'settingsCpen',
+      component: () => import('../views/SettingsCpen.vue')
+    },
+    {
+      path: '/settings_hardware',
+      name: 'settingsHardware',
+      component: () => import('../views/SettingsHardware.vue')
+    },
+    {
+      path: '/settings_student',
+      name: 'settingsStudent',
+      component: () => import('../views/SettingsStudent.vue')
+    },
+    {
+      path: '/settings_download',
+      name: 'settingsDownload',
+      component: () => import('../views/SettingsDownload.vue')
+    },
+    {
+      path: '/settings_application',
+      name: 'settingsApplication',
+      component: () => import('../views/SettingsApplication.vue')
+    },
+    {
+      path: '/settings_theme',
+      name: 'settingsTheme',
+      component: () => import('../views/SettingsTheme.vue')
+    },
+    {
+      path: '/settings_help',
+      name: 'settingsHelp',
+      component: () => import('../views/SettingsHelp.vue')
+    },
+    {
+      path: '/settings_about',
+      name: 'settingsAbout',
+      component: () => import('../views/SettingsAbout.vue')
     },
     // 新增仪表板相关路由
     {
@@ -76,7 +114,21 @@ const router = createRouter({
       path: '/notes',
       name: 'notes',
       // 笔记页面
-      component: () => import('../views/Notes.vue')
+      component: () => import('../views/Notes.vue'),
+      props: route => ({ defaultTab: route.query.tab || 'notes' })
+    },
+    // 笔记子路由（使用独立路径格式）
+    {
+      path: '/notes_notes',
+      name: 'notesNotes',
+      component: () => import('../views/Notes.vue'),
+      props: route => ({ defaultTab: 'notes' })
+    },
+    {
+      path: '/notes_meetings',
+      name: 'notesMeetings',
+      component: () => import('../views/Notes.vue'),
+      props: route => ({ defaultTab: 'meetings' })
     },
     {
       path: '/transfer',
@@ -142,7 +194,21 @@ const router = createRouter({
       path: '/group-manager',
       name: 'groupManager',
       // 班级管理页面
-      component: () => import('../views/GroupManager.vue')
+      component: () => import('../views/GroupManager.vue'),
+      props: route => ({ defaultTab: route.query.tab || 'groups' })
+    },
+    // 班级管理子路由（使用独立路径格式）
+    {
+      path: '/group-manager_groups',
+      name: 'groupManagerGroups',
+      component: () => import('../views/GroupManager.vue'),
+      props: route => ({ defaultTab: 'groups' })
+    },
+    {
+      path: '/group-manager_applications',
+      name: 'groupManagerApplications',
+      component: () => import('../views/GroupManager.vue'),
+      props: route => ({ defaultTab: 'applications' })
     },
     {
       path: '/group-detail',
@@ -269,7 +335,7 @@ router.beforeEach(async (to, _from, next) => {
   // ========== 主窗口黑名单 ==========
   // 主窗口禁止进入截图展示和笔记编辑路由
   if (windowLabel === 'main') {
-    const forbiddenPaths = ['/screenshot-window', '/note-editor', '/screenshot']
+    const forbiddenPaths = ['/screenshot-window', '/note-editor', '/screenshot', '/main']
     if (forbiddenPaths.includes(to.path)) {
       console.warn(`[路由守卫] 主窗口禁止访问 ${to.path}，强制跳转到 /`)
       next('/')
@@ -292,13 +358,20 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   // 笔记页面不需要蓝牙连接，直接放行
-  if (to.path === '/notes') {
+  if (to.path === '/notes' || to.path.startsWith('/notes_')) {
     next()
     return
   }
 
   // 班级管理页面不需要蓝牙连接，直接放行
-  if (to.path === '/group-manager') {
+  if (to.path === '/group-manager' || to.path.startsWith('/group-manager_')) {
+    next()
+    return
+  }
+
+  // 设置页面（Cpen设置和连接设置）不需要蓝牙连接，直接放行
+  // 其他设置项（学生认证、下载设置等）需要蓝牙连接
+  if (to.path === '/settings' || to.path === '/settings_cpen' || to.path === '/settings_hardware') {
     next()
     return
   }

@@ -22,13 +22,16 @@ FIXME: 悬浮按钮的样式还可以再优化，让它更融入整体设计
 -->
 
 <script setup>
-// 导入Vue的响应式功能
-import { ref } from "vue";
+// 导入 Vue 的响应式功能
+import { ref, computed, onMounted } from "vue";
+import { useRoute } from "vue-router";
+// 导入 Pinia store 来获取蓝牙状态
+import { useBluetoothStore } from "../../stores/bluetooth";
 
 // 侧边栏折叠状态 - 默认展开
 const isCollapsed = ref(false);
 
-// 定义emit函数，用于触发事件
+// 定义 emit 函数，用于触发事件
 const emit = defineEmits(["collapse-change"]);
 
 // 切换折叠状态的函数
@@ -37,6 +40,52 @@ const toggleCollapse = () => {
     // 触发事件，通知父组件状态变化
     emit("collapse-change", isCollapsed.value);
 };
+
+// 获取蓝牙 store
+const bluetoothStore = useBluetoothStore();
+
+// 计算蓝牙是否已连接
+const isConnected = computed(() => bluetoothStore.isConnected());
+
+const route = useRoute()
+
+// 根据路径匹配所属的一级菜单
+const getMenuKeyByPath = (path) => {
+    if (path === '/') return 'connection'
+    if (path.startsWith('/fileView') || path.startsWith('/transfer') || path.startsWith('/recent-activities')) return 'cloud'
+    if (path.startsWith('/notes') || path.startsWith('/notes_')) return 'records'
+    if (path.startsWith('/group-manager') || path.startsWith('/group-detail')) return 'class'
+    if (path.startsWith('/settings') || path.startsWith('/settings_')) return 'settings'
+    return null
+}
+
+// 菜单折叠状态管理
+const expandedMenus = ref({
+    connection: false,  // 连接状态
+    cloud: false,       // 云盘
+    records: false,     // 记录
+    class: false,       // 班级管理
+    settings: false     // 设置
+});
+
+// 切换菜单展开/折叠（手风琴：同时只展开一个）
+const toggleMenu = (menuKey) => {
+    const willExpand = !expandedMenus.value[menuKey]
+    // 全部收起
+    Object.keys(expandedMenus.value).forEach(key => {
+        expandedMenus.value[key] = false
+    })
+    // 只展开当前点击的那个
+    expandedMenus.value[menuKey] = willExpand
+};
+
+// 挂载时自动展开当前页面所在的一级菜单
+onMounted(() => {
+    const key = getMenuKeyByPath(route.path)
+    if (key) {
+        expandedMenus.value[key] = true
+    }
+})
 </script>
 
 <template>
@@ -56,12 +105,12 @@ const toggleCollapse = () => {
         class="sidebar"
         :class="{ collapsed: isCollapsed }"
     >
-        <!-- Logo区域 - 简单放个标题 -->
+        <!-- Logo 区域 - 简单放个标题 -->
         <div class="logo-area">
             <h2>
                 <i class="ri-folder-line"></i>
                 <!-- 文件夹图标，跟云存储主题相关 -->
-                <span>云盘</span>
+                <span>CAMFC Cloud</span>
             </h2>
             <!-- 用量进度条 -->
             <div class="storage-usage">
@@ -74,7 +123,7 @@ const toggleCollapse = () => {
                 </div>
             </div>
 
-            <!-- 折叠按钮 - 放在logo区域右上角 -->
+            <!-- 折叠按钮 - 放在 logo 区域右上角 -->
             <button
                 class="collapse-btn"
                 @click="toggleCollapse"
@@ -86,38 +135,166 @@ const toggleCollapse = () => {
 
         <!-- 主菜单区域 -->
         <nav class="main-menu">
-            <!-- 导航标题 -->
-            <h3 class="menu-title">
-                <i class="ri-cloud-line"></i>
-                云盘
-            </h3>
+            <!-- 连接状态（默认显示蓝牙连接扫描） -->
+            <div class="menu-section">
+                <div class="menu-section-header" @click="toggleMenu('connection')">
+                    <div class="menu-section-title">
+                        <i class="ri-bluetooth-line"></i>
+                        <span>连接状态</span>
+                    </div>
+                    <i :class="expandedMenus.connection ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line'" class="expand-icon"></i>
+                </div>
+                <ul v-show="expandedMenus.connection" class="menu-list">
+                    <li class="menu-item">
+                        <router-link to="/" class="menu-link">
+                            <i class="ri-wifi-line"></i>
+                            <span>蓝牙扫描</span>
+                        </router-link>
+                    </li>
+                </ul>
+            </div>
 
-            <!-- 导航链接列表 -->
-            <ul class="menu-list">
-                <!-- 文件 -->
-                <li class="menu-item">
-                    <router-link to="/fileView" class="menu-link">
-                        <i class="ri-folder-line"></i>
-                        <span>文件</span>
-                    </router-link>
-                </li>
-                
-                <!-- 传输 -->
-                <li class="menu-item">
-                    <router-link to="/transfer" class="menu-link">
-                        <i class="ri-exchange-line"></i>
-                        <span>传输</span>
-                    </router-link>
-                </li>
-                
-                <!-- 最近活动 -->
-                <li class="menu-item">
-                    <router-link to="/recent-activities" class="menu-link">
-                        <i class="ri-history-line"></i>
-                        <span>最近活动</span>
-                    </router-link>
-                </li>
-            </ul>
+            <!-- 云盘 -->
+            <div class="menu-section">
+                <div class="menu-section-header" @click="toggleMenu('cloud')">
+                    <div class="menu-section-title">
+                        <i class="ri-cloud-line"></i>
+                        <span>云盘</span>
+                    </div>
+                    <i :class="expandedMenus.cloud ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line'" class="expand-icon"></i>
+                </div>
+                <ul v-show="expandedMenus.cloud" class="menu-list">
+                    <li class="menu-item">
+                        <router-link to="/fileView" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-folder-line"></i>
+                            <span>文件</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/transfer" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-exchange-line"></i>
+                            <span>传输</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/recent-activities" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-history-line"></i>
+                            <span>最近活动</span>
+                        </router-link>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 记录 -->
+            <div class="menu-section">
+                <div class="menu-section-header" @click="toggleMenu('records')">
+                    <div class="menu-section-title">
+                        <i class="ri-file-list-line"></i>
+                        <span>记录</span>
+                    </div>
+                    <i :class="expandedMenus.records ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line'" class="expand-icon"></i>
+                </div>
+                <ul v-show="expandedMenus.records" class="menu-list">
+                    <li class="menu-item">
+                        <router-link to="/notes_meetings" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-team-line"></i>
+                            <span>课堂记录</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/notes_notes" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-sticky-note-line"></i>
+                            <span>笔记</span>
+                        </router-link>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 班级管理 -->
+            <div class="menu-section">
+                <div class="menu-section-header" @click="toggleMenu('class')">
+                    <div class="menu-section-title">
+                        <i class="ri-group-line"></i>
+                        <span>班级管理</span>
+                    </div>
+                    <i :class="expandedMenus.class ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line'" class="expand-icon"></i>
+                </div>
+                <ul v-show="expandedMenus.class" class="menu-list">
+                    <li class="menu-item">
+                        <router-link to="/group-manager_groups" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-group-line"></i>
+                            <span>我的群组</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/group-manager_applications" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-notification-badge-line"></i>
+                            <span>待处理申请</span>
+                        </router-link>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- 设置 -->
+            <div class="menu-section">
+                <div class="menu-section-header" @click="toggleMenu('settings')">
+                    <div class="menu-section-title">
+                        <i class="ri-settings-line"></i>
+                        <span>设置</span>
+                    </div>
+                    <i :class="expandedMenus.settings ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line'" class="expand-icon"></i>
+                </div>
+                <ul v-show="expandedMenus.settings" class="menu-list">
+                    <li class="menu-item">
+                        <router-link to="/settings_cpen" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-settings-3-line"></i>
+                            <span>Cpen 设置</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/settings_hardware" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-link"></i>
+                            <span>连接设置</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/settings_student" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-user-line"></i>
+                            <span>学生认证</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/settings_download" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-download-line"></i>
+                            <span>下载设置</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/settings_application" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-apps-line"></i>
+                            <span>应用设置</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/settings_theme" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-moon-line"></i>
+                            <span>深色模式</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/settings_help" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-question-line"></i>
+                            <span>帮助与反馈</span>
+                        </router-link>
+                    </li>
+                    <li class="menu-item">
+                        <router-link to="/settings_about" class="menu-link" :class="{ disabled: !isConnected }">
+                            <i class="ri-information-line"></i>
+                            <span>关于</span>
+                        </router-link>
+                    </li>
+                </ul>
+            </div>
         </nav>
 
 
@@ -125,19 +302,22 @@ const toggleCollapse = () => {
 </template>
 
 <style scoped>
-/* 侧边栏基础样式 - 使用CSS变量支持主题切换 */
+/* 侧边栏基础样式 - 使用 CSS 变量支持主题切换 */
 /* 现在颜色都从全局变量获取，亮色/暗色模式自动切换 */
 
 .sidebar {
     width: 240px;
-    height: calc(100vh - 65px);
+    height: calc(100vh - 48px); /* 减去标题栏高度 */
     background: var(--bg-sidebar, #161b22);
     border-right: 1px solid var(--border-color, #30363d);
     display: flex;
     flex-direction: column;
     padding: 20px 0;
     box-sizing: border-box;
-    position: relative;
+    position: fixed;
+    top: 48px; /* 标题栏高度 */
+    left: 0;
+    bottom: 0;
     z-index: 900;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow-y: auto;
@@ -335,30 +515,52 @@ const toggleCollapse = () => {
 .main-menu {
     padding: 0 20px;
     margin-bottom: 24px;
-    /* 菜单之间的间距 */
 }
 
-.menu-title {
-    margin: 0 0 12px 0;
-    color: var(--text-secondary, #57606a);
-    font-size: 0.875rem;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+/* 菜单分组样式 */
+.menu-section {
+    margin-bottom: 16px;
+}
+
+.menu-section-header {
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: .375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 4px;
 }
 
-.menu-title i {
-    font-size: 1rem;
-    opacity: 0.7;
+.menu-section-header:hover {
+    background-color: var(--hover-bg, #f3f4f6);
+}
+
+.menu-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-primary, #24292f);
+    font-size: 0.9375rem;
+    font-weight: 500;
+}
+
+.menu-section-title i {
+    font-size: 1.125rem;
+    color: var(--text-secondary, #57606a);
+}
+
+.expand-icon {
+    font-size: 1.125rem;
+    color: var(--text-muted, #8c959f);
+    transition: transform 0.2s ease;
 }
 
 .menu-list {
     list-style: none;
-    padding: 0;
-    margin: 0;
+    padding: 0 0 0 12px;
+    margin: 4px 0 0 0;
 }
 
 .menu-item {
@@ -369,34 +571,42 @@ const toggleCollapse = () => {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 12px;
+    padding: 8px 12px;
     color: var(--text-secondary, #57606a);
     text-decoration: none;
     border-radius: .375rem;
     transition: all 0.2s ease;
-    font-size: 0.9375rem;
+    font-size: 0.875rem;
+    position: relative;
 }
 
 .menu-link i {
-    font-size: 1.125rem;
-    width: 24px;
+    font-size: 1rem;
+    width: 20px;
     display: flex;
     justify-content: center;
 }
 
-.menu-link:hover {
+.menu-link:hover:not(.disabled) {
     background-color: var(--hover-bg, #f3f4f6);
     color: var(--text-primary, #24292f);
 }
 
-.menu-link.router-link-active {
+.menu-link.router-link-active:not(.disabled) {
     background-color: var(--selected-bg, #ddf4ff);
     color: var(--accent-blue, #0969da);
     font-weight: 500;
 }
 
-.menu-link.router-link-active i {
+.menu-link.router-link-active:not(.disabled) i {
     color: var(--accent-blue, #0969da);
+}
+
+/* 禁用状态 */
+.menu-link.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 /* 响应式设计 - 小屏幕时可能需要调整 */

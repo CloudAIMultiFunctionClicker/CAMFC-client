@@ -32,14 +32,33 @@ Email: admin@mc666.top
           <i class="ri-smartphone-line"></i>
           Cpen 设备
         </h2>
-        <div v-if="isScanning" class="scanning-indicator">
+        <div v-if="isConnected" class="connected-status">
+          <i class="ri-check-line"></i>
+          <span>已连接设备</span>
+        </div>
+        <div v-else-if="isScanning" class="scanning-indicator">
           <i class="ri-loader-4-line spinning"></i>
           <span>扫描中...</span>
         </div>
       </div>
       
+      <!-- 已连接状态 -->
+      <div v-if="isConnected" class="connected-device-card">
+        <div class="connected-device-info">
+          <i class="ri-bluetooth-fill"></i>
+          <div class="device-details">
+            <h3>{{ connectedDeviceName }}</h3>
+            <p>蓝牙已连接，准备就绪</p>
+          </div>
+        </div>
+        <button class="goto-main-btn" @click="goToMainNow">
+          <i class="ri-arrow-right-line"></i>
+          <span>进入主页面</span>
+        </button>
+      </div>
+      
       <!-- Cpen 设备列表 -->
-      <div class="device-section" v-if="cpenDevices.length > 0">
+      <div v-else-if="cpenDevices.length > 0" class="device-section">
         <div class="device-list">
           <div 
             v-for="device in cpenDevices" 
@@ -61,7 +80,7 @@ Email: admin@mc666.top
       </div>
       
       <!-- 空状态 -->
-      <div v-if="!isScanning && cpenDevices.length === 0" class="empty-state">
+      <div v-if="!isScanning && !isConnected && cpenDevices.length === 0" class="empty-state">
         <i class="ri-bluetooth-off-line"></i>
         <p>未发现 cpen 设备</p>
         <button class="retry-btn" @click="rescanDevices">
@@ -203,7 +222,18 @@ async function scanDevices() {
  * 重新扫描
  */
 async function rescanDevices() {
-  await scanDevices()
+  // 重新扫描前也检查连接状态
+  const connected = bluetoothStore.isConnected()
+  
+  if (connected) {
+    console.log('蓝牙已连接，无需重新扫描')
+    showToast('蓝牙已连接')
+    setTimeout(() => {
+      router.push('/main')
+    }, 500)
+  } else {
+    await scanDevices()
+  }
 }
 
 /**
@@ -296,21 +326,39 @@ function skipToMain() {
 }
 
 /**
+ * 立即进入主页面
+ */
+function goToMainNow() {
+  console.log('用户点击进入主页面')
+  router.push('/main')
+}
+
+/**
  * 显示连接失败帮助信息
  */
 function showConnectionHelp() {
   showToast('连接失败帮助：\n1. 确保设备已开启\n2. 确保设备在附近\n3. 尝试重新扫描\n4. 重启应用后重试')
 }
 
-// 组件挂载时自动扫描
+// 组件挂载时检查连接状态
 onMounted(async () => {
-  console.log('InitialView mounted，开始自动扫描')
-
-  // 重置状态
-  bluetoothStore.reset()
-
-  // 立即开始扫描
-  await scanDevices()
+  console.log('InitialView mounted，检查蓝牙连接状态')
+  
+  // 先检查是否已经连接
+  const connected = bluetoothStore.isConnected()
+  
+  if (connected) {
+    console.log('蓝牙已连接，不再扫描')
+    showToast('蓝牙已连接')
+    // 已连接，直接跳转到主页面
+    setTimeout(() => {
+      router.push('/main')
+    }, 500)
+  } else {
+    console.log('蓝牙未连接，开始扫描')
+    // 未连接，才扫描设备
+    await scanDevices()
+  }
 })
 </script>
 
@@ -456,9 +504,31 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0px;
-  padding-bottom: 0px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
   border-bottom: 2px solid var(--border-color, #d0d7de);
+}
+
+/* 已连接状态指示器 */
+.connected-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(45, 164, 78, 0.1);
+  border-radius: .375rem;
+  border: 1px solid rgba(45, 164, 78, 0.3);
+}
+
+.connected-status i {
+  font-size: 20px;
+  color: var(--accent-green, #2da44e);
+}
+
+.connected-status span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-green, #2da44e);
 }
 
 .scanning-indicator {
@@ -711,6 +781,75 @@ onMounted(async () => {
 .retry-btn:hover {
   background: var(--accent-blue);
   filter: brightness(1.1);
+}
+
+/* 已连接设备卡片 */
+.connected-device-card {
+  background: rgba(45, 164, 78, 0.05);
+  border: 2px solid var(--accent-green, #2da44e);
+  border-radius: .375rem;
+  padding: 24px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: 0 4px 12px rgba(45, 164, 78, 0.15);
+}
+
+.connected-device-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.connected-device-info i {
+  font-size: 40px;
+  color: var(--accent-green, #2da44e);
+}
+
+.device-details h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary, #24292f);
+}
+
+.device-details p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary, #57606a);
+}
+
+.goto-main-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: var(--accent-green, #2da44e);
+  color: white;
+  border: none;
+  border-radius: .375rem;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.goto-main-btn:hover {
+  background: #258a43;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(45, 164, 78, 0.3);
+}
+
+.goto-main-btn:active {
+  transform: translateY(0);
+}
+
+.goto-main-btn i {
+  font-size: 18px;
 }
 
 /* 倒计时弹窗 */

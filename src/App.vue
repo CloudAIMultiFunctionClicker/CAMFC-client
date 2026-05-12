@@ -23,6 +23,7 @@ import { useBluetoothStore } from './stores/bluetooth.js'
 
 import {showToast} from './components/layout/showToast.js'
 import TitleBar from './components/layout/TitleBar.vue'
+import Sidebar from './components/layout/Sidebar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -52,6 +53,14 @@ const isNoteViewerPage = computed(() => route.path === '/note-viewer')
 
 // 判断是否需要隐藏标题栏（笔记编辑器、会议编辑器、空白窗口、截图窗口、悬浮窗空白页和笔记查看器）
 const shouldHideTitleBar = computed(() => isNoteEditorPage.value || isMeetingEditorPage.value || isEmptyPage.value || isScreenshotWindowPage.value || isFloatNormalEmptyPage.value || isNoteViewerPage.value)
+
+// 侧边栏折叠状态
+const isSidebarCollapsed = ref(false)
+
+// 处理侧边栏折叠状态变化
+const handleSidebarCollapse = (collapsed) => {
+  isSidebarCollapsed.value = collapsed
+}
 
 // TOTP定时刷新
 let totpRefreshInterval = null
@@ -490,37 +499,18 @@ onMounted(async () => {
   // 定时检查蓝牙连接状态（每 10 秒）
   let connectionCheckInterval = null
   
-  // 蓝牙断开提示框是否显示中，避免重复显示
-  let isShowingDisconnectDialog = false
-  
   const checkConnectionStatus = async () => {
     try {
       // 动态导入蓝牙模块
       const { isConnected } = await import('./components/data/bluetooth')
       const connected = await isConnected()
       
-      // 如果从已连接变为未连接，跳转到初始页面
+      // 如果从已连接变为未连接，跳转到蓝牙连接页面
       if (bluetoothStore.isConnected() && !connected) {
-        console.log('蓝牙连接已断开，准备显示提示')
-        
-        // 避免重复显示对话框
-        if (isShowingDisconnectDialog) {
-          console.log('对话框已在显示中，跳过')
-          return
-        }
-        
-        isShowingDisconnectDialog = true
-        
-        // 重置状态
+        console.log('蓝牙连接已断开，跳转到蓝牙连接页面')
         bluetoothStore.reset()
-        
-        // 显示确认对话框
-        const userConfirmed = await showDisconnectConfirm()
-        
-        if (userConfirmed) {
-          console.log('用户确认断开，刷新页面')
-          // 刷新整个页面
-          window.location.reload()
+        if (route.path !== '/') {
+          router.push('/')
         }
       }
     } catch (error) {
@@ -534,168 +524,12 @@ onMounted(async () => {
     if (currentWindowLabel !== 'main') {
       return
     }
-    console.log('收到蓝牙断开事件')
-    
-    // 如果当前是已连接状态，显示提示
-    if (bluetoothStore.isConnected()) {
-      console.log('蓝牙设备已断开，准备显示提示')
-      
-      // 避免重复显示对话框
-      if (isShowingDisconnectDialog) {
-        console.log('对话框已在显示中，跳过')
-        return
-      }
-      
-      isShowingDisconnectDialog = true
-      
-      // 重置状态
-      bluetoothStore.reset()
-      
-      // 显示确认对话框
-      const userConfirmed = await showDisconnectConfirm()
-      
-      if (userConfirmed) {
-        console.log('用户确认断开，刷新页面')
-        // 刷新整个页面
-        window.location.reload()
-      }
+    console.log('收到蓝牙断开事件，跳转到蓝牙连接页面')
+    bluetoothStore.reset()
+    if (route.path !== '/') {
+      router.push('/')
     }
   })
-  
-  // 显示蓝牙断开确认对话框
-  const showDisconnectConfirm = async () => {
-    return new Promise((resolve) => {
-      // 创建对话框
-      const dialog = document.createElement('div')
-      dialog.className = 'disconnect-dialog'
-      dialog.innerHTML = `
-        <div class="disconnect-dialog-content">
-          <h3>设备已断开连接</h3>
-          <p>当前蓝牙设备已断开，点击确认后重新连接</p>
-          <div class="disconnect-dialog-actions">
-            <button class="disconnect-btn confirm">确认</button>
-          </div>
-        </div>
-      `
-      
-      // 添加样式
-      const style = document.createElement('style')
-      style.textContent = `
-        .disconnect-dialog {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background-color: rgba(0, 0, 0, 0.6);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 99999;
-          backdrop-filter: blur(4px);
-          opacity: 0;
-          animation: fadeIn 0.3s ease forwards;
-        }
-
-        .disconnect-dialog.fade-out {
-          animation: fadeOut 0.3s ease forwards;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        @keyframes fadeOut {
-          from { opacity: 1; }
-          to { opacity: 0; }
-        }
-
-        .disconnect-dialog-content {
-          background-color: var(--bg-secondary, #1e293b);
-          border-radius: .375rem;
-          padding: 32px;
-          max-width: 400px;
-          text-align: center;
-          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-          border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-          transform: scale(0.9);
-          animation: scaleIn 0.3s ease forwards;
-        }
-
-        .disconnect-dialog.fade-out .disconnect-dialog-content {
-          animation: scaleOut 0.3s ease forwards;
-        }
-
-        @keyframes scaleIn {
-          from { transform: scale(0.9); }
-          to { transform: scale(1); }
-        }
-
-        @keyframes scaleOut {
-          from { transform: scale(1); }
-          to { transform: scale(0.9); }
-        }
-
-        .disconnect-dialog-content h3 {
-          font-size: 20px;
-          font-weight: 600;
-          color: var(--text-primary, #f1f5f9);
-          margin: 0 0 12px 0;
-        }
-
-        .disconnect-dialog-content p {
-          font-size: 14px;
-          color: var(--text-secondary, #94a3b8);
-          margin: 0 0 24px 0;
-        }
-
-        .disconnect-dialog-actions {
-          display: flex;
-          gap: 12px;
-          justify-content: center;
-        }
-
-        .disconnect-btn {
-          padding: 10px 32px;
-          border-radius: .375rem;
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s;
-          border: none;
-        }
-
-        .disconnect-btn.confirm {
-          background-color: var(--accent-blue, #3b82f6);
-          color: #fff;
-        }
-
-        .disconnect-btn.confirm:hover {
-          background-color: #2563eb;
-        }
-      `
-      
-      document.head.appendChild(style)
-      document.body.appendChild(dialog)
-      
-      // 绑定按钮事件
-      const confirmBtn = dialog.querySelector('.confirm')
-
-      const closeDialog = () => {
-        dialog.classList.add('fade-out')
-        setTimeout(() => {
-          dialog.remove()
-          style.remove()
-        }, 300)
-      }
-
-      confirmBtn.addEventListener('click', () => {
-        closeDialog()
-        setTimeout(() => resolve(true), 300)
-      })
-    })
-  }
   
   // 开始定时检查（每 2 秒，快速响应断开）
   connectionCheckInterval = setInterval(checkConnectionStatus, 2000)
@@ -849,7 +683,9 @@ setTimeout(() => {
   <div class="app-container" v-if="!isFloatPage">
     <!-- 自定义顶栏 -->
     <TitleBar v-if="!shouldHideTitleBar" />
-    <div class="main-content" :style="shouldHideTitleBar ? 'padding-top: 0;' : ''">
+    <!-- 侧边栏 - 在所有页面显示（除了特殊页面） -->
+    <Sidebar v-if="!shouldHideTitleBar" @collapse-change="handleSidebarCollapse" />
+    <div class="main-content" :class="{ 'sidebar-collapsed': isSidebarCollapsed }" :style="shouldHideTitleBar ? 'padding-top: 0;' : ''">
       <router-view></router-view>
     </div>
   </div>
@@ -966,12 +802,19 @@ body {
   overflow: hidden;
 }
 
-/* 主内容区域 - 支持滚动，留出标题栏空间 */
+/* 主内容区域 - 支持滚动，留出标题栏和侧边栏空间 */
 .main-content {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   padding-top: 48px; /* 留出标题栏高度 */
+  padding-left: 240px; /* 留出侧边栏宽度 */
+  transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 当侧边栏收起时，内容区域向左扩展 */
+.main-content.sidebar-collapsed {
+  padding-left: 0;
 }
 
 /* 全局滚动条样式 */

@@ -22,24 +22,6 @@ Email: admin@mc666.top
           <i :class="currentTab === 'notes' ? 'ri-sticky-note-line' : 'ri-team-line'" class="page-title-icon"></i>
           {{ currentTab === 'notes' ? '笔记' : '课堂记录' }}
         </h1>
-        <div class="tab-switch">
-          <button 
-            class="tab-btn" 
-            :class="{ active: currentTab === 'notes' }"
-            @click="switchTab('notes')"
-          >
-            <i class="ri-sticky-note-line"></i>
-            笔记
-          </button>
-          <button 
-            class="tab-btn" 
-            :class="{ active: currentTab === 'meetings' }"
-            @click="switchTab('meetings')"
-          >
-            <i class="ri-team-line"></i>
-            课堂记录
-          </button>
-        </div>
       </div>
       <div class="search-wrapper">
         <i class="ri-search-line search-icon"></i>
@@ -457,7 +439,8 @@ Email: admin@mc666.top
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { Window } from '@tauri-apps/api/window'
@@ -467,7 +450,20 @@ import { getBackendUrl } from '../config/backend.js'
 import { FileText, AlertCircle } from 'lucide-vue-next'
 import { getGroupList, shareNoteToGroup } from '../components/data/group.js'
 
+const props = defineProps({
+  defaultTab: {
+    type: String,
+    default: 'notes'
+  }
+})
+
+const route = useRoute()
+const router = useRouter()
+
 const timeOut = 10000 // 10 秒超时
+
+// 当前标签页：'notes' 或 'meetings'
+const currentTab = ref(props.defaultTab === 'meetings' ? 'meetings' : 'notes')
 
 async function getAuthHeader() {
   try {
@@ -544,9 +540,6 @@ const selectedShareGroup = ref(null)
 const shareSubmitting = ref(false)
 const selectedMeetingToShare = ref(null)
 
-// 当前标签页：'notes' 或 'meetings'
-const currentTab = ref('meetings')
-
 // 搜索关键词
 const searchKeyword = ref('')
 
@@ -597,7 +590,12 @@ let unlistenCreateNewNote = null
 let unlistenRefreshNotes = null
 
 onMounted(async () => {
-  loadMeetings()
+  // 根据当前标签页加载对应的数据
+  if (currentTab.value === 'meetings') {
+    loadMeetings()
+  } else {
+    loadNotes()
+  }
 
   // 监听笔记保存事件，刷新列表 (不显示 toast)
   unlistenNoteSaved = await listen('note-saved', () => {
@@ -616,19 +614,25 @@ onMounted(async () => {
   })
 })
 
-// 切换标签页
-function switchTab(tab) {
-  if (currentTab.value === tab) return
-  currentTab.value = tab
-  searchKeyword.value = ''
-  currentPage.value = 1
-  meetingCurrentPage.value = 1
-  if (tab === 'meetings') {
-    loadMeetings()
-  } else {
-    loadNotes()
+// 监听路由变化，同步标签页
+watch(() => route.path, (newPath) => {
+  // 根据路由路径确定标签页
+  let newTab = 'notes'
+  if (newPath.includes('_meetings')) {
+    newTab = 'meetings'
   }
-}
+  if (newTab !== currentTab.value) {
+    currentTab.value = newTab
+    searchKeyword.value = ''
+    currentPage.value = 1
+    meetingCurrentPage.value = 1
+    if (newTab === 'meetings') {
+      loadMeetings()
+    } else {
+      loadNotes()
+    }
+  }
+})
 
 function onSearchInput() {}
 
@@ -1425,45 +1429,6 @@ async function confirmShareMeetingToGroup() {
   display: flex;
   align-items: center;
   gap: 24px;
-}
-
-/* 标签切换样式 */
-.tab-switch {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background-color: var(--bg-secondary);
-  padding: 4px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-
-.tab-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--text-secondary);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.tab-btn:hover {
-  color: var(--text-primary);
-  background-color: var(--hover-bg);
-}
-
-.tab-btn.active {
-  background-color: var(--accent-blue);
-  color: white;
-}
-
-.tab-btn i {
-  font-size: 16px;
 }
 
 /* 搜索框样式 */

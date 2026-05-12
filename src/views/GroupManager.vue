@@ -48,25 +48,7 @@ Email: admin@mc666.top
       </div>
     </div>
 
-    <div class="tab-navigation">
-      <button 
-        class="tab-btn" 
-        :class="{ active: currentTab === 'groups' }"
-        @click="currentTab = 'groups'"
-      >
-        <i class="ri-group-line"></i>
-        我的群组
-      </button>
-      <button 
-        class="tab-btn" 
-        :class="{ active: currentTab === 'applications' }"
-        @click="currentTab = 'applications'"
-      >
-        <i class="ri-notification-badge-line"></i>
-        待处理申请
-        <span v-if="pendingApplicationsCount > 0" class="badge">{{ pendingApplicationsCount }}</span>
-      </button>
-    </div>
+
 
     <div v-if="currentTab === 'groups'" class="tab-content groups-tab">
       <!-- 群组列表骨架屏 -->
@@ -214,18 +196,26 @@ Email: admin@mc666.top
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { createGroup, deleteGroup, approveJoin, rejectJoin, approveQuit, getGroupList, getMessageList } from '../components/data/group.js'
 import { showToast } from '../components/layout/showToast.js'
 
+const props = defineProps({
+  defaultTab: {
+    type: String,
+    default: 'groups'
+  }
+})
+
+const route = useRoute()
 const router = useRouter()
 
 const newGroupName = ref('')
 const groups = ref([])
 const messages = ref([])
 const isLoading = ref(false)
-const currentTab = ref('groups')
+const currentTab = ref(props.defaultTab === 'applications' ? 'applications' : 'groups')
 
 const pendingApplicationsCount = computed(() => {
   return messages.value.filter(m => m.status === 'pending').length
@@ -369,6 +359,18 @@ onMounted(() => {
   console.info('班级管理页面已加载')
   loadData()
 })
+
+// 监听路由变化，同步标签页
+watch(() => route.path, (newPath) => {
+  // 根据路由路径确定标签页
+  let newTab = 'groups'
+  if (newPath.includes('_applications')) {
+    newTab = 'applications'
+  }
+  if (newTab !== currentTab.value) {
+    currentTab.value = newTab
+  }
+})
 </script>
 
 <style scoped>
@@ -473,48 +475,6 @@ onMounted(() => {
 .create-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.tab-navigation {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-  padding: 8px;
-  background-color: var(--bg-secondary, #0d0d0d);
-  border-radius: 12px;
-  border: 1px solid var(--border-color, #30363d);
-}
-
-.tab-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 12px 20px;
-  font-size: 15px;
-  font-weight: 500;
-  background: transparent;
-  border: none;
-  border-radius: 8px;
-  color: var(--text-secondary, #8b949e);
-  cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-}
-
-.tab-btn i {
-  font-size: 18px;
-}
-
-.tab-btn.active {
-  background-color: var(--accent-blue, #3178c6);
-  color: white;
-}
-
-.tab-btn:hover:not(.active) {
-  background-color: var(--hover-bg, rgba(255, 255, 255, 0.08));
-  color: var(--text-primary, #f0f6fc);
 }
 
 .badge {

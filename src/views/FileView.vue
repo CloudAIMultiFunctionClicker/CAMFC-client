@@ -17,29 +17,17 @@ Email: admin@mc666.top
 <script setup>
   // 导入应用头部组件
   import AppHeader from '../components/layout/AppHeader.vue'
-  // 导入侧边栏组件
-  import Sidebar from '../components/layout/Sidebar.vue'
   
-  // 导入Vue响应式功能
+  // 导入 Vue 响应式功能
   import { ref } from 'vue'
 
   // 导入文件表格组件
   import FileTable from '../components/file/FileTable.vue'
-  // 原来的FileTree暂时留着，后面可能有用
+  // 原来的 FileTree 暂时留着，后面可能有用
   import FileTree from '../components/file/FileTree.vue'
-  
-  // 创建一个响应式的折叠状态，用于控制内容区域的扩展
-  // 默认是展开的（侧边栏没折叠）
-  const isSidebarCollapsed = ref(false)
   
   // 当前路径 - 默认为空字符串表示根目录
   const currentPath = ref('')
-  
-  // 处理侧边栏折叠状态变化的函数
-  // 当Sidebar触发collapse-change事件时调用
-  const handleCollapseChange = (collapsed) => {
-    isSidebarCollapsed.value = collapsed
-  }
   
   // 处理路径变化
   const handlePathChange = (newPath) => {
@@ -53,30 +41,13 @@ Email: admin@mc666.top
   
   <!-- 主内容区域容器 -->
   <div class="main-container">
-    <!-- 左侧边栏 -->
-    <!-- 监听collapse-change事件来同步状态 -->
-    <Sidebar @collapse-change="handleCollapseChange"/>
-    
-    <!-- 右侧主要内容区域 - 目前是空的，只是占位 -->
-    <!-- 根据侧边栏折叠状态添加类名 -->
-    <div class="content-area" :class="{ 'expanded': isSidebarCollapsed }">
+    <!-- 右侧主要内容区域 -->
+    <div class="content-area">
       <!-- 文件表格组件 -->
       <FileTable 
         :currentPath="currentPath"
         @path-change="handlePathChange"
       />
-      
-      <!-- 原来的占位内容先注释掉，测试用 -->
-      <!-- 
-      <div class="placeholder">
-        <i class="ri-file-cloud-line"></i>
-        <h3>文件内容区域</h3>
-        <p>这里将来会显示文件列表、预览等内容</p>
-        <p class="hint">侧边栏状态：{{ isSidebarCollapsed ? '已收起' : '展开中' }}</p>
-        <p class="hint">当前路径：{{ currentPath || '根目录' }}</p>
-        <FileTree/>
-      </div>
-      -->
     </div>
   </div>
 </template>
@@ -86,41 +57,21 @@ Email: admin@mc666.top
   .main-container {
     display: flex;
     width: 100%;
-    height: 100%;
-    overflow: hidden; /* 防止滚动条出现在容器上 */
+    height: calc(100vh - 48px); /* 减去标题栏高度 */
+    overflow: hidden;
   }
 
-  /* 侧边栏样式 - 固定不动 */
-  .main-container :deep(.sidebar) {
-    flex-shrink: 0;
-    position: fixed;
-    top: 48px; /* 标题栏高度 */
-    left: 0;
-    bottom: 0;
-    overflow-y: auto;
-    z-index: 1000;
-  }
-
-  /* 内容区域样式 - 固定，不可滚动 */
+  /* 内容区域样式 */
   .content-area {
-    flex: 1; /* 占据剩余空间 */
-    background: var(--bg-primary, #0f172a); /* 使用主题主背景色 */
+    flex: 1;
+    background: var(--bg-primary, #0f172a);
     padding: 24px;
-    padding-left: 280px; /* 侧边栏宽度 + 额外留白 */
-    margin-left: 0; /* 默认没有左边距 */
+    padding-left: 24px;
     box-sizing: border-box;
-    overflow: hidden; /* 内容区域不可滚动，让 FileTable 自己滚动 */
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* 添加平滑过渡效果，与侧边栏动画保持一致 */
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     display: flex;
     flex-direction: column;
-  }
-  
-  /* 当侧边栏收起时，内容区域向左扩展填充空间 */
-  /* 通过添加负的margin-left来实现平滑的左移效果 */
-  .content-area.expanded {
-    margin-left: -240px; /* 向左移动240px，填充侧边栏的空间 */
-    /* 注意：这里用负的margin-left，实际上内容区域会向左移动 */
-    /* 配合侧边栏的transform: translateX(-100%)，实现同步的滑动效果 */
   }
   
   /* 提示文字样式 */
@@ -131,40 +82,7 @@ Email: admin@mc666.top
     font-style: italic;
   }
 
-  /* 占位内容样式 - 也使用CSS变量 */
-  .placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: var(--text-muted, #64748b); /* 使用主题次要文字色 */
-    text-align: center;
-  }
-
-  .placeholder i {
-    font-size: 4rem;
-    margin-bottom: 20px;
-    color: var(--text-muted, #334155); /* 使用主题次要文字色 */
-    opacity: 0.5;
-  }
-
-  .placeholder h3 {
-    margin: 0 0 12px 0;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-secondary, #cbd5e1); /* 使用主题次要文字色 */
-  }
-
-  .placeholder p {
-    margin: 0;
-    font-size: 1rem;
-    max-width: 400px;
-    line-height: 1.6;
-  }
-
   /* 响应式设计 - 小屏幕调整 */
-  /* TODO: 在手机上可能需要调整侧边栏和内容的布局 */
   @media (max-width: 768px) {
     .main-container {
       height: calc(100vh - 64px);
@@ -172,14 +90,6 @@ Email: admin@mc666.top
     
     .content-area {
       padding: 16px;
-    }
-    
-    .placeholder i {
-      font-size: 3rem;
-    }
-    
-    .placeholder h3 {
-      font-size: 1.25rem;
     }
   }
 </style>

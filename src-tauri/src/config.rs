@@ -16,9 +16,10 @@
 // 负责管理后端域名和端口的配置
 //
 // 优先级：
-// 1. 环境变量 CAMFC_BASE 和 CAMFC_PORT
-// 2. 远程配置 https://me.011420.xyz/api/camfc/data.json
-// 3. 默认值 http://localhost:8005
+// 1. 硬编码配置 https://camfc.seven-cloud.cn:8005/
+// 2. 环境变量 CAMFC_BASE 和 CAMFC_PORT (已禁用)
+// 3. 远程配置 https://me.011420.xyz/api/camfc/data.json (已禁用)
+// 4. 默认值 http://localhost:8005 (已禁用)
 
 use std::sync::OnceLock;
 use serde::Deserialize;
@@ -51,7 +52,19 @@ static BACKEND_CONFIG: OnceLock<BackendConfig> = OnceLock::new();
 pub async fn init_config() -> Result<()> {
     tracing::info!("开始初始化后端配置...");
     
+    // 使用硬编码配置
+    let config = BackendConfig {
+        base_url: "https://camfc.seven-cloud.cn".to_string(),
+        port: 8005,
+    };
+    tracing::info!("使用硬编码配置：{}", config.get_full_url());
+    BACKEND_CONFIG.set(config)
+        .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
+    Ok(())
+    
+    // 以下为原配置加载逻辑（已禁用）
     // 1. 先尝试从环境变量读取
+    /*
     if let Some(config) = try_load_from_env().await {
         tracing::info!("从环境变量加载配置：{}", config.get_full_url());
         
@@ -93,6 +106,7 @@ pub async fn init_config() -> Result<()> {
             Ok(())
         }
     }
+    */
 }
 
 // 检测环境变量指定的服务器是否可用（带重试机制）

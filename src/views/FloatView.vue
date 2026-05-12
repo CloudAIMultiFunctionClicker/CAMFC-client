@@ -35,7 +35,7 @@ Email: admin@mc666.top
       <button class="float-btn note-btn" @click.stop="handleNoteManager" title="笔记">
         <i class="ri-sticky-note-line"></i>
       </button>
-      <button class="float-btn screenshot-btn" @click.stop="toggleScreenshotMenu" title="截图">
+      <button class="float-btn screenshot-btn" @click.stop="handleScreenshot" title="截图">
         <i class="ri-screenshot-line"></i>
       </button>
       <button class="float-btn" @click.stop="openMainPage('/settings')" title="设置">
@@ -49,21 +49,7 @@ Email: admin@mc666.top
 
 
 
-    <!-- 截图功能菜单 - 水平排布 -->
-    <div v-if="showScreenshotMenu" class="screenshot-menu" @click.stop>
-      <div class="menu-item toggle-item" @click="toggleHideWindowOption">
-        <i :class="hideWindowBeforeScreenshot ? 'ri-checkbox-circle-line' : 'ri-circle-line'"></i>
-        <span>隐藏主窗口</span>
-      </div>
-      <div class="menu-item" @click="handleScreenshot">
-        <i class="ri-screenshot-line"></i>
-        <span>屏幕截图</span>
-      </div>
-      <div class="menu-item back" @click="closeScreenshotMenu">
-        <i class="ri-close-line"></i>
-        <span>关闭</span>
-      </div>
-    </div>
+
 
     <!-- 未连接提示框 -->
     <Transition name="tip-fade">
@@ -84,6 +70,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { showToast } from '../components/layout/showToast.js'
 import axios from 'axios'
 import { getBackendUrl } from '../config/backend.js'
+import { loadAppData } from '../components/data/storage.js'
 
 const isConnected = ref(false)
 const isMainWindowVisible = ref(true)
@@ -130,11 +117,7 @@ onBeforeUnmount(() => {
   }
 })
 
-// 截图菜单显示状态
-const showScreenshotMenu = ref(false)
 
-// 截图前是否隐藏主窗口选项
-const hideWindowBeforeScreenshot = ref(true)
 
 let keepOnTopInterval = null
 let visibilityCheckInterval = null
@@ -298,11 +281,9 @@ function handleConnectionClick() {
 }
 
 async function startDrag(e) {
-  // 排除所有可点击元素，包括按钮、菜单项等
+  // 排除所有可点击元素
   if (e.target.closest('.float-btn') || 
-      e.target.closest('.connection-status') ||
-      e.target.closest('.menu-item') ||
-      e.target.closest('.screenshot-menu')) {
+      e.target.closest('.connection-status')) {
     return
   }
   try {
@@ -508,11 +489,10 @@ async function getAuthHeader() {
 
 /**
  * 处理屏幕截图
- * 根据用户选择决定是否隐藏主窗口，截图完成后再打开显示截图结果
+ * 根据设置决定是否隐藏主窗口
  */
 async function handleScreenshot() {
   console.log('开始截图流程')
-  closeScreenshotMenu()
 
   try {
     // 先调用后端接口检查会议状态
@@ -534,12 +514,16 @@ async function handleScreenshot() {
       meetingActive = true
     }
 
+    // 从设置中读取是否隐藏主窗口
+    const hideWindowSetting = await loadAppData('screenshot_hide_window')
+    const shouldHideWindow = hideWindowSetting ? JSON.parse(hideWindowSetting) : true
+
     // 获取主窗口
     const mainWindow = await Window.getByLabel('main')
     let wasVisible = false
 
-    // 如果用户选择隐藏主窗口且主窗口存在且可见，先隐藏它
-    if (hideWindowBeforeScreenshot.value && mainWindow) {
+    // 如果设置要求隐藏主窗口且主窗口存在且可见，先隐藏它
+    if (shouldHideWindow && mainWindow) {
       wasVisible = await mainWindow.isVisible()
       if (wasVisible) {
         console.log('隐藏主窗口以便截图')
@@ -564,7 +548,7 @@ async function handleScreenshot() {
       }
       
       // 课堂未进行，打开截图窗口显示
-      console.log('打开主窗口显示截图')
+      console.log('打开截图窗口')
       await openScreenshotWindow(result)
     } else {
       console.error('截图失败:', result.error)
@@ -767,13 +751,10 @@ function openNoteEditorWindow(note) {
 
 /**
  * 处理点击菜单外部区域
- * 当截图菜单显示时，点击外部关闭菜单
+ * 保留函数以防未来需要
  */
 function handleClickOutside(event) {
-  // 如果截图菜单显示，且点击的不是截图按钮，则关闭菜单
-  if (showScreenshotMenu.value && !event.target.closest('.screenshot-btn')) {
-    closeScreenshotMenu()
-  }
+  // 预留功能
 }
 
 /**
@@ -1044,31 +1025,6 @@ html, body {
   animation: menu-slide-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
-.screenshot-menu {
-  position: fixed;
-  right: 8px;
-  top: 50%;
-  background-color: var(--float-menu-bg, white);
-  border: 1px solid var(--float-menu-border, #e5e5e5);
-  border-radius: .375rem;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  padding: 6px 8px;
-  z-index: 1001;
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-  animation: menu-slide-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-
-/* 切换选项样式 */
-.screenshot-menu .toggle-item i {
-  font-size: 16px;
-}
-
-.screenshot-menu .toggle-item:hover i {
-  color: var(--accent-blue, #3178c6);
-}
-
 @keyframes menu-slide-in {
   0% {
     opacity: 0;
@@ -1078,48 +1034,6 @@ html, body {
     opacity: 1;
     transform: translateY(-50%) translateX(0);
   }
-}
-
-.menu-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: .375rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: var(--float-menu-text, #333);
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.menu-item:hover {
-  background-color: var(--float-btn-hover-bg, rgba(0, 0, 0, 0.06));
-}
-
-.menu-item i {
-  font-size: 16px;
-  color: #666;
-  flex-shrink: 0;
-}
-
-.menu-item:hover i {
-  color: var(--accent-blue, #3178c6);
-}
-
-.menu-item span {
-  font-size: 11px;
-  color: var(--float-menu-text, #333);
-}
-
-.menu-item.back:hover {
-  background-color: var(--float-btn-hover-bg, rgba(0, 0, 0, 0.06));
-}
-
-.menu-item.back:hover i {
-  color: #ef4444;
 }
 
 /* 未连接提示框 - 在 float-container 内居中显示 */

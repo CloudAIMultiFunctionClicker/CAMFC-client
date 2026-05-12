@@ -31,7 +31,7 @@ Email: admin@mc666.top
       <button class="float-btn note-btn" @click.stop="handleNoteManager" title="笔记">
         <i class="ri-sticky-note-line"></i>
       </button>
-      <button class="float-btn screenshot-btn" @click.stop="toggleScreenshotMenu" title="截图">
+      <button class="float-btn screenshot-btn" @click.stop="handleScreenshot" title="截图">
         <i class="ri-screenshot-line"></i>
       </button>
       <button class="float-btn" @click.stop="openMainPage('/settings')" title="设置">
@@ -45,21 +45,7 @@ Email: admin@mc666.top
 
 
 
-    <!-- 截图功能菜单 - 水平排布 -->
-    <div v-if="showScreenshotMenu" class="screenshot-menu" @click.stop>
-      <div class="menu-item toggle-item" @click="toggleHideWindowOption">
-        <i :class="hideWindowBeforeScreenshot ? 'ri-checkbox-circle-line' : 'ri-circle-line'"></i>
-        <span>隐藏主窗口</span>
-      </div>
-      <div class="menu-item" @click="handleScreenshot">
-        <i class="ri-screenshot-line"></i>
-        <span>屏幕截图</span>
-      </div>
-      <div class="menu-item back" @click="closeScreenshotMenu">
-        <i class="ri-close-line"></i>
-        <span>关闭</span>
-      </div>
-    </div>
+
 
     <!-- 未连接提示框 -->
     <Transition name="tip-fade">
@@ -78,6 +64,7 @@ import { getCurrentWindow, Window } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 import { showToast } from '../components/layout/showToast.js'
+import { loadAppData } from '../components/data/storage.js'
 
 const isConnected = ref(false)
 const isMainWindowVisible = ref(true)
@@ -105,29 +92,9 @@ const themeVars = computed(() => ({
   '--float-tip-bg': isLightMode.value ? '#ffffff' : '#1a1a1a',
 }))
 
-// 点击外部指令的处理函数
-let clickOutsideHandler = null
 
-onMounted(() => {
-  // 添加全局点击监听，用于点击外部关闭菜单
-  clickOutsideHandler = (event) => {
-    handleClickOutside(event)
-  }
-  document.addEventListener('click', clickOutsideHandler)
-})
 
-onBeforeUnmount(() => {
-  // 移除全局点击监听
-  if (clickOutsideHandler) {
-    document.removeEventListener('click', clickOutsideHandler)
-  }
-})
 
-// 截图菜单显示状态
-const showScreenshotMenu = ref(false)
-
-// 截图前是否隐藏主窗口选项
-const hideWindowBeforeScreenshot = ref(true)
 
 let visibilityCheckInterval = null
 let themeCheckInterval = null
@@ -349,43 +316,23 @@ async function createMainWindow(path) {
 }
 
 /**
- * 切换截图菜单显示
- */
-function toggleScreenshotMenu() {
-  showScreenshotMenu.value = !showScreenshotMenu.value
-  console.log('截图菜单状态:', showScreenshotMenu.value)
-}
-
-/**
- * 关闭截图菜单
- */
-function closeScreenshotMenu() {
-  showScreenshotMenu.value = false
-}
-
-/**
- * 切换隐藏主窗口选项
- */
-function toggleHideWindowOption() {
-  hideWindowBeforeScreenshot.value = !hideWindowBeforeScreenshot.value
-  console.log('隐藏主窗口选项:', hideWindowBeforeScreenshot.value)
-}
-
-/**
  * 处理屏幕截图
- * 根据用户选择决定是否隐藏主窗口，截图完成后再打开显示截图结果
+ * 根据设置决定是否隐藏主窗口
  */
 async function handleScreenshot() {
   console.log('开始截图流程')
-  closeScreenshotMenu()
 
   try {
+    // 从设置中读取是否隐藏主窗口
+    const hideWindowSetting = await loadAppData('screenshot_hide_window')
+    const shouldHideWindow = hideWindowSetting ? JSON.parse(hideWindowSetting) : true
+
     // 获取主窗口
     const mainWindow = await Window.getByLabel('main')
     let wasVisible = false
 
-    // 如果用户选择隐藏主窗口且主窗口存在且可见，先隐藏它
-    if (hideWindowBeforeScreenshot.value && mainWindow) {
+    // 如果设置要求隐藏主窗口且主窗口存在且可见，先隐藏它
+    if (shouldHideWindow && mainWindow) {
       wasVisible = await mainWindow.isVisible()
       if (wasVisible) {
         console.log('隐藏主窗口以便截图')
@@ -400,8 +347,8 @@ async function handleScreenshot() {
     const result = await invoke('capture_screen')
 
     if (result.success) {
-      console.log('截图成功，打开主窗口显示截图结果')
-      // 截图成功，打开主窗口并传递截图数据
+      console.log('截图成功，打开截图窗口')
+      // 截图成功，打开截图窗口
       await openScreenshotWindow(result)
     } else {
       console.error('截图失败:', result.error)
@@ -470,17 +417,6 @@ async function openScreenshotWindow(screenshotData) {
 async function handleNoteManager() {
   console.log('打开笔记管理')
   await openMainPage('/notes')
-}
-
-/**
- * 处理点击菜单外部区域
- * 当截图菜单显示时，点击外部关闭菜单
- */
-function handleClickOutside(event) {
-  // 如果截图菜单显示，且点击的不是截图按钮，则关闭菜单
-  if (showScreenshotMenu.value && !event.target.closest('.screenshot-btn')) {
-    closeScreenshotMenu()
-  }
 }
 
 /**
