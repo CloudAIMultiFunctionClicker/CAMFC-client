@@ -27,6 +27,7 @@ import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 // 导入 Pinia store 来获取蓝牙状态
 import { useBluetoothStore } from "../../stores/bluetooth";
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 
 // 侧边栏折叠状态 - 默认展开
 const isCollapsed = ref(false);
@@ -68,8 +69,15 @@ const expandedMenus = ref({
     settings: false     // 设置
 });
 
+// 检查菜单是否可展开（连接状态始终可用，其他需要蓝牙连接）
+const isMenuDisabled = (menuKey) => {
+    if (menuKey === 'connection') return false
+    return !isConnected.value
+}
+
 // 切换菜单展开/折叠（手风琴：同时只展开一个）
 const toggleMenu = (menuKey) => {
+    if (isMenuDisabled(menuKey)) return
     const willExpand = !expandedMenus.value[menuKey]
     // 全部收起
     Object.keys(expandedMenus.value).forEach(key => {
@@ -78,6 +86,32 @@ const toggleMenu = (menuKey) => {
     // 只展开当前点击的那个
     expandedMenus.value[menuKey] = willExpand
 };
+
+// 打开 agent 自动化窗口（从废弃的 Main.vue 移过来）
+const openAgentWindow = async () => {
+  const agentWindow = new WebviewWindow('agent-window', {
+    url: '/agent-window',
+    title: '自动执行 - CAMFC',
+    width: 600,
+    height: 700,
+    resizable: true,
+    center: true,
+    decorations: true,
+    maximizable: false,
+    fullscreen: false,
+  })
+
+  agentWindow.once('tauri://created', () => {
+    console.log('agent 窗口已创建')
+  })
+
+  agentWindow.once('tauri://error', (e) => {
+    console.error('创建 agent 窗口失败:', e)
+    WebviewWindow.getByLabel('agent-window').then(w => {
+      if (w) { w.show(); w.setFocus() }
+    })
+  })
+}
 
 // 挂载时自动展开当前页面所在的一级菜单
 onMounted(() => {
@@ -156,7 +190,7 @@ onMounted(() => {
 
             <!-- 云盘 -->
             <div class="menu-section">
-                <div class="menu-section-header" @click="toggleMenu('cloud')">
+                <div class="menu-section-header" :class="{ disabled: isMenuDisabled('cloud') }" :title="isMenuDisabled('cloud') ? '需要连接蓝牙先' : ''" @click="toggleMenu('cloud')">
                     <div class="menu-section-title">
                         <i class="ri-cloud-line"></i>
                         <span>云盘</span>
@@ -182,12 +216,18 @@ onMounted(() => {
                             <span>最近活动</span>
                         </router-link>
                     </li>
+                    <li class="menu-item">
+                        <a class="menu-link" :class="{ disabled: !isConnected }" @click="openAgentWindow">
+                            <i class="ri-robot-2-line"></i>
+                            <span>智能体</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
 
             <!-- 记录 -->
             <div class="menu-section">
-                <div class="menu-section-header" @click="toggleMenu('records')">
+                <div class="menu-section-header" :class="{ disabled: isMenuDisabled('records') }" :title="isMenuDisabled('records') ? '需要连接蓝牙先' : ''" @click="toggleMenu('records')">
                     <div class="menu-section-title">
                         <i class="ri-file-list-line"></i>
                         <span>记录</span>
@@ -212,7 +252,7 @@ onMounted(() => {
 
             <!-- 班级管理 -->
             <div class="menu-section">
-                <div class="menu-section-header" @click="toggleMenu('class')">
+                <div class="menu-section-header" :class="{ disabled: isMenuDisabled('class') }" :title="isMenuDisabled('class') ? '需要连接蓝牙先' : ''" @click="toggleMenu('class')">
                     <div class="menu-section-title">
                         <i class="ri-group-line"></i>
                         <span>班级管理</span>
@@ -237,7 +277,7 @@ onMounted(() => {
 
             <!-- 设置 -->
             <div class="menu-section">
-                <div class="menu-section-header" @click="toggleMenu('settings')">
+                <div class="menu-section-header" :class="{ disabled: isMenuDisabled('settings') }" :title="isMenuDisabled('settings') ? '需要连接蓝牙先' : ''" @click="toggleMenu('settings')">
                     <div class="menu-section-title">
                         <i class="ri-settings-line"></i>
                         <span>设置</span>
@@ -334,7 +374,7 @@ onMounted(() => {
 
 .sidebar::-webkit-scrollbar-thumb {
     background: var(--border-color, #30363d);
-    border-radius: .375rem;
+    border-radius: 2px;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
@@ -363,7 +403,7 @@ onMounted(() => {
     border: 1px solid var(--border-color, #d0d7de);
     width: 36px;
     height: 36px;
-    border-radius: .375rem;
+    border-radius: 2px;
     color: var(--text-secondary, #57606a);
     cursor: pointer;
     display: flex;
@@ -422,7 +462,7 @@ onMounted(() => {
     border: none;
     width: 28px;
     height: 28px;
-    border-radius: .375rem;
+    border-radius: 2px;
     color: var(--text-secondary, #57606a);
     cursor: pointer;
     display: flex;
@@ -496,13 +536,13 @@ onMounted(() => {
 .usage-bar {
     height: 6px;
     background: var(--bg-tertiary, #f6f8fa);
-    border-radius: .375rem;
+    border-radius: 2px;
     overflow: hidden;
 }
 
 .usage-progress {
     height: 100%;
-    border-radius: .375rem;
+    border-radius: 2px;
     transition: width 0.3s ease;
 }
 
@@ -527,7 +567,7 @@ onMounted(() => {
     align-items: center;
     justify-content: space-between;
     padding: 8px 12px;
-    border-radius: .375rem;
+    border-radius: 2px;
     cursor: pointer;
     transition: all 0.2s ease;
     margin-bottom: 4px;
@@ -535,6 +575,11 @@ onMounted(() => {
 
 .menu-section-header:hover {
     background-color: var(--hover-bg, #f3f4f6);
+}
+
+.menu-section-header.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .menu-section-title {
@@ -574,10 +619,11 @@ onMounted(() => {
     padding: 8px 12px;
     color: var(--text-secondary, #57606a);
     text-decoration: none;
-    border-radius: .375rem;
+    border-radius: 2px;
     transition: all 0.2s ease;
     font-size: 0.875rem;
     position: relative;
+    cursor: pointer;
 }
 
 .menu-link i {

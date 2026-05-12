@@ -369,7 +369,7 @@ const showDevelopingToast = () => {
   justify-content: center;
   transition: all 0.2s ease;
   font-size: 16px;
-  border-radius: .375rem;
+  border-radius: 2px;
   -webkit-app-region: no-drag;
 }
 
@@ -460,7 +460,7 @@ const showDevelopingToast = () => {
   width: 20px;
   height: 20px;
   background: radial-gradient(circle, rgba(var(--accent-blue-rgb, 49, 120, 198), 0.3) 0%, rgba(var(--accent-blue-rgb, 49, 120, 198), 0.15) 40%, transparent 70%);
-  border-radius: 50%;
+  border-radius: 2px;
   transform: translate(-50%, -50%) scale(0);
   animation: closeRippleExpand 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
@@ -494,7 +494,7 @@ const showDevelopingToast = () => {
   right: 24px;
   width: 320px;
   height: 280px;
-  border-radius: .375rem;
+  border-radius: 2px;
   background: radial-gradient(circle, rgba(var(--accent-blue-rgb, 49, 120, 198), 0.12) 0%, transparent 70%);
   animation: rippleExpand 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   pointer-events: none;
@@ -516,7 +516,7 @@ const showDevelopingToast = () => {
   top: 56px;
   right: 24px;
   background-color: var(--bg-secondary);
-  border-radius: .375rem;
+  border-radius: 2px;
   width: 320px;
   border: 1px solid var(--border-color);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -580,7 +580,7 @@ const showDevelopingToast = () => {
   padding: 16px;
   background-color: var(--bg-primary);
   border: 2px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
@@ -600,7 +600,7 @@ const showDevelopingToast = () => {
   align-items: center;
   justify-content: center;
   background-color: var(--bg-secondary);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--accent-blue);
 }
 
@@ -645,7 +645,7 @@ const showDevelopingToast = () => {
   color: var(--text-primary);
   user-select: none;
   padding: 8px 12px;
-  border-radius: .375rem;
+  border-radius: 2px;
   transition: background-color 0.2s ease;
 }
 
@@ -659,7 +659,7 @@ const showDevelopingToast = () => {
   width: 18px;
   height: 18px;
   border: 2px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   background-color: var(--bg-primary);
   cursor: pointer;
   position: relative;
@@ -706,7 +706,7 @@ const showDevelopingToast = () => {
 .cancel-btn,
 .confirm-btn {
   padding: 10px 20px;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

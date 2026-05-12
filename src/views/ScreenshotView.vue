@@ -808,7 +808,7 @@ onUnmounted(() => {
   color: var(--text-secondary, #94a3b8);
   font-size: 14px;
   cursor: pointer;
-  border-radius: .375rem;
+  border-radius: 2px;
   transition: all 0.2s;
 }
 
@@ -830,7 +830,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
@@ -890,7 +890,7 @@ onUnmounted(() => {
   height: 40px;
   border: 3px solid var(--border-color, rgba(255, 255, 255, 0.1));
   border-top-color: var(--accent-blue, #3178c6);
-  border-radius: 50%;
+  border-radius: 2px;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
 }
@@ -928,7 +928,7 @@ onUnmounted(() => {
 .image-wrapper {
   flex: 1;
   background-color: var(--bg-secondary, #1e293b);
-  border-radius: .375rem;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -953,7 +953,7 @@ onUnmounted(() => {
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: .375rem;
+  border-radius: 2px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   cursor: grab;
   user-select: none;
@@ -982,7 +982,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 18px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1013,7 +1013,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   min-width: 60px;
@@ -1073,7 +1073,7 @@ onUnmounted(() => {
   padding: 6px 12px;
   background-color: transparent;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary, #f1f5f9);
   font-size: 14px;
   cursor: pointer;
@@ -1097,7 +1097,7 @@ onUnmounted(() => {
   padding: 8px 16px;
   background-color: transparent;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.2));
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary, #f1f5f9);
   font-size: 14px;
   cursor: pointer;
@@ -1182,7 +1182,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #1e293b);
   color: var(--text-primary, #f1f5f9);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 18px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1225,7 +1225,7 @@ onUnmounted(() => {
   height: 10px;
   background-color: #fff;
   border: 2px solid #3b82f6;
-  border-radius: 50%;
+  border-radius: 2px;
   z-index: 10;
 }
 
@@ -1246,7 +1246,7 @@ onUnmounted(() => {
   background-color: rgba(0, 0, 0, 0.8);
   color: #fff;
   padding: 4px 8px;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 12px;
   white-space: nowrap;
   pointer-events: none;

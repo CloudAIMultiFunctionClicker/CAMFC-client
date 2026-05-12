@@ -246,7 +246,7 @@ h1 {
 .btn-avatar,
 .btn-button-state {
     border: none;
-    border-radius: .375rem;
+    border-radius: 2px;
     padding: 6px 12px;
     font-size: 13px;
     cursor: pointer;
@@ -293,7 +293,7 @@ h1 {
     background: var(--bg-secondary, #f6f8fa);
     color: var(--text-primary, #24292f);
     padding: 6px;
-    border-radius: .375rem;
+    border-radius: 2px;
     width: 32px;
     height: 32px;
     border: 1px solid var(--border-color, #d0d7de);
@@ -348,7 +348,7 @@ a:hover {
 .btn-avatar {
     background-color: var(--bg-secondary, #f6f8fa);
     border: 1px solid var(--border-color, #d0d7de);
-    border-radius: 50%;
+    border-radius: 2px;
     width: 32px;
     height: 32px;
     color: var(--text-primary, #24292f);
@@ -422,7 +422,7 @@ a:hover {
     justify-content: center;
     transition: all 0.2s ease;
     font-size: 16px;
-    border-radius: .375rem;
+    border-radius: 2px;
 }
 
 .window-control-btn:hover {

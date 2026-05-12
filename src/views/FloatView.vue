@@ -874,7 +874,7 @@ html, body {
 .connection-status {
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: .375rem;
+  border-radius: 2px;
   background-color: #ff6b6b;
   color: white;
   cursor: pointer;
@@ -911,7 +911,7 @@ html, body {
   background-color: transparent;
   color: var(--float-btn-color, #666);
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
   line-height: 1;
@@ -988,7 +988,7 @@ html, body {
   width: 30px;
   height: 30px;
   background-color: rgba(59, 130, 246, 0.4);
-  border-radius: 50%;
+  border-radius: 2px;
   animation: ripple-expand 0.4s ease-out forwards;
   right: 45px;
   top: 50%;
@@ -1015,7 +1015,7 @@ html, body {
   top: 50%;
   background-color: var(--float-menu-bg, white);
   border: 1px solid var(--float-menu-border, #e5e5e5);
-  border-radius: .375rem;
+  border-radius: 2px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   padding: 6px 8px;
   z-index: 1001;
@@ -1044,7 +1044,7 @@ html, body {
   transform: translate(-50%, -50%);
   background-color: var(--float-tip-bg, #ffffff);
   border: 1px solid var(--float-menu-border, #e5e5e5);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 8px 12px 8px 16px;
   display: flex;
   align-items: center;

@@ -113,7 +113,7 @@ const switchEmail = () => {
 .setting-card {
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 20px;
   margin-bottom: 16px;
 }
@@ -140,7 +140,7 @@ const switchEmail = () => {
   padding: 12px;
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   animation: fadeIn 0.3s ease-out;
   align-items: center;
 }
@@ -155,7 +155,7 @@ const switchEmail = () => {
   background-color: var(--bg-secondary, #ffffff);
   color: var(--text-primary, #333);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
@@ -202,7 +202,7 @@ const switchEmail = () => {
   margin-top: 11px;
   background-color: transparent;
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-secondary, #57606a);
   cursor: pointer;
   transition: all 0.2s;
@@ -249,7 +249,7 @@ const switchEmail = () => {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -280,7 +280,7 @@ const switchEmail = () => {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

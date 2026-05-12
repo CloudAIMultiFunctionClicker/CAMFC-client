@@ -122,7 +122,7 @@ onMounted(async () => {
   padding: 16px 20px;
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   margin-bottom: 12px;
   color: var(--text-primary, #24292f);
   font-size: 15px;
@@ -134,7 +134,7 @@ onMounted(async () => {
   height: 26px;
   background-color: var(--border-color, #d0d7de);
   border: none;
-  border-radius: 13px;
+  border-radius: 2px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
@@ -150,7 +150,7 @@ onMounted(async () => {
   width: 20px;
   height: 20px;
   background-color: white;
-  border-radius: 50%;
+  border-radius: 2px;
   transition: transform 0.3s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }

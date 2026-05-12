@@ -733,7 +733,7 @@ onUnmounted(() => {
   color: var(--text-secondary);
   font-size: 15px;
   cursor: pointer;
-  border-radius: .375rem;
+  border-radius: 2px;
   transition: all 0.2s;
   display: flex;
   align-items: center;
@@ -752,7 +752,7 @@ onUnmounted(() => {
 .tab-count {
   background: rgba(255,255,255,0.2);
   padding: 2px 8px;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 12px;
 }
 
@@ -763,7 +763,7 @@ onUnmounted(() => {
 
 .transfer-list {
   background: var(--bg-secondary);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color);
   overflow: hidden;
 }
@@ -834,14 +834,14 @@ onUnmounted(() => {
 .progress-bar {
   height: 6px;
   background: var(--bg-primary);
-  border-radius: .375rem;
+  border-radius: 2px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   background: var(--accent-blue);
-  border-radius: .375rem;
+  border-radius: 2px;
   transition: width 0.3s;
 }
 
@@ -859,7 +859,7 @@ onUnmounted(() => {
 .status-badge {
   display: inline-block;
   padding: 4px 10px;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 12px;
   font-weight: 500;
   width: fit-content;
@@ -905,7 +905,7 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   background: var(--bg-primary);
   color: var(--text-secondary);
   cursor: pointer;
@@ -952,7 +952,7 @@ onUnmounted(() => {
   padding: 8px 16px;
   background: transparent;
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
@@ -1032,7 +1032,7 @@ onUnmounted(() => {
   padding: 12px 24px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
@@ -1081,7 +1081,7 @@ onUnmounted(() => {
   width: 20px;
   height: 20px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1089,7 +1089,7 @@ onUnmounted(() => {
   height: 16px;
   width: 60%;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1097,7 +1097,7 @@ onUnmounted(() => {
   height: 12px;
   width: 80px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1105,7 +1105,7 @@ onUnmounted(() => {
   height: 14px;
   width: 50px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1118,7 +1118,7 @@ onUnmounted(() => {
 .skeleton-bar {
   height: 6px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: .375rem;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1126,7 +1126,7 @@ onUnmounted(() => {
   height: 24px;
   width: 60px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: .375rem;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1140,7 +1140,7 @@ onUnmounted(() => {
   width: 32px;
   height: 32px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: .375rem;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 

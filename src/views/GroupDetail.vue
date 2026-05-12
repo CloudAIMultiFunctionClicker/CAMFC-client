@@ -539,7 +539,7 @@ onMounted(async () => {
   font-size: 20px;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 8px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
   color: var(--text-primary, #f0f6fc);
@@ -562,7 +562,7 @@ onMounted(async () => {
 .group-avatar {
   width: 56px;
   height: 56px;
-  border-radius: 12px;
+  border-radius: 2px;
   background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(49, 120, 198, 0.2));
   display: flex;
   align-items: center;
@@ -604,7 +604,7 @@ onMounted(async () => {
   font-size: 20px;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 8px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
   color: var(--text-primary, #f0f6fc);
@@ -636,7 +636,7 @@ onMounted(async () => {
   margin-bottom: 24px;
   padding: 8px;
   background-color: var(--bg-secondary, #0d0d0d);
-  border-radius: 12px;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #30363d);
 }
 
@@ -651,7 +651,7 @@ onMounted(async () => {
   font-weight: 500;
   background: transparent;
   border: none;
-  border-radius: 8px;
+  border-radius: 2px;
   color: var(--text-secondary, #8b949e);
   cursor: pointer;
   transition: all 0.2s;
@@ -680,7 +680,7 @@ onMounted(async () => {
   font-weight: 600;
   color: white;
   background-color: rgba(255, 255, 255, 0.3);
-  border-radius: 10px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -704,7 +704,7 @@ onMounted(async () => {
   height: 40px;
   border: 3px solid var(--border-color, #30363d);
   border-top-color: var(--accent-blue, #3178c6);
-  border-radius: 50%;
+  border-radius: 2px;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
 }
@@ -723,13 +723,13 @@ onMounted(async () => {
   padding: 20px;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 12px;
+  border-radius: 2px;
 }
 
 .skeleton-icon {
   width: 48px;
   height: 48px;
-  border-radius: 10px;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.2);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
   flex-shrink: 0;
@@ -750,7 +750,7 @@ onMounted(async () => {
 .skeleton-tag {
   width: 64px;
   height: 20px;
-  border-radius: 6px;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.2);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -758,7 +758,7 @@ onMounted(async () => {
 .skeleton-user {
   width: 80px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.2);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -766,7 +766,7 @@ onMounted(async () => {
 .skeleton-title {
   width: 60%;
   height: 20px;
-  border-radius: 4px;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.25);
   margin-bottom: 8px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
@@ -775,7 +775,7 @@ onMounted(async () => {
 .skeleton-preview {
   width: 90%;
   height: 40px;
-  border-radius: 4px;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.15);
   margin-bottom: 12px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
@@ -784,7 +784,7 @@ onMounted(async () => {
 .skeleton-meta {
   width: 100px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.2);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -817,7 +817,7 @@ onMounted(async () => {
 .skeleton-marker {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.2);
   border: 2px solid rgba(128, 128, 128, 0.3);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
@@ -830,7 +830,7 @@ onMounted(async () => {
   min-width: 0;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 12px;
+  border-radius: 2px;
   padding: 16px 20px;
 }
 
@@ -845,7 +845,7 @@ onMounted(async () => {
 .skeleton-file-name {
   flex: 1;
   height: 18px;
-  border-radius: 4px;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.25);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -853,7 +853,7 @@ onMounted(async () => {
 .skeleton-file-size {
   width: 60px;
   height: 24px;
-  border-radius: 12px;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.2);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
   flex-shrink: 0;
@@ -867,7 +867,7 @@ onMounted(async () => {
 .skeleton-meta-item {
   width: 80px;
   height: 16px;
-  border-radius: 4px;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.2);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -921,7 +921,7 @@ onMounted(async () => {
   padding: 20px;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 12px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -935,7 +935,7 @@ onMounted(async () => {
 .note-icon-wrapper {
   width: 48px;
   height: 48px;
-  border-radius: 10px;
+  border-radius: 2px;
   background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(49, 120, 198, 0.2));
   display: flex;
   align-items: center;
@@ -962,7 +962,7 @@ onMounted(async () => {
 
 .note-type-tag {
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: 2px;
   font-size: 12px;
   font-weight: 500;
 }
@@ -1076,7 +1076,7 @@ onMounted(async () => {
 .timeline-marker {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 2px;
   background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(49, 120, 198, 0.2));
   border: 2px solid var(--accent-blue, #58a6ff);
   display: flex;
@@ -1096,7 +1096,7 @@ onMounted(async () => {
   min-width: 0;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 12px;
+  border-radius: 2px;
   padding: 16px 20px;
   transition: all 0.2s;
 }
@@ -1132,7 +1132,7 @@ onMounted(async () => {
   color: var(--text-muted, #8b949e);
   padding: 4px 10px;
   background-color: var(--bg-tertiary, #161b22);
-  border-radius: 12px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
@@ -1169,7 +1169,7 @@ onMounted(async () => {
   font-size: 14px;
   font-weight: 500;
   border: none;
-  border-radius: 8px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1207,7 +1207,7 @@ onMounted(async () => {
 .file-type-section {
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 12px;
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -1236,7 +1236,7 @@ onMounted(async () => {
   padding: 2px 10px;
   background-color: rgba(88, 166, 255, 0.2);
   color: var(--accent-blue, #58a6ff);
-  border-radius: 12px;
+  border-radius: 2px;
   font-size: 13px;
   font-weight: 600;
 }
@@ -1255,7 +1255,7 @@ onMounted(async () => {
   padding: 16px;
   background-color: var(--bg-primary, #0d1117);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 10px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -1269,7 +1269,7 @@ onMounted(async () => {
 .file-icon-wrapper {
   width: 48px;
   height: 48px;
-  border-radius: 10px;
+  border-radius: 2px;
   background: linear-gradient(135deg, rgba(88, 166, 255, 0.15), rgba(49, 120, 198, 0.15));
   display: flex;
   align-items: center;

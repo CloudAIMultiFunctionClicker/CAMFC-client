@@ -347,7 +347,7 @@ watch([activeTab, limit], () => {
   padding: 20px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
 }
 
 .filter-group,
@@ -372,7 +372,7 @@ watch([activeTab, limit], () => {
 .filter-btn {
   padding: 8px 16px;
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   background-color: var(--bg-primary);
   color: var(--text-secondary);
   font-size: 14px;
@@ -396,7 +396,7 @@ watch([activeTab, limit], () => {
   width: 80px;
   padding: 8px 12px;
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -419,7 +419,7 @@ watch([activeTab, limit], () => {
   gap: 6px;
   padding: 8px 16px;
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   background-color: var(--bg-primary);
   color: var(--text-secondary);
   font-size: 14px;
@@ -455,7 +455,7 @@ watch([activeTab, limit], () => {
   padding: 16px 20px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
 }
 
 .stat-item {
@@ -484,7 +484,7 @@ watch([activeTab, limit], () => {
 .activity-item {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 16px;
   transition: all 0.2s;
 }
@@ -503,7 +503,7 @@ watch([activeTab, limit], () => {
 .file-icon-wrapper {
   width: 40px;
   height: 40px;
-  border-radius: .375rem;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -566,7 +566,7 @@ watch([activeTab, limit], () => {
   text-align: center;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
 }
 
 .empty-icon {
@@ -584,7 +584,7 @@ watch([activeTab, limit], () => {
 .clear-filters-btn {
   padding: 10px 20px;
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   background-color: var(--bg-primary);
   color: var(--text-secondary);
   font-size: 14px;
@@ -606,7 +606,7 @@ watch([activeTab, limit], () => {
   padding: 64px 24px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
 }
 
 .spinner-container {
@@ -632,7 +632,7 @@ watch([activeTab, limit], () => {
 .skeleton-activity-item {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 16px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -647,7 +647,7 @@ watch([activeTab, limit], () => {
 .skeleton-icon {
   width: 40px;
   height: 40px;
-  border-radius: .375rem;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.2);
 }
 
@@ -661,14 +661,14 @@ watch([activeTab, limit], () => {
   height: 16px;
   width: 60px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .skeleton-time {
   height: 12px;
   width: 80px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .skeleton-activity-body {
@@ -682,21 +682,21 @@ watch([activeTab, limit], () => {
   height: 18px;
   width: 60%;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .skeleton-file-path {
   height: 14px;
   width: 80%;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .skeleton-file-size {
   height: 14px;
   width: 50px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 @keyframes skeleton-pulse {

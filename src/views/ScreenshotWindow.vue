@@ -1149,7 +1149,7 @@ onUnmounted(() => {
 .annotate-color-btn {
   width: 26px;
   height: 26px;
-  border-radius: 50%;
+  border-radius: 2px;
   border: 2px solid transparent;
   cursor: pointer;
   display: flex;
@@ -1179,7 +1179,7 @@ onUnmounted(() => {
 .annotate-stroke-btn {
   width: 30px;
   height: 30px;
-  border-radius: 6px;
+  border-radius: 2px;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   background-color: transparent;
   cursor: pointer;
@@ -1200,7 +1200,7 @@ onUnmounted(() => {
 }
 
 .annotate-stroke-preview {
-  border-radius: 50%;
+  border-radius: 2px;
 }
 
 /* 完成/取消按钮样式 */
@@ -1289,7 +1289,7 @@ onUnmounted(() => {
   height: 12px;
   background-color: #3b82f6;
   border: 2px solid white;
-  border-radius: 50%;
+  border-radius: 2px;
 }
 
 .crop-handle-nw { top: -6px; left: -6px; cursor: nw-resize; }
@@ -1309,7 +1309,7 @@ onUnmounted(() => {
   background-color: #3b82f6;
   color: white;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: 2px;
   font-size: 12px;
   pointer-events: none;
 }
@@ -1327,7 +1327,7 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border: none;
-  border-radius: 4px;
+  border-radius: 2px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1367,7 +1367,7 @@ onUnmounted(() => {
   width: 36px;
   height: 36px;
   border: none;
-  border-radius: 0.375rem;
+  border-radius: 2px;
   background: transparent;
   color: var(--text-secondary, #cbd5e1);
   cursor: pointer;
@@ -1397,7 +1397,7 @@ onUnmounted(() => {
   min-width: 60px;
   height: 36px;
   border: none;
-  border-radius: 0.375rem;
+  border-radius: 2px;
   background: transparent;
   color: var(--text-secondary, #cbd5e1);
   cursor: pointer;

@@ -155,7 +155,7 @@ onMounted(() => {
 .setting-card {
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 20px;
   margin-bottom: 16px;
 }
@@ -167,7 +167,7 @@ onMounted(() => {
   padding: 16px 20px;
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   margin-bottom: 12px;
   color: var(--text-primary, #24292f);
   font-size: 15px;
@@ -201,7 +201,7 @@ onMounted(() => {
   padding: 10px 14px;
   background-color: var(--input-bg, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary, #24292f);
   font-size: 14px;
 }
@@ -227,7 +227,7 @@ onMounted(() => {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -266,6 +266,6 @@ onMounted(() => {
   margin-top: 0;
   padding: 6px 14px;
   font-size: 13px;
-  border-radius: .375rem;
+  border-radius: 2px;
 }
 </style>

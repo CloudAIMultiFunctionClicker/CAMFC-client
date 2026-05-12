@@ -613,7 +613,7 @@ defineExpose({
   width: 36px;
   height: 36px;
   border: none;
-  border-radius: 6px;
+  border-radius: 2px;
   background: transparent;
   color: var(--text-secondary, #cbd5e1);
   cursor: pointer;
@@ -656,7 +656,7 @@ defineExpose({
   background: var(--bg-secondary, #161b22);
   color: var(--text-primary, #f8fafc);
   font-size: 12px;
-  border-radius: 4px;
+  border-radius: 2px;
   white-space: nowrap;
   opacity: 0;
   visibility: hidden;
@@ -717,7 +717,7 @@ defineExpose({
 .note-editor-content :deep(code) {
   background: var(--bg-secondary, #161b22);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 2px;
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;
 }
@@ -750,7 +750,7 @@ defineExpose({
 
 .note-editor-content :deep(.markdown-image) {
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: 2px;
   display: block;
   pointer-events: none;
 }
@@ -769,7 +769,7 @@ defineExpose({
 .note-editor-content :deep(.markdown-image-block.selected) {
   outline: 2px solid var(--accent-blue, #3b82f6);
   outline-offset: 4px;
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 /* 选中状态下的删除按钮 */
@@ -782,7 +782,7 @@ defineExpose({
   height: 20px;
   background: #ef4444;
   color: white;
-  border-radius: 50%;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -803,7 +803,7 @@ defineExpose({
   gap: 8px;
   padding: 20px;
   background: var(--bg-secondary, #161b22);
-  border-radius: 8px;
+  border-radius: 2px;
   color: var(--text-secondary, #94a3b8);
 }
 

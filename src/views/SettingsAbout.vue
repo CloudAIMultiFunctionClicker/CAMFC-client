@@ -87,7 +87,7 @@ const openChangelog = () => {
   padding: 32px;
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   margin-bottom: 24px;
 }
 
@@ -118,7 +118,7 @@ const openChangelog = () => {
   padding: 16px 20px;
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   margin-bottom: 12px;
   color: var(--text-primary, #24292f);
   font-size: 15px;
@@ -135,7 +135,7 @@ const openChangelog = () => {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -150,7 +150,7 @@ const openChangelog = () => {
 .setting-card {
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 20px;
   margin-bottom: 16px;
 }
@@ -181,7 +181,7 @@ const openChangelog = () => {
   padding: 10px 14px;
   background-color: var(--bg-tertiary, #f6f8fa);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s ease;
 }

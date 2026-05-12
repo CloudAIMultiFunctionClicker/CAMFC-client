@@ -1439,7 +1439,7 @@ async function confirmShareMeetingToGroup() {
   padding: 8px 14px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   min-width: 220px;
   max-width: 320px;
   transition: all 0.2s ease;
@@ -1479,7 +1479,7 @@ async function confirmShareMeetingToGroup() {
   color: var(--text-muted);
   cursor: pointer;
   padding: 2px;
-  border-radius: 4px;
+  border-radius: 2px;
   transition: all 0.2s;
   flex-shrink: 0;
 }
@@ -1521,7 +1521,7 @@ async function confirmShareMeetingToGroup() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1543,7 +1543,7 @@ async function confirmShareMeetingToGroup() {
   background-color: var(--bg-secondary);
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1581,7 +1581,7 @@ async function confirmShareMeetingToGroup() {
   background-color: var(--bg-secondary);
   color: var(--text-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1607,7 +1607,7 @@ async function confirmShareMeetingToGroup() {
   margin-top: 8px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   min-width: 150px;
   z-index: 100;
@@ -1653,7 +1653,7 @@ async function confirmShareMeetingToGroup() {
   text-align: center;
   padding: 80px 20px;
   background-color: var(--bg-secondary);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color);
 }
 
@@ -1676,7 +1676,7 @@ async function confirmShareMeetingToGroup() {
   text-align: center;
   padding: 80px 20px;
   background-color: var(--bg-secondary);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color);
 }
 
@@ -1695,7 +1695,7 @@ async function confirmShareMeetingToGroup() {
 .skeleton-card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 20px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -1703,7 +1703,7 @@ async function confirmShareMeetingToGroup() {
 .skeleton-title {
   height: 24px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   margin-bottom: 10px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -1711,7 +1711,7 @@ async function confirmShareMeetingToGroup() {
 .skeleton-preview {
   height: 42px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   margin-bottom: 15px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -1726,7 +1726,7 @@ async function confirmShareMeetingToGroup() {
   height: 14px;
   width: 80px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1734,7 +1734,7 @@ async function confirmShareMeetingToGroup() {
   height: 20px;
   width: 20px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1751,7 +1751,7 @@ async function confirmShareMeetingToGroup() {
   text-align: center;
   padding: 80px 20px;
   background-color: var(--bg-secondary);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color);
 }
 
@@ -1780,7 +1780,7 @@ async function confirmShareMeetingToGroup() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1810,7 +1810,7 @@ async function confirmShareMeetingToGroup() {
   height: 40px;
   border: 3px solid var(--border-color);
   border-top-color: var(--accent-blue, #3178c6);
-  border-radius: 50%;
+  border-radius: 2px;
   animation: spin 1s linear infinite;
   margin: 0 auto;
 }
@@ -1842,7 +1842,7 @@ async function confirmShareMeetingToGroup() {
   height: 36px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s;
@@ -1873,7 +1873,7 @@ async function confirmShareMeetingToGroup() {
   padding: 0 10px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary);
   font-size: 14px;
   cursor: pointer;
@@ -1899,7 +1899,7 @@ async function confirmShareMeetingToGroup() {
 .note-card {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 20px;
   cursor: pointer;
   transition: all 0.2s;
@@ -1980,7 +1980,7 @@ async function confirmShareMeetingToGroup() {
   color: var(--accent-blue);
   background-color: rgba(var(--accent-blue-rgb), 0.1);
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: 2px;
   margin-left: 8px;
 }
 
@@ -2041,7 +2041,7 @@ async function confirmShareMeetingToGroup() {
   padding: 6px 10px;
   background-color: var(--bg-primary);
   border: 1px solid var(--accent-blue);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary);
   outline: none;
   box-sizing: border-box;
@@ -2097,7 +2097,7 @@ async function confirmShareMeetingToGroup() {
   cursor: pointer;
   font-size: 20px;
   padding: 4px;
-  border-radius: .375rem;
+  border-radius: 2px;
   transition: all 0.2s;
 }
 
@@ -2123,7 +2123,7 @@ async function confirmShareMeetingToGroup() {
 
 .modal-content {
   background-color: var(--bg-secondary);
-  border-radius: .375rem;
+  border-radius: 2px;
   width: 90%;
   max-width: 500px;
   border: 1px solid var(--border-color);
@@ -2155,7 +2155,7 @@ async function confirmShareMeetingToGroup() {
   padding: 14px 16px;
   background: var(--bg-primary, #0f172a);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary, #f8fafc);
   font-size: 15px;
   outline: none;
@@ -2185,7 +2185,7 @@ async function confirmShareMeetingToGroup() {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -2199,7 +2199,7 @@ async function confirmShareMeetingToGroup() {
   background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -2213,7 +2213,7 @@ async function confirmShareMeetingToGroup() {
   background-color: var(--danger-btn-hover-bg, #ef4444);
   color: var(--danger-btn-hover-text, white);
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -2248,7 +2248,7 @@ async function confirmShareMeetingToGroup() {
   color: var(--text-muted);
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 16px;
   transition: all 0.2s;
 }
@@ -2260,7 +2260,7 @@ async function confirmShareMeetingToGroup() {
 
 .more-menu-content {
   background-color: var(--bg-secondary);
-  border-radius: .375rem;
+  border-radius: 2px;
   width: 280px;
   border: 1px solid var(--border-color);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
@@ -2296,7 +2296,7 @@ async function confirmShareMeetingToGroup() {
   margin-bottom: 4px;
   background-color: var(--bg-primary);
   border: 1px solid var(--accent-blue);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary);
   outline: none;
   box-sizing: border-box;
@@ -2325,7 +2325,7 @@ async function confirmShareMeetingToGroup() {
   padding: 12px 16px;
   background: none;
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary);
   cursor: pointer;
   font-size: 14px;
@@ -2418,7 +2418,7 @@ async function confirmShareMeetingToGroup() {
   padding: 12px 16px;
   margin-bottom: 8px;
   border: 2px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -2466,7 +2466,7 @@ async function confirmShareMeetingToGroup() {
   padding: 6px 12px;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 2px;
   color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;

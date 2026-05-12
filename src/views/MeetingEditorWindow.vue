@@ -740,7 +740,7 @@ function initTheme() {
   width: 36px;
   height: 36px;
   border: none;
-  border-radius: 0.375rem;
+  border-radius: 2px;
   background: transparent;
   color: var(--text-secondary, #cbd5e1);
   cursor: pointer;
@@ -868,7 +868,7 @@ function initTheme() {
 .viewer-content :deep(code) {
   background: var(--bg-secondary, #161b22);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 2px;
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 13px;
 }
@@ -905,7 +905,7 @@ function initTheme() {
 
 .viewer-content :deep(.markdown-image) {
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: 2px;
   display: block;
   margin: 16px 0;
 }
@@ -963,7 +963,7 @@ function initTheme() {
   flex-direction: column;
   padding: 20px;
   background: var(--bg-secondary, #161b22);
-  border-radius: 10px;
+  border-radius: 2px;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
 }
 
@@ -991,7 +991,7 @@ function initTheme() {
 .viewer-content :deep(.meeting-screenshot) {
   max-width: 100%;
   max-height: 400px;
-  border-radius: 8px;
+  border-radius: 2px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -1011,7 +1011,7 @@ function initTheme() {
 .viewer-content :deep(.meeting-item-placeholder) {
   padding: 20px;
   background: transparent;
-  border-radius: 10px;
+  border-radius: 2px;
   border: none;
   display: flex;
   align-items: flex-start;
@@ -1037,7 +1037,7 @@ function initTheme() {
   margin-bottom: 12px;
   padding: 12px;
   background: var(--bg-secondary, #161b22);
-  border-radius: 8px;
+  border-radius: 2px;
   border-left: 3px solid #3b82f6;
 }
 
@@ -1048,7 +1048,7 @@ function initTheme() {
 .viewer-content :deep(.ai-detail) {
   padding: 12px;
   background: var(--bg-tertiary, #0d1117);
-  border-radius: 8px;
+  border-radius: 2px;
   border-left: 3px solid #10b981;
 }
 
@@ -1083,7 +1083,7 @@ function initTheme() {
   background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 2px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1100,7 +1100,7 @@ function initTheme() {
   margin-top: 24px;
   padding: 20px;
   background: var(--bg-secondary, #161b22);
-  border-radius: 8px;
+  border-radius: 2px;
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
@@ -1145,7 +1145,7 @@ function initTheme() {
   padding: 4px 12px;
   font-size: 12px;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.3));
-  border-radius: 4px;
+  border-radius: 2px;
   background: transparent;
   color: inherit;
   cursor: pointer;
@@ -1195,7 +1195,7 @@ function initTheme() {
 .ai-content :deep(code) {
   background: var(--bg-primary, #0d1117);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: 2px;
   font-family: 'Consolas', 'Monaco', monospace;
   font-size: 12px;
 }
@@ -1233,7 +1233,7 @@ function initTheme() {
 
 .ai-content :deep(.markdown-image) {
   max-width: 100%;
-  border-radius: 8px;
+  border-radius: 2px;
   display: block;
   margin: 16px 0;
 }
@@ -1253,7 +1253,7 @@ function initTheme() {
   font-size: 15px;
   font-weight: 500;
   border: none;
-  border-radius: 8px;
+  border-radius: 2px;
   background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: white;
   cursor: pointer;
@@ -1326,7 +1326,7 @@ function initTheme() {
     rgba(128, 128, 128, 0.08) 100%
   );
   background-size: 200% 100%;
-  border-radius: 6px;
+  border-radius: 2px;
   margin-bottom: 10px;
   animation: skeleton-shimmer 1.8s ease-in-out infinite;
   width: 100%;
@@ -1378,7 +1378,7 @@ function initTheme() {
   background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
   color: white;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: 2px;
   font-size: 12px;
   font-weight: 600;
   margin: 0 2px;
@@ -1395,7 +1395,7 @@ function initTheme() {
   background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 2px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -1444,7 +1444,7 @@ function initTheme() {
 
 .question-modal-content {
   background: var(--bg-secondary, #161b22);
-  border-radius: 12px;
+  border-radius: 2px;
   width: 100%;
   max-width: 600px;
   max-height: 80vh;
@@ -1530,7 +1530,7 @@ function initTheme() {
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 2px;
   font-size: 15px;
   font-weight: 500;
   cursor: pointer;
@@ -1545,7 +1545,7 @@ function initTheme() {
 
 .answer-section {
   background: var(--bg-primary, #0d1117);
-  border-radius: 8px;
+  border-radius: 2px;
   padding: 16px;
   border-left: 3px solid #4f46e5;
 }

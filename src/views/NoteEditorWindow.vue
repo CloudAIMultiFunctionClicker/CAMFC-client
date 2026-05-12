@@ -481,7 +481,7 @@ async function sendMeetingNoteToBackend() {
   width: 36px;
   height: 36px;
   border: none;
-  border-radius: 0.375rem;
+  border-radius: 2px;
   background: transparent;
   color: var(--text-secondary, #cbd5e1);
   cursor: pointer;
@@ -538,7 +538,7 @@ async function sendMeetingNoteToBackend() {
 
 .modal-content {
   background: #252525;
-  border-radius: 12px;
+  border-radius: 2px;
   width: 100%;
   max-width: 400px;
   overflow: hidden;
@@ -584,7 +584,7 @@ async function sendMeetingNoteToBackend() {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 2px;
   transition: all 0.2s;
 }
 
@@ -627,7 +627,7 @@ async function sendMeetingNoteToBackend() {
 .cancel-btn {
   padding: 8px 16px;
   border: 1px solid #444;
-  border-radius: 6px;
+  border-radius: 2px;
   background: transparent;
   color: #e0e0e0;
   cursor: pointer;
@@ -651,7 +651,7 @@ async function sendMeetingNoteToBackend() {
 .confirm-btn {
   padding: 8px 16px;
   border: none;
-  border-radius: 6px;
+  border-radius: 2px;
   background: #3b82f6;
   color: white;
   cursor: pointer;

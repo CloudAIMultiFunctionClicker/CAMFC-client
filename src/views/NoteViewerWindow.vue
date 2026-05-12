@@ -211,21 +211,21 @@ function formatNoteContent(content) {
   // 匹配 data:image/xxx;base64,xxxx 格式的 base64 数据，并包裹成 img 标签
   const base64Regex = /(data:image\/(?:png|jpg|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+)/g
   formatted = formatted.replace(base64Regex, (match, base64Data) => {
-    return `<img src="${base64Data}" class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius:8px;object-fit:contain;" loading="lazy" />`
+    return `<img src="${base64Data}" class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius: 2px;object-fit:contain;" loading="lazy" />`
   })
   
   // 处理 Markdown 图片格式 ![alt](url)
   formatted = formatted.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
-    return `<img src="${url}" alt="${alt}" class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius:8px;object-fit:contain;" loading="lazy" />`
+    return `<img src="${url}" alt="${alt}" class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius: 2px;object-fit:contain;" loading="lazy" />`
   })
   
   // 处理 HTML img 标签，添加样式类
   formatted = formatted.replace(/<img([^>]*)>/gi, (match, attrs) => {
     if (!attrs.includes('class=')) {
-      return `<img${attrs} class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius:8px;object-fit:contain;" loading="lazy" />`
+      return `<img${attrs} class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius: 2px;object-fit:contain;" loading="lazy" />`
     }
     if (!attrs.includes('loading=')) {
-      return match.replace(/>/, ' style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius:8px;object-fit:contain;" loading="lazy" />')
+      return match.replace(/>/, ' style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius: 2px;object-fit:contain;" loading="lazy" />')
     }
     return match
   })
@@ -520,7 +520,7 @@ onUnmounted(async () => {
   width: 36px;
   height: 36px;
   border: none;
-  border-radius: 0.375rem;
+  border-radius: 2px;
   background: transparent;
   color: var(--text-secondary, #cbd5e1);
   cursor: pointer;
@@ -572,7 +572,7 @@ onUnmounted(async () => {
   height: 40px;
   border: 3px solid var(--border-color, #30363d);
   border-top-color: var(--accent-blue, #3b82f6);
-  border-radius: 50%;
+  border-radius: 2px;
   animation: spin 1s linear infinite;
 }
 
@@ -590,7 +590,7 @@ onUnmounted(async () => {
   background: var(--accent-blue, #3b82f6);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 2px;
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
@@ -617,7 +617,7 @@ onUnmounted(async () => {
   padding: 16px;
   margin-bottom: 24px;
   background: var(--bg-secondary, #161b22);
-  border-radius: 8px;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #30363d);
   width: 100%;
   box-sizing: border-box;
@@ -691,7 +691,7 @@ onUnmounted(async () => {
 .meeting-note-content {
   padding: 20px;
   background: var(--bg-secondary, #161b22);
-  border-radius: 8px;
+  border-radius: 2px;
   font-size: 15px;
   line-height: 1.8;
   color: var(--text-secondary, #c9d1d9);
@@ -716,7 +716,7 @@ onUnmounted(async () => {
   height: auto;
   display: block;
   margin: 16px auto;
-  border-radius: 8px;
+  border-radius: 2px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s ease;
   object-fit: contain;
@@ -737,7 +737,7 @@ onUnmounted(async () => {
 .meeting-note-item {
   padding: 16px;
   background: var(--bg-secondary, #161b22);
-  border-radius: 8px;
+  border-radius: 2px;
   border-left: 3px solid var(--accent-blue, #3b82f6);
 }
 
@@ -756,7 +756,7 @@ onUnmounted(async () => {
 .ai-content-box {
   padding: 16px 20px;
   background: var(--bg-secondary, #161b22);
-  border-radius: 8px;
+  border-radius: 2px;
   font-size: 14px;
   line-height: 1.7;
 }
@@ -784,7 +784,7 @@ onUnmounted(async () => {
   padding: 8px 16px;
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.2));
   color: #a78bfa;
-  border-radius: 20px;
+  border-radius: 2px;
   font-size: 13px;
   font-weight: 500;
   border: 1px solid rgba(139, 92, 246, 0.3);
@@ -843,7 +843,7 @@ onUnmounted(async () => {
   color: var(--text-muted, #8b949e);
   font-size: 14px;
   background: var(--bg-secondary, #161b22);
-  border-radius: 8px;
+  border-radius: 2px;
 }
 
 .light-mode .empty-content {
@@ -861,7 +861,7 @@ onUnmounted(async () => {
 
 .viewer-body::-webkit-scrollbar-thumb {
   background: var(--border-color, #30363d);
-  border-radius: 4px;
+  border-radius: 2px;
 }
 
 .viewer-body::-webkit-scrollbar-thumb:hover {

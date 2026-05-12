@@ -29,7 +29,7 @@ Email: admin@mc666.top
     background: var(--bg-secondary, #ffffff);
     border-bottom: 1px solid var(--border-color, #d0d7de);
     margin-bottom: 16px;
-    border-radius: .375rem;
+    border-radius: 2px;
     margin-top: -64px; /* 偏上 64px */
 }
 </style>

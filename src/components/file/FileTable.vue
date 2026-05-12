@@ -1149,7 +1149,7 @@ const isFileSelected = (itemPath) => {
   background: var(--bg-secondary, #ffffff);
   border-bottom: 1px solid var(--border-color, #d0d7de);
   margin-bottom: 16px;
-  border-radius: .375rem;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
@@ -1158,7 +1158,7 @@ const isFileSelected = (itemPath) => {
   color: white;
   border: none;
   padding: 6px 12px;
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1185,7 +1185,7 @@ const isFileSelected = (itemPath) => {
   gap: 8px;
   transition: color 0.2s ease;
   padding: 6px 12px;
-  border-radius: .375rem;
+  border-radius: 2px;
 }
 
 .current-path:hover {
@@ -1215,7 +1215,7 @@ const isFileSelected = (itemPath) => {
   flex: 1;
   padding: 6px 12px;
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   background: var(--input-bg, #ffffff);
   color: var(--text-primary, #24292f);
   font-size: 14px;
@@ -1233,7 +1233,7 @@ const isFileSelected = (itemPath) => {
   background: none;
   border: none;
   padding: 6px;
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1270,7 +1270,7 @@ const isFileSelected = (itemPath) => {
   color: white;
   border: none;
   padding: 6px 12px;
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
 }
 
@@ -1279,7 +1279,7 @@ const isFileSelected = (itemPath) => {
   flex: 1;
   overflow-y: auto;
   background: var(--bg-secondary, #ffffff);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #d0d7de);
   transition: opacity 0.3s ease;
   min-height: 0;
@@ -1338,14 +1338,14 @@ const isFileSelected = (itemPath) => {
   width: 20px;
   height: 20px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
 .skeleton-text {
   height: 16px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1353,7 +1353,7 @@ const isFileSelected = (itemPath) => {
   width: 50px;
   height: 20px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: .375rem;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1437,7 +1437,7 @@ const isFileSelected = (itemPath) => {
 /* 类型徽章 */
 .type-badge {
   padding: 3px 8px;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 11px;
 }
 
@@ -1479,7 +1479,7 @@ const isFileSelected = (itemPath) => {
   margin-top: 16px;
   background: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   flex-shrink: 0;
 }
 
@@ -1500,7 +1500,7 @@ const isFileSelected = (itemPath) => {
 .btn-delete,
 .btn-share {
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 8px 16px;
   font-size: 14px;
   cursor: pointer;
@@ -1670,7 +1670,7 @@ const isFileSelected = (itemPath) => {
 .upload-modal {
   background: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   width: 90%;
   max-width: 420px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
@@ -1706,7 +1706,7 @@ const isFileSelected = (itemPath) => {
   color: var(--text-muted, #8c959f);
   cursor: pointer;
   padding: 8px;
-  border-radius: .375rem;
+  border-radius: 2px;
   transition: all 0.2s ease;
 }
 
@@ -1728,7 +1728,7 @@ const isFileSelected = (itemPath) => {
   padding: 14px 16px;
   background: var(--input-bg, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary, #24292f);
   font-size: 15px;
   outline: none;
@@ -1766,7 +1766,7 @@ const isFileSelected = (itemPath) => {
   background-color: var(--danger-btn-bg, #212830);
   color: var(--danger-btn-text, #f85149);
   border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -1784,7 +1784,7 @@ const isFileSelected = (itemPath) => {
   width: 100%;
   padding: 24px 16px;
   border: 2px dashed var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   text-align: center;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -1842,7 +1842,7 @@ const isFileSelected = (itemPath) => {
 .file-list-container {
   margin-top: 16px;
   background: var(--bg-tertiary, #f6f8fa);
-  border-radius: .375rem;
+  border-radius: 2px;
   overflow: hidden;
   border: 1px solid var(--border-color, #d0d7de);
 }
@@ -1944,7 +1944,7 @@ const isFileSelected = (itemPath) => {
   max-height: 300px;
   overflow-y: auto;
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   background: var(--bg-tertiary, #f6f8fa);
 }
 
@@ -2026,7 +2026,7 @@ const isFileSelected = (itemPath) => {
 .btn-cancel,
 .btn-confirm {
   padding: 10px 20px;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

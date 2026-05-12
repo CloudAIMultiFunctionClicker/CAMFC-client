@@ -254,7 +254,7 @@ async function closeWindow() {
   padding: 12px;
   background-color: var(--bg-secondary, #161b22);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 6px;
+  border-radius: 2px;
   color: var(--text-primary, #f0f6fc);
   font-size: 14px;
   resize: vertical;
@@ -277,7 +277,7 @@ async function closeWindow() {
   gap: 12px;
   padding: 12px;
   background-color: var(--bg-secondary, #161b22);
-  border-radius: 6px;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #30363d);
 }
 
@@ -294,7 +294,7 @@ async function closeWindow() {
   padding: 6px 8px;
   background-color: var(--bg-primary, #0d1117);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 4px;
+  border-radius: 2px;
   color: var(--text-primary, #f0f6fc);
   font-size: 14px;
   text-align: center;
@@ -317,7 +317,7 @@ async function closeWindow() {
   gap: 12px;
   padding: 12px;
   background-color: var(--bg-secondary, #161b22);
-  border-radius: 6px;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #30363d);
 }
 
@@ -333,7 +333,7 @@ async function closeWindow() {
   padding: 6px 10px;
   background-color: var(--bg-primary, #0d1117);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 4px;
+  border-radius: 2px;
   color: var(--text-primary, #f0f6fc);
   font-size: 14px;
   cursor: pointer;
@@ -361,7 +361,7 @@ async function closeWindow() {
   background-color: var(--accent-blue, #3178c6);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 2px;
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
@@ -386,7 +386,7 @@ async function closeWindow() {
   background-color: #da3633;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 2px;
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
@@ -415,7 +415,7 @@ async function closeWindow() {
   min-height: 200px;
   background-color: var(--bg-secondary, #161b22);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 6px;
+  border-radius: 2px;
   overflow: hidden;
 }
 
@@ -438,7 +438,7 @@ async function closeWindow() {
   padding: 4px 10px;
   background-color: transparent;
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 4px;
+  border-radius: 2px;
   color: var(--text-secondary, #8b949e);
   font-size: 12px;
   cursor: pointer;
@@ -469,7 +469,7 @@ async function closeWindow() {
 
 .status-message {
   padding: 12px;
-  border-radius: 6px;
+  border-radius: 2px;
   font-size: 14px;
   text-align: center;
   animation: fadeIn 0.3s ease;

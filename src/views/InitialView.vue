@@ -409,14 +409,14 @@ onMounted(async () => {
   margin-bottom: 30px;
   padding: 12px 24px;
   background: var(--bg-tertiary, #f6f8fa);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #d0d7de);
 }
 
 .status-indicator {
   width: 12px;
   height: 12px;
-  border-radius: 50%;
+  border-radius: 2px;
   animation: pulse 2s infinite;
 }
 
@@ -454,7 +454,7 @@ onMounted(async () => {
   gap: 10px;
   padding: 15px 25px;
   background: rgba(45, 164, 78, 0.1);
-  border-radius: .375rem;
+  border-radius: 2px;
   margin-bottom: 30px;
   border: 1px solid rgba(45, 164, 78, 0.3);
 }
@@ -474,7 +474,7 @@ onMounted(async () => {
   background: var(--bg-tertiary, #f6f8fa);
   border: 1px solid var(--border-color, #d0d7de);
   color: var(--text-secondary, #57606a);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -494,7 +494,7 @@ onMounted(async () => {
   padding: 30px;
   margin: 20px;
   background: var(--bg-primary, #ffffff);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #d0d7de);
   overflow-y: auto;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
@@ -516,7 +516,7 @@ onMounted(async () => {
   gap: 8px;
   padding: 8px 16px;
   background: rgba(45, 164, 78, 0.1);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid rgba(45, 164, 78, 0.3);
 }
 
@@ -560,7 +560,7 @@ onMounted(async () => {
 .refresh-btn {
   width: 40px;
   height: 40px;
-  border-radius: 50%;
+  border-radius: 2px;
   border: none;
   background: var(--bg-tertiary, #f6f8fa);
   color: var(--text-secondary, #57606a);
@@ -617,7 +617,7 @@ onMounted(async () => {
 .device-card {
   background: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 16px;
   transition: all 0.3s ease;
   cursor: pointer;
@@ -772,7 +772,7 @@ onMounted(async () => {
   background: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   cursor: pointer;
   transition: background 0.3s ease;
@@ -787,7 +787,7 @@ onMounted(async () => {
 .connected-device-card {
   background: rgba(45, 164, 78, 0.05);
   border: 2px solid var(--accent-green, #2da44e);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 24px;
   margin-bottom: 20px;
   display: flex;
@@ -830,7 +830,7 @@ onMounted(async () => {
   background: var(--accent-green, #2da44e);
   color: white;
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -869,7 +869,7 @@ onMounted(async () => {
 .countdown-modal {
   background: var(--bg-secondary);
   padding: 40px;
-  border-radius: .375rem;
+  border-radius: 2px;
   text-align: center;
   min-width: 300px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -879,7 +879,7 @@ onMounted(async () => {
 .success-icon {
   width: 80px;
   height: 80px;
-  border-radius: 50%;
+  border-radius: 2px;
   background: #4ade80;
   display: flex;
   align-items: center;
@@ -907,7 +907,7 @@ onMounted(async () => {
   width: 100%;
   height: 6px;
   background: var(--bg-primary);
-  border-radius: .375rem;
+  border-radius: 2px;
   overflow: hidden;
   margin-bottom: 20px;
 }
@@ -915,7 +915,7 @@ onMounted(async () => {
 .countdown-progress {
   height: 100%;
   background: var(--accent-blue, #3178c6);
-  border-radius: .375rem;
+  border-radius: 2px;
   transition: width 0.3s ease;
 }
 
@@ -924,7 +924,7 @@ onMounted(async () => {
   background: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -945,7 +945,7 @@ onMounted(async () => {
   padding: 10px 16px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: .375rem;
+  border-radius: 2px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: all 0.3s ease;
@@ -959,7 +959,7 @@ onMounted(async () => {
 .help-icon {
   width: 24px;
   height: 24px;
-  border-radius: 50%;
+  border-radius: 2px;
   background: var(--bg-primary);
   color: var(--text-secondary, #57606a);
   display: flex;
@@ -984,7 +984,7 @@ onMounted(async () => {
   padding: 12px 16px;
   background: var(--bg-secondary);
   color: var(--text-primary);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 13px;
   line-height: 1.6;
   white-space: nowrap;

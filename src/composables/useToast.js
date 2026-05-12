@@ -30,10 +30,13 @@ export function useToast() {
 
   // 检查并添加全局样式
   const ensureGlobalStyles = () => {
-    if (!document.getElementById(STYLE_ID)) {
-      const style = document.createElement('style')
+    let style = document.getElementById(STYLE_ID)
+    if (!style) {
+      style = document.createElement('style')
       style.id = STYLE_ID
-      style.textContent = `
+      document.head.appendChild(style)
+    }
+    style.textContent = `
         @keyframes toast-slide-in {
           from {
             transform: translateX(120%) scale(0.95);
@@ -69,9 +72,8 @@ export function useToast() {
 
         .vue-toast-item {
           background: var(--accent-blue, #3b82f6);
-          color: white;
           padding: 12px 20px;
-          border-radius: 12px;
+          border-radius: 2px;
           box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           font-size: 14px;
@@ -88,13 +90,7 @@ export function useToast() {
         .vue-toast-item:hover {
           transform: translateY(-2px);
         }
-
-        .vue-toast-item {
-          color: var(--text-primary, white);
-        }
       `
-      document.head.appendChild(style)
-    }
   }
 
   // 检查并创建容器
@@ -145,12 +141,27 @@ export function useToast() {
     })
   }
 
-  /**
-   * 显示一个 Toast
-   * @param {string|object} options 配置项或直接传字符串
-   * @returns {number} toast ID
-   */
-  const show = (options) => {
+  // 根据背景色亮度决定文字颜色
+const getTextColor = (bgColor) => {
+    // 如果是 CSS 变量，默认白色
+    if (!bgColor || bgColor.startsWith('var(')) return 'white'
+    // 提取 hex 颜色值
+    const hex = bgColor.replace('#', '')
+    if (hex.length < 6) return 'white'
+    const r = parseInt(hex.substring(0, 2), 16)
+    const g = parseInt(hex.substring(2, 4), 16)
+    const b = parseInt(hex.substring(4, 6), 16)
+    // 相对亮度公式 (sRGB)
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000
+    return brightness > 150 ? '#1a1a1a' : 'white'
+}
+
+/**
+ * 显示一个 Toast
+ * @param {string|object} options 配置项或直接传字符串
+ * @returns {number} toast ID
+ */
+const show = (options) => {
     const opts = typeof options === 'string' ? { text: options } : options
 
     ensureGlobalStyles()
@@ -166,6 +177,7 @@ export function useToast() {
 
     const color = opts.color ?? 'var(--accent-blue)'
     toastEl.style.background = color
+    toastEl.style.color = getTextColor(color)
 
     // 设置初始位置
     const offsetTop = toasts.value.length * 60

@@ -991,7 +991,7 @@ defineExpose({
   height: 36px;
   background-color: transparent;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 6px;
+  border-radius: 2px;
   color: var(--text-primary, #f1f5f9);
   font-size: 18px;
   cursor: pointer;
@@ -1012,7 +1012,7 @@ defineExpose({
 .annotate-color-btn {
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: 2px;
   border: 2px solid transparent;
   cursor: pointer;
   display: flex;
@@ -1040,7 +1040,7 @@ defineExpose({
 .annotate-stroke-btn {
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: 2px;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   background-color: transparent;
   cursor: pointer;
@@ -1060,6 +1060,6 @@ defineExpose({
 }
 
 .annotate-stroke-preview {
-  border-radius: 50%;
+  border-radius: 2px;
 }
 </style>

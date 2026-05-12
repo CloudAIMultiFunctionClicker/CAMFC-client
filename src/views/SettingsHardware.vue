@@ -234,7 +234,7 @@ onUnmounted(() => {
   padding: 16px 20px;
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   margin-bottom: 12px;
   color: var(--text-primary, #24292f);
   font-size: 15px;
@@ -243,7 +243,7 @@ onUnmounted(() => {
 .setting-card {
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 20px;
   margin-bottom: 16px;
 }
@@ -298,7 +298,7 @@ onUnmounted(() => {
   color: var(--text-primary, #24292f);
   font-size: 12px;
   padding: 8px 12px;
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #d0d7de);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   white-space: nowrap;
@@ -340,7 +340,7 @@ onUnmounted(() => {
   padding: 8px 12px;
   background-color: var(--input-bg, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary, #24292f);
   font-size: 14px;
   text-align: center;
@@ -357,7 +357,7 @@ onUnmounted(() => {
   padding: 10px 14px;
   background-color: var(--input-bg, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary, #24292f);
   font-size: 14px;
 }
@@ -397,7 +397,7 @@ onUnmounted(() => {
   gap: 6px;
   padding: 12px;
   background-color: var(--bg-tertiary, #f6f8fa);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #d0d7de);
 }
 
@@ -419,7 +419,7 @@ onUnmounted(() => {
   gap: 6px;
   padding: 10px 12px;
   background-color: var(--bg-tertiary, #f6f8fa);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #d0d7de);
   font-size: 12px;
   color: var(--text-secondary, #57606a);
@@ -436,7 +436,7 @@ onUnmounted(() => {
   height: 26px;
   background-color: var(--border-color, #d0d7de);
   border: none;
-  border-radius: 13px;
+  border-radius: 2px;
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
@@ -452,7 +452,7 @@ onUnmounted(() => {
   width: 20px;
   height: 20px;
   background-color: white;
-  border-radius: 50%;
+  border-radius: 2px;
   transition: transform 0.3s ease;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
@@ -475,7 +475,7 @@ onUnmounted(() => {
   padding: 16px;
   background-color: var(--bg-tertiary, #f6f8fa);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-primary, #24292f);
@@ -512,7 +512,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -552,7 +552,7 @@ onUnmounted(() => {
   margin-top: 0;
   padding: 6px 14px;
   font-size: 13px;
-  border-radius: .375rem;
+  border-radius: 2px;
 }
 
 .path-control {
@@ -567,7 +567,7 @@ onUnmounted(() => {
   padding: 10px 14px;
   background-color: var(--bg-primary, #0f172a);
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary, #f1f5f9);
   font-size: 14px;
 }
@@ -609,7 +609,7 @@ onUnmounted(() => {
   padding: 16px;
   background-color: var(--bg-primary, #0f172a);
   border: 2px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-primary, #f1f5f9);
@@ -653,7 +653,7 @@ onUnmounted(() => {
 .storage-bar {
   height: 8px;
   background-color: var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: .375rem;
+  border-radius: 2px;
   overflow: hidden;
   margin-bottom: 8px;
 }
@@ -661,7 +661,7 @@ onUnmounted(() => {
 .storage-used {
   height: 100%;
   background: var(--accent-blue, #3178c6);
-  border-radius: .375rem;
+  border-radius: 2px;
 }
 
 .storage-text {
@@ -675,7 +675,7 @@ onUnmounted(() => {
   padding: 32px;
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   margin-bottom: 24px;
 }
 
@@ -719,7 +719,7 @@ onUnmounted(() => {
   padding: 10px 14px;
   background-color: var(--bg-tertiary, #f6f8fa);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -766,7 +766,7 @@ onUnmounted(() => {
 .iframe-container {
   width: 100%;
   height: calc(100% - 40px);
-  border-radius: .375rem;
+  border-radius: 2px;
   overflow: hidden;
   border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
 }
@@ -832,7 +832,7 @@ onUnmounted(() => {
   padding: 12px;
   background-color: var(--bg-secondary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   animation: fadeIn 0.3s ease-out;
   align-items: center;
 }
@@ -847,7 +847,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #ffffff);
   color: var(--text-primary, #333);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
@@ -894,7 +894,7 @@ onUnmounted(() => {
   margin-top: 11px;
   background-color: transparent;
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-secondary, #57606a);
   cursor: pointer;
   transition: all 0.2s;
@@ -941,7 +941,7 @@ onUnmounted(() => {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -993,7 +993,7 @@ onUnmounted(() => {
   margin-top: 16px;
   padding: 12px;
   background-color: var(--bg-tertiary, #f6f8fa);
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #d0d7de);
   font-size: 13px;
   color: var(--text-secondary, #57606a);
@@ -1011,7 +1011,7 @@ onUnmounted(() => {
   padding: 10px 14px;
   background-color: var(--bg-primary, #ffffff);
   border: 1px solid var(--border-color, #d0d7de);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary, #24292f);
   font-size: 14px;
   transition: all 0.2s ease;

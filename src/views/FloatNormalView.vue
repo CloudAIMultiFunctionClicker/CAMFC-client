@@ -517,7 +517,7 @@ html, body {
   padding: 0 12px;
   gap: 8px;
   background-color: var(--float-bg, #f5f5f5);
-  border-radius: .375rem;
+  border-radius: 2px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   cursor: move;
   user-select: none;
@@ -535,7 +535,7 @@ html, body {
 .connection-status {
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: .375rem;
+  border-radius: 2px;
   background-color: #ff6b6b;
   color: white;
   cursor: pointer;
@@ -573,7 +573,7 @@ html, body {
   background-color: transparent;
   color: var(--float-btn-color, #666);
   border: none;
-  border-radius: .375rem;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
   line-height: 1;

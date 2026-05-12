@@ -404,7 +404,7 @@ watch(() => route.path, (newPath) => {
   font-size: 20px;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 8px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
   color: var(--text-primary, #f0f6fc);
@@ -445,7 +445,7 @@ watch(() => route.path, (newPath) => {
   padding: 12px 16px;
   font-size: 14px;
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 8px;
+  border-radius: 2px;
   background-color: var(--input-bg, #000000);
   color: var(--text-primary, #f0f6fc);
   outline: none;
@@ -463,7 +463,7 @@ watch(() => route.path, (newPath) => {
   color: #fff;
   background-color: var(--accent-blue, #3178c6);
   border: none;
-  border-radius: 8px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -488,7 +488,7 @@ watch(() => route.path, (newPath) => {
   font-weight: 600;
   color: white;
   background-color: #ef4444;
-  border-radius: 9px;
+  border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -511,13 +511,13 @@ watch(() => route.path, (newPath) => {
   padding: 20px;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 12px;
+  border-radius: 2px;
 }
 
 .skeleton-group-avatar {
   width: 64px;
   height: 64px;
-  border-radius: 12px;
+  border-radius: 2px;
   background-color: rgba(128, 128, 128, 0.2);
   margin-bottom: 16px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
@@ -527,7 +527,7 @@ watch(() => route.path, (newPath) => {
   height: 22px;
   width: 60%;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   margin-bottom: 8px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -536,7 +536,7 @@ watch(() => route.path, (newPath) => {
   height: 14px;
   width: 40%;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   margin-bottom: 12px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
@@ -551,7 +551,7 @@ watch(() => route.path, (newPath) => {
   height: 16px;
   width: 60px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -559,7 +559,7 @@ watch(() => route.path, (newPath) => {
   height: 38px;
   width: 100%;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 8px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -576,7 +576,7 @@ watch(() => route.path, (newPath) => {
   padding: 20px;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 12px;
+  border-radius: 2px;
 }
 
 .skeleton-application-info {
@@ -594,7 +594,7 @@ watch(() => route.path, (newPath) => {
   height: 28px;
   width: 80px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 6px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -602,7 +602,7 @@ watch(() => route.path, (newPath) => {
   height: 28px;
   width: 60px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 6px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -616,7 +616,7 @@ watch(() => route.path, (newPath) => {
   height: 16px;
   width: 70%;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -635,7 +635,7 @@ watch(() => route.path, (newPath) => {
   height: 36px;
   width: 70px;
   background-color: rgba(128, 128, 128, 0.2);
-  border-radius: 8px;
+  border-radius: 2px;
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
@@ -681,7 +681,7 @@ watch(() => route.path, (newPath) => {
   padding: 20px;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 12px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -696,7 +696,7 @@ watch(() => route.path, (newPath) => {
 .group-avatar {
   width: 64px;
   height: 64px;
-  border-radius: 12px;
+  border-radius: 2px;
   background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(49, 120, 198, 0.2));
   display: flex;
   align-items: center;
@@ -758,7 +758,7 @@ watch(() => route.path, (newPath) => {
   color: #fff;
   background-color: var(--accent-blue, #3178c6);
   border: none;
-  border-radius: 8px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -780,7 +780,7 @@ watch(() => route.path, (newPath) => {
   padding: 20px;
   background-color: var(--bg-secondary, #0d0d0d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: 12px;
+  border-radius: 2px;
   transition: all 0.2s;
 }
 
@@ -813,7 +813,7 @@ watch(() => route.path, (newPath) => {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border-radius: 6px;
+  border-radius: 2px;
   font-size: 13px;
   font-weight: 500;
 }
@@ -888,7 +888,7 @@ watch(() => route.path, (newPath) => {
   color: #fff;
   background-color: var(--accent-green, #3fb950);
   border: none;
-  border-radius: 8px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -907,7 +907,7 @@ watch(() => route.path, (newPath) => {
   color: var(--danger-btn-text, #f85149);
   background-color: transparent;
   border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
-  border-radius: 8px;
+  border-radius: 2px;
   cursor: pointer;
   transition: all 0.2s;
 }

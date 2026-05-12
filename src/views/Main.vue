@@ -227,7 +227,7 @@ async function openAgentWindow() {
   gap: 12px;
   padding: 12px 20px;
   margin-bottom: 30px;
-  border-radius: .375rem;
+  border-radius: 2px;
   border: 1px solid var(--border-color, #30363d);
   background-color: var(--bg-secondary, #161b22);
   transition: all 0.3s ease;
@@ -296,7 +296,7 @@ async function openAgentWindow() {
   padding: 6px 12px;
   background-color: var(--bg-tertiary, #21262d);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: .375rem;
+  border-radius: 2px;
   color: var(--text-primary, #f0f6fc);
   font-size: 13px;
   font-weight: 500;
@@ -352,7 +352,7 @@ async function openAgentWindow() {
 .nav-card {
   background-color: var(--bg-secondary, #161b22);
   border: 1px solid var(--border-color, #30363d);
-  border-radius: .375rem;
+  border-radius: 2px;
   padding: 25px 20px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -430,7 +430,7 @@ async function openAgentWindow() {
   background-color: var(--accent-purple, #bc8cff);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 2px;
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;

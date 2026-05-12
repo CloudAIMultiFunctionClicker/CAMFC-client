@@ -47,12 +47,17 @@ const isEmptyPage = computed(() => route.path === '/empty')
 
 // 判断是否在截图窗口
 const isScreenshotWindowPage = computed(() => route.path === '/screenshot-window')
+// 判断是否在截图预览页面（独立窗口使用）
+const isScreenshotPage = computed(() => route.path === '/screenshot')
 
 // 判断是否在笔记查看器子窗口（共享笔记详情）
 const isNoteViewerPage = computed(() => route.path === '/note-viewer')
 
-// 判断是否需要隐藏标题栏（笔记编辑器、会议编辑器、空白窗口、截图窗口、悬浮窗空白页和笔记查看器）
-const shouldHideTitleBar = computed(() => isNoteEditorPage.value || isMeetingEditorPage.value || isEmptyPage.value || isScreenshotWindowPage.value || isFloatNormalEmptyPage.value || isNoteViewerPage.value)
+// 判断是否在 agent 自动化子窗口
+const isAgentWindowPage = computed(() => route.path === '/agent-window')
+
+// 判断是否需要隐藏标题栏和侧边栏（非主窗口都不显示）
+const shouldHideTitleBar = computed(() => isNoteEditorPage.value || isMeetingEditorPage.value || isEmptyPage.value || isScreenshotWindowPage.value || isScreenshotPage.value || isFloatNormalEmptyPage.value || isNoteViewerPage.value || isAgentWindowPage.value || isFloatNormalPage.value)
 
 // 侧边栏折叠状态
 const isSidebarCollapsed = ref(false)
@@ -685,7 +690,7 @@ setTimeout(() => {
     <TitleBar v-if="!shouldHideTitleBar" />
     <!-- 侧边栏 - 在所有页面显示（除了特殊页面） -->
     <Sidebar v-if="!shouldHideTitleBar" @collapse-change="handleSidebarCollapse" />
-    <div class="main-content" :class="{ 'sidebar-collapsed': isSidebarCollapsed }" :style="shouldHideTitleBar ? 'padding-top: 0;' : ''">
+    <div class="main-content" :class="{ 'sidebar-collapsed': isSidebarCollapsed }" :style="shouldHideTitleBar ? 'padding-top: 0; padding-left: 0;' : ''">
       <router-view></router-view>
     </div>
   </div>
@@ -828,7 +833,7 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: var(--border-color, #30363d);
-  border-radius: .375rem;
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -841,7 +846,7 @@ body {
   color: var(--danger-btn-text, #f85149);
   border: 1px solid var(--danger-btn-border, rgba(248, 81, 73, 0.4));
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: 2px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
