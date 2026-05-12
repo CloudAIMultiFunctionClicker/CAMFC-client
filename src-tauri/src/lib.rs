@@ -1464,6 +1464,26 @@ fn show_windows_notification(title: String, message: String) -> Result<(), Strin
     show_notification(&title, &message)
 }
 
+/// 显示 Windows 原生通知（带配置）
+/// 
+/// 用于在特定事件（如开启上课模式）时显示系统通知
+/// 可以指定通知的持续时间和应用 ID
+#[tauri::command]
+fn show_windows_notification_with_config(
+    title: String, 
+    message: String,
+    app_id: Option<String>,
+    duration: Option<String>,
+) -> Result<(), String> {
+    tracing::info!("[通知] 收到显示通知请求（带配置）：{} - {}", title, message);
+    crate::notification::show_notification_with_config(
+        &title, 
+        &message,
+        app_id.as_deref(),
+        duration.as_deref(),
+    )
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // 初始化 tracing 日志
@@ -1645,6 +1665,7 @@ pub fn run() {
             get_agent_hotkey,
             // 通知命令
             show_windows_notification,
+            show_windows_notification_with_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

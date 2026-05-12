@@ -112,6 +112,8 @@ pub fn emit_create_note() {
 pub fn emit_toggle_meeting() {
     if let Some(handle) = get_app_handle() {
         tracing::info!("[EVENT] 发射会议切换事件");
+        // 显示会议切换通知
+        let _ = crate::notification::show_notification("会议模式", "已切换会议模式");
         // 只发送到主窗口
         if let Some(main_window) = handle.get_webview_window("main") {
             let _ = main_window.emit("toggle-meeting", ());

@@ -19,6 +19,21 @@ Email: admin@mc666.top
     <!-- 主标题 -->
     <h1 class="dashboard-title">CAMFC</h1>
     
+    <!-- 蓝牙状态提示 -->
+    <div class="bluetooth-status" :class="statusClass">
+      <i :class="statusIcon"></i>
+      <span class="status-text">{{ statusText }}</span>
+      <button 
+        v-if="showRescanButton" 
+        class="rescan-btn" 
+        @click="rescanDevices"
+        :disabled="isScanning"
+      >
+        <i :class="isScanning ? 'ri-loader-4-line spinning' : 'ri-refresh-line'"></i>
+        <span>{{ isScanning ? '扫描中...' : '重新扫描' }}</span>
+      </button>
+    </div>
+    
     <!-- 导航按钮网格 -->
     <div class="nav-grid">
       <!-- 云盘按钮 -->
@@ -61,15 +76,65 @@ Email: admin@mc666.top
 </template>
 
 <script setup>
-// 仪表板主组件 - 显示四个导航卡片
-// 设计思路：简单网格布局，居中显示，使用现有项目的CSS变量
-// 后续可以加动画效果，但现在先保证基本功能能用
-
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Cloud, FileText, Settings, History, Users, Bot } from 'lucide-vue-next'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { useBluetoothStore } from '../stores/bluetooth.js'
+import { scanCpenDevices } from '../components/data/bluetooth.js'
+import { showToast } from '../components/layout/showToast.js'
 
 const router = useRouter()
+const bluetoothStore = useBluetoothStore()
+
+const isScanning = ref(false)
+
+const isConnected = computed(() => bluetoothStore.isConnected())
+const bluetoothError = computed(() => bluetoothStore.error)
+
+const statusClass = computed(() => {
+  if (isConnected.value) return 'connected'
+  if (isScanning.value) return 'scanning'
+  if (bluetoothError.value) return 'error'
+  return 'disconnected'
+})
+
+const statusText = computed(() => {
+  if (isConnected.value) return '已连接设备'
+  if (isScanning.value) return '扫描中...'
+  if (bluetoothError.value) return '连接失败'
+  return '未连接'
+})
+
+const statusIcon = computed(() => {
+  if (isConnected.value) return 'ri-bluetooth-fill'
+  if (isScanning.value) return 'ri-loader-4-line spinning'
+  if (bluetoothError.value) return 'ri-error-warning-line'
+  return 'ri-bluetooth-off-line'
+})
+
+const showRescanButton = computed(() => {
+  return !isConnected.value || bluetoothError.value
+})
+
+async function rescanDevices() {
+  isScanning.value = true
+  try {
+    const devices = await scanCpenDevices()
+    if (devices.length === 0) {
+      showToast('未发现 Cpen 设备')
+      router.push('/')
+    } else {
+      router.push('/')
+    }
+  } catch (error) {
+    console.error('扫描失败:', error)
+    showToast('扫描失败: ' + error.message)
+    router.push('/')
+  } finally {
+    isScanning.value = false
+  }
+}
 
 // 跳转到文件管理页面（已有功能）
 function goToFileView() {
@@ -151,8 +216,117 @@ async function openAgentWindow() {
 
 .dashboard-title {
   font-size: 28px;
-  margin-bottom: 40px;
+  margin-bottom: 20px;
   color: var(--text-primary, #f0f6fc);
+}
+
+/* 蓝牙状态提示 */
+.bluetooth-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  margin-bottom: 30px;
+  border-radius: .375rem;
+  border: 1px solid var(--border-color, #30363d);
+  background-color: var(--bg-secondary, #161b22);
+  transition: all 0.3s ease;
+}
+
+.bluetooth-status.connected {
+  border-color: var(--accent-green, #2da44e);
+  background-color: rgba(45, 164, 78, 0.1);
+}
+
+.bluetooth-status.scanning {
+  border-color: var(--accent-blue, #0969da);
+  background-color: rgba(9, 105, 218, 0.1);
+}
+
+.bluetooth-status.error {
+  border-color: var(--accent-red, #cf222e);
+  background-color: rgba(207, 34, 46, 0.1);
+}
+
+.bluetooth-status.disconnected {
+  border-color: var(--text-muted, #8c959f);
+  background-color: var(--bg-secondary, #161b22);
+}
+
+.bluetooth-status i {
+  font-size: 20px;
+  color: var(--text-primary, #f0f6fc);
+}
+
+.bluetooth-status.connected i {
+  color: var(--accent-green, #2da44e);
+}
+
+.bluetooth-status.scanning i {
+  color: var(--accent-blue, #0969da);
+}
+
+.bluetooth-status.error i {
+  color: var(--accent-red, #cf222e);
+}
+
+.status-text {
+  font-size: 14px;
+  color: var(--text-secondary, #8b949e);
+  font-weight: 500;
+}
+
+.bluetooth-status.connected .status-text {
+  color: var(--accent-green, #2da44e);
+}
+
+.bluetooth-status.scanning .status-text {
+  color: var(--accent-blue, #0969da);
+}
+
+.bluetooth-status.error .status-text {
+  color: var(--accent-red, #cf222e);
+}
+
+/* 重新扫描按钮 */
+.rescan-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background-color: var(--bg-tertiary, #21262d);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: .375rem;
+  color: var(--text-primary, #f0f6fc);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.rescan-btn:hover:not(:disabled) {
+  background-color: var(--bg-secondary, #161b22);
+  border-color: var(--accent-blue, #0969da);
+  color: var(--accent-blue, #0969da);
+}
+
+.rescan-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rescan-btn i {
+  font-size: 14px;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* 导航网格布局 - 5 个按钮：第一行 3 个，第二行 2 个居中 */

@@ -29,6 +29,7 @@ import {
   getTypeColor,
   formatFileSize
 } from '../components/data/activityLog.js'
+import { getFileIcon } from '../utils/fileIcon.js'
 import { showToast } from '../components/layout/showToast.js'
 
 const isSidebarCollapsed = ref(false)
@@ -114,6 +115,10 @@ const formatTime = (timestamp) => {
 
 const getTypeColorCode = (type) => {
   return getTypeColor(type)
+}
+
+const getFileIconClass = (filename) => {
+  return getFileIcon(filename)
 }
 
 const onLimitChange = (event) => {
@@ -215,21 +220,8 @@ watch([activeTab, limit], () => {
           class="activity-item"
         >
           <div class="activity-header">
-            <div class="activity-icon" :style="{ backgroundColor: getTypeColorCode(activity.type) }">
-              <svg v-if="activity.type === 'upload'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                <line x1="12" y1="3" x2="12" y2="15"/>
-              </svg>
-              <svg v-else-if="activity.type === 'download'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="7 10 12 15 17 10"/>
-                <line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              <svg v-else-if="activity.type === 'access'" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
+            <div class="file-icon-wrapper">
+              <i :class="getFileIconClass(activity.file_name || activity.file_path)"></i>
             </div>
             <div class="activity-info">
               <span class="activity-type" :style="{ color: getTypeColorCode(activity.type) }">
@@ -281,13 +273,21 @@ watch([activeTab, limit], () => {
         </button>
       </div>
       
-      <div class="loading-state" v-if="loading">
-        <div class="spinner-container">
-          <svg class="spinner" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"/>
-            <path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
-          </svg>
-          <p>正在加载活动记录...</p>
+      <!-- 骨架屏：加载时显示灰色占位块 -->
+      <div class="skeleton-activities-list" v-if="loading">
+        <div v-for="i in 5" :key="i" class="skeleton-activity-item">
+          <div class="skeleton-activity-header">
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-info">
+              <div class="skeleton-type"></div>
+              <div class="skeleton-time"></div>
+            </div>
+          </div>
+          <div class="skeleton-activity-body">
+            <div class="skeleton-file-name"></div>
+            <div class="skeleton-file-path"></div>
+            <div class="skeleton-file-size"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -500,13 +500,20 @@ watch([activeTab, limit], () => {
   margin-bottom: 12px;
 }
 
-.activity-icon {
-  width: 32px;
-  height: 32px;
+.file-icon-wrapper {
+  width: 40px;
+  height: 40px;
   border-radius: .375rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+}
+
+.file-icon-wrapper i {
+  font-size: 20px;
+  color: var(--accent-blue);
 }
 
 .activity-info {
@@ -529,7 +536,7 @@ watch([activeTab, limit], () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-left: 44px;
+  padding-left: 52px;
 }
 
 .file-name {
@@ -613,6 +620,92 @@ watch([activeTab, limit], () => {
   font-size: 14px;
   color: var(--text-secondary);
   margin: 0;
+}
+
+/* 骨架屏样式 */
+.skeleton-activities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-activity-item {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: .375rem;
+  padding: 16px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-activity-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.skeleton-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: .375rem;
+  background-color: rgba(128, 128, 128, 0.2);
+}
+
+.skeleton-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skeleton-type {
+  height: 16px;
+  width: 60px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+}
+
+.skeleton-time {
+  height: 12px;
+  width: 80px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+}
+
+.skeleton-activity-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 52px;
+}
+
+.skeleton-file-name {
+  height: 18px;
+  width: 60%;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+}
+
+.skeleton-file-path {
+  height: 14px;
+  width: 80%;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+}
+
+.skeleton-file-size {
+  height: 14px;
+  width: 50px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 /* 响应式 - 竖屏适配 */

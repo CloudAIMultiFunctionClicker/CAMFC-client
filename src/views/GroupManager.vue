@@ -69,9 +69,18 @@ Email: admin@mc666.top
     </div>
 
     <div v-if="currentTab === 'groups'" class="tab-content groups-tab">
-      <div v-if="isLoading" class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>正在加载群组列表...</p>
+      <!-- 群组列表骨架屏 -->
+      <div v-if="isLoading" class="skeleton-groups-grid">
+        <div v-for="i in 6" :key="i" class="skeleton-group-card">
+          <div class="skeleton-group-avatar"></div>
+          <div class="skeleton-group-title"></div>
+          <div class="skeleton-group-uid"></div>
+          <div class="skeleton-group-stats">
+            <div class="skeleton-stat"></div>
+            <div class="skeleton-stat"></div>
+          </div>
+          <div class="skeleton-group-btn"></div>
+        </div>
       </div>
 
       <div v-else-if="groups.length === 0" class="empty-state">
@@ -116,9 +125,25 @@ Email: admin@mc666.top
     </div>
 
     <div v-else-if="currentTab === 'applications'" class="tab-content applications-tab">
-      <div v-if="isLoading" class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>正在加载申请列表...</p>
+      <!-- 申请列表骨架屏 -->
+      <div v-if="isLoading" class="skeleton-applications-list">
+        <div v-for="i in 4" :key="i" class="skeleton-application-item">
+          <div class="skeleton-application-info">
+            <div class="skeleton-application-header">
+              <div class="skeleton-type-tag"></div>
+              <div class="skeleton-status-tag"></div>
+            </div>
+            <div class="skeleton-application-details">
+              <div class="skeleton-detail-line"></div>
+              <div class="skeleton-detail-line short"></div>
+              <div class="skeleton-detail-line"></div>
+            </div>
+          </div>
+          <div class="skeleton-action-buttons">
+            <div class="skeleton-action-btn"></div>
+            <div class="skeleton-action-btn"></div>
+          </div>
+        </div>
       </div>
 
       <div v-else-if="messages.length === 0" class="empty-state">
@@ -513,23 +538,154 @@ onMounted(() => {
   min-height: 400px;
 }
 
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  color: var(--text-muted, #8b949e);
+/* 骨架屏样式 */
+.skeleton-groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
 }
 
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border-color, #30363d);
-  border-top-color: var(--accent-blue, #3178c6);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
+.skeleton-group-card {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background-color: var(--bg-secondary, #0d0d0d);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 12px;
+}
+
+.skeleton-group-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  background-color: rgba(128, 128, 128, 0.2);
   margin-bottom: 16px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-group-title {
+  height: 22px;
+  width: 60%;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-group-uid {
+  height: 14px;
+  width: 40%;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  margin-bottom: 12px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-group-stats {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.skeleton-stat {
+  height: 16px;
+  width: 60px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-group-btn {
+  height: 38px;
+  width: 100%;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 8px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-applications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeleton-application-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px;
+  background-color: var(--bg-secondary, #0d0d0d);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 12px;
+}
+
+.skeleton-application-info {
+  flex: 1;
+}
+
+.skeleton-application-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.skeleton-type-tag {
+  height: 28px;
+  width: 80px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 6px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-status-tag {
+  height: 28px;
+  width: 60px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 6px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-application-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-detail-line {
+  height: 16px;
+  width: 70%;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-detail-line.short {
+  width: 50%;
+}
+
+.skeleton-action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 16px;
+}
+
+.skeleton-action-btn {
+  height: 36px;
+  width: 70px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 8px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .empty-state {
@@ -815,16 +971,19 @@ onMounted(() => {
     flex-direction: column;
   }
   
-  .groups-grid {
+  .groups-grid,
+  .skeleton-groups-grid {
     grid-template-columns: 1fr;
   }
   
-  .application-item {
+  .application-item,
+  .skeleton-application-item {
     flex-direction: column;
     gap: 16px;
   }
   
-  .action-buttons {
+  .action-buttons,
+  .skeleton-action-buttons {
     width: 100%;
     margin-left: 0;
   }
@@ -843,7 +1002,8 @@ onMounted(() => {
     font-size: 24px;
   }
   
-  .groups-grid {
+  .groups-grid,
+  .skeleton-groups-grid {
     grid-template-columns: 1fr;
   }
 }

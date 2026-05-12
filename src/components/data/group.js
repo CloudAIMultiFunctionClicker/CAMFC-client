@@ -21,7 +21,10 @@ const timeOut = 3000;
 
 // 获取认证头信息
 // 优先使用教师认证（Id + Totp），如果没有蓝牙设备则使用学生认证（Username + Password）
-async function getAuthHeader() {
+async function getAuthHeader(retryCount = 0) {
+  const maxRetries = 3;
+  const retryDelay = 300;
+  
   try {
     const { getDeviceId, getTotp } = await import('./bluetooth.js');
     
@@ -39,6 +42,13 @@ async function getAuthHeader() {
         "Id": deviceId,
         "Totp": currentTotp
       };
+    }
+    
+    // 如果是教师端但没获取到，尝试重试等待蓝牙模块准备好
+    if (retryCount < maxRetries) {
+      console.log(`等待蓝牙模块准备中... (${retryCount + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      return await getAuthHeader(retryCount + 1);
     }
   } catch (error) {
     console.log('无法获取蓝牙设备信息，尝试学生认证');

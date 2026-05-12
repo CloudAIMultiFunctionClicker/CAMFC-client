@@ -61,9 +61,20 @@ Email: admin@mc666.top
     </div>
 
     <div v-if="currentTab === 'notes'" class="tab-content notes-tab">
-      <div v-if="isLoading" class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>正在加载共享笔记...</p>
+      <!-- 骨架屏：笔记列表加载状态 -->
+      <div v-if="isLoading" class="skeleton-notes-list">
+        <div v-for="i in 5" :key="i" class="skeleton-note-item">
+          <div class="skeleton-icon"></div>
+          <div class="skeleton-content">
+            <div class="skeleton-header">
+              <div class="skeleton-tag"></div>
+              <div class="skeleton-user"></div>
+            </div>
+            <div class="skeleton-title"></div>
+            <div class="skeleton-preview"></div>
+            <div class="skeleton-meta"></div>
+          </div>
+        </div>
       </div>
 
       <div v-else-if="sharedNotes.length === 0" class="empty-state">
@@ -107,9 +118,21 @@ Email: admin@mc666.top
     </div>
 
     <div v-else-if="currentTab === 'files'" class="tab-content files-tab">
-      <div v-if="isLoading" class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>正在加载共享文件...</p>
+      <!-- 骨架屏：文件列表加载状态 -->
+      <div v-if="isLoading" class="skeleton-files-timeline">
+        <div v-for="i in 4" :key="i" class="skeleton-timeline-item">
+          <div class="skeleton-marker"></div>
+          <div class="skeleton-timeline-content">
+            <div class="skeleton-file-header">
+              <div class="skeleton-file-name"></div>
+              <div class="skeleton-file-size"></div>
+            </div>
+            <div class="skeleton-file-meta">
+              <div class="skeleton-meta-item"></div>
+              <div class="skeleton-meta-item"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-else-if="sharedFiles.length === 0" class="empty-state">
@@ -249,8 +272,22 @@ function getNotePreview(content) {
 }
 
 function formatTime(timestamp) {
-  if (!timestamp) return ''
-  const date = new Date(timestamp * 1000)
+  if (!timestamp) return '未知时间'
+  
+  let date
+  if (typeof timestamp === 'number') {
+    date = new Date(timestamp * 1000)
+  } else if (typeof timestamp === 'string') {
+    date = new Date(timestamp)
+  } else {
+    return '未知时间'
+  }
+  
+  if (isNaN(date.getTime())) {
+    console.error('无效的时间格式:', timestamp)
+    return '未知时间'
+  }
+  
   const now = new Date()
   const diff = now - date
   
@@ -436,6 +473,14 @@ async function loadData() {
     } else if (currentTab.value === 'files') {
       const files = await getSharedFiles(groupUid.value)
       sharedFiles.value = files || []
+      console.log('获取到的文件列表:', sharedFiles.value)
+      if (sharedFiles.value.length > 0) {
+        console.log('第一个文件的时间字段:', {
+          shared_at: sharedFiles.value[0].shared_at,
+          updated_at: sharedFiles.value[0].updated_at,
+          type: typeof sharedFiles.value[0].shared_at
+        })
+      }
     }
   } catch (error) {
     console.error('加载数据失败:', error)
@@ -662,6 +707,178 @@ onMounted(async () => {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
+}
+
+/* 骨架屏样式 - 笔记列表 */
+.skeleton-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.skeleton-note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  background-color: var(--bg-secondary, #0d0d0d);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 12px;
+}
+
+.skeleton-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background-color: rgba(128, 128, 128, 0.2);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.skeleton-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.skeleton-tag {
+  width: 64px;
+  height: 20px;
+  border-radius: 6px;
+  background-color: rgba(128, 128, 128, 0.2);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-user {
+  width: 80px;
+  height: 16px;
+  border-radius: 4px;
+  background-color: rgba(128, 128, 128, 0.2);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-title {
+  width: 60%;
+  height: 20px;
+  border-radius: 4px;
+  background-color: rgba(128, 128, 128, 0.25);
+  margin-bottom: 8px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-preview {
+  width: 90%;
+  height: 40px;
+  border-radius: 4px;
+  background-color: rgba(128, 128, 128, 0.15);
+  margin-bottom: 12px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-meta {
+  width: 100px;
+  height: 16px;
+  border-radius: 4px;
+  background-color: rgba(128, 128, 128, 0.2);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+/* 骨架屏样式 - 文件时间线 */
+.skeleton-files-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  padding-left: 20px;
+}
+
+.skeleton-files-timeline::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--accent-blue, #58a6ff), var(--border-color, #30363d));
+}
+
+.skeleton-timeline-item {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+
+.skeleton-marker {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: rgba(128, 128, 128, 0.2);
+  border: 2px solid rgba(128, 128, 128, 0.3);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.skeleton-timeline-content {
+  flex: 1;
+  min-width: 0;
+  background-color: var(--bg-secondary, #0d0d0d);
+  border: 1px solid var(--border-color, #30363d);
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+
+.skeleton-file-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.skeleton-file-name {
+  flex: 1;
+  height: 18px;
+  border-radius: 4px;
+  background-color: rgba(128, 128, 128, 0.25);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-file-size {
+  width: 60px;
+  height: 24px;
+  border-radius: 12px;
+  background-color: rgba(128, 128, 128, 0.2);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.skeleton-file-meta {
+  display: flex;
+  gap: 16px;
+}
+
+.skeleton-meta-item {
+  width: 80px;
+  height: 16px;
+  border-radius: 4px;
+  background-color: rgba(128, 128, 128, 0.2);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .empty-state {

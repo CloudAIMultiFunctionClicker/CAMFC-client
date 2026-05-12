@@ -22,12 +22,31 @@ use windows::core::HSTRING;
 /// * `title` - 通知标题
 /// * `message` - 通知内容
 pub fn show_notification(title: &str, message: &str) -> Result<(), String> {
-    // 获取 AppUserModelID
-    let app_id = get_app_user_model_id()?;
+    show_notification_with_config(title, message, None, None)
+}
+
+/// 显示 Windows 原生通知（带配置）
+/// 
+/// # 参数
+/// * `title` - 通知标题
+/// * `message` - 通知内容
+/// * `app_id` - 可选的应用 ID，默认为 "CAMFC"
+/// * `duration` - 可选的显示持续时间，"short" 或 "long"，默认为 "short"
+pub fn show_notification_with_config(
+    title: &str, 
+    message: &str,
+    app_id: Option<&str>,
+    duration: Option<&str>,
+) -> Result<(), String> {
+    let app_id = app_id.unwrap_or("CAMFC");
     
-    // 创建 XML 内容
+    let duration_attr = match duration.unwrap_or("short") {
+        "long" => r#"duration="long""#,
+        _ => r#"duration="short""#,
+    };
+    
     let xml_content = format!(r#"
-        <toast>
+        <toast {duration_attr}>
             <visual>
                 <binding template="ToastText02">
                     <text id="1">{}</text>
@@ -37,34 +56,23 @@ pub fn show_notification(title: &str, message: &str) -> Result<(), String> {
         </toast>
     "#, escape_xml(title), escape_xml(message));
     
-    // 创建 XmlDocument
     let xml_document = XmlDocument::new()
         .map_err(|e| format!("创建 XML 文档失败：{:?}", e))?;
     
-    // 加载 XML 内容
     xml_document.LoadXml(&HSTRING::from(xml_content.as_str()))
         .map_err(|e| format!("加载 XML 失败：{:?}", e))?;
     
-    // 创建 ToastNotification
     let toast = ToastNotification::CreateToastNotification(&xml_document)
         .map_err(|e| format!("创建通知失败：{:?}", e))?;
     
-    // 获取 ToastNotifier
     let notifier = ToastNotificationManager::CreateToastNotifierWithId(&HSTRING::from(app_id))
         .map_err(|e| format!("创建通知器失败：{:?}", e))?;
     
-    // 显示通知
     notifier.Show(&toast)
         .map_err(|e| format!("显示通知失败：{:?}", e))?;
     
     tracing::info!("[通知] 已显示 Windows 通知：{} - {}", title, message);
     Ok(())
-}
-
-/// 获取 AppUserModelID
-fn get_app_user_model_id() -> Result<String, String> {
-    // 使用应用名称作为 AppUserModelID
-    Ok("com.camfc.client".to_string())
 }
 
 /// 转义 XML 特殊字符

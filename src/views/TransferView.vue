@@ -38,6 +38,9 @@ const uploadHistory = ref([])
 const downloadHistory = ref([])
 let pollTimer = null
 
+// loading 状态
+const isLoading = ref(true)
+
 const formatSize = (bytes) => {
   if (!bytes || bytes === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB']
@@ -144,6 +147,8 @@ const mapStatus = (status) => {
 const refreshAll = async () => {
   await Promise.all([refreshUploads(), refreshDownloads()])
   await checkAndSaveCompleted()
+  // 数据加载完成后关闭 loading
+  isLoading.value = false
 }
 
 const loadHistory = async () => {
@@ -450,7 +455,27 @@ onUnmounted(() => {
             <span class="header-action">操作</span>
           </div>
 
-          <div class="list-content">
+          <!-- 骨架屏：加载时显示 -->
+          <div v-if="isLoading" class="skeleton-transfer-list">
+            <div v-for="i in 5" :key="i" class="skeleton-transfer-item">
+              <div class="skeleton-name">
+                <div class="skeleton-icon"></div>
+                <div class="skeleton-text"></div>
+              </div>
+              <div class="skeleton-size"></div>
+              <div class="skeleton-progress">
+                <div class="skeleton-bar"></div>
+                <div class="skeleton-text-short"></div>
+              </div>
+              <div class="skeleton-status"></div>
+              <div class="skeleton-action">
+                <div class="skeleton-btn"></div>
+                <div class="skeleton-btn"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="list-content" v-else>
             <div
               v-for="item in [...uploadList, ...uploadHistory]"
               :key="item.id + (item.completedTime || '')"
@@ -528,7 +553,27 @@ onUnmounted(() => {
             <span class="header-action">操作</span>
           </div>
 
-          <div class="list-content">
+          <!-- 骨架屏：加载时显示 -->
+          <div v-if="isLoading" class="skeleton-transfer-list">
+            <div v-for="i in 5" :key="i" class="skeleton-transfer-item">
+              <div class="skeleton-name">
+                <div class="skeleton-icon"></div>
+                <div class="skeleton-text"></div>
+              </div>
+              <div class="skeleton-size"></div>
+              <div class="skeleton-progress">
+                <div class="skeleton-bar"></div>
+                <div class="skeleton-text-short"></div>
+              </div>
+              <div class="skeleton-status"></div>
+              <div class="skeleton-action">
+                <div class="skeleton-btn"></div>
+                <div class="skeleton-btn"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="list-content" v-else>
             <div
               v-for="item in [...downloadList, ...downloadHistory]"
               :key="item.id + (item.completedTime || '')"
@@ -1005,5 +1050,120 @@ onUnmounted(() => {
 
 .activity-btn i {
   font-size: 16px;
+}
+
+/* 骨架屏样式 */
+.skeleton-transfer-list {
+  padding: 0;
+}
+
+.skeleton-transfer-item {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr 1fr 150px;
+  gap: 16px;
+  padding: 16px 20px;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-transfer-item:last-child {
+  border-bottom: none;
+}
+
+.skeleton-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.skeleton-icon {
+  width: 20px;
+  height: 20px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-text {
+  height: 16px;
+  width: 60%;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-text-short {
+  height: 12px;
+  width: 80px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-size {
+  height: 14px;
+  width: 50px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skeleton-bar {
+  height: 6px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: .375rem;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-status {
+  height: 24px;
+  width: 60px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: .375rem;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-action {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.skeleton-btn {
+  width: 32px;
+  height: 32px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: .375rem;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (max-width: 768px) {
+  .skeleton-transfer-item {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .skeleton-progress,
+  .skeleton-status,
+  .skeleton-action {
+    padding-left: 30px;
+  }
 }
 </style>

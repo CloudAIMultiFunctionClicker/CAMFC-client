@@ -718,6 +718,8 @@ impl BluetoothManager {
                         }
                         
                         tracing::info!("[BLUETOOTH] 通知流已结束，连接可能已断开");
+                        // 显示蓝牙断开通知
+                        let _ = crate::notification::show_notification("蓝牙断开", "设备已断开连接");
                         crate::event_emitter::emit_bluetooth_disconnect();
                     }
                     Err(e) => {

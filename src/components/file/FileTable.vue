@@ -1052,13 +1052,7 @@ const isFileSelected = (itemPath) => {
 
 
     <!-- 文件表格 - 始终显示，加载时加上遮罩 -->
-    <div class="file-table" :class="{ 'loading-overlay': loading }">
-      <!-- 加载遮罩 -->
-      <div v-if="loading" class="loading-overlay-content">
-        <i class="ri-loader-4-line spin"></i>
-        <span>加载中...</span>
-      </div>
-      
+    <div class="file-table">
       <!-- 表头 -->
       <div class="table-header">
         <div class="header-cell name">名称</div>
@@ -1067,24 +1061,42 @@ const isFileSelected = (itemPath) => {
         <div class="header-cell time">修改时间</div>
       </div>
 
+      <!-- 骨架屏：加载时显示 -->
+      <div v-if="loading" class="skeleton-body">
+        <div v-for="i in 8" :key="i" class="skeleton-row">
+          <div class="skeleton-cell name">
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-text" style="width: 60%;"></div>
+          </div>
+          <div class="skeleton-cell type">
+            <div class="skeleton-badge"></div>
+          </div>
+          <div class="skeleton-cell size">
+            <div class="skeleton-text" style="width: 50%;"></div>
+          </div>
+          <div class="skeleton-cell time">
+            <div class="skeleton-text" style="width: 70%;"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- 空状态 -->
-      <div v-if="fileList.length === 0 && !loading" class="empty-state">
+      <div v-else-if="fileList.length === 0" class="empty-state">
         <i class="ri-folder-open-line"></i>
         <p>这个目录是空的</p>
       </div>
 
       <!-- 文件列表 -->
-      <div v-else class="table-body" :class="{ 'loading-blur': loading }">
-        <div 
-          v-for="(item, index) in fileList" 
-          :key="item.path" 
-          class="table-row" 
+      <div v-else class="table-body">
+        <div
+          v-for="(item, index) in fileList"
+          :key="item.path"
+          class="table-row"
           @click="(e) => handleFileClick(item, index, e)"
           @dblclick="handleFileDoubleClick(item)"
-          :class="{ 
-            'is-dir': item.is_dir, 
-            'is-file': item.is_file, 
-            'loading-disabled': loading,
+          :class="{
+            'is-dir': item.is_dir,
+            'is-file': item.is_file,
             'selected': isFileSelected(item.path)
           }"
         >
@@ -1092,17 +1104,17 @@ const isFileSelected = (itemPath) => {
             <i :class="item.is_dir ? 'ri-folder-line' : getFileIcon(item.name)"></i>
             <span class="file-name" :title="item.name">{{ item.name }}</span>
           </div>
-          
+
           <div class="cell type">
             <span class="type-badge" :class="{ 'dir-badge': item.is_dir, 'file-badge': item.is_file }">
               {{ item.is_dir ? '文件夹' : (item.mime_type || '文件') }}
             </span>
           </div>
-          
+
           <div class="cell size">
             {{ item.is_dir ? '-' : formatSize(item.size) }}
           </div>
-          
+
           <div class="cell time">
             {{ formatTime(item.modified_at) }}
           </div>
@@ -1245,26 +1257,7 @@ const isFileSelected = (itemPath) => {
   background: var(--hover-bg, #f3f4f6);
 }
 
-.spin {
-  animation: spin 1s linear infinite;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 40px;
-  color: var(--accent-blue);
-  flex-direction: column;
-  gap: 16px;
-}
 
-.spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 
 /* 淡入动画，给空状态用 */
 @keyframes fadeIn {
@@ -1314,11 +1307,63 @@ const isFileSelected = (itemPath) => {
   transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
-/* 加载时的模糊和灰色效果 */
-.table-body.loading-blur {
-  filter: blur(4px) grayscale(0.8);
-  opacity: 0.5;
-  pointer-events: none;
+/* 骨架屏样式 */
+.skeleton-body {
+  padding: 0;
+}
+
+.skeleton-row {
+  display: grid;
+  grid-template-columns: 2fr 0.8fr 0.8fr 1.2fr;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-color, #d0d7de);
+  align-items: center;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-cell {
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skeleton-cell.name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skeleton-icon {
+  width: 20px;
+  height: 20px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-text {
+  height: 16px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: 4px;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-badge {
+  width: 50px;
+  height: 20px;
+  background-color: rgba(128, 128, 128, 0.2);
+  border-radius: .375rem;
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .table-row {
@@ -1559,40 +1604,7 @@ const isFileSelected = (itemPath) => {
   display: inline;
 }
 
-/* 加载遮罩效果 */
-.file-table.loading-overlay {
-  position: relative;
-}
 
-.loading-overlay-content {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: var(--text-primary);
-  z-index: 10;
-  border-radius: .375rem;
-  flex-direction: column;
-}
-
-.loading-overlay-content i {
-  font-size: 24px;
-  margin-bottom: 8px;
-}
-
-.table-row.loading-disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.table-row.loading-disabled.is-dir {
-  cursor: not-allowed;
-}
 
 /* 小屏幕只显示图标 */
 @media (max-width: 1024px) {
@@ -1613,44 +1625,28 @@ const isFileSelected = (itemPath) => {
   .operation-buttons {
     gap: 6px;
   }
-  
-  .loading-overlay-content {
-    padding: 20px;
-  }
-  
-  .loading-overlay-content i {
-    font-size: 20px;
-  }
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
   .table-header,
-  .table-row {
+  .table-row,
+  .skeleton-row {
     grid-template-columns: 2fr 1fr 1fr 1fr;
   }
-  
+
   .cell.size,
   .cell.time {
     font-size: 12px;
   }
-  
+
   .path-nav {
     gap: 12px;
     padding: 10px 12px;
   }
-  
+
   .operation-buttons {
     gap: 4px;
-  }
-  
-  .loading-overlay-content {
-    padding: 15px;
-    font-size: 14px;
-  }
-  
-  .loading-overlay-content i {
-    font-size: 18px;
   }
 }
 

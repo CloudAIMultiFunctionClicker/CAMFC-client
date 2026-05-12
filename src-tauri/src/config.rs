@@ -63,12 +63,16 @@ pub async fn init_config() -> Result<()> {
                 .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
             return Ok(());
         } else {
-            tracing::info!("环境变量指定的服务器不可用，继续尝试其他配置源...");
+            tracing::info!("环境变量指定的服务器不可用，但已配置环境变量，强制使用");
+            // 已配置环境变量时，即使检测失败也使用环境变量配置
+            BACKEND_CONFIG.set(config)
+                .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
+            return Ok(());
         }
     }
     
-    // 2. 环境变量不存在或不可用，尝试从远程 API 获取
-    tracing::info!("尝试从远程 API 获取配置...");
+    // 2. 环境变量不存在，尝试从远程 API 获取
+    tracing::info!("环境变量未配置，尝试从远程 API 获取配置...");
     match try_load_from_remote().await {
         Ok(config) => {
             tracing::info!("从远程 API 加载配置：{}", config.get_full_url());

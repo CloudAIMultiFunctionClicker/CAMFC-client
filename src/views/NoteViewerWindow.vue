@@ -130,7 +130,7 @@ import axios from 'axios'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
 import { getSharedNoteDetail } from '../components/data/group.js'
-import { getBackendUrl } from '../config/backend.js'
+import { getBackendUrl, initBackendConfig } from '../config/backend.js'
 
 const route = useRoute()
 const timeOut = 5000
@@ -147,21 +147,51 @@ const loading = ref(true)
 const error = ref('')
 
 // 获取认证头
-async function getAuthHeader() {
+async function getAuthHeader(retryCount = 0) {
+  const maxRetries = 3;
+  const retryDelay = 300;
+  
   try {
     const { getDeviceId, getTotp } = await import('../components/data/bluetooth.js')
     const deviceId = await getDeviceId()
     const currentTotp = await getTotp()
-    return { "Id": deviceId, "Totp": currentTotp }
+    
+    if (currentTotp && deviceId) {
+      return { "Id": deviceId, "Totp": currentTotp }
+    }
+    
+    // 如果是教师端但没获取到，尝试重试等待蓝牙模块准备好
+    if (retryCount < maxRetries) {
+      console.log(`等待蓝牙模块准备中... (${retryCount + 1}/${maxRetries})`)
+      await new Promise(resolve => setTimeout(resolve, retryDelay))
+      return await getAuthHeader(retryCount + 1)
+    }
   } catch {
-    return {}
+    // 重试失败后尝试返回空 header
   }
+  
+  return {}
 }
 
 // 格式化时间戳
 function formatTime(timestamp) {
   if (!timestamp) return ''
-  const date = new Date(timestamp * 1000)
+  
+  let date
+  // 尝试判断时间戳格式
+  if (typeof timestamp === 'number') {
+    // Unix 时间戳（秒），转换为毫秒
+    date = new Date(timestamp * 1000)
+  } else if (typeof timestamp === 'string') {
+    // ISO 格式字符串
+    date = new Date(timestamp)
+  } else {
+    return ''
+  }
+  
+  // 检查日期是否有效
+  if (isNaN(date.getTime())) return ''
+  
   return date.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
@@ -181,21 +211,21 @@ function formatNoteContent(content) {
   // 匹配 data:image/xxx;base64,xxxx 格式的 base64 数据，并包裹成 img 标签
   const base64Regex = /(data:image\/(?:png|jpg|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+)/g
   formatted = formatted.replace(base64Regex, (match, base64Data) => {
-    return `<img src="${base64Data}" class="note-image" loading="lazy" />`
+    return `<img src="${base64Data}" class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius:8px;object-fit:contain;" loading="lazy" />`
   })
   
   // 处理 Markdown 图片格式 ![alt](url)
   formatted = formatted.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
-    return `<img src="${url}" alt="${alt}" class="note-image" loading="lazy" />`
+    return `<img src="${url}" alt="${alt}" class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius:8px;object-fit:contain;" loading="lazy" />`
   })
   
   // 处理 HTML img 标签，添加样式类
   formatted = formatted.replace(/<img([^>]*)>/gi, (match, attrs) => {
     if (!attrs.includes('class=')) {
-      return `<img${attrs} class="note-image" loading="lazy" />`
+      return `<img${attrs} class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius:8px;object-fit:contain;" loading="lazy" />`
     }
     if (!attrs.includes('loading=')) {
-      return match.replace(/>/, ' loading="lazy" />')
+      return match.replace(/>/, ' style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius:8px;object-fit:contain;" loading="lazy" />')
     }
     return match
   })
@@ -354,6 +384,9 @@ onMounted(async () => {
   const shareUuid = route.query.shareUuid
   const groupUuid = route.query.groupUuid
   const title = route.query.title
+
+  // 初始化后端配置
+  await initBackendConfig()
 
   if (!shareUuid || !groupUuid) {
     error.value = '缺少必要参数：shareUuid 和 groupUuid'
@@ -519,7 +552,7 @@ onUnmounted(async () => {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 24px;
+  padding: 24px 0;
 }
 
 /* 加载状态 */
@@ -569,11 +602,11 @@ onUnmounted(async () => {
 
 /* 笔记内容包装器 */
 .note-content-wrapper {
-  max-width: calc(100% - 48px);
-  width: 900px;
+  max-width: min(900px, 100vw - 48px);
   margin: 0 auto;
   padding: 0 24px;
   box-sizing: border-box;
+  width: 100%;
 }
 
 /* 元信息区域 */
@@ -600,6 +633,7 @@ onUnmounted(async () => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
+  flex-wrap: wrap;
 }
 
 .meta-icon {
@@ -677,6 +711,7 @@ onUnmounted(async () => {
 /* 图片样式 - 响应式显示 */
 .note-image {
   max-width: 100%;
+  max-height: 50vh;
   width: auto;
   height: auto;
   display: block;
@@ -684,6 +719,7 @@ onUnmounted(async () => {
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transition: transform 0.2s ease;
+  object-fit: contain;
 }
 
 .note-image:hover {
@@ -835,11 +871,11 @@ onUnmounted(async () => {
 /* 响应式布局 */
 @media (max-width: 768px) {
   .viewer-body {
-    padding: 16px;
+    padding: 16px 0;
   }
 
   .note-content-wrapper {
-    max-width: calc(100% - 32px);
+    max-width: 100%;
     padding: 0 16px;
   }
 
