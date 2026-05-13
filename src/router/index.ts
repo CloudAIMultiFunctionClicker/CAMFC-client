@@ -122,13 +122,13 @@ const router = createRouter({
       path: '/notes_notes',
       name: 'notesNotes',
       component: () => import('../views/Notes.vue'),
-      props: route => ({ defaultTab: 'notes' })
+      props: () => ({ defaultTab: 'notes' })
     },
     {
       path: '/notes_meetings',
       name: 'notesMeetings',
       component: () => import('../views/Notes.vue'),
-      props: route => ({ defaultTab: 'meetings' })
+      props: () => ({ defaultTab: 'meetings' })
     },
     {
       path: '/transfer',
@@ -202,13 +202,13 @@ const router = createRouter({
       path: '/group-manager_groups',
       name: 'groupManagerGroups',
       component: () => import('../views/GroupManager.vue'),
-      props: route => ({ defaultTab: 'groups' })
+      props: () => ({ defaultTab: 'groups' })
     },
     {
       path: '/group-manager_applications',
       name: 'groupManagerApplications',
       component: () => import('../views/GroupManager.vue'),
-      props: route => ({ defaultTab: 'applications' })
+      props: () => ({ defaultTab: 'applications' })
     },
     {
       path: '/group-detail',
