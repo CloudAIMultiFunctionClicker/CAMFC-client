@@ -229,7 +229,7 @@ async function rescanDevices() {
     console.log('蓝牙已连接，无需重新扫描')
     showToast('蓝牙已连接')
     setTimeout(() => {
-      router.push('/main')
+      router.push('/welcome')
     }, 500)
   } else {
     await scanDevices()
@@ -286,7 +286,7 @@ async function selectDevice(device) {
  * 开始倒计时
  */
 function startCountdown() {
-  jumpToMain()
+  jumpToWelcome()
 }
 
 /**
@@ -296,13 +296,13 @@ function skipCountdown() {
   if (countdownTimer) {
     clearInterval(countdownTimer)
   }
-  jumpToMain()
+  jumpToWelcome()
 }
 
 /**
- * 跳转到主页面
+ * 跳转到欢迎页面
  */
-function jumpToMain() {
+function jumpToWelcome() {
   showCountdown.value = false
   // 确保蓝牙状态已设置为已连接
   // 这样路由守卫才会放行
@@ -312,25 +312,25 @@ function jumpToMain() {
   }
   // 稍微延迟一下再跳转，给状态更新时间
   setTimeout(() => {
-    console.log('执行路由跳转，目标：/main')
-    router.push('/main')
+    console.log('执行路由跳转，目标：/welcome')
+    router.push('/welcome')
   }, 100)
 }
 
 /**
  * 跳过蓝牙连接
  */
-function skipToMain() {
+function skipToWelcome() {
   console.log('用户跳过蓝牙连接')
-  router.push('/main')
+  router.push('/welcome')
 }
 
 /**
- * 立即进入主页面
+ * 立即进入欢迎页面
  */
-function goToMainNow() {
-  console.log('用户点击进入主页面')
-  router.push('/main')
+function goToWelcomeNow() {
+  console.log('用户点击进入欢迎页面')
+  router.push('/welcome')
 }
 
 /**
@@ -350,9 +350,9 @@ onMounted(async () => {
   if (connected) {
     console.log('蓝牙已连接，不再扫描')
     showToast('蓝牙已连接')
-    // 已连接，直接跳转到主页面
+    // 已连接，直接跳转到欢迎页面
     setTimeout(() => {
-      router.push('/main')
+      router.push('/welcome')
     }, 500)
   } else {
     console.log('蓝牙未连接，开始扫描')

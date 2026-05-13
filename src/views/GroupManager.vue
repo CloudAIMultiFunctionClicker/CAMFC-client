@@ -697,7 +697,7 @@ watch(() => route.path, (newPath) => {
   width: 64px;
   height: 64px;
   border-radius: 2px;
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(49, 120, 198, 0.2));
+  background: rgba(88, 166, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;

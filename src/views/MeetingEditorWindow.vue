@@ -1254,7 +1254,7 @@ function initTheme() {
   font-weight: 500;
   border: none;
   border-radius: 2px;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  background: #3b82f6;
   color: white;
   cursor: pointer;
   transition: all 0.2s;
@@ -1372,10 +1372,10 @@ function initTheme() {
   background-size: 200% 100%;
 }
 
-/* [题目]标记高亮样式 */
+/* [题目] 标记高亮样式 */
 .question-tag {
   display: inline-block;
-  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  background: #f59e0b;
   color: white;
   padding: 2px 8px;
   border-radius: 2px;
@@ -1392,7 +1392,7 @@ function initTheme() {
   gap: 4px;
   margin-top: 12px;
   padding: 8px 16px;
-  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  background: #f59e0b;
   color: white;
   border: none;
   border-radius: 2px;
@@ -1464,7 +1464,7 @@ function initTheme() {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%);
+  background: rgba(245, 158, 11, 0.2);
   border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
 }
 
@@ -1527,7 +1527,7 @@ function initTheme() {
 .reveal-answer-btn {
   width: 100%;
   padding: 12px;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  background: #4f46e5;
   color: white;
   border: none;
   border-radius: 2px;

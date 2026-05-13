@@ -459,7 +459,7 @@ const showDevelopingToast = () => {
   position: absolute;
   width: 20px;
   height: 20px;
-  background: radial-gradient(circle, rgba(var(--accent-blue-rgb, 49, 120, 198), 0.3) 0%, rgba(var(--accent-blue-rgb, 49, 120, 198), 0.15) 40%, transparent 70%);
+  background: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.3);
   border-radius: 2px;
   transform: translate(-50%, -50%) scale(0);
   animation: closeRippleExpand 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
@@ -495,7 +495,7 @@ const showDevelopingToast = () => {
   width: 320px;
   height: 280px;
   border-radius: 2px;
-  background: radial-gradient(circle, rgba(var(--accent-blue-rgb, 49, 120, 198), 0.12) 0%, transparent 70%);
+  background: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.12);
   animation: rippleExpand 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   pointer-events: none;
 }

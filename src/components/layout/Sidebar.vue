@@ -52,8 +52,8 @@ const route = useRoute()
 
 // 根据路径匹配所属的一级菜单
 const getMenuKeyByPath = (path) => {
-    if (path === '/') return 'connection'
-    if (path.startsWith('/fileView') || path.startsWith('/transfer') || path.startsWith('/recent-activities')) return 'cloud'
+    if (path === '/' || path === '/welcome') return 'connection'
+    if (path.startsWith('/fileView') || path.startsWith('/transfer') || path.startsWith('/recent-activities') || path.startsWith('/agent-window')) return 'cloud'
     if (path.startsWith('/notes') || path.startsWith('/notes_')) return 'records'
     if (path.startsWith('/group-manager') || path.startsWith('/group-detail')) return 'class'
     if (path.startsWith('/settings') || path.startsWith('/settings_')) return 'settings'
@@ -179,6 +179,12 @@ onMounted(() => {
                     <i :class="expandedMenus.connection ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line'" class="expand-icon"></i>
                 </div>
                 <ul v-show="expandedMenus.connection" class="menu-list">
+                    <li class="menu-item">
+                        <router-link to="/welcome" class="menu-link">
+                            <i class="ri-home-smile-line"></i>
+                            <span>欢迎页面</span>
+                        </router-link>
+                    </li>
                     <li class="menu-item">
                         <router-link to="/" class="menu-link">
                             <i class="ri-wifi-line"></i>

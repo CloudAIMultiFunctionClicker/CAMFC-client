@@ -782,7 +782,7 @@ onUnmounted(async () => {
 
 .keyword-tag {
   padding: 8px 16px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.2));
+  background: rgba(139, 92, 246, 0.2);
   color: #a78bfa;
   border-radius: 2px;
   font-size: 13px;
@@ -792,7 +792,7 @@ onUnmounted(async () => {
 }
 
 .keyword-tag:hover {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(99, 102, 241, 0.3));
+  background: rgba(139, 92, 246, 0.3);
   transform: translateY(-1px);
 }
 

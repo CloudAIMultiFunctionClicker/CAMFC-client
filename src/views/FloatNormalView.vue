@@ -37,10 +37,10 @@ Email: admin@mc666.top
       <button class="float-btn" @click.stop="openMainPage('/settings')" title="设置">
         <i class="ri-settings-3-line"></i>
       </button>
-      <button v-if="!isMainWindowVisible" class="float-btn open-main-btn" @click.stop="openMainWindow" title="打开主窗口">
+      <!-- <button v-if="!isMainWindowVisible" class="float-btn open-main-btn" @click.stop="openMainWindow" title="打开主窗口">
         <i class="ri-home-2-line"></i>
         <span class="btn-text">主窗口</span>
-      </button>
+      </button> -->
     </div>
 
 
@@ -325,7 +325,7 @@ async function handleScreenshot() {
   try {
     // 从设置中读取是否隐藏主窗口
     const hideWindowSetting = await loadAppData('screenshot_hide_window')
-    const shouldHideWindow = hideWindowSetting ? JSON.parse(hideWindowSetting) : true
+    const shouldHideWindow = hideWindowSetting ? JSON.parse(hideWindowSetting) : false
 
     // 获取主窗口
     const mainWindow = await Window.getByLabel('main')

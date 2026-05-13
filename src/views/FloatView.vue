@@ -25,10 +25,10 @@ Email: admin@mc666.top
       {{ isConnected ? '已连接' : '未连接' }}
     </span>
     <div class="float-buttons">
-      <button v-if="!isMainWindowVisible" class="float-btn open-main-btn" @click.stop="openMainWindow" title="打开主窗口">
+      <!-- <button v-if="!isMainWindowVisible" class="float-btn open-main-btn" @click.stop="openMainWindow" title="打开主窗口">
         <i class="ri-home-2-line"></i>
         <span class="btn-text">主窗口</span>
-      </button>
+      </button> -->
       <button class="float-btn" @click.stop="openMainPage('/fileView')" title="云盘">
         <i class="ri-cloud-line"></i>
       </button>

@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main", "float", "float-normal-empty", "note-editor-*", "screenshot-*", "meeting-editor-*", "note-viewer-*"],
+  "windows": ["main", "float", "float-normal-empty", "note-editor-*", "screenshot-*", "meeting-editor-*", "note-viewer-*", "agent-window"],
   "permissions": [
     "core:default",
     "opener:default",

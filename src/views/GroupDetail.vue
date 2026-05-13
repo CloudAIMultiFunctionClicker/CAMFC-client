@@ -563,7 +563,7 @@ onMounted(async () => {
   width: 56px;
   height: 56px;
   border-radius: 2px;
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(49, 120, 198, 0.2));
+  background: rgba(88, 166, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -805,7 +805,7 @@ onMounted(async () => {
   top: 0;
   bottom: 0;
   width: 2px;
-  background: linear-gradient(to bottom, var(--accent-blue, #58a6ff), var(--border-color, #30363d));
+  background: var(--accent-blue, #58a6ff);
 }
 
 .skeleton-timeline-item {
@@ -936,7 +936,7 @@ onMounted(async () => {
   width: 48px;
   height: 48px;
   border-radius: 2px;
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(49, 120, 198, 0.2));
+  background: rgba(88, 166, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1052,7 +1052,7 @@ onMounted(async () => {
   top: 0;
   bottom: 0;
   width: 2px;
-  background: linear-gradient(to bottom, var(--accent-blue, #58a6ff), var(--border-color, #30363d));
+  background: var(--accent-blue, #58a6ff);
 }
 
 .timeline-item {
@@ -1077,7 +1077,7 @@ onMounted(async () => {
   width: 40px;
   height: 40px;
   border-radius: 2px;
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(49, 120, 198, 0.2));
+  background: rgba(88, 166, 255, 0.2);
   border: 2px solid var(--accent-blue, #58a6ff);
   display: flex;
   align-items: center;
@@ -1270,7 +1270,7 @@ onMounted(async () => {
   width: 48px;
   height: 48px;
   border-radius: 2px;
-  background: linear-gradient(135deg, rgba(88, 166, 255, 0.15), rgba(49, 120, 198, 0.15));
+  background: rgba(88, 166, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;

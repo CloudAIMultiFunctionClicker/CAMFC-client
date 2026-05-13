@@ -38,6 +38,11 @@ const router = createRouter({
       name: 'initialView',
       component: ()=>import('../views/InitialView.vue'),  // 首页直接导入，保证首次加载速度
     },
+    {
+      path: '/welcome',
+      name: 'welcome',
+      component: () => import('../views/WelcomeView.vue'),  // 欢迎页面
+    },
     {path:'/fileView',
       name: 'fileView',
       component: () => import('../views/FileView.vue')
@@ -335,7 +340,7 @@ router.beforeEach(async (to, _from, next) => {
   // ========== 主窗口黑名单 ==========
   // 主窗口禁止进入截图展示和笔记编辑路由
   if (windowLabel === 'main') {
-    const forbiddenPaths = ['/screenshot-window', '/note-editor', '/screenshot', '/main']
+    const forbiddenPaths = ['/screenshot-window', '/note-editor', '/screenshot']
     if (forbiddenPaths.includes(to.path)) {
       console.warn(`[路由守卫] 主窗口禁止访问 ${to.path}，强制跳转到 /`)
       next('/')
@@ -348,6 +353,20 @@ router.beforeEach(async (to, _from, next) => {
   // 如果是首页，直接放行
   if (to.path === '/') {
     next()
+    return
+  }
+  
+  // 欢迎页面需要蓝牙连接
+  if (to.path === '/welcome') {
+    // 检查蓝牙是否已连接
+    const store = useBluetoothStore()
+    const connected = store.isConnected()
+    if (connected) {
+      next()
+    } else {
+      console.warn('[路由守卫] 蓝牙未连接，阻止访问欢迎页面')
+      next('/')
+    }
     return
   }
 
