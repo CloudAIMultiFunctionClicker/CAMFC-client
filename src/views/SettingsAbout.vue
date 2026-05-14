@@ -6,7 +6,7 @@
         <div class="about-info">
           <Cloud :size="64" class="app-icon" />
           <h4>CAMFC Cloud</h4>
-          <p class="version">版本 1.0.0</p>
+          <p class="version">版本 2.0.0</p>
           <p class="desc">云端多功能点击器客户端</p>
         </div>
         <div class="setting-item">
