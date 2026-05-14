@@ -124,12 +124,12 @@ impl ComputerTools {
     pub fn type_text(&mut self, text: &str) -> Result<()> {
         let mut clipboard = arboard::Clipboard::new()?;
         clipboard.set_text(text)?;
-        
+
         self.enigo.key_down(Key::Control);
         self.enigo.key_down(Key::Layout('v'));
         self.enigo.key_up(Key::Layout('v'));
         self.enigo.key_up(Key::Control);
-        
+
         thread::sleep(Duration::from_millis(200));
         Ok(())
     }

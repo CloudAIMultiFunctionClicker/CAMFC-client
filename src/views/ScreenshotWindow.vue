@@ -1,24 +1,10 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="screenshot-container" :class="{ 'light-mode': isLightMode }">
-    <!-- 顶部工具栏 -->
+
     <div class="toolbar" v-show="!isCropMode" @mousedown="startToolbarDrag">
-      <!-- 正常模式下的按钮 -->
+
       <template v-if="!isAnnotateMode">
         <div class="toolbar-left">
           <button class="zoom-btn" @click="zoomOut" :disabled="scale <= 0.1">
@@ -57,19 +43,18 @@ Email: admin@mc666.top
           </button>
         </div>
       </template>
-      
-      <!-- 标注模式下的工具 -->
+
       <template v-else>
         <div class="toolbar-left">
-          <!-- 工具选择 -->
-          <button 
+
+          <button
             :class="['zoom-btn', { active: annotateCurrentTool === 'select' }]"
             @click="selectAnnotateTool('select')"
             title="选择工具"
           >
             <i class="ri-cursor-line"></i>
           </button>
-          <button 
+          <button
             :class="['zoom-btn', { active: annotateCurrentTool === 'free' }]"
             @click="selectAnnotateTool('free')"
             title="自由绘制"
@@ -77,11 +62,10 @@ Email: admin@mc666.top
             <i class="ri-edit-line"></i>
           </button>
           <div class="control-divider"></div>
-          
-          <!-- 颜色选择 -->
+
           <div class="color-picker-group">
-            <button 
-              v-for="color in annotateColors" 
+            <button
+              v-for="color in annotateColors"
               :key="color.value"
               :class="['annotate-color-btn', { active: annotateCurrentColor === color.value }]"
               :style="{ backgroundColor: color.value }"
@@ -92,29 +76,27 @@ Email: admin@mc666.top
             </button>
           </div>
           <div class="control-divider"></div>
-          
-          <!-- 线条粗细 -->
+
           <div class="stroke-width-group">
-            <button 
-              v-for="width in annotateStrokeWidths" 
+            <button
+              v-for="width in annotateStrokeWidths"
               :key="width"
               :class="['annotate-stroke-btn', { active: annotateCurrentStrokeWidth === width }]"
               @click.stop="selectAnnotateStrokeWidth(width)"
               :title="`粗细：${width}px`"
             >
-              <div 
-                class="annotate-stroke-preview" 
-                :style="{ 
-                  width: width + 'px', 
+              <div
+                class="annotate-stroke-preview"
+                :style="{
+                  width: width + 'px',
                   height: width + 'px',
-                  backgroundColor: annotateCurrentColor 
+                  backgroundColor: annotateCurrentColor
                 }"
               ></div>
             </button>
           </div>
           <div class="control-divider"></div>
-          
-          <!-- 操作按钮 -->
+
           <button class="zoom-btn" @click="undoAnnotate" :disabled="!annotateCanUndo" title="撤销">
             <i class="ri-arrow-go-back-line"></i>
           </button>
@@ -145,14 +127,13 @@ Email: admin@mc666.top
         </div>
       </template>
     </div>
-    
-    <!-- 图片显示区域 -->
+
     <main class="screenshot-main">
-      <!-- 裁切模式 -->
+
       <div v-if="isCropMode" class="crop-image-wrapper" ref="cropImageWrapper" @mousedown="startDrawCrop" @mousemove="onDrawing" @mouseup="endDrawCrop" @mouseleave="endDrawCrop">
         <img :src="screenshotData" alt="裁切预览" class="crop-base-image" />
-        <!-- 裁切选框 -->
-        <div 
+
+        <div
           v-if="cropBox.width > 0 && cropBox.height > 0"
           class="crop-selection"
           :style="{
@@ -162,7 +143,7 @@ Email: admin@mc666.top
             height: cropBox.height + 'px'
           }"
         >
-          <!-- 八个调整大小的手柄 -->
+
           <div class="crop-handle crop-handle-nw" @mousedown.stop="startResize('nw')"></div>
           <div class="crop-handle crop-handle-n" @mousedown.stop="startResize('n')"></div>
           <div class="crop-handle crop-handle-ne" @mousedown.stop="startResize('ne')"></div>
@@ -171,11 +152,11 @@ Email: admin@mc666.top
           <div class="crop-handle crop-handle-s" @mousedown.stop="startResize('s')"></div>
           <div class="crop-handle crop-handle-sw" @mousedown.stop="startResize('sw')"></div>
           <div class="crop-handle crop-handle-w" @mousedown.stop="startResize('w')"></div>
-          <!-- 裁切区域尺寸显示 -->
+
           <div class="crop-size-label">
             {{ Math.round(cropBox.width) }} x {{ Math.round(cropBox.height) }}
           </div>
-          <!-- 裁切操作按钮 -->
+
           <div class="crop-selection-actions" @mousedown.stop @mousemove.stop @mouseup.stop>
             <button class="crop-action-btn cancel" @mousedown.stop @click="cancelCrop" title="取消">
               <i class="ri-close-line"></i>
@@ -187,10 +168,9 @@ Email: admin@mc666.top
         </div>
       </div>
 
-      <!-- 正常预览模式 -->
       <div v-else class="image-wrapper" ref="imageWrapper" @wheel="handleWheel">
-        <div 
-          class="image-drag-container" 
+        <div
+          class="image-drag-container"
           :style="{ transform: `translate(${translateX}px, ${translateY}px) scale(${scale})` }"
           @mousedown="startDrag"
           @mousemove="drag"
@@ -200,8 +180,7 @@ Email: admin@mc666.top
           <img :src="screenshotData" alt="屏幕截图" class="screenshot-image" draggable="false" />
         </div>
       </div>
-      
-      <!-- 标注模式 -->
+
       <div v-if="isAnnotateMode" class="annotate-overlay">
         <AnnotatePanel
           ref="annotatePanelRef"
@@ -226,10 +205,8 @@ import { showToast } from '../components/layout/showToast.js'
 import AnnotatePanel from '../components/annotate/AnnotatePanel.vue'
 import { saveAnnotations, loadAnnotations, generateImageId } from '../utils/annotationStorage.js'
 
-
 import { Window } from '@tauri-apps/api/window'
 
-// 主题状态
 const isLightMode = ref(false)
 
 const screenshotData = ref(null)
@@ -239,7 +216,6 @@ const screenshotTime = ref('')
 const loading = ref(false)
 const error = ref(null)
 
-// 裁切模式相关
 const isCropMode = ref(false)
 const cropBox = ref({
   x: 0,
@@ -255,7 +231,6 @@ const resizeHandle = ref('')
 const isDrawing = ref(false)
 const drawStart = ref({ x: 0, y: 0 })
 
-// 缩放和拖动相关
 const scale = ref(1)
 const translateX = ref(0)
 const translateY = ref(0)
@@ -264,16 +239,13 @@ const startX = ref(0)
 const startY = ref(0)
 const imageWrapper = ref(null)
 
-// 标注模式相关
 const isAnnotateMode = ref(false)
 const annotatedImageData = ref(null)
 const currentImageId = ref(null)
 const hasExistingAnnotations = ref(false)
 
-// 标注工具状态（通过 ref 访问 AnnotatePanel 实例）
 const annotatePanelRef = ref(null)
 
-// 标注工具配置
 const annotateColors = [
   { value: '#ef4444', name: '红色' },
   { value: '#3178c6', name: '蓝色' },
@@ -284,14 +256,12 @@ const annotateColors = [
 
 const annotateStrokeWidths = [2, 4, 6, 8, 10]
 
-// 标注工具状态代理
 const annotateCurrentTool = computed(() => annotatePanelRef.value?.currentTool || 'free')
 const annotateCurrentColor = computed(() => annotatePanelRef.value?.currentColor || '#ef4444')
 const annotateCurrentStrokeWidth = computed(() => annotatePanelRef.value?.currentStrokeWidth || 4)
 const annotateCanUndo = computed(() => annotatePanelRef.value?.canUndo || false)
 const annotateCanRedo = computed(() => annotatePanelRef.value?.canRedo || false)
 
-// 标注工具方法
 const selectAnnotateTool = (tool) => {
   annotatePanelRef.value?.selectTool(tool)
 }
@@ -316,7 +286,6 @@ const clearAnnotate = () => {
   annotatePanelRef.value?.clearAll()
 }
 
-// 监听截图数据事件
 let unlistenScreenshotData = null
 
 const processScreenshotData = (result) => {
@@ -326,19 +295,16 @@ const processScreenshotData = (result) => {
     height: result.height,
     imageDataLength: result.image_data?.length
   })
-  
-  // 重置所有模式状态，回到预览模式
+
   isCropMode.value = false
   isAnnotateMode.value = false
   cropBox.value = { x: 0, y: 0, width: 0, height: 0 }
-  
-  // 先设置数据
+
   screenshotData.value = result.image_data
   width.value = result.width
   height.value = result.height
   screenshotTime.value = new Date().toLocaleString('zh-CN')
-  
-  // 确保图片加载完成后再显示
+
   const img = new Image()
   img.onload = () => {
     console.log('图片加载成功:', img.width, img.height)
@@ -353,7 +319,7 @@ const processScreenshotData = (result) => {
 }
 
 const setupScreenshotListener = async () => {
-  // 先设置监听器，确保在组件挂载时就能接收事件
+
   unlistenScreenshotData = await listen('screenshot-data', (event) => {
     console.log('收到截图数据事件')
     const result = event.payload
@@ -364,12 +330,12 @@ const setupScreenshotListener = async () => {
       showToast(error.value, '#ef4444')
     }
   })
-  
+
   console.log('截图监听器已设置完成')
 }
 
 const captureScreenshot = async () => {
-  // 重新截图需要从FloatView触发
+
   showToast('请从悬浮窗重新截图', '#f59e0b')
 }
 
@@ -417,11 +383,9 @@ const handleWheel = (e) => {
 
 const handleCrop = () => {
   if (!screenshotData.value) return
-  
-  // 进入裁切模式
+
   isCropMode.value = true
-  
-  // 重置裁切框
+
   cropBox.value = { x: 0, y: 0, width: 0, height: 0 }
 }
 
@@ -430,27 +394,24 @@ const handleAnnotate = () => {
     console.error('[ScreenshotView] screenshotData 为空，无法进入标注模式')
     return
   }
-  
+
   console.log('[ScreenshotView] 进入标注模式', {
     hasData: !!screenshotData.value,
     dataLength: screenshotData.value?.length,
     width: width.value,
     height: height.value
   })
-  
-  // 生成或获取图片 ID
+
   if (!currentImageId.value) {
     currentImageId.value = generateImageId(screenshotData.value)
   }
-  
-  // 尝试加载已保存的标注
+
   const savedData = loadAnnotations(currentImageId.value)
   if (savedData) {
     hasExistingAnnotations.value = true
     showToast('已加载之前保存的标注', '#10b981')
   }
-  
-  // 进入标注模式
+
   isAnnotateMode.value = true
 }
 
@@ -460,27 +421,23 @@ const handleAnnotateComplete = (data) => {
     dataLength: data.imageData?.length,
     imageDataPreview: data.imageData?.substring(0, 50)
   })
-  
-  // 检查数据是否有效
+
   if (!data.imageData || data.imageData.length === 0) {
     console.error('[ScreenshotView] 标注数据为空')
     showToast('标注数据无效', '#ef4444')
     isAnnotateMode.value = false
     return
   }
-  
-  // 创建临时 Image 对象验证图片并获取尺寸
+
   const img = new Image()
   img.onload = () => {
     console.log('[ScreenshotView] 标注图片加载成功', img.width, 'x', img.height)
-    
-    // 更新数据
+
     annotatedImageData.value = data.imageData
     screenshotData.value = data.imageData
     width.value = img.width
     height.value = img.height
-    
-    // 保存标注数据
+
     if (currentImageId.value) {
       const success = saveAnnotations(
         currentImageId.value,
@@ -493,14 +450,12 @@ const handleAnnotateComplete = (data) => {
         showToast('保存失败', '#ef4444')
       }
     }
-    
-    // 最后退出标注模式
+
     isAnnotateMode.value = false
-    
-    // 重置缩放和平移状态
+
     resetZoom()
   }
-  
+
   img.onerror = () => {
     console.error('[ScreenshotView] 标注图片加载失败', {
       dataLength: data.imageData?.length,
@@ -509,7 +464,7 @@ const handleAnnotateComplete = (data) => {
     showToast('图片保存失败', '#ef4444')
     isAnnotateMode.value = false
   }
-  
+
   img.src = data.imageData
 }
 
@@ -526,92 +481,84 @@ const cancelCrop = () => {
   cropBox.value = { x: 0, y: 0, width: 0, height: 0 }
 }
 
-// 开始绘制裁切区域
 const startDrawCrop = (e) => {
   if (!cropImageWrapper.value) return
-  
+
   const wrapper = cropImageWrapper.value
   const rect = wrapper.getBoundingClientRect()
   const img = wrapper.querySelector('.crop-base-image')
-  
+
   if (!img) return
-  
+
   const imgDisplayWidth = img.width
   const imgDisplayHeight = img.height
   const imgOffsetX = (rect.width - imgDisplayWidth) / 2
   const imgOffsetY = (rect.height - imgDisplayHeight) / 2
-  
-  // 检查是否在图片范围内点击
+
   const mouseX = e.clientX - rect.left
   const mouseY = e.clientY - rect.top
-  
+
   if (mouseX < imgOffsetX || mouseX > imgOffsetX + imgDisplayWidth ||
       mouseY < imgOffsetY || mouseY > imgOffsetY + imgDisplayHeight) {
     return
   }
-  
+
   isDrawing.value = true
-  // 记录鼠标相对于容器的位置
-  drawStart.value = { 
-    x: mouseX, 
-    y: mouseY 
+
+  drawStart.value = {
+    x: mouseX,
+    y: mouseY
   }
-  
-  // 重置裁切框
+
   cropBox.value = {
     x: mouseX,
     y: mouseY,
     width: 0,
     height: 0
   }
-  
+
   e.preventDefault()
   e.stopPropagation()
 }
 
-// 绘制中
 const onDrawing = (e) => {
   if (!isDrawing.value || !cropImageWrapper.value) return
-  
+
   const wrapper = cropImageWrapper.value
   const rect = wrapper.getBoundingClientRect()
   const img = wrapper.querySelector('.crop-base-image')
-  
+
   if (!img) return
-  
+
   const imgDisplayWidth = img.width
   const imgDisplayHeight = img.height
   const imgOffsetX = (rect.width - imgDisplayWidth) / 2
   const imgOffsetY = (rect.height - imgDisplayHeight) / 2
-  
-  // 鼠标相对于容器的位置
+
   const mouseX = e.clientX - rect.left
   const mouseY = e.clientY - rect.top
-  
-  // 计算裁切区域（相对于容器）
+
   const x = Math.min(drawStart.value.x, mouseX)
   const y = Math.min(drawStart.value.y, mouseY)
   const w = Math.abs(mouseX - drawStart.value.x)
   const h = Math.abs(mouseY - drawStart.value.y)
-  
-  // 限制在图片范围内
+
   const minX = imgOffsetX
   const minY = imgOffsetY
   const maxX = imgOffsetX + imgDisplayWidth
   const maxY = imgOffsetY + imgDisplayHeight
-  
+
   cropBox.value = {
     x: Math.max(minX, Math.min(x, maxX - 1)),
     y: Math.max(minY, Math.min(y, maxY - 1)),
     width: Math.min(w, maxX - Math.max(minX, x)),
     height: Math.min(h, maxY - Math.max(minY, y))
   }
-  
+
   e.preventDefault()
   e.stopPropagation()
 }
 
-// 结束绘制
 const endDrawCrop = (e) => {
   if (!isDrawing.value) return
   isDrawing.value = false
@@ -621,70 +568,63 @@ const endDrawCrop = (e) => {
 
 const applyCrop = () => {
   if (!cropImageWrapper.value || !cropBox.value.width || !cropBox.value.height) return
-  
+
   const wrapper = cropImageWrapper.value
   const img = wrapper.querySelector('.crop-base-image')
   if (!img) return
-  
+
   const imgDisplayWidth = img.width
   const imgDisplayHeight = img.height
-  
-  // 计算裁切区域在原始图片中的实际坐标
+
   const scaleX = width.value / imgDisplayWidth
   const scaleY = height.value / imgDisplayHeight
-  
+
   const cropX = cropBox.value.x * scaleX
   const cropY = cropBox.value.y * scaleY
   const cropW = cropBox.value.width * scaleX
   const cropH = cropBox.value.height * scaleY
-  
-  // 创建 canvas 进行裁切
+
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(cropW)
   canvas.height = Math.round(cropH)
-  
+
   const ctx = canvas.getContext('2d')
   const imgElement = new Image()
   imgElement.crossOrigin = 'anonymous'
   imgElement.src = screenshotData.value
-  
+
   imgElement.onload = () => {
     ctx.drawImage(
       imgElement,
       cropX, cropY, cropW, cropH,
       0, 0, canvas.width, canvas.height
     )
-    
-    // 更新截图数据
+
     screenshotData.value = canvas.toDataURL('image/png')
     width.value = canvas.width
     height.value = canvas.height
-    
-    // 退出裁切模式
+
     isCropMode.value = false
     cropBox.value = { x: 0, y: 0, width: 0, height: 0 }
-    
-    // 重置缩放和平移状态
+
     resetZoom()
-    
+
     showToast('裁切成功', '#10b981')
   }
-  
+
   imgElement.onerror = () => {
     showToast('裁切失败', '#ef4444')
   }
 }
 
-// 监听裁切框变化，自动更新预览
 watch(() => [cropBox.value.x, cropBox.value.y, cropBox.value.width, cropBox.value.height], () => {
   if (isCropMode.value) {
     updateCropSizeLabel()
   }
 }, { deep: true })
 
-// 更新裁切尺寸标签
 const updateCropSizeLabel = () => {
-  // 尺寸标签通过模板自动更新
+
 }
 
 const saveScreenshot = async () => {
@@ -692,13 +632,13 @@ const saveScreenshot = async () => {
     showToast('没有可保存的图片', '#f59e0b')
     return
   }
-  
+
   try {
-    // 使用 Tauri 的对话框 API 选择保存位置
+
     const { save } = await import('@tauri-apps/plugin-dialog')
     const { writeBinaryFile } = await import('@tauri-apps/plugin-fs')
     const { join } = await import('@tauri-apps/api/path')
-    
+
     const filePath = await save({
       title: '保存图片',
       defaultPath: 'screenshot.png',
@@ -707,12 +647,12 @@ const saveScreenshot = async () => {
         extensions: ['png']
       }]
     })
-    
+
     if (filePath) {
-      // 将 base64 转换为 Uint8Array
+
       const base64Data = screenshotData.value.split(',')[1]
       const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
-      
+
       await writeBinaryFile(filePath, binaryData)
       showToast('图片已保存', '#10b981')
     }
@@ -727,65 +667,59 @@ const saveToNotes = async () => {
     showToast('没有可保存的图片', '#f59e0b')
     return
   }
-  
+
   try {
-    // 获取后端 URL
+
     const { getBackendUrl } = await import('../config/backend.js')
-    
-    // 获取认证信息
+
     const { getDeviceId, getTotp } = await import('../components/data/bluetooth.js')
     const deviceId = await getDeviceId()
     const currentTotp = await getTotp()
     const authHeader = { "Id": deviceId, "Totp": currentTotp }
-    
-    // 生成笔记标题
+
     const now = new Date()
     const timeStr = `${now.getMonth() + 1}月${now.getDate()}日 ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     const noteTitle = `截图笔记_${timeStr}`
     const uuid = crypto.randomUUID()
-    
-    // 创建笔记
+
     const createResponse = await fetch(getBackendUrl() + '/note/add', {
       method: 'POST',
       headers: { ...authHeader, 'Content-Type': 'application/json' },
       body: JSON.stringify({ uuid, title: noteTitle })
     })
-    
+
     if (!createResponse.ok) {
       throw new Error('创建笔记失败')
     }
-    
-    // 更新笔记内容，插入图片
+
     const markdownContent = `# ${noteTitle}\n\n![截图](${screenshotData.value})\n`
-    
+
     const updateResponse = await fetch(getBackendUrl() + '/note/update', {
       method: 'POST',
       headers: { ...authHeader, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        uuid, 
+      body: JSON.stringify({
+        uuid,
         title: noteTitle,
-        content: markdownContent 
+        content: markdownContent
       })
     })
-    
+
     if (!updateResponse.ok) {
       throw new Error('更新笔记内容失败')
     }
-    
+
     showToast('截图已保存到笔记', '#10b981')
-    
-    // 等待 0.2 秒后打开笔记，不关闭截图窗口
+
     setTimeout(() => {
       openNoteEditorWindow({ uuid, title: noteTitle, content: markdownContent })
     }, 200)
-    
+
   } catch (error) {
     console.error('保存到笔记失败:', error)
     showToast('保存失败：' + (error.message || '网络错误'), '#ef4444')
   }
 }
 
-// 打开笔记编辑窗口（子窗口）
 const openNoteEditorWindow = (note) => {
   const windowLabel = `note-editor-${note.uuid}`
   const url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
@@ -810,7 +744,7 @@ const openNoteEditorWindow = (note) => {
 
   webview.once('tauri://created', async () => {
     console.log('笔记编辑窗口创建成功:', windowLabel)
-    // 窗口创建后再发送内容，避免 URL 过长
+
     setTimeout(async () => {
       try {
         await webview.emit('load-note-content', { content: note.content || '' })
@@ -854,7 +788,6 @@ const closeWindow = async () => {
   }
 }
 
-// toolbar 拖动相关
 const isToolbarDragging = ref(false)
 const toolbarStartX = ref(0)
 const toolbarStartY = ref(0)
@@ -862,13 +795,13 @@ const toolbarWindowStartX = ref(0)
 const toolbarWindowStartY = ref(0)
 
 const startToolbarDrag = async (e) => {
-  // 只有点击 toolbar 本身才拖动，不响应按钮点击
+
   if (e.target.closest('.zoom-btn')) return
-  
+
   isToolbarDragging.value = true
   toolbarStartX.value = e.clientX
   toolbarStartY.value = e.clientY
-  
+
   try {
     const currentWindow = await getCurrentWindow()
     const position = await currentWindow.outerPosition()
@@ -877,17 +810,17 @@ const startToolbarDrag = async (e) => {
   } catch (err) {
     console.log('获取窗口位置失败:', err)
   }
-  
+
   document.addEventListener('mousemove', onToolbarDrag)
   document.addEventListener('mouseup', endToolbarDrag)
 }
 
 const onToolbarDrag = async (e) => {
   if (!isToolbarDragging.value) return
-  
+
   const dx = e.clientX - toolbarStartX.value
   const dy = e.clientY - toolbarStartY.value
-  
+
   try {
     const currentWindow = await getCurrentWindow()
     await currentWindow.setPosition({
@@ -905,17 +838,14 @@ const endToolbarDrag = () => {
   document.removeEventListener('mouseup', endToolbarDrag)
 }
 
-// 键盘快捷键支持
 const handleKeyDown = (e) => {
   if (!isCropMode.value) return
-  
-  // Enter 应用裁切
+
   if (e.key === 'Enter') {
     e.preventDefault()
     applyCrop()
   }
-  
-  // Escape 取消裁切
+
   if (e.key === 'Escape') {
     e.preventDefault()
     cancelCrop()
@@ -926,7 +856,7 @@ const startCropDrag = (e) => {
   isCropping.value = true
   cropStart.value = { x: e.clientX, y: e.clientY }
   cropOriginal.value = { ...cropBox.value }
-  
+
   document.addEventListener('mousemove', onCropDrag)
   document.addEventListener('mouseup', stopCropDrag)
   e.preventDefault()
@@ -934,22 +864,20 @@ const startCropDrag = (e) => {
 
 const onCropDrag = (e) => {
   if (!isCropping.value) return
-  
+
   const dx = e.clientX - cropStart.value.x
   const dy = e.clientY - cropStart.value.y
-  
+
   cropBox.value.x = cropOriginal.value.x + dx
   cropBox.value.y = cropOriginal.value.y + dy
-  
-  // 边界检查
+
   const wrapper = cropImageWrapper.value
   if (wrapper) {
     const img = wrapper.querySelector('.crop-base-image')
     if (img) {
       const imgDisplayWidth = img.width
       const imgDisplayHeight = img.height
-      
-      // 限制在图片范围内
+
       cropBox.value.x = Math.max(0, Math.min(cropBox.value.x, imgDisplayWidth - cropBox.value.width))
       cropBox.value.y = Math.max(0, Math.min(cropBox.value.y, imgDisplayHeight - cropBox.value.height))
     }
@@ -962,14 +890,13 @@ const stopCropDrag = () => {
   document.removeEventListener('mouseup', stopCropDrag)
 }
 
-// 初始化主题
 function initTheme() {
   try {
     const savedTheme = localStorage.getItem('theme-preference')
     if (savedTheme === 'light' || savedTheme === 'dark') {
       isLightMode.value = savedTheme === 'light'
     } else {
-      // 检测系统偏好
+
       isLightMode.value = window.matchMedia('(prefers-color-scheme: light)').matches
     }
   } catch (e) {
@@ -978,10 +905,9 @@ function initTheme() {
   }
 }
 
-// 监听主题变化
 function setupThemeListener() {
   try {
-    // 监听来自主窗口的主题变化事件
+
     listen('theme-changed', (event) => {
       const theme = event.payload
       isLightMode.value = theme === 'light'
@@ -999,11 +925,9 @@ onMounted(() => {
     console.error('设置截图监听器失败:', e)
   })
   document.addEventListener('keydown', handleKeyDown)
-  
-  // 初始化主题
+
   initTheme()
-  
-  // 监听主题变化
+
   setupThemeListener()
 })
 
@@ -1016,9 +940,9 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 主题变量定义 */
+
 .screenshot-container {
-  /* 暗色主题（默认） */
+
   --bg-primary: #0d1117;
   --bg-secondary: #161b22;
   --bg-tertiary: #21262d;
@@ -1044,7 +968,7 @@ onUnmounted(() => {
 }
 
 .screenshot-container.light-mode {
-  /* 亮色主题 */
+
   --bg-primary: #ffffff;
   --bg-secondary: #f6f8fa;
   --bg-tertiary: #eaeef2;
@@ -1109,7 +1033,6 @@ onUnmounted(() => {
   margin-right: -16px;
 }
 
-/* 按钮不参与拖动 */
 .toolbar .zoom-btn {
   -webkit-app-region: no-drag;
   cursor: pointer;
@@ -1125,27 +1048,23 @@ onUnmounted(() => {
   color: white;
 }
 
-/* 标注工具按钮激活状态 */
 .toolbar .zoom-btn.active {
   background-color: #3b82f6;
   color: #fff;
 }
 
-/* 颜色选择器组 */
 .color-picker-group {
   display: flex;
   gap: 6px;
   align-items: center;
 }
 
-/* 线条粗细选择器组 */
 .stroke-width-group {
   display: flex;
   gap: 6px;
   align-items: center;
 }
 
-/* 标注颜色按钮 */
 .annotate-color-btn {
   width: 26px;
   height: 26px;
@@ -1175,7 +1094,6 @@ onUnmounted(() => {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-/* 线条粗细按钮 */
 .annotate-stroke-btn {
   width: 30px;
   height: 30px;
@@ -1203,7 +1121,6 @@ onUnmounted(() => {
   border-radius: 2px;
 }
 
-/* 完成/取消按钮样式 */
 .toolbar .primary-btn {
   background-color: #10b981;
   color: #fff;

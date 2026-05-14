@@ -1,27 +1,13 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <script setup>
 import Sidebar from '../components/layout/Sidebar.vue'
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { 
-  getRecentActivities, 
-  getRecentUploads, 
-  getRecentDownloads, 
+import {
+  getRecentActivities,
+  getRecentUploads,
+  getRecentDownloads,
   getRecentAccesses,
   formatActivity,
   formatActivityTimestamp,
@@ -52,7 +38,6 @@ const activityTypes = [
   { value: 'access', label: '访问' }
 ]
 
-// 获取用户 UUID
 const loadUserUuid = async () => {
   try {
     userUuid.value = await invoke('get_user_uuid')
@@ -69,7 +54,7 @@ const loadActivities = async () => {
     console.warn('用户 UUID 未加载，跳过活动记录加载')
     return
   }
-  
+
   loading.value = true
   try {
     let result
@@ -86,10 +71,10 @@ const loadActivities = async () => {
       default:
         result = await getRecentActivities({ userUuid: userUuid.value, limit: limit.value })
     }
-    
+
     activities.value = result.activities || []
     total.value = result.total || 0
-    
+
     console.info(`加载了 ${activities.value.length} 条活动记录，总计 ${total.value} 条`)
   } catch (error) {
     console.error('加载活动记录失败:', error)
@@ -139,7 +124,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // 清理资源
+
 })
 
 watch([activeTab, limit], () => {
@@ -150,23 +135,23 @@ watch([activeTab, limit], () => {
 
 <template>
   <div class="recent-activities-container">
-    <Sidebar 
-      :collapsed="isSidebarCollapsed" 
-      @collapse="handleCollapseChange" 
+    <Sidebar
+      :collapsed="isSidebarCollapsed"
+      @collapse="handleCollapseChange"
     />
-    
+
     <div class="content" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
       <div class="header">
         <h1>最近活动记录</h1>
         <p class="subtitle">查看您最近操作过的云端文件记录</p>
       </div>
-      
+
       <div class="controls">
         <div class="filter-group">
           <label>活动类型：</label>
           <div class="filter-buttons">
-            <button 
-              v-for="type in activityTypes" 
+            <button
+              v-for="type in activityTypes"
               :key="type.value"
               :class="['filter-btn', { active: activeTab === type.value }]"
               @click="activeTab = type.value"
@@ -175,11 +160,11 @@ watch([activeTab, limit], () => {
             </button>
           </div>
         </div>
-        
+
         <div class="limit-group">
           <label>显示数量：</label>
-          <input 
-            type="number" 
+          <input
+            type="number"
             v-model.number="limit"
             min="1"
             max="100"
@@ -188,8 +173,8 @@ watch([activeTab, limit], () => {
           />
           <span class="limit-hint">（最多 100 条）</span>
         </div>
-        
-        <button 
+
+        <button
           class="refresh-btn"
           @click="refreshActivities"
           :disabled="loading"
@@ -201,7 +186,7 @@ watch([activeTab, limit], () => {
           <span v-else>刷新</span>
         </button>
       </div>
-      
+
       <div class="stats" v-if="!loading && activities.length > 0">
         <span class="stat-item">
           <span class="stat-value">{{ total }}</span>
@@ -212,10 +197,10 @@ watch([activeTab, limit], () => {
           <span class="stat-label">本次显示</span>
         </span>
       </div>
-      
+
       <div class="activities-list" v-if="!loading && activities.length > 0">
-        <div 
-          v-for="(activity, index) in activities" 
+        <div
+          v-for="(activity, index) in activities"
           :key="index"
           class="activity-item"
         >
@@ -232,7 +217,7 @@ watch([activeTab, limit], () => {
               </span>
             </div>
           </div>
-          
+
           <div class="activity-body">
             <div class="file-name">
               {{ activity.file_name || activity.file_path }}
@@ -246,7 +231,7 @@ watch([activeTab, limit], () => {
           </div>
         </div>
       </div>
-      
+
       <div class="empty-state" v-if="!loading && activities.length === 0">
         <div class="empty-icon">
           <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
@@ -258,13 +243,13 @@ watch([activeTab, limit], () => {
           </svg>
         </div>
         <p class="empty-text">
-          {{ 
-            total > 0 
-              ? `当前筛选条件下没有活动记录（总计 ${total} 条）` 
+          {{
+            total > 0
+              ? `当前筛选条件下没有活动记录（总计 ${total} 条）`
               : '暂无活动记录，请先进行上传、下载或文件访问操作'
           }}
         </p>
-        <button 
+        <button
           v-if="total > 0"
           class="clear-filters-btn"
           @click="activeTab = 'all'"
@@ -272,8 +257,7 @@ watch([activeTab, limit], () => {
           清除筛选
         </button>
       </div>
-      
-      <!-- 骨架屏：加载时显示灰色占位块 -->
+
       <div class="skeleton-activities-list" v-if="loading">
         <div v-for="i in 5" :key="i" class="skeleton-activity-item">
           <div class="skeleton-activity-header">
@@ -295,7 +279,6 @@ watch([activeTab, limit], () => {
 </template>
 
 <style scoped>
-/* 参考 Notes.vue 的样式规范，使用 CSS 变量 */
 
 .recent-activities-container {
   display: flex;
@@ -622,7 +605,6 @@ watch([activeTab, limit], () => {
   margin: 0;
 }
 
-/* 骨架屏样式 */
 .skeleton-activities-list {
   display: flex;
   flex-direction: column;
@@ -708,28 +690,27 @@ watch([activeTab, limit], () => {
   }
 }
 
-/* 响应式 - 竖屏适配 */
 @media (max-width: 768px) {
   .content {
     padding: 20px;
     margin-left: 0;
   }
-  
+
   .content.sidebar-collapsed {
     margin-left: 0;
   }
-  
+
   .controls {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .filter-group,
   .limit-group {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .filter-buttons {
     flex-wrap: wrap;
   }

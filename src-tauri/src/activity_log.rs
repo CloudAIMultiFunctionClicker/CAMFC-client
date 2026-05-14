@@ -1,25 +1,4 @@
-// 保留所有权利
-//
-// Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-// Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-//
-// Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-// Email: abc.cxh09@foxmail.com
-//
-// Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-// Email: 1220594170@qq.com
-//
-// Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-// Email: admin@mc666.top
 
-// 活动日志模块
-// 负责记录用户的最近操作（上传、下载、文件访问）
-//
-// 功能：
-// 1. 记录用户的上传、下载、文件访问操作
-// 2. 查询最近活动记录
-// 3. 支持按类型过滤
-// 4. 每个用户最多保留 100 条记录
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -27,7 +6,6 @@ use std::path::PathBuf;
 use tokio::fs;
 use chrono::{DateTime, Utc};
 
-// 活动类型
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum ActivityType {
@@ -36,7 +14,6 @@ pub enum ActivityType {
     Access,
 }
 
-// 活动记录结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Activity {
     pub timestamp: DateTime<Utc>,
@@ -46,7 +23,6 @@ pub struct Activity {
     pub file_size: u64,
 }
 
-// 活动记录响应结构
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActivityResponse {
     pub user_uuid: String,
@@ -56,7 +32,6 @@ pub struct ActivityResponse {
     pub activities: Vec<Activity>,
 }
 
-// 活动日志管理器
 pub struct ActivityLogManager {
     user_uuid: String,
     max_records: usize,
@@ -73,7 +48,6 @@ impl ActivityLogManager {
         }
     }
 
-    // 获取日志目录路径
     async fn get_log_path() -> Result<PathBuf> {
         let data_dir = dirs::data_dir()
             .context("获取应用数据目录失败")?
@@ -89,13 +63,11 @@ impl ActivityLogManager {
         Ok(log_dir)
     }
 
-    // 获取用户活动日志文件路径
     async fn get_user_log_path(&self) -> Result<PathBuf> {
         let log_dir = Self::get_log_path().await?;
         Ok(log_dir.join(format!("{}.json", self.user_uuid)))
     }
 
-    // 加载用户的活动记录
     async fn load_activities(&self) -> Result<Vec<Activity>> {
         let path = self.get_user_log_path().await?;
 
@@ -112,7 +84,6 @@ impl ActivityLogManager {
         Ok(activities)
     }
 
-    // 保存用户的活动记录
     async fn save_activities(&self, activities: &[Activity]) -> Result<()> {
         let path = self.get_user_log_path().await?;
 
@@ -125,7 +96,6 @@ impl ActivityLogManager {
         Ok(())
     }
 
-    // 添加新的活动记录
     pub async fn add_activity(&self, activity_type: ActivityType, file_path: &str, file_size: u64) -> Result<()> {
         let file_name = std::path::Path::new(file_path)
             .file_name()
@@ -145,7 +115,6 @@ impl ActivityLogManager {
 
         activities.push(activity);
 
-        // 保留最近 N 条记录
         if activities.len() > self.max_records {
             activities = activities.split_at(activities.len() - self.max_records).1.to_vec();
         }
@@ -153,7 +122,6 @@ impl ActivityLogManager {
         self.save_activities(&activities).await
     }
 
-    // 获取最近活动记录
     pub async fn get_recent_activities(
         &self,
         limit: usize,
@@ -191,8 +159,6 @@ impl ActivityLogManager {
         })
     }
 }
-
-// Tauri 命令
 
 #[tauri::command]
 pub async fn get_recent_activities(

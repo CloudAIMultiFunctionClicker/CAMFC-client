@@ -46,7 +46,7 @@ impl ToolCallParser {
     pub fn extract_tool_calls(&self, text: &str) -> Vec<ToolCall> {
         let re = Regex::new(r"(?s)<tool_call>(.*?)</tool_call>").unwrap();
         let mut tool_calls = Vec::new();
-        
+
         for cap in re.captures_iter(text) {
             if let Some(content) = cap.get(1) {
                 let content_str = content.as_str().trim();
@@ -62,7 +62,7 @@ impl ToolCallParser {
                 }
             }
         }
-        
+
         tool_calls
     }
 
@@ -73,7 +73,7 @@ impl ToolCallParser {
         resized_height: u32,
     ) {
         let keys = ["coordinate", "coordinate1", "coordinate2"];
-        
+
         for key in &keys {
             let coords = match *key {
                 "coordinate" => action.arguments.coordinate.as_mut(),

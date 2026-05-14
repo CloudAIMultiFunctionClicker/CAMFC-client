@@ -1,6 +1,6 @@
 <template>
   <div class="welcome-container">
-    <!-- 顶部欢迎横幅 -->
+
     <div class="welcome-banner">
       <div class="banner-content">
         <h1 class="welcome-title">欢迎来到 CAMFC Cloud</h1>
@@ -8,17 +8,16 @@
       </div>
     </div>
 
-    <!-- 主内容区 -->
     <div class="main-content">
-      <!-- 左侧 - 快速入门教程 -->
+
       <div class="tutorial-section">
         <h2 class="section-title">
           <i class="ri-book-open-line"></i>
           快速入门
         </h2>
-        
+
         <div class="tutorial-cards">
-          <!-- 步骤 1 -->
+
           <div class="tutorial-card">
             <div class="card-header">
               <div class="step-number">1</div>
@@ -38,7 +37,6 @@
             </button>
           </div>
 
-          <!-- 步骤 2 -->
           <div class="tutorial-card">
             <div class="card-header">
               <div class="step-number">2</div>
@@ -58,7 +56,6 @@
             </button>
           </div>
 
-          <!-- 步骤 3 -->
           <div class="tutorial-card">
             <div class="card-header">
               <div class="step-number">3</div>
@@ -78,7 +75,6 @@
             </button>
           </div>
 
-          <!-- 步骤 4 -->
           <div class="tutorial-card">
             <div class="card-header">
               <div class="step-number">4</div>
@@ -100,9 +96,8 @@
         </div>
       </div>
 
-      <!-- 右侧 - 功能概览和提示 -->
       <div class="info-section">
-        <!-- 功能特性 -->
+
         <div class="features-card">
           <h3 class="card-title">
             <i class="ri-lightbulb-line"></i>
@@ -140,7 +135,6 @@
           </div>
         </div>
 
-        <!-- 快捷键提示 -->
         <div class="tips-card">
           <h3 class="card-title">
             <i class="ri-keyline"></i>
@@ -166,7 +160,6 @@
           </div>
         </div>
 
-        <!-- 帮助与支持 -->
         <div class="support-card">
           <h3 class="card-title">
             <i class="ri-customer-service-2-line"></i>
@@ -223,7 +216,6 @@ function goToGroupManager() {
   overflow: hidden;
 }
 
-/* 欢迎横幅 */
 .welcome-banner {
   padding: 40px 40px 30px;
   background: var(--bg-secondary);
@@ -250,7 +242,6 @@ function goToGroupManager() {
   margin: 0;
 }
 
-/* 主内容区 */
 .main-content {
   flex: 1;
   display: grid;
@@ -264,7 +255,6 @@ function goToGroupManager() {
   box-sizing: border-box;
 }
 
-/* 教程区域 */
 .tutorial-section {
   display: flex;
   flex-direction: column;
@@ -379,7 +369,6 @@ function goToGroupManager() {
   font-size: 18px;
 }
 
-/* 信息区域 */
 .info-section {
   display: flex;
   flex-direction: column;
@@ -410,7 +399,6 @@ function goToGroupManager() {
   color: var(--text-primary);
 }
 
-/* 功能列表 */
 .feature-list {
   display: flex;
   flex-direction: column;
@@ -444,7 +432,6 @@ function goToGroupManager() {
   line-height: 1.4;
 }
 
-/* 技巧列表 */
 .tip-list {
   display: flex;
   flex-direction: column;
@@ -471,7 +458,6 @@ function goToGroupManager() {
   flex-shrink: 0;
 }
 
-/* 支持卡片 */
 .support-text {
   margin: 0 0 16px 0;
   font-size: 14px;
@@ -509,12 +495,11 @@ function goToGroupManager() {
   font-size: 18px;
 }
 
-/* 响应式调整 */
 @media (max-width: 1200px) {
   .main-content {
     grid-template-columns: 1fr;
   }
-  
+
   .tutorial-cards {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -524,23 +509,23 @@ function goToGroupManager() {
   .welcome-banner {
     padding: 30px 20px 20px;
   }
-  
+
   .welcome-title {
     font-size: 28px;
   }
-  
+
   .welcome-subtitle {
     font-size: 16px;
   }
-  
+
   .main-content {
     padding: 0 20px 20px;
   }
-  
+
   .tutorial-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .section-title {
     font-size: 20px;
   }

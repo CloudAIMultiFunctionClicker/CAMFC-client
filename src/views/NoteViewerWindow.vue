@@ -1,18 +1,4 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 <template>
   <div class="note-viewer-window" :class="{ 'light-mode': isLightMode }">
     <div class="viewer-header" data-tauri-drag-region>
@@ -46,7 +32,7 @@ Email: admin@mc666.top
       </div>
 
       <div v-else-if="noteData" class="note-content-wrapper">
-        <!-- 笔记元信息 -->
+
         <div class="note-meta">
           <div class="meta-item">
             <i class="ri-file-text-line meta-icon"></i>
@@ -65,7 +51,6 @@ Email: admin@mc666.top
           </div>
         </div>
 
-        <!-- 个人笔记内容 -->
         <div v-if="noteData.type === 'personal'" class="note-section">
           <h3 class="section-title">
             <i class="ri-file-text-line"></i> 笔记内容
@@ -73,7 +58,6 @@ Email: admin@mc666.top
           <div class="note-content" v-html="formatNoteContent(noteData.content)"></div>
         </div>
 
-        <!-- 会议记录内容 -->
         <div v-if="noteData.type === 'meeting'" class="note-section">
           <h3 class="section-title">
             <i class="ri-calendar-line"></i> 会议笔记
@@ -89,7 +73,6 @@ Email: admin@mc666.top
           </div>
         </div>
 
-        <!-- AI 标题 -->
         <div v-if="noteData.ai_title" class="ai-section">
           <h3 class="section-title ai-title-heading">
             <i class="ri-robot-line"></i> AI 标题
@@ -99,7 +82,6 @@ Email: admin@mc666.top
           </div>
         </div>
 
-        <!-- AI 关键词 -->
         <div v-if="noteData.ai_keywords && noteData.ai_keywords.key_words && noteData.ai_keywords.key_words.length > 0" class="ai-section">
           <h3 class="section-title ai-keywords-heading">
             <i class="ri-tag-line"></i> AI 关键词
@@ -111,7 +93,6 @@ Email: admin@mc666.top
           </div>
         </div>
 
-        <!-- AI 分析 -->
         <div v-if="noteData.ai_analysis" class="ai-section ai-analysis-section">
           <h3 class="section-title ai-analysis-heading">
             <i class="ri-brain-line"></i> AI 分析
@@ -135,63 +116,57 @@ import { getBackendUrl, initBackendConfig } from '../config/backend.js'
 const route = useRoute()
 const timeOut = 5000
 
-// 窗口状态
 const currentWindow = getCurrentWindow()
 const isMaximized = ref(false)
 const isLightMode = ref(false)
 
-// 笔记数据
 const noteData = ref(null)
 const noteTitle = ref('')
 const loading = ref(true)
 const error = ref('')
 
-// 获取认证头
 async function getAuthHeader(retryCount = 0) {
   const maxRetries = 3;
   const retryDelay = 300;
-  
+
   try {
     const { getDeviceId, getTotp } = await import('../components/data/bluetooth.js')
     const deviceId = await getDeviceId()
     const currentTotp = await getTotp()
-    
+
     if (currentTotp && deviceId) {
       return { "Id": deviceId, "Totp": currentTotp }
     }
-    
-    // 如果是教师端但没获取到，尝试重试等待蓝牙模块准备好
+
     if (retryCount < maxRetries) {
       console.log(`等待蓝牙模块准备中... (${retryCount + 1}/${maxRetries})`)
       await new Promise(resolve => setTimeout(resolve, retryDelay))
       return await getAuthHeader(retryCount + 1)
     }
   } catch {
-    // 重试失败后尝试返回空 header
+
   }
-  
+
   return {}
 }
 
-// 格式化时间戳
 function formatTime(timestamp) {
   if (!timestamp) return ''
-  
+
   let date
-  // 尝试判断时间戳格式
+
   if (typeof timestamp === 'number') {
-    // Unix 时间戳（秒），转换为毫秒
+
     date = new Date(timestamp * 1000)
   } else if (typeof timestamp === 'string') {
-    // ISO 格式字符串
+
     date = new Date(timestamp)
   } else {
     return ''
   }
-  
-  // 检查日期是否有效
+
   if (isNaN(date.getTime())) return ''
-  
+
   return date.toLocaleString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
@@ -201,25 +176,20 @@ function formatTime(timestamp) {
   })
 }
 
-// 格式化笔记内容（处理换行和图片）
 function formatNoteContent(content) {
   if (!content) return ''
-  
+
   let formatted = content
-  
-  // 处理 base64 图片数据
-  // 匹配 data:image/xxx;base64,xxxx 格式的 base64 数据，并包裹成 img 标签
+
   const base64Regex = /(data:image\/(?:png|jpg|jpeg|gif|webp);base64,[A-Za-z0-9+/=]+)/g
   formatted = formatted.replace(base64Regex, (match, base64Data) => {
     return `<img src="${base64Data}" class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius: 2px;object-fit:contain;" loading="lazy" />`
   })
-  
-  // 处理 Markdown 图片格式 ![alt](url)
+
   formatted = formatted.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (match, alt, url) => {
     return `<img src="${url}" alt="${alt}" class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius: 2px;object-fit:contain;" loading="lazy" />`
   })
-  
-  // 处理 HTML img 标签，添加样式类
+
   formatted = formatted.replace(/<img([^>]*)>/gi, (match, attrs) => {
     if (!attrs.includes('class=')) {
       return `<img${attrs} class="note-image" style="max-width:100%;max-height:50vh;width:auto;height:auto;display:block;margin:16px auto;border-radius: 2px;object-fit:contain;" loading="lazy" />`
@@ -229,14 +199,12 @@ function formatNoteContent(content) {
     }
     return match
   })
-  
-  // 将换行符替换为 <br>
+
   formatted = formatted.replace(/\n/g, '<br>')
-  
+
   return formatted
 }
 
-// 格式化 AI 分析内容
 function formatAIAnalysis(analysis) {
   if (!analysis) return ''
 
@@ -253,8 +221,8 @@ function formatAIAnalysis(analysis) {
     let html = ''
 
     if (analysis.summary) {
-      const summaryText = typeof analysis.summary === 'string' 
-        ? analysis.summary 
+      const summaryText = typeof analysis.summary === 'string'
+        ? analysis.summary
         : JSON.stringify(analysis.summary)
       html += `<p><strong>总结：</strong>${summaryText.replace(/\n/g, '<br>')}</p>`
     }
@@ -263,8 +231,8 @@ function formatAIAnalysis(analysis) {
       html += '<h5>详细分析：</h5><ul>'
       analysis.individual_analyses.forEach(item => {
         if (item.summary) {
-          const itemText = typeof item.summary === 'string' 
-            ? item.summary 
+          const itemText = typeof item.summary === 'string'
+            ? item.summary
             : JSON.stringify(item.summary)
           html += `<li>${itemText.replace(/\n/g, '<br>')}</li>`
         }
@@ -278,7 +246,6 @@ function formatAIAnalysis(analysis) {
   return String(analysis).replace(/\n/g, '<br>')
 }
 
-// 加载笔记数据
 async function loadNoteData() {
   const shareUuid = route.query.shareUuid
   const groupUuid = route.query.groupUuid
@@ -308,7 +275,6 @@ async function loadNoteData() {
   }
 }
 
-// 检查窗口状态
 async function checkWindowState() {
   try {
     isMaximized.value = await currentWindow.isMaximized()
@@ -317,7 +283,6 @@ async function checkWindowState() {
   }
 }
 
-// 最小化窗口
 async function minimizeWindow() {
   try {
     await currentWindow.minimize()
@@ -326,7 +291,6 @@ async function minimizeWindow() {
   }
 }
 
-// 切换最大化
 async function toggleMaximize() {
   try {
     if (isMaximized.value) {
@@ -342,7 +306,6 @@ async function toggleMaximize() {
   }
 }
 
-// 关闭窗口
 async function closeWindow() {
   try {
     const appWindow = getCurrentWindow()
@@ -352,7 +315,6 @@ async function closeWindow() {
   }
 }
 
-// 初始化主题
 function initTheme() {
   try {
     const savedTheme = localStorage.getItem('theme-preference')
@@ -367,7 +329,6 @@ function initTheme() {
   }
 }
 
-// 监听主题变化
 async function setupThemeListener() {
   try {
     await listen('theme-changed', (event) => {
@@ -380,12 +341,11 @@ async function setupThemeListener() {
 }
 
 onMounted(async () => {
-  // 从 URL 参数获取笔记信息
+
   const shareUuid = route.query.shareUuid
   const groupUuid = route.query.groupUuid
   const title = route.query.title
 
-  // 初始化后端配置
   await initBackendConfig()
 
   if (!shareUuid || !groupUuid) {
@@ -397,7 +357,6 @@ onMounted(async () => {
 
   noteTitle.value = title || '共享笔记'
 
-  // 监听主窗口发送的数据（作为备用方案）
   try {
     const unlistenData = await listen('load-note-viewer-data', (event) => {
       const data = event.payload
@@ -413,21 +372,17 @@ onMounted(async () => {
     console.warn('设置数据监听失败（非关键功能）:', e)
   }
 
-  // 检查窗口状态（静默处理权限错误）
   checkWindowState()
 
-  // 初始化主题
   initTheme()
 
-  // 监听主题变化（静默处理权限错误）
   await setupThemeListener()
 
-  // 加载笔记数据
   await loadNoteData()
 })
 
 onUnmounted(async () => {
-  // 清理事件监听
+
   if (window._unlistenData) {
     try {
       window._unlistenData()
@@ -455,12 +410,10 @@ onUnmounted(async () => {
   color: var(--text-primary, #1e293b);
 }
 
-/* 隐藏 TitleBar 的 title-bar-content */
 :deep(.title-bar-content) {
   display: none !important;
 }
 
-/* 窗口标题栏 */
 .viewer-header {
   display: flex;
   align-items: center;
@@ -547,7 +500,6 @@ onUnmounted(async () => {
   color: white;
 }
 
-/* 内容区域 */
 .viewer-body {
   flex: 1;
   overflow-y: auto;
@@ -555,7 +507,6 @@ onUnmounted(async () => {
   padding: 24px 0;
 }
 
-/* 加载状态 */
 .loading-state,
 .error-state {
   display: flex;
@@ -600,7 +551,6 @@ onUnmounted(async () => {
   background: #2563eb;
 }
 
-/* 笔记内容包装器 */
 .note-content-wrapper {
   max-width: min(900px, 100vw - 48px);
   margin: 0 auto;
@@ -609,7 +559,6 @@ onUnmounted(async () => {
   width: 100%;
 }
 
-/* 元信息区域 */
 .note-meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -659,7 +608,6 @@ onUnmounted(async () => {
   color: var(--text-primary, #1e293b);
 }
 
-/* 笔记章节 */
 .note-section,
 .ai-section {
   margin-bottom: 28px;
@@ -686,7 +634,6 @@ onUnmounted(async () => {
   color: var(--accent-blue, #3b82f6);
 }
 
-/* 笔记内容 */
 .note-content,
 .meeting-note-content {
   padding: 20px;
@@ -708,7 +655,6 @@ onUnmounted(async () => {
   color: var(--text-secondary, #475569);
 }
 
-/* 图片样式 - 响应式显示 */
 .note-image {
   max-width: 100%;
   max-height: 50vh;
@@ -727,7 +673,6 @@ onUnmounted(async () => {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
-/* 会议笔记列表 */
 .meeting-notes-list {
   display: flex;
   flex-direction: column;
@@ -752,7 +697,6 @@ onUnmounted(async () => {
   font-weight: 500;
 }
 
-/* AI 内容区域 */
 .ai-content-box {
   padding: 16px 20px;
   background: var(--bg-secondary, #161b22);
@@ -772,7 +716,6 @@ onUnmounted(async () => {
   margin: 0;
 }
 
-/* 关键词标签 */
 .keywords-box {
   display: flex;
   flex-wrap: wrap;
@@ -796,7 +739,6 @@ onUnmounted(async () => {
   transform: translateY(-1px);
 }
 
-/* AI 分析内容 */
 .analysis-box {
   color: var(--text-secondary, #c9d1d9);
 }
@@ -836,7 +778,6 @@ onUnmounted(async () => {
   color: var(--text-primary, #1e293b);
 }
 
-/* 空内容提示 */
 .empty-content {
   text-align: center;
   padding: 40px 20px;
@@ -850,7 +791,6 @@ onUnmounted(async () => {
   background: var(--bg-secondary, #f8fafc);
 }
 
-/* 滚动条样式 */
 .viewer-body::-webkit-scrollbar {
   width: 8px;
 }
@@ -868,7 +808,6 @@ onUnmounted(async () => {
   background: var(--text-muted, #8b949e);
 }
 
-/* 响应式布局 */
 @media (max-width: 768px) {
   .viewer-body {
     padding: 16px 0;

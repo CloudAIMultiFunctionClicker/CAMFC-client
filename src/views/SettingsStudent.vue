@@ -10,8 +10,8 @@
               <span class="label-desc">用于访问群组共享文件的学生账号</span>
             </div>
             <div class="setting-control">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 v-model="studentUsername"
                 class="text-input"
                 placeholder="请输入学生用户名"
@@ -24,8 +24,8 @@
               <span class="label-desc">用于访问群组共享文件的学生密码</span>
             </div>
             <div class="setting-control">
-              <input 
-                type="password" 
+              <input
+                type="password"
                 v-model="studentPassword"
                 class="text-input"
                 placeholder="请输入学生密码"
@@ -60,13 +60,12 @@ import { loadAppData, saveAppData } from '../components/data/storage.js'
 const studentUsername = ref('')
 const studentPassword = ref('')
 
-// 保存学生认证信息
 const saveStudentCredentials = async () => {
   if (!studentUsername.value || !studentPassword.value) {
     showToast('请输入用户名和密码', '#f59e0b')
     return
   }
-  
+
   try {
     await saveAppData('student_username', studentUsername.value)
     await saveAppData('student_password', studentPassword.value)
@@ -78,7 +77,6 @@ const saveStudentCredentials = async () => {
   }
 }
 
-// 清除学生认证信息
 const clearStudentCredentials = async () => {
   try {
     await saveAppData('student_username', '')
@@ -93,7 +91,6 @@ const clearStudentCredentials = async () => {
   }
 }
 
-// 加载学生认证信息
 const loadStudentCredentials = async () => {
   try {
     studentUsername.value = await loadAppData('student_username') || ''

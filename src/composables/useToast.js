@@ -1,34 +1,15 @@
-/**
- * CAMFC Client - Toast 提示钩子函数
- * 每个 Toast 只存在1秒，超时后自动向上移出屏幕，后面的补位
- *
- * 保留所有权利
- *
- * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
- * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
- *
- * Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
- * Email: abc.cxh2009@foxmail.com
- *
- * Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
- * Email: 1220594170@qq.com
- *
- * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
- * Email: admin@mc666.top
- */
+
 
 import { ref } from 'vue'
 
-// 全局样式 ID
 const STYLE_ID = 'toast-styles'
-// 容器 ID
+
 const CONTAINER_ID = 'toast-container'
 
 export function useToast() {
   const toasts = ref([])
   let toastId = 0
 
-  // 检查并添加全局样式
   const ensureGlobalStyles = () => {
     let style = document.getElementById(STYLE_ID)
     if (!style) {
@@ -93,7 +74,6 @@ export function useToast() {
       `
   }
 
-  // 检查并创建容器
   const ensureContainer = () => {
     let container = document.getElementById(CONTAINER_ID)
     if (!container) {
@@ -104,35 +84,24 @@ export function useToast() {
     return container
   }
 
-  /**
-   * 移除指定 toast
-   * @param {HTMLElement} element toast 元素
-   * @param {number} id toast ID
-   */
   const removeToast = (element, id) => {
-    // 播放移出动画
+
     element.style.animation = 'toast-slide-out 0.3s ease forwards'
-    
-    // 等动画播放完毕后移除元素
+
     setTimeout(() => {
       if (element.parentNode) {
         element.remove()
       }
-      
-      // 从列表中移除
+
       const index = toasts.value.findIndex(t => t.id === id)
       if (index > -1) {
         toasts.value.splice(index, 1)
       }
-      
-      // 重新排列后续的 toast
+
       repositionToasts()
     }, 300)
   }
 
-  /**
-   * 重新排列所有 toast 的位置
-   */
   const repositionToasts = () => {
     const toastElements = document.querySelectorAll('.vue-toast-item')
     toastElements.forEach((el, index) => {
@@ -141,26 +110,20 @@ export function useToast() {
     })
   }
 
-  // 根据背景色亮度决定文字颜色
 const getTextColor = (bgColor) => {
-    // 如果是 CSS 变量，默认白色
+
     if (!bgColor || bgColor.startsWith('var(')) return 'white'
-    // 提取 hex 颜色值
+
     const hex = bgColor.replace('#', '')
     if (hex.length < 6) return 'white'
     const r = parseInt(hex.substring(0, 2), 16)
     const g = parseInt(hex.substring(2, 4), 16)
     const b = parseInt(hex.substring(4, 6), 16)
-    // 相对亮度公式 (sRGB)
+
     const brightness = (r * 299 + g * 587 + b * 114) / 1000
     return brightness > 150 ? '#1a1a1a' : 'white'
 }
 
-/**
- * 显示一个 Toast
- * @param {string|object} options 配置项或直接传字符串
- * @returns {number} toast ID
- */
 const show = (options) => {
     const opts = typeof options === 'string' ? { text: options } : options
 
@@ -179,19 +142,16 @@ const show = (options) => {
     toastEl.style.background = color
     toastEl.style.color = getTextColor(color)
 
-    // 设置初始位置
     const offsetTop = toasts.value.length * 60
     toastEl.style.top = `${offsetTop}px`
 
     container.appendChild(toastEl)
     toasts.value.push(toastItem)
 
-    // 点击关闭
     toastEl.addEventListener('click', () => {
       removeToast(toastEl, id)
     })
 
-    // 1秒后自动移除
     setTimeout(() => {
       if (toastEl.parentNode) {
         removeToast(toastEl, id)
@@ -201,10 +161,6 @@ const show = (options) => {
     return id
   }
 
-  /**
-   * 手动关闭指定 ID 的 toast
-   * @param {number} id toast ID
-   */
   const close = (id) => {
     const element = document.querySelector(`[data-toast-id="${id}"]`)
     if (element) {
@@ -212,9 +168,6 @@ const show = (options) => {
     }
   }
 
-  /**
-   * 关闭所有 toast
-   */
   const closeAll = () => {
     const elements = document.querySelectorAll('.vue-toast-item')
     elements.forEach(el => {
@@ -233,7 +186,6 @@ const show = (options) => {
   }
 }
 
-// 兼容旧版调用方式
 let globalToast = null
 
 export function showToast(text, color, duration) {

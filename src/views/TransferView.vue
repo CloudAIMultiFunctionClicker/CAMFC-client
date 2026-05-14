@@ -1,18 +1,4 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <script setup>
 import Sidebar from '../components/layout/Sidebar.vue'
@@ -38,7 +24,6 @@ const uploadHistory = ref([])
 const downloadHistory = ref([])
 let pollTimer = null
 
-// loading 状态
 const isLoading = ref(true)
 
 const formatSize = (bytes) => {
@@ -147,7 +132,7 @@ const mapStatus = (status) => {
 const refreshAll = async () => {
   await Promise.all([refreshUploads(), refreshDownloads()])
   await checkAndSaveCompleted()
-  // 数据加载完成后关闭 loading
+
   isLoading.value = false
 }
 
@@ -272,7 +257,7 @@ const handleRetry = (item, type) => {
 
 const deleteHistoryItem = async (item, type) => {
   if (item.completedTime) {
-    // 这是历史记录，从历史记录中删除
+
     if (type === 'upload') {
       const history = await getUploadHistory()
       const newHistory = history.filter(h => !(h.id === item.id && h.completedTime === item.completedTime))
@@ -285,7 +270,7 @@ const deleteHistoryItem = async (item, type) => {
       downloadHistory.value = newHistory
     }
   } else {
-    // 这是活跃任务，从活跃列表中删除
+
     if (type === 'upload') {
       const stored = await getActiveUploads()
       const newList = stored.filter(id => id !== item.id)
@@ -347,7 +332,7 @@ const clearCompleted = async (type) => {
         ...history
       ].slice(0, 100)
       await saveUploadHistory(newHistory)
-      
+
       const stored = await getActiveUploads()
       const newList = stored.filter(id => !completedIds.includes(id))
       await setActiveUploads(newList)
@@ -370,7 +355,7 @@ const clearCompleted = async (type) => {
         ...history
       ].slice(0, 100)
       await saveDownloadHistory(newHistory)
-      
+
       const stored = await getActiveDownloads()
       const newList = stored.filter(id => !completedIds.includes(id))
       await setActiveDownloads(newList)
@@ -455,7 +440,6 @@ onUnmounted(() => {
             <span class="header-action">操作</span>
           </div>
 
-          <!-- 骨架屏：加载时显示 -->
           <div v-if="isLoading" class="skeleton-transfer-list">
             <div v-for="i in 5" :key="i" class="skeleton-transfer-item">
               <div class="skeleton-name">
@@ -553,7 +537,6 @@ onUnmounted(() => {
             <span class="header-action">操作</span>
           </div>
 
-          <!-- 骨架屏：加载时显示 -->
           <div v-if="isLoading" class="skeleton-transfer-list">
             <div v-for="i in 5" :key="i" class="skeleton-transfer-item">
               <div class="skeleton-name">
@@ -678,18 +661,16 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* 侧边栏样式 - 固定不动 */
 .main-container :deep(.sidebar) {
   flex-shrink: 0;
   position: fixed;
-  top: 48px; /* 标题栏高度 */
+  top: 48px;
   left: 0;
   bottom: 0;
   overflow-y: auto;
   z-index: 1000;
 }
 
-/* 内容区域样式 - 固定，不可滚动 */
 .content-area {
   flex: 1;
   background: var(--bg-primary, #0f172a);
@@ -697,7 +678,7 @@ onUnmounted(() => {
   padding-left: 24px;
   margin-left: 0;
   box-sizing: border-box;
-  overflow: hidden; /* 内容区域不可滚动，让传输列表自己滚动 */
+  overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
@@ -1052,7 +1033,6 @@ onUnmounted(() => {
   font-size: 16px;
 }
 
-/* 骨架屏样式 */
 .skeleton-transfer-list {
   padding: 0;
 }

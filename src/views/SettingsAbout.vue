@@ -15,7 +15,6 @@
         </div>
         <button class="action-btn" @click="openChangelog">查看更新日志</button>
 
-        <!-- 开源软件声明 -->
         <div class="setting-card" style="margin-top: 24px;">
           <h4>开源软件声明</h4>
           <p class="opensource-desc">本软件使用了以下开源项目，感谢这些项目的贡献者：</p>

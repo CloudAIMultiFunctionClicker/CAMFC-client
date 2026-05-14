@@ -1,40 +1,25 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="generic-note-editor" :class="{ 'light-mode': isLightMode }">
-    <!-- 标题输入区 -->
+
     <div v-if="showTitle" class="editor-title-section">
-      <input 
-        v-model="localTitle" 
-        class="editor-title-input" 
+      <input
+        v-model="localTitle"
+        class="editor-title-input"
         :placeholder="titlePlaceholder"
         type="text"
         @input="handleTitleInput"
       />
     </div>
-    
-    <!-- 编辑器主体 -->
+
     <div class="editor-body">
-      <div 
-        class="editor-container" 
-        :class="{ 'dragging-over': isDraggingOver }" 
-        @paste="handlePaste" 
-        @dragenter="handleDragEnter" 
-        @dragleave="handleDragLeave" 
+      <div
+        class="editor-container"
+        :class="{ 'dragging-over': isDraggingOver }"
+        @paste="handlePaste"
+        @dragenter="handleDragEnter"
+        @dragleave="handleDragLeave"
         @drop="handleDrop"
       >
         <div
@@ -47,8 +32,7 @@ Email: admin@mc666.top
         ></div>
       </div>
     </div>
-    
-    <!-- 工具栏 -->
+
     <div v-if="showToolbar" class="editor-toolbar">
       <div class="toolbar-btn-wrapper">
         <button class="toolbar-btn" @click="insertMarkdown('h1')">
@@ -113,25 +97,21 @@ Email: admin@mc666.top
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 
 const props = defineProps({
-  // 标题相关
+
   modelValueTitle: { type: String, default: '' },
   showTitle: { type: Boolean, default: true },
   titlePlaceholder: { type: String, default: '未命名笔记' },
-  
-  // 内容相关
+
   modelValue: { type: String, default: '' },
   contentPlaceholder: { type: String, default: '使用 Markdown 格式书写... 支持 Ctrl+V 粘贴图片、拖拽图片到此处' },
-  
-  // 功能开关
+
   showToolbar: { type: Boolean, default: true },
   enableImage: { type: Boolean, default: true },
   enablePaste: { type: Boolean, default: true },
   enableDragDrop: { type: Boolean, default: true },
-  
-  // 外观
+
   isLightMode: { type: Boolean, default: false },
-  
-  // 快捷键
+
   enableSaveShortcut: { type: Boolean, default: true }
 })
 
@@ -145,24 +125,21 @@ const emit = defineEmits([
   'imageBlocked'
 ])
 
-// 本地状态
 const localTitle = ref('')
 const localContent = ref('')
 const editorTextarea = ref(null)
 const isDraggingOver = ref(false)
 
-// 初始化
 onMounted(() => {
   localTitle.value = props.modelValueTitle
   localContent.value = props.modelValue
 
   if (editorTextarea.value) {
     editorTextarea.value.innerHTML = renderMarkdown(props.modelValue)
-    // 添加图片块点击事件委托
+
     editorTextarea.value.addEventListener('click', handleImageBlockClick)
   }
 
-  // 监听保存快捷键
   if (props.enableSaveShortcut) {
     document.addEventListener('keydown', handleGlobalKeydown)
   }
@@ -172,47 +149,43 @@ onUnmounted(() => {
   if (props.enableSaveShortcut) {
     document.removeEventListener('keydown', handleGlobalKeydown)
   }
-  // 清理图片块点击事件
+
   if (editorTextarea.value) {
     editorTextarea.value.removeEventListener('click', handleImageBlockClick)
   }
 })
 
-// 处理图片块点击 - 选中图片块或删除
 function handleImageBlockClick(e) {
   const imageBlock = e.target.closest('.markdown-image-block')
   if (imageBlock) {
     e.preventDefault()
     e.stopPropagation()
 
-    // 检查是否点击了删除按钮区域（右上角）
     const rect = imageBlock.getBoundingClientRect()
     const clickX = e.clientX - rect.left
     const clickY = e.clientY - rect.top
     const isDeleteClick = clickX > rect.width - 20 && clickY < 20
 
     if (isDeleteClick && imageBlock.classList.contains('selected')) {
-      // 删除图片块
+
       imageBlock.remove()
       localContent.value = convertHtmlToMarkdown(editorTextarea.value.innerHTML)
       emit('update:modelValue', localContent.value)
       return
     }
 
-    // 高亮选中的图片块
     document.querySelectorAll('.markdown-image-block.selected').forEach(el => {
       el.classList.remove('selected')
     })
     imageBlock.classList.add('selected')
   } else {
-    // 点击图片块外部，取消选中
+
     document.querySelectorAll('.markdown-image-block.selected').forEach(el => {
       el.classList.remove('selected')
     })
   }
 }
 
-// 监听外部值变化
 watch(() => props.modelValue, (newVal) => {
   if (newVal !== localContent.value && editorTextarea.value) {
     localContent.value = newVal
@@ -226,7 +199,6 @@ watch(() => props.modelValueTitle, (newVal) => {
   }
 })
 
-// 全局键盘事件（Ctrl+S 保存）
 function handleGlobalKeydown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault()
@@ -234,13 +206,11 @@ function handleGlobalKeydown(e) {
   }
 }
 
-// 标题输入处理
 function handleTitleInput() {
   emit('update:modelValueTitle', localTitle.value)
   emit('titleInput', localTitle.value)
 }
 
-// 编辑器输入处理
 function handleEditorInput() {
   if (editorTextarea.value) {
     const html = editorTextarea.value.innerHTML
@@ -251,7 +221,6 @@ function handleEditorInput() {
   }
 }
 
-// 编辑器键盘事件
 function handleEditorKeydown(e) {
   if (e.key === 'Enter' && !e.shiftKey) {
     const selection = window.getSelection()
@@ -266,10 +235,9 @@ function handleEditorKeydown(e) {
   }
 }
 
-// Markdown 渲染（用于初始化显示）
 function renderMarkdown(text) {
   if (!text) return ''
-  
+
   let html = text
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
     .replace(/^## (.*$)/gim, '<h2>$1</h2>')
@@ -281,7 +249,7 @@ function renderMarkdown(text) {
     .replace(/^- (.*$)/gim, '<li>$1</li>')
     .replace(/!\[([^\]]*)\]\(([^)]+)\)/gim, '<div class="markdown-image-wrapper"><img src="$2" alt="$1" class="markdown-image" onerror="this.style.display=\'none\'; this.nextSibling && (this.nextSibling.style.display=\'flex\')"></div><div class="markdown-image-error" style="display:none"><i class="ri-image-line"></i><span>图片加载失败</span></div>')
     .replace(/\n/gim, '<br>')
-  
+
   return html
 }
 
@@ -319,7 +287,7 @@ function convertHtmlToMarkdown(html) {
 // 粘贴处理
 async function handlePaste(event) {
   if (!props.enablePaste) return
-  
+
   const clipboardData = event.clipboardData
   if (!clipboardData) return
 
@@ -416,7 +384,7 @@ function handleImageClick() {
     emit('imageBlocked')
     return
   }
-  
+
   navigator.clipboard.read().then(items => {
     for (const item of items) {
       if (item.types.some(type => type.startsWith('image/'))) {
@@ -525,7 +493,6 @@ defineExpose({
   color: var(--text-primary, #1e293b);
 }
 
-/* 标题区域 */
 .editor-title-section {
   padding: 16px 20px;
   border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
@@ -554,7 +521,6 @@ defineExpose({
   color: var(--text-secondary, #94a3b8);
 }
 
-/* 编辑器主体 */
 .editor-body {
   flex: 1;
   overflow: hidden;
@@ -586,7 +552,6 @@ defineExpose({
   pointer-events: none;
 }
 
-/* 工具栏 */
 .editor-toolbar {
   display: flex;
   align-items: center;
@@ -646,7 +611,6 @@ defineExpose({
   background: var(--border-color, rgba(0, 0, 0, 0.1));
 }
 
-/* Tooltip */
 .tooltip {
   position: absolute;
   bottom: 100%;
@@ -687,7 +651,6 @@ defineExpose({
   visibility: visible;
 }
 
-/* Markdown 样式 */
 .note-editor-content :deep(h1),
 .note-editor-content :deep(h2),
 .note-editor-content :deep(h3) {
@@ -755,7 +718,6 @@ defineExpose({
   pointer-events: none;
 }
 
-/* 图片块容器 - 作为块元素，禁止光标进入 */
 .note-editor-content :deep(.markdown-image-block) {
   display: block;
   margin: 12px 0;
@@ -772,7 +734,6 @@ defineExpose({
   border-radius: 2px;
 }
 
-/* 选中状态下的删除按钮 */
 .note-editor-content :deep(.markdown-image-block.selected)::after {
   content: '×';
   position: absolute;

@@ -1,18 +1,4 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="editor-window" :class="{ 'light-mode': isLightMode }">
@@ -86,7 +72,6 @@ Email: admin@mc666.top
     </div>
   </div>
 
-  <!-- 题目详情弹窗 -->
   <div v-if="showQuestionDetail" class="question-modal" @click="closeQuestion">
     <div class="question-modal-content" @click.stop>
       <div class="question-modal-header">
@@ -131,41 +116,33 @@ const md = new MarkdownIt({
 
 const route = useRoute()
 
-// 会议数据
 const meetingUuid = ref('')
 const meetingTitle = ref('')
 const meetingData = ref(null)
 const isLoading = ref(true)
 const loadError = ref('')
 
-// 窗口状态
 const isMaximized = ref(false)
 const currentWindow = getCurrentWindow()
 
-// 主题状态
 const isLightMode = ref(false)
 
-// 渲染后的内容
 const renderedContent = computed(() => {
   return renderMeetingContent(meetingData.value)
 })
 
-// AI 分析相关
 const aiAnalysisData = ref(null)
 const aiAnalysisContent = ref('')
 const isAnalyzing = ref(false)
 
-// 题目展示相关
 const showQuestionDetail = ref(false)
 const showQuestionAnswer = ref(false)
 const currentQuestionData = ref(null)
 
-// 是否可以重新生成（有缓存内容）
 const canRegenerate = computed(() => {
   return aiAnalysisData.value && aiAnalysisData.value.cached
 })
 
-// 获取认证头
 async function getAuthHeader() {
   try {
     const { getDeviceId, getTotp } = await import('../components/data/bluetooth.js')
@@ -177,11 +154,9 @@ async function getAuthHeader() {
   }
 }
 
-// 渲染会议内容（混合截图和笔记）
 function renderMeetingContent(meeting) {
   if (!meeting) return '<div class="empty-content">暂无内容</div>'
 
-  // 如果有 items 数组，按时间顺序混合渲染
   if (meeting.items && Array.isArray(meeting.items) && meeting.items.length > 0) {
     let html = '<div class="meeting-table">'
 
@@ -189,7 +164,7 @@ function renderMeetingContent(meeting) {
       const time = formatTime(item.timestamp)
 
       if (item.type === 'screenshot' && item.data) {
-        // 截图
+
         html += `
           <div class="meeting-item screenshot-item">
             <div class="item-timestamp">${time}</div>
@@ -200,7 +175,7 @@ function renderMeetingContent(meeting) {
           <div class="meeting-item-placeholder" data-index="${index}"></div>
         `
       } else if (item.type === 'note' && item.content) {
-        // 笔记
+
         const noteHtml = renderMarkdown(item.content)
         html += `
           <div class="meeting-item note-item">
@@ -216,11 +191,9 @@ function renderMeetingContent(meeting) {
     return html || '<div class="empty-content">暂无内容</div>'
   }
 
-  // 兼容旧格式：使用 content 字段
   return renderMarkdown(meeting.content || '')
 }
 
-// 格式化时间
 function formatTime(timestamp) {
   if (!timestamp) return ''
   try {
@@ -237,11 +210,9 @@ function formatTime(timestamp) {
   }
 }
 
-// 使用 KaTeX 渲染 LaTeX 公式
 function renderLatex(text) {
   if (!text) return ''
-  
-  // 行内公式 $...$
+
   text = text.replace(/\$([^$]+)\$/g, (match, formula) => {
     try {
       return katex.renderToString(formula.trim(), {
@@ -253,8 +224,7 @@ function renderLatex(text) {
       return match
     }
   })
-  
-  // 块级公式 $$...$$
+
   text = text.replace(/\$\$([\s\S]*?)\$\$/g, (match, formula) => {
     try {
       return `<div style="text-align: center; margin: 12px 0;">${katex.renderToString(formula.trim(), {
@@ -266,40 +236,35 @@ function renderLatex(text) {
       return match
     }
   })
-  
+
   return text
 }
 
-// 渲染 Markdown
 function renderMarkdown(text) {
   if (!text) return ''
-  // 高亮 [题目] 标记
+
   text = text.replace(/\[题目\]/g, '<span class="question-tag">题目</span>')
-  // 先处理 LaTeX
+
   text = renderLatex(text)
   return md.render(text)
 }
 
-// 显示题目详情
 function showQuestion(item) {
   currentQuestionData.value = item
   showQuestionDetail.value = true
   showQuestionAnswer.value = false
 }
 
-// 关闭题目详情
 function closeQuestion() {
   showQuestionDetail.value = false
   showQuestionAnswer.value = false
   currentQuestionData.value = null
 }
 
-// 揭示答案
 function revealAnswer() {
   showQuestionAnswer.value = true
 }
 
-// 加载会议内容
 async function loadMeetingContent() {
   try {
     isLoading.value = true
@@ -330,7 +295,6 @@ async function loadMeetingContent() {
   }
 }
 
-// 开始 AI 分析
 async function startAnalysis() {
   try {
     isAnalyzing.value = true
@@ -352,12 +316,10 @@ async function startAnalysis() {
     if (response.data && response.data.status === 'success') {
       aiAnalysisData.value = response.data
 
-      // 解析 analysis 字段（可能是对象或 JSON 字符串）
       if (response.data.analysis) {
         try {
           let analysisData = response.data.analysis
 
-          // 如果是字符串，先解析（兼容旧格式缓存）
           if (typeof analysisData === 'string') {
             let cleaned = analysisData.trim()
             cleaned = cleaned.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '')
@@ -689,7 +651,6 @@ function initTheme() {
   color: var(--text-primary, #1e293b);
 }
 
-/* 窗口标题栏 */
 .editor-header {
   display: flex;
   align-items: center;
@@ -767,7 +728,6 @@ function initTheme() {
   color: white;
 }
 
-/* 编辑器主体 */
 .editor-body-wrapper {
   flex: 1;
   overflow: hidden;
@@ -775,7 +735,6 @@ function initTheme() {
   flex-direction: column;
 }
 
-/* 查看器容器 */
 .viewer-container {
   flex: 1;
   overflow-y: auto;
@@ -787,7 +746,6 @@ function initTheme() {
   background: var(--bg-primary, #ffffff);
 }
 
-/* 加载状态 */
 .loading-state,
 .error-state {
   display: flex;
@@ -827,7 +785,6 @@ function initTheme() {
   }
 }
 
-/* 查看器内容 */
 .viewer-content {
   width: 100%;
   line-height: 1.8;
@@ -933,7 +890,6 @@ function initTheme() {
   margin-top: 8px;
 }
 
-/* 会议项目样式 - 2 列表格布局 */
 .viewer-content :deep(.meeting-table) {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -942,7 +898,6 @@ function initTheme() {
   position: relative;
 }
 
-/* 中间竖向分割线 */
 .viewer-content :deep(.meeting-table)::after {
   content: '';
   position: absolute;
@@ -1007,7 +962,6 @@ function initTheme() {
   background: var(--bg-secondary, #ffffff);
 }
 
-/* 第二列占位区域 */
 .viewer-content :deep(.meeting-item-placeholder) {
   padding: 20px;
   background: transparent;
@@ -1027,7 +981,6 @@ function initTheme() {
   color: var(--text-primary, #1e293b);
 }
 
-/* AI 分析内容样式 */
 .viewer-content :deep(.ai-note-analysis) {
   width: 100%;
   line-height: 1.6;
@@ -1073,7 +1026,6 @@ function initTheme() {
   color: var(--text-primary, #1e293b);
 }
 
-/* 查看题目按钮 */
 .viewer-content :deep(.question-display-btn) {
   display: inline-flex;
   align-items: center;
@@ -1095,7 +1047,6 @@ function initTheme() {
   transform: translateY(-1px);
 }
 
-/* AI 分析容器 */
 .ai-analysis-container {
   margin-top: 24px;
   padding: 20px;
@@ -1238,7 +1189,6 @@ function initTheme() {
   margin: 16px 0;
 }
 
-/* 分析操作按钮 */
 .analyze-action {
   display: flex;
   justify-content: center;
@@ -1270,7 +1220,6 @@ function initTheme() {
   transform: translateY(0);
 }
 
-/* 分析中状态 */
 .analyzing-state {
   display: flex;
   flex-direction: column;
@@ -1289,7 +1238,6 @@ function initTheme() {
   font-size: 28px;
 }
 
-/* 重新生成中提示 */
 .regenerating-hint {
   display: flex;
   align-items: center;
@@ -1302,7 +1250,6 @@ function initTheme() {
   font-size: 14px;
 }
 
-/* AI分析容器 - 分析中状态 */
 .ai-analysis-container.analyzing {
   opacity: 0.85;
 }
@@ -1311,7 +1258,6 @@ function initTheme() {
   display: none;
 }
 
-/* 骨架屏占位 */
 .skeleton-placeholder {
   padding: 4px 0;
 }
@@ -1372,7 +1318,6 @@ function initTheme() {
   background-size: 200% 100%;
 }
 
-/* [题目] 标记高亮样式 */
 .question-tag {
   display: inline-block;
   background: #f59e0b;
@@ -1385,7 +1330,6 @@ function initTheme() {
   vertical-align: middle;
 }
 
-/* 查看题目按钮 */
 .question-display-btn {
   display: inline-flex;
   align-items: center;
@@ -1407,7 +1351,6 @@ function initTheme() {
   transform: translateY(-1px);
 }
 
-/* KaTeX 公式样式优化 */
 .viewer-content :deep(.katex) {
   font-size: 1.1em;
   line-height: 1.6;
@@ -1427,7 +1370,6 @@ function initTheme() {
   color: #f8fafc;
 }
 
-/* 题目弹窗样式 */
 .question-modal {
   position: fixed;
   top: 0;

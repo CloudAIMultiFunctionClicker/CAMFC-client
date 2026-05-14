@@ -1,50 +1,32 @@
-/*
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh09@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
-*/
 
 import axios from "axios";
 import { getBackendUrl } from "../../config/backend.js";
 
 const timeOut = 3000;
 
-// 获取认证头信息
-// 优先使用教师认证（Id + Totp），如果没有蓝牙设备则使用学生认证（Username + Password）
 async function getAuthHeader(retryCount = 0) {
   const maxRetries = 3;
   const retryDelay = 300;
-  
+
   try {
     const { getDeviceId, getTotp } = await import('./bluetooth.js');
-    
+
     const deviceId = await getDeviceId();
     const currentTotp = await getTotp();
-    
-    // 如果能获取到 TOTP，说明是教师端
+
     if (currentTotp && deviceId) {
       console.info('使用教师认证:', {
         "Id": deviceId,
         "Totp": currentTotp
       });
-      
+
       return {
         "Id": deviceId,
         "Totp": currentTotp
       };
     }
-    
-    // 如果是教师端但没获取到，尝试重试等待蓝牙模块准备好
+
     if (retryCount < maxRetries) {
       console.log(`等待蓝牙模块准备中... (${retryCount + 1}/${maxRetries})`);
       await new Promise(resolve => setTimeout(resolve, retryDelay));
@@ -53,19 +35,18 @@ async function getAuthHeader(retryCount = 0) {
   } catch (error) {
     console.log('无法获取蓝牙设备信息，尝试学生认证');
   }
-  
-  // 尝试使用学生认证
+
   try {
     const { loadAppData } = await import('./storage.js');
     const studentUsername = await loadAppData('student_username');
     const studentPassword = await loadAppData('student_password');
-    
+
     if (studentUsername && studentPassword) {
       console.info('使用学生认证:', {
         "Username": studentUsername
-        // 不打印密码
+
       });
-      
+
       return {
         "Username": studentUsername,
         "Password": studentPassword
@@ -74,16 +55,11 @@ async function getAuthHeader(retryCount = 0) {
   } catch (error) {
     console.warn('无法获取学生认证信息:', error);
   }
-  
+
   console.warn('无法获取任何认证信息，使用空 header');
   return {};
 }
 
-/**
- * 创建群组
- * @param {string} name - 群组名称（1-15 字符）
- * @returns {Promise<Object|null>} - 成功返回 {uid: "xxx"}，失败返回 null
- */
 async function createGroup(name) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -93,7 +69,7 @@ async function createGroup(name) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/create",
       { name: name },
@@ -104,7 +80,7 @@ async function createGroup(name) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('创建群组成功:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -117,11 +93,6 @@ async function createGroup(name) {
   }
 }
 
-/**
- * 删除群组
- * @param {string} uid - 群组 UID
- * @returns {Promise<Object|null>} - 成功返回 {success: true}，失败返回 null
- */
 async function deleteGroup(uid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -131,7 +102,7 @@ async function deleteGroup(uid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/delete",
       { uid: uid },
@@ -142,7 +113,7 @@ async function deleteGroup(uid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('删除群组成功:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -155,11 +126,6 @@ async function deleteGroup(uid) {
   }
 }
 
-/**
- * 查询消息详情
- * @param {string} uuid - 消息 UUID
- * @returns {Promise<Object|null>} - 返回消息详情，失败返回 null
- */
 async function queryMessage(uuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -169,7 +135,7 @@ async function queryMessage(uuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/query_message",
       { uuid: uuid },
@@ -180,7 +146,7 @@ async function queryMessage(uuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('查询消息成功:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -193,11 +159,6 @@ async function queryMessage(uuid) {
   }
 }
 
-/**
- * 批准入群/退群申请
- * @param {string} uuid - 消息 UUID
- * @returns {Promise<Object|null>} - 成功返回 {success: true}，失败返回 null
- */
 async function allowApplication(uuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -207,7 +168,7 @@ async function allowApplication(uuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/allow",
       { uuid: uuid },
@@ -218,7 +179,7 @@ async function allowApplication(uuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('批准申请成功:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -231,10 +192,6 @@ async function allowApplication(uuid) {
   }
 }
 
-/**
- * 获取群组列表
- * @returns {Promise<Array>} - 返回群组列表
- */
 async function getGroupList() {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -244,7 +201,7 @@ async function getGroupList() {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.get(
       getBackendUrl() + "/group/list",
       {
@@ -254,25 +211,20 @@ async function getGroupList() {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('获取群组列表:', response.data);
-    
-    // 后端返回格式：{ groups: [...] }
+
     return response.data?.groups || [];
   } catch (error) {
     if (error.message === "Request timeout") {
       console.warn(`请求超时 (${timeOut}ms)`);
       return [];
     } else {
-      // 后端可能还没实现这个接口，静默处理
+
       console.warn('获取群组列表失败（后端可能未实现）:', error.response?.data?.detail || error.message);
       return [];
     }
   }
 }
 
-/**
- * 获取消息列表
- * @returns {Promise<Array>} - 返回消息列表
- */
 async function getMessageList() {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -282,7 +234,7 @@ async function getMessageList() {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.get(
       getBackendUrl() + "/group/messages?status=pending",
       {
@@ -292,8 +244,7 @@ async function getMessageList() {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('获取消息列表:', response.data);
-    
-    // 后端返回格式：{ messages: [...] }
+
     return response.data?.messages || [];
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -306,11 +257,6 @@ async function getMessageList() {
   }
 }
 
-/**
- * 批准加入申请
- * @param {string} uuid - 消息 UUID
- * @returns {Promise<Object|null>} - 成功返回 {success: true}，失败返回 null
- */
 async function approveJoin(uuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -320,7 +266,7 @@ async function approveJoin(uuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/approve_join",
       { message_uuid: uuid },
@@ -331,7 +277,7 @@ async function approveJoin(uuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('批准加入申请成功:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -344,11 +290,6 @@ async function approveJoin(uuid) {
   }
 }
 
-/**
- * 拒绝加入申请
- * @param {string} uuid - 消息 UUID
- * @returns {Promise<Object|null>} - 成功返回 {success: true}，失败返回 null
- */
 async function rejectJoin(uuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -358,7 +299,7 @@ async function rejectJoin(uuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/reject_join",
       { message_uuid: uuid },
@@ -369,7 +310,7 @@ async function rejectJoin(uuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('拒绝加入申请成功:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -382,11 +323,6 @@ async function rejectJoin(uuid) {
   }
 }
 
-/**
- * 批准退出申请
- * @param {string} uuid - 消息 UUID
- * @returns {Promise<Object|null>} - 成功返回 {success: true}，失败返回 null
- */
 async function approveQuit(uuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -396,7 +332,7 @@ async function approveQuit(uuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/approve_quit",
       { message_uuid: uuid },
@@ -407,7 +343,7 @@ async function approveQuit(uuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('批准退出申请成功:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -420,14 +356,6 @@ async function approveQuit(uuid) {
   }
 }
 
-/**
- * 分享笔记到群组
- * @param {string} noteUuid - 笔记 UUID
- * @param {string} groupUuid - 群组 UUID
- * @param {string} noteType - 笔记类型："personal" 或 "meeting"
- * @param {string} [meetingUuid] - 会议 UUID（当 noteType 为 "meeting" 时必需）
- * @returns {Promise<Object|null>} - 成功返回 {success: true, share_uuid: "xxx"}，失败返回 null
- */
 async function shareNoteToGroup(noteUuid, groupUuid, noteType, meetingUuid = null) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -437,17 +365,17 @@ async function shareNoteToGroup(noteUuid, groupUuid, noteType, meetingUuid = nul
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestBody = {
       note_uuid: noteUuid,
       group_uuid: groupUuid,
       note_type: noteType
     };
-    
+
     if (noteType === "meeting" && meetingUuid) {
       requestBody.meeting_uuid = meetingUuid;
     }
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/share/note",
       requestBody,
@@ -458,7 +386,7 @@ async function shareNoteToGroup(noteUuid, groupUuid, noteType, meetingUuid = nul
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('分享笔记到群组成功:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -471,11 +399,6 @@ async function shareNoteToGroup(noteUuid, groupUuid, noteType, meetingUuid = nul
   }
 }
 
-/**
- * 获取群组共享笔记列表
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Array>} - 返回共享笔记列表
- */
 async function getSharedNotes(groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -485,7 +408,7 @@ async function getSharedNotes(groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.get(
       getBackendUrl() + `/group/share/notes?group_uuid=${groupUuid}`,
       {
@@ -495,7 +418,7 @@ async function getSharedNotes(groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('获取群组共享笔记列表:', response.data);
-    
+
     return response.data?.notes || [];
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -508,12 +431,6 @@ async function getSharedNotes(groupUuid) {
   }
 }
 
-/**
- * 获取共享笔记详情
- * @param {string} shareUuid - 分享 UUID
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Object|null>} - 返回共享笔记详情，失败返回 null
- */
 async function getSharedNoteDetail(shareUuid, groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -523,7 +440,7 @@ async function getSharedNoteDetail(shareUuid, groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/share/note/detail",
       { share_uuid: shareUuid, group_uuid: groupUuid },
@@ -534,7 +451,7 @@ async function getSharedNoteDetail(shareUuid, groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('获取共享笔记详情:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -547,12 +464,6 @@ async function getSharedNoteDetail(shareUuid, groupUuid) {
   }
 }
 
-/**
- * 获取共享笔记的学生互动数据（星标、问题标记、阅读记录）
- * @param {string} shareUuid - 分享 UUID
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Object|null>} - 返回互动数据，失败返回 null
- */
 async function getNoteInteractions(shareUuid, groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -562,7 +473,7 @@ async function getNoteInteractions(shareUuid, groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.get(
       getBackendUrl() + `/student/note-interactions/teacher/all?group_uid=${groupUuid}&share_uuid=${shareUuid}`,
       {
@@ -572,7 +483,7 @@ async function getNoteInteractions(shareUuid, groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('获取笔记互动数据:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -585,12 +496,6 @@ async function getNoteInteractions(shareUuid, groupUuid) {
   }
 }
 
-/**
- * 记录学生已阅读笔记
- * @param {string} shareUuid - 分享 UUID
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Object|null>} - 返回操作结果，失败返回 null
- */
 async function recordNoteRead(shareUuid, groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -600,7 +505,7 @@ async function recordNoteRead(shareUuid, groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + '/student/note-interactions/read',
       { share_uuid: shareUuid, group_uid: groupUuid },
@@ -611,7 +516,7 @@ async function recordNoteRead(shareUuid, groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('记录阅读成功:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -624,12 +529,6 @@ async function recordNoteRead(shareUuid, groupUuid) {
   }
 }
 
-/**
- * 分享文件到群组
- * @param {string} filePath - 文件路径（相对于用户存储目录）
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Object|null>} - 成功返回 {success: true, share_uuid: "xxx"}，失败返回 null
- */
 async function shareFileToGroup(filePath, groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -639,7 +538,7 @@ async function shareFileToGroup(filePath, groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/share/file",
       {
@@ -653,7 +552,7 @@ async function shareFileToGroup(filePath, groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('分享文件到群组成功:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -666,11 +565,6 @@ async function shareFileToGroup(filePath, groupUuid) {
   }
 }
 
-/**
- * 获取群组共享文件列表（学生端）
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Array>} - 返回共享文件列表
- */
 async function getSharedFiles(groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -680,7 +574,7 @@ async function getSharedFiles(groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.get(
       getBackendUrl() + `/group/share/files?group_uuid=${groupUuid}`,
       {
@@ -690,7 +584,7 @@ async function getSharedFiles(groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('获取群组共享文件列表:', response.data);
-    
+
     return response.data?.files || [];
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -703,12 +597,6 @@ async function getSharedFiles(groupUuid) {
   }
 }
 
-/**
- * 获取共享文件详情
- * @param {string} shareUuid - 分享 UUID
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Object|null>} - 返回共享文件详情，失败返回 null
- */
 async function getSharedFileDetail(shareUuid, groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -718,7 +606,7 @@ async function getSharedFileDetail(shareUuid, groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/share/file/detail",
       { share_uuid: shareUuid, group_uuid: groupUuid },
@@ -729,7 +617,7 @@ async function getSharedFileDetail(shareUuid, groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('获取共享文件详情:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -742,13 +630,6 @@ async function getSharedFileDetail(shareUuid, groupUuid) {
   }
 }
 
-/**
- * 获取共享文件详情（教师端）
- * @param {string} shareUuid - 分享 UUID
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Object|null>} - 返回共享文件详情，失败返回 null
- * @deprecated 学生和教师使用相同的 API，请改用 getSharedFileDetail
- */
 async function getSharedFileDetailForTeacher(shareUuid, groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -758,7 +639,7 @@ async function getSharedFileDetailForTeacher(shareUuid, groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.post(
       getBackendUrl() + "/group/share/file/detail",
       { share_uuid: shareUuid, group_uuid: groupUuid },
@@ -769,7 +650,7 @@ async function getSharedFileDetailForTeacher(shareUuid, groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('获取共享文件详情（教师端）:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -782,12 +663,6 @@ async function getSharedFileDetailForTeacher(shareUuid, groupUuid) {
   }
 }
 
-/**
- * 获取共享文件下载信息
- * @param {string} shareUuid - 分享 UUID
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Object|null>} - 返回下载信息，包含文件路径等，失败返回 null
- */
 async function getSharedFileDownloadInfo(shareUuid, groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -797,7 +672,7 @@ async function getSharedFileDownloadInfo(shareUuid, groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.get(
       getBackendUrl() + `/group/share/file/download?share_uuid=${shareUuid}&group_uuid=${groupUuid}`,
       {
@@ -807,7 +682,7 @@ async function getSharedFileDownloadInfo(shareUuid, groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('获取共享文件下载信息:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -820,13 +695,6 @@ async function getSharedFileDownloadInfo(shareUuid, groupUuid) {
   }
 }
 
-/**
- * 获取共享文件下载信息（教师端）
- * @param {string} shareUuid - 分享 UUID
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Object|null>} - 返回下载信息，包含文件路径等，失败返回 null
- * @deprecated 学生和教师使用相同的 API，请改用 getSharedFileDownloadInfo
- */
 async function getSharedFileDownloadInfoForTeacher(shareUuid, groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -836,7 +704,7 @@ async function getSharedFileDownloadInfoForTeacher(shareUuid, groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.get(
       getBackendUrl() + `/group/share/file/download?share_uuid=${shareUuid}&group_uuid=${groupUuid}`,
       {
@@ -846,7 +714,7 @@ async function getSharedFileDownloadInfoForTeacher(shareUuid, groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('获取共享文件下载信息（教师端）:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -859,12 +727,6 @@ async function getSharedFileDownloadInfoForTeacher(shareUuid, groupUuid) {
   }
 }
 
-/**
- * 删除共享文件
- * @param {string} shareUuid - 分享 UUID
- * @param {string} groupUuid - 群组 UUID
- * @returns {Promise<Object|null>} - 返回删除结果，失败返回 null
- */
 async function deleteSharedFile(shareUuid, groupUuid) {
   try {
     const timeoutPromise = new Promise((_, reject) => {
@@ -874,7 +736,7 @@ async function deleteSharedFile(shareUuid, groupUuid) {
     });
 
     const authHeader = await getAuthHeader();
-    
+
     const requestPromise = axios.delete(
       getBackendUrl() + `/group/share/file?share_uuid=${shareUuid}&group_uuid=${groupUuid}`,
       {
@@ -884,7 +746,7 @@ async function deleteSharedFile(shareUuid, groupUuid) {
 
     const response = await Promise.race([requestPromise, timeoutPromise]);
     console.info('删除共享文件:', response.data);
-    
+
     return response.data;
   } catch (error) {
     if (error.message === "Request timeout") {
@@ -897,15 +759,15 @@ async function deleteSharedFile(shareUuid, groupUuid) {
   }
 }
 
-export { 
-  createGroup, 
-  deleteGroup, 
-  queryMessage, 
-  allowApplication, 
-  getGroupList, 
-  getMessageList, 
-  approveJoin, 
-  rejectJoin, 
+export {
+  createGroup,
+  deleteGroup,
+  queryMessage,
+  allowApplication,
+  getGroupList,
+  getMessageList,
+  approveJoin,
+  rejectJoin,
   approveQuit,
   shareNoteToGroup,
   getSharedNotes,

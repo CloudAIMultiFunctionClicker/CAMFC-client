@@ -51,7 +51,7 @@ const developerEmails = [
 const currentEmailIndex = ref(0)
 
 const showFaq = () => {
-  // 功能已移除,按钮保留但无反应
+
 }
 
 const openGitHubIssue = () => {

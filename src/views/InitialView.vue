@@ -1,32 +1,17 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="initial-container">
-    <!-- 左半部分 - 保留区域 -->
+
     <div class="left-panel">
       <div class="left-content">
         <h1 class="app-title">CAMFC 客户端</h1>
         <p class="app-subtitle">智能蓝牙连接</p>
       </div>
     </div>
-    
-    <!-- 右半部分 - 蓝牙设备列表 -->
+
     <div class="right-panel">
-      <!-- 顶栏 -->
+
       <div class="panel-header">
         <h2 class="panel-title">
           <i class="ri-smartphone-line"></i>
@@ -41,8 +26,7 @@ Email: admin@mc666.top
           <span>扫描中...</span>
         </div>
       </div>
-      
-      <!-- 已连接状态 -->
+
       <div v-if="isConnected" class="connected-device-card">
         <div class="connected-device-info">
           <i class="ri-bluetooth-fill"></i>
@@ -56,12 +40,11 @@ Email: admin@mc666.top
           <span>进入主页面</span>
         </button>
       </div>
-      
-      <!-- Cpen 设备列表 -->
+
       <div v-else-if="cpenDevices.length > 0" class="device-section">
         <div class="device-list">
-          <div 
-            v-for="device in cpenDevices" 
+          <div
+            v-for="device in cpenDevices"
             :key="device.address"
             class="device-card cpen-device"
             :class="{ 'connecting': isConnectingDevice && selectedDevice?.address === device.address }"
@@ -78,8 +61,7 @@ Email: admin@mc666.top
           </div>
         </div>
       </div>
-      
-      <!-- 空状态 -->
+
       <div v-if="!isScanning && !isConnected && cpenDevices.length === 0" class="empty-state">
         <i class="ri-bluetooth-off-line"></i>
         <p>未发现 cpen 设备</p>
@@ -88,8 +70,7 @@ Email: admin@mc666.top
         </button>
       </div>
     </div>
-    
-    <!-- 倒计时弹窗 -->
+
     <div v-if="showCountdown" class="countdown-overlay">
       <div class="countdown-modal">
         <div class="success-icon">
@@ -104,11 +85,10 @@ Email: admin@mc666.top
       </div>
     </div>
 
-    <!-- 左下角问号帮助按钮 -->
     <div class="help-corner">
       <span class="help-text">连接失败</span>
       <div class="help-icon">?</div>
-      <!-- Tooltip -->
+
       <div class="help-tooltip">
         <div class="tooltip-content">
           <p>① 确定设备处于配对状态</p>
@@ -136,26 +116,21 @@ console.info('InitialView - 蓝牙连接界面（左右分栏版）')
 const router = useRouter()
 const bluetoothStore = useBluetoothStore()
 
-// 设备列表
 const cpenDevices = ref([])
 
-// 扫描状态
 const isScanning = ref(false)
 const isConnectingDevice = ref(false)
 const selectedDevice = ref(null)
 
-// 倒计时相关
 const showCountdown = ref(false)
 const countdownSeconds = ref(5)
 const countdownProgress = ref(100)
 let countdownTimer = null
 
-// 状态计算
 const isConnected = computed(() => bluetoothStore.isConnected())
 const connectedDeviceName = computed(() => bluetoothStore.deviceInfo?.name || 'Cpen设备')
 const error = computed(() => bluetoothStore.error)
 
-// 状态样式
 const statusClass = computed(() => {
   if (isConnected.value) return 'connected'
   if (isScanning.value) return 'scanning'
@@ -170,38 +145,30 @@ const statusText = computed(() => {
   return '未连接'
 })
 
-// 监听连接成功（已改为在 selectDevice 中直接跳转）
 watch(isConnected, (newVal) => {
   if (newVal) {
     console.log('设备已连接')
   }
 })
 
-/**
- * 格式化蓝牙地址
- */
 function formatAddress(address) {
   if (!address) return ''
-  // 只显示前8位和后4位，中间用...代替
+
   if (address.length > 12) {
     return address.substring(0, 8) + '...' + address.substring(address.length - 4)
   }
   return address
 }
 
-/**
- * 扫描所有蓝牙设备
- */
 async function scanDevices() {
   try {
     isScanning.value = true
     console.log('开始扫描蓝牙设备...')
-    
-    // 扫描 Cpen 设备
+
     const cpenList = await scanCpenDevices()
     cpenDevices.value = cpenList
     console.log(`找到 ${cpenList.length} 个 Cpen 设备`)
-    
+
     if (cpenList.length === 0) {
       showToast('未发现 Cpen 设备')
     } else if (cpenList.length === 1) {
@@ -218,13 +185,10 @@ async function scanDevices() {
   }
 }
 
-/**
- * 重新扫描
- */
 async function rescanDevices() {
-  // 重新扫描前也检查连接状态
+
   const connected = bluetoothStore.isConnected()
-  
+
   if (connected) {
     console.log('蓝牙已连接，无需重新扫描')
     showToast('蓝牙已连接')
@@ -236,31 +200,26 @@ async function rescanDevices() {
   }
 }
 
-/**
- * 选择设备并连接
- */
 async function selectDevice(device) {
   if (isConnectingDevice.value) return
-  
+
   selectedDevice.value = device
   isConnectingDevice.value = true
-  
+
   try {
     console.log(`选择设备: ${device.name} (${device.address})`)
     bluetoothStore.setStatus('connecting')
-    
-    // 设置连接超时
+
     const connectPromise = connectCpenDevice(device.address)
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('连接超时')), 10000) // 10秒超时
+      setTimeout(() => reject(new Error('连接超时')), 10000)
     })
-    
+
     await Promise.race([connectPromise, timeoutPromise])
-    
+
     bluetoothStore.setStatus('connected')
     showToast('设备连接成功！')
 
-    // 保存设备地址
     try {
       const savedCpen = await loadAppData('settings_cpen')
       const settings = savedCpen ? JSON.parse(savedCpen) : { autoConnect: false, lastDeviceAddress: '' }
@@ -269,9 +228,7 @@ async function selectDevice(device) {
     } catch (e) {
       console.warn('保存设备地址失败:', e)
     }
-    
-    // 连接成功，先等待一小段时间让状态同步
-    // 然后开始倒计时跳转
+
     startCountdown()
   } catch (error) {
     console.error('连接设备失败:', error)
@@ -282,16 +239,10 @@ async function selectDevice(device) {
   }
 }
 
-/**
- * 开始倒计时
- */
 function startCountdown() {
   jumpToWelcome()
 }
 
-/**
- * 跳过倒计时
- */
 function skipCountdown() {
   if (countdownTimer) {
     clearInterval(countdownTimer)
@@ -299,64 +250,49 @@ function skipCountdown() {
   jumpToWelcome()
 }
 
-/**
- * 跳转到欢迎页面
- */
 function jumpToWelcome() {
   showCountdown.value = false
-  // 确保蓝牙状态已设置为已连接
-  // 这样路由守卫才会放行
+
   if (!bluetoothStore.isConnected()) {
     console.log('强制设置蓝牙状态为已连接')
     bluetoothStore.setStatus('connected')
   }
-  // 稍微延迟一下再跳转，给状态更新时间
+
   setTimeout(() => {
     console.log('执行路由跳转，目标：/welcome')
     router.push('/welcome')
   }, 100)
 }
 
-/**
- * 跳过蓝牙连接
- */
 function skipToWelcome() {
   console.log('用户跳过蓝牙连接')
   router.push('/welcome')
 }
 
-/**
- * 立即进入欢迎页面
- */
 function goToWelcomeNow() {
   console.log('用户点击进入欢迎页面')
   router.push('/welcome')
 }
 
-/**
- * 显示连接失败帮助信息
- */
 function showConnectionHelp() {
   showToast('连接失败帮助：\n1. 确保设备已开启\n2. 确保设备在附近\n3. 尝试重新扫描\n4. 重启应用后重试')
 }
 
-// 组件挂载时检查连接状态
 onMounted(async () => {
   console.log('InitialView mounted，检查蓝牙连接状态')
-  
-  // 先检查是否已经连接
+
   const connected = bluetoothStore.isConnected()
-  
+
   if (connected) {
     console.log('蓝牙已连接，不再扫描')
     showToast('蓝牙已连接')
-    // 已连接，直接跳转到欢迎页面
+
     setTimeout(() => {
       router.push('/welcome')
     }, 500)
   } else {
     console.log('蓝牙未连接，开始扫描')
-    // 未连接，才扫描设备
+
     await scanDevices()
   }
 })
@@ -371,7 +307,6 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-/* 左半部分 */
 .left-panel {
   flex: 0 0 40%;
   display: flex;
@@ -486,7 +421,6 @@ onMounted(async () => {
   color: var(--text-primary, #24292f);
 }
 
-/* 右半部分 */
 .right-panel {
   flex: 1;
   display: flex;
@@ -509,7 +443,6 @@ onMounted(async () => {
   border-bottom: 2px solid var(--border-color, #d0d7de);
 }
 
-/* 已连接状态指示器 */
 .connected-status {
   display: flex;
   align-items: center;
@@ -585,7 +518,6 @@ onMounted(async () => {
   to { transform: rotate(360deg); }
 }
 
-/* 设备分区 */
 .device-section {
   margin-bottom: 25px;
 }
@@ -606,7 +538,6 @@ onMounted(async () => {
   color: var(--accent-blue-dark, #0a3069);
 }
 
-/* 设备列表 */
 .device-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -746,7 +677,6 @@ onMounted(async () => {
   display: inline-block;
 }
 
-/* 空状态 */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -783,7 +713,6 @@ onMounted(async () => {
   filter: brightness(1.1);
 }
 
-/* 已连接设备卡片 */
 .connected-device-card {
   background: rgba(45, 164, 78, 0.05);
   border: 2px solid var(--accent-green, #2da44e);
@@ -852,7 +781,6 @@ onMounted(async () => {
   font-size: 18px;
 }
 
-/* 倒计时弹窗 */
 .countdown-overlay {
   position: fixed;
   top: 0;
@@ -934,7 +862,6 @@ onMounted(async () => {
   filter: brightness(1.1);
 }
 
-/* 左下角帮助按钮 */
 .help-corner {
   position: fixed;
   bottom: 20px;
@@ -975,7 +902,6 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-/* Tooltip 样式 */
 .help-tooltip {
   position: absolute;
   bottom: 100%;

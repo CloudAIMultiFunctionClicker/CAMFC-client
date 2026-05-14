@@ -1,23 +1,9 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="annotate-panel">
-    <!-- 标注画布 -->
-    <div 
+
+    <div
       class="annotate-canvas-wrapper"
       :class="{ panning: isPanning }"
       ref="canvasWrapper"
@@ -26,7 +12,7 @@ Email: admin@mc666.top
       @mouseup="handleMouseUp"
       @mouseleave="handleMouseUp"
     >
-      <canvas 
+      <canvas
         ref="annotateCanvas"
         class="annotate-canvas"
         :style="{
@@ -58,13 +44,11 @@ const props = defineProps({
 
 const emit = defineEmits(['complete', 'cancel'])
 
-// 工具定义 - 只保留选择和自由绘制
 const tools = [
   { id: 'select', name: '选择', icon: 'ri-cursor-line' },
   { id: 'free', name: '自由绘制', icon: 'ri-edit-line' }
 ]
 
-// 颜色定义 - 5 种常见颜色
 const colors = [
   { value: '#ef4444', name: '红色' },
   { value: '#3178c6', name: '蓝色' },
@@ -73,10 +57,8 @@ const colors = [
   { value: '#8b5cf6', name: '紫色' }
 ]
 
-// 线条粗细选项
 const strokeWidths = [2, 4, 6, 8, 10]
 
-// 状态
 const currentTool = ref('free')
 const currentColor = ref('#ef4444')
 const currentStrokeWidth = ref(4)
@@ -84,34 +66,28 @@ const isDrawing = ref(false)
 const startPoint = ref({ x: 0, y: 0 })
 const currentPoint = ref({ x: 0, y: 0 })
 
-// 缩放和拖动相关
 const scale = ref(1)
 const panOffset = ref({ x: 0, y: 0 })
 const isPanning = ref(false)
 const panStart = ref({ x: 0, y: 0 })
 const panStartOffset = ref({ x: 0, y: 0 })
 
-// 标注数据
 const annotations = ref([])
 const selectedAnnotationId = ref(null)
 const history = ref([])
 const historyIndex = ref(-1)
 
-// 画布相关
 const canvasWrapper = ref(null)
 const annotateCanvas = ref(null)
 let ctx = null
 
-// 文字输入
 const textInput = ref(null)
 const isTextInputMode = ref(false)
 const textPosition = ref({ x: 0, y: 0 })
 
-// 计算属性
 const canUndo = computed(() => historyIndex.value >= 0)
 const canRedo = computed(() => historyIndex.value < history.value.length - 1)
 
-// 初始化
 onMounted(() => {
   initCanvas()
   window.addEventListener('keydown', handleKeyDown)
@@ -123,26 +99,24 @@ onUnmounted(() => {
   window.removeEventListener('wheel', handleWheel)
 })
 
-// 初始化画布
 const initCanvas = () => {
   if (!canvasWrapper.value || !annotateCanvas.value) return
-  
+
   console.log('[AnnotatePanel] initCanvas 调用', {
     hasImageData: !!props.imageData,
     imageDataLength: props.imageData?.length,
     imageWidth: props.imageWidth,
     imageHeight: props.imageHeight
   })
-  
+
   if (!props.imageData) {
     console.error('[AnnotatePanel] imageData 为空，无法初始化')
     showToast('图片数据加载失败', '#ef4444')
     return
   }
-  
+
   const wrapper = canvasWrapper.value
-  
-  // 使用图片原始分辨率作为 canvas 尺寸，避免模糊
+
   if (props.imageWidth && props.imageHeight) {
     annotateCanvas.value.width = props.imageWidth
     annotateCanvas.value.height = props.imageHeight
@@ -150,58 +124,54 @@ const initCanvas = () => {
     annotateCanvas.value.width = wrapper.clientWidth
     annotateCanvas.value.height = wrapper.clientHeight
   }
-  
+
   ctx = annotateCanvas.value.getContext('2d')
-  
-  // 加载背景图片
+
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.src = props.imageData
-  
+
   img.onload = () => {
     console.log('[AnnotatePanel] 图片加载成功', img.width, img.height)
     drawBackground(img)
     redrawAnnotations()
   }
-  
+
   img.onerror = (err) => {
     console.error('[AnnotatePanel] 图片加载失败', err)
     showToast('图片加载失败', '#ef4444')
   }
 }
 
-// 绘制背景图片
 const drawBackground = (img) => {
   if (!ctx) return
-  
+
   const canvas = annotateCanvas.value
-  
-  // 如果 canvas 尺寸等于图片原始尺寸，直接绘制
+
   if (canvas.width === props.imageWidth && canvas.height === props.imageHeight) {
     ctx.drawImage(img, 0, 0)
   } else {
-    // 否则按比例缩放绘制
+
     const scaleX = canvas.width / props.imageWidth
     const scaleY = canvas.height / props.imageHeight
     const scale = Math.min(scaleX, scaleY)
-    
+
     const width = props.imageWidth * scale
     const height = props.imageHeight * scale
     const x = (canvas.width - width) / 2
     const y = (canvas.height - height) / 2
-    
+
     ctx.drawImage(img, x, y, width, height)
   }
 }
 
-// 重新绘制所有标注
 const redrawAnnotations = () => {
   if (!ctx || !props.imageData) return
-  
+
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.src = props.imageData
-  
+
   img.onload = () => {
     drawBackground(img)
     annotations.value.forEach(annotation => {
@@ -210,16 +180,15 @@ const redrawAnnotations = () => {
   }
 }
 
-// 绘制单个标注
 const drawAnnotation = (annotation) => {
   if (!ctx) return
-  
+
   ctx.strokeStyle = annotation.color
   ctx.fillStyle = annotation.color
   ctx.lineWidth = annotation.strokeWidth
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
-  
+
   switch (annotation.type) {
     case 'rect':
       drawRect(annotation)
@@ -237,14 +206,12 @@ const drawAnnotation = (annotation) => {
       drawText(annotation)
       break
   }
-  
-  // 如果选中，绘制选中框
+
   if (annotation.id === selectedAnnotationId.value) {
     drawSelectionBox(annotation)
   }
 }
 
-// 绘制矩形
 const drawRect = (annotation) => {
   ctx.strokeRect(
     annotation.x,
@@ -254,7 +221,6 @@ const drawRect = (annotation) => {
   )
 }
 
-// 绘制圆形
 const drawCircle = (annotation) => {
   ctx.beginPath()
   ctx.ellipse(
@@ -269,17 +235,15 @@ const drawCircle = (annotation) => {
   ctx.stroke()
 }
 
-// 绘制箭头
 const drawArrow = (annotation) => {
   const headLength = 15
   const angle = Math.atan2(annotation.endY - annotation.startY, annotation.endX - annotation.startX)
-  
+
   ctx.beginPath()
   ctx.moveTo(annotation.startX, annotation.startY)
   ctx.lineTo(annotation.endX, annotation.endY)
   ctx.stroke()
-  
-  // 箭头头部
+
   ctx.beginPath()
   ctx.moveTo(annotation.endX, annotation.endY)
   ctx.lineTo(
@@ -294,39 +258,35 @@ const drawArrow = (annotation) => {
   ctx.fill()
 }
 
-// 绘制自由线条
 const drawFree = (annotation) => {
   if (!annotation.points || annotation.points.length < 2) return
-  
+
   ctx.beginPath()
   ctx.moveTo(annotation.points[0].x, annotation.points[0].y)
-  
+
   for (let i = 1; i < annotation.points.length; i++) {
     ctx.lineTo(annotation.points[i].x, annotation.points[i].y)
   }
-  
+
   ctx.stroke()
 }
 
-// 绘制文字
 const drawText = (annotation) => {
   ctx.font = `${16 + annotation.strokeWidth}px Arial`
   ctx.fillText(annotation.text, annotation.x, annotation.y)
 }
 
-// 绘制选中框
 const drawSelectionBox = (annotation) => {
   ctx.strokeStyle = '#3178c6'
   ctx.lineWidth = 1
   ctx.setLineDash([5, 5])
-  
+
   let bounds = getAnnotationBounds(annotation)
   ctx.strokeRect(bounds.x - 5, bounds.y - 5, bounds.width + 10, bounds.height + 10)
-  
+
   ctx.setLineDash([])
 }
 
-// 获取标注边界
 const getAnnotationBounds = (annotation) => {
   switch (annotation.type) {
     case 'rect':
@@ -365,19 +325,17 @@ const getAnnotationBounds = (annotation) => {
   }
 }
 
-// 鼠标事件处理
 const handleMouseDown = (e) => {
   if (!ctx) return
-  
+
   const rect = annotateCanvas.value.getBoundingClientRect()
   const scaleX = annotateCanvas.value.width / rect.width
   const scaleY = annotateCanvas.value.height / rect.height
   const x = ((e.clientX - rect.left - panOffset.value.x) / scale.value) * scaleX
   const y = ((e.clientY - rect.top - panOffset.value.y) / scale.value) * scaleY
-  
-  // 在选择工具下，左键拖动用于移动画布
+
   if (currentTool.value === 'select' && e.button === 0) {
-    // 检查是否点击在标注上
+
     const clickedAnnotation = findAnnotationAtPoint(x, y)
     if (clickedAnnotation) {
       selectedAnnotationId.value = clickedAnnotation.id
@@ -386,7 +344,7 @@ const handleMouseDown = (e) => {
       redrawAnnotations()
       return
     } else {
-      // 没有点击到标注，进入画布拖动模式
+
       selectedAnnotationId.value = null
       isPanning.value = true
       panStart.value = { x: e.clientX, y: e.clientY }
@@ -395,19 +353,18 @@ const handleMouseDown = (e) => {
       return
     }
   }
-  
+
   if (currentTool.value === 'text') {
-    // 文字输入模式
+
     isTextInputMode.value = true
     textPosition.value = { x, y }
     showTextInput(x, y)
   } else if (currentTool.value === 'free') {
-    // 绘制模式
+
     isDrawing.value = true
     startPoint.value = { x, y }
     currentPoint.value = { x, y }
-    
-    // 自由绘制
+
     const newAnnotation = {
       id: Date.now(),
       type: 'free',
@@ -420,7 +377,7 @@ const handleMouseDown = (e) => {
 }
 
 const handleMouseMove = (e) => {
-  // 处理拖动模式
+
   if (isPanning.value) {
     const dx = e.clientX - panStart.value.x
     const dy = e.clientY - panStart.value.y
@@ -430,18 +387,18 @@ const handleMouseMove = (e) => {
     }
     return
   }
-  
+
   if (!isDrawing.value || !ctx) return
-  
+
   const rect = annotateCanvas.value.getBoundingClientRect()
   const scaleX = annotateCanvas.value.width / rect.width
   const scaleY = annotateCanvas.value.height / rect.height
   const x = ((e.clientX - rect.left - panOffset.value.x) / scale.value) * scaleX
   const y = ((e.clientY - rect.top - panOffset.value.y) / scale.value) * scaleY
   currentPoint.value = { x, y }
-  
+
   if (currentTool.value === 'select' && selectedAnnotationId.value) {
-    // 移动选中的标注
+
     const annotation = annotations.value.find(a => a.id === selectedAnnotationId.value)
     if (annotation) {
       const dx = x - startPoint.value.x
@@ -451,14 +408,14 @@ const handleMouseMove = (e) => {
       redrawAnnotations()
     }
   } else if (currentTool.value === 'free') {
-    // 自由绘制
+
     const annotation = annotations.value[annotations.value.length - 1]
     if (annotation) {
       annotation.points.push({ x, y })
       redrawAnnotations()
     }
   } else {
-    // 其他工具
+
     redrawAnnotations()
     drawPreview()
   }
@@ -469,11 +426,11 @@ const handleMouseUp = () => {
     isPanning.value = false
     return
   }
-  
+
   if (!isDrawing.value) return
-  
+
   if (currentTool.value !== 'select' && currentTool.value !== 'free' && currentTool.value !== 'text') {
-    // 创建新标注
+
     const annotation = createAnnotation()
     if (annotation) {
       annotations.value.push(annotation)
@@ -482,18 +439,17 @@ const handleMouseUp = () => {
   } else if (currentTool.value === 'free') {
     saveState()
   }
-  
+
   isDrawing.value = false
 }
 
-// 创建标注
 const createAnnotation = () => {
   const base = {
     id: Date.now(),
     color: currentColor.value,
     strokeWidth: currentStrokeWidth.value
   }
-  
+
   switch (currentTool.value) {
     case 'rect':
       return {
@@ -527,7 +483,6 @@ const createAnnotation = () => {
   }
 }
 
-// 移动标注
 const moveAnnotation = (annotation, dx, dy) => {
   switch (annotation.type) {
     case 'rect':
@@ -554,22 +509,20 @@ const moveAnnotation = (annotation, dx, dy) => {
   }
 }
 
-// 绘制预览
 const drawPreview = () => {
   redrawAnnotations()
-  
+
   const annotation = createAnnotation()
   if (annotation) {
     drawAnnotation(annotation)
   }
 }
 
-// 查找点击位置的标注
 const findAnnotationAtPoint = (x, y) => {
   for (let i = annotations.value.length - 1; i >= 0; i--) {
     const annotation = annotations.value[i]
     const bounds = getAnnotationBounds(annotation)
-    
+
     if (x >= bounds.x && x <= bounds.x + bounds.width &&
         y >= bounds.y && y <= bounds.y + bounds.height) {
       return annotation
@@ -578,7 +531,6 @@ const findAnnotationAtPoint = (x, y) => {
   return null
 }
 
-// 显示文字输入框
 const showTextInput = (x, y) => {
   const input = document.createElement('input')
   input.type = 'text'
@@ -591,7 +543,7 @@ const showTextInput = (x, y) => {
   input.style.borderRadius = '4px'
   input.style.fontSize = '14px'
   input.style.outline = 'none'
-  
+
   input.onkeydown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -616,7 +568,7 @@ const showTextInput = (x, y) => {
       isTextInputMode.value = false
     }
   }
-  
+
   input.onblur = () => {
     setTimeout(() => {
       if (input.parentNode) {
@@ -625,29 +577,25 @@ const showTextInput = (x, y) => {
       }
     }, 100)
   }
-  
+
   canvasWrapper.value.appendChild(input)
   input.focus()
 }
 
-// 工具选择
 const selectTool = (toolId) => {
   currentTool.value = toolId
   selectedAnnotationId.value = null
   redrawAnnotations()
 }
 
-// 颜色选择
 const selectColor = (color) => {
   currentColor.value = color
 }
 
-// 线条粗细选择
 const selectStrokeWidth = (width) => {
   currentStrokeWidth.value = width
 }
 
-// 删除标注
 const deleteAnnotation = (id) => {
   const index = annotations.value.findIndex(a => a.id === id)
   if (index !== -1) {
@@ -661,7 +609,6 @@ const deleteAnnotation = (id) => {
   }
 }
 
-// 撤销
 const undo = () => {
   if (historyIndex.value >= 0) {
     historyIndex.value--
@@ -674,7 +621,6 @@ const undo = () => {
   }
 }
 
-// 重做
 const redo = () => {
   if (historyIndex.value < history.value.length - 1) {
     historyIndex.value++
@@ -683,17 +629,15 @@ const redo = () => {
   }
 }
 
-// 保存状态
 const saveState = () => {
   history.value = history.value.slice(0, historyIndex.value + 1)
   history.value.push(JSON.parse(JSON.stringify(annotations.value)))
   historyIndex.value = history.value.length - 1
 }
 
-// 清除所有标注
 const clearAll = () => {
   if (annotations.value.length === 0) return
-  
+
   annotations.value = []
   selectedAnnotationId.value = null
   saveState()
@@ -701,10 +645,9 @@ const clearAll = () => {
   showToast('已清除所有标注', '#10b981')
 }
 
-// 键盘快捷键
 const handleKeyDown = (e) => {
   if (isTextInputMode.value) return
-  
+
   if (e.ctrlKey || e.metaKey) {
     if (e.key === 'z') {
       e.preventDefault()
@@ -714,13 +657,13 @@ const handleKeyDown = (e) => {
       redo()
     }
   }
-  
+
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (selectedAnnotationId.value) {
       deleteAnnotation(selectedAnnotationId.value)
     }
   }
-  
+
   if (e.key === 'Escape') {
     selectedAnnotationId.value = null
     currentTool.value = 'select'
@@ -728,7 +671,6 @@ const handleKeyDown = (e) => {
   }
 }
 
-// 完成标注
 const completeAnnotate = () => {
   console.log('[AnnotatePanel] completeAnnotate 调用', {
     hasCanvas: !!annotateCanvas.value,
@@ -737,54 +679,50 @@ const completeAnnotate = () => {
     annotationsCount: annotations.value.length,
     hasCtx: !!ctx
   })
-  
+
   if (!annotateCanvas.value) {
     console.error('[AnnotatePanel] canvas 不存在')
     showToast('画布未初始化', '#ef4444')
     return
   }
-  
+
   if (!ctx) {
     console.error('[AnnotatePanel] canvas 上下文不存在')
     showToast('画布未准备好', '#ef4444')
     return
   }
-  
-  // 将标注绘制到 canvas 上并导出
+
   const canvas = document.createElement('canvas')
   canvas.width = annotateCanvas.value.width
   canvas.height = annotateCanvas.value.height
   const newCtx = canvas.getContext('2d')
-  
+
   if (!newCtx) {
     console.error('[AnnotatePanel] 无法获取 canvas 上下文')
     showToast('无法导出图片', '#ef4444')
     return
   }
-  
-  // 重新绘制背景图片和标注，确保内容完整
+
   const img = new Image()
   img.crossOrigin = 'anonymous'
   img.src = props.imageData
-  
+
   img.onload = () => {
     console.log('[AnnotatePanel] 导出图片 - 背景图片加载成功')
-    
-    // 绘制背景
+
     drawBackgroundOnContext(newCtx, img, canvas.width, canvas.height)
-    
-    // 绘制所有标注
+
     annotations.value.forEach(annotation => {
       drawAnnotationOnContext(newCtx, annotation)
     })
-    
+
     const annotatedData = canvas.toDataURL('image/png')
-    
+
     console.log('[AnnotatePanel] 导出图片成功', {
       dataLength: annotatedData?.length,
       hasData: !!annotatedData
     })
-    
+
     emit('complete', {
       imageData: annotatedData,
       annotations: annotations.value
@@ -793,39 +731,37 @@ const completeAnnotate = () => {
       showToast('标注已保存', '#10b981')
     }
   }
-  
+
   img.onerror = (err) => {
     console.error('[AnnotatePanel] 导出图片 - 背景图片加载失败', err)
     showToast('图片导出失败', '#ef4444')
   }
 }
 
-// 在指定 context 上绘制背景
 const drawBackgroundOnContext = (context, img, width, height) => {
   if (props.imageWidth && props.imageHeight) {
     const scaleX = width / props.imageWidth
     const scaleY = height / props.imageHeight
     const scale = Math.min(scaleX, scaleY)
-    
+
     const drawWidth = props.imageWidth * scale
     const drawHeight = props.imageHeight * scale
     const x = (width - drawWidth) / 2
     const y = (height - drawHeight) / 2
-    
+
     context.drawImage(img, x, y, drawWidth, drawHeight)
   } else {
     context.drawImage(img, 0, 0, width, height)
   }
 }
 
-// 在指定 context 上绘制标注
 const drawAnnotationOnContext = (context, annotation) => {
   context.strokeStyle = annotation.color
   context.fillStyle = annotation.color
   context.lineWidth = annotation.strokeWidth
   context.lineCap = 'round'
   context.lineJoin = 'round'
-  
+
   switch (annotation.type) {
     case 'rect':
       context.strokeRect(
@@ -851,12 +787,12 @@ const drawAnnotationOnContext = (context, annotation) => {
     case 'arrow':
       const headLength = 15
       const angle = Math.atan2(annotation.endY - annotation.startY, annotation.endX - annotation.startX)
-      
+
       context.beginPath()
       context.moveTo(annotation.startX, annotation.startY)
       context.lineTo(annotation.endX, annotation.endY)
       context.stroke()
-      
+
       context.beginPath()
       context.moveTo(annotation.endX, annotation.endY)
       context.lineTo(
@@ -872,14 +808,14 @@ const drawAnnotationOnContext = (context, annotation) => {
       break
     case 'free':
       if (!annotation.points || annotation.points.length < 2) return
-      
+
       context.beginPath()
       context.moveTo(annotation.points[0].x, annotation.points[0].y)
-      
+
       for (let i = 1; i < annotation.points.length; i++) {
         context.lineTo(annotation.points[i].x, annotation.points[i].y)
       }
-      
+
       context.stroke()
       break
     case 'text':
@@ -889,45 +825,40 @@ const drawAnnotationOnContext = (context, annotation) => {
   }
 }
 
-// 取消标注
 const cancelAnnotate = () => {
   emit('cancel')
 }
 
-// 滚轮缩放
 const handleWheel = (e) => {
   if (!canvasWrapper.value) return
-  
+
   e.preventDefault()
-  
+
   const rect = canvasWrapper.value.getBoundingClientRect()
   const mouseX = e.clientX - rect.left
   const mouseY = e.clientY - rect.top
-  
+
   const delta = -e.deltaY
   const zoomSpeed = 0.001
   const zoomFactor = Math.pow(1 + zoomSpeed, delta)
-  
+
   const newScale = Math.min(Math.max(scale.value * zoomFactor, 0.5), 5)
-  
-  // 计算鼠标位置在缩放前后的偏移量
+
   const scaleRatio = newScale / scale.value
   panOffset.value = {
     x: mouseX - (mouseX - panOffset.value.x) * scaleRatio,
     y: mouseY - (mouseY - panOffset.value.y) * scaleRatio
   }
-  
+
   scale.value = newScale
 }
 
-// 监听窗口大小变化
 watch(() => props.imageData, () => {
   setTimeout(() => {
     initCanvas()
   }, 100)
 })
 
-// 暴露给父组件使用
 defineExpose({
   currentTool,
   currentColor,
@@ -982,7 +913,6 @@ defineExpose({
   cursor: grabbing !important;
 }
 
-/* 标注工具按钮样式（供 ScreenshotWindow 使用） */
 .annotate-tool-btn {
   display: flex;
   align-items: center;

@@ -1,25 +1,11 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="editor-window" :class="{ 'light-mode': isLightMode }">
     <div class="editor-header" data-tauri-drag-region>
-      <input 
-        v-model="noteTitle" 
-        class="editor-title-input" 
+      <input
+        v-model="noteTitle"
+        class="editor-title-input"
         placeholder="未命名笔记"
         type="text"
         :disabled="isMeetingNote"
@@ -41,7 +27,7 @@ Email: admin@mc666.top
         </button>
       </div>
     </div>
-    
+
     <div class="editor-body-wrapper">
       <GenericNoteEditor
         ref="genericEditor"
@@ -56,8 +42,7 @@ Email: admin@mc666.top
         @image-blocked="handleImageBlocked"
       />
     </div>
-    
-    <!-- 保存确认弹窗 -->
+
     <Transition name="modal">
       <div v-if="showSaveConfirmModal" class="modal-overlay" @click="cancelClose">
         <div class="modal-content" @click.stop>
@@ -93,25 +78,20 @@ import GenericNoteEditor from '../components/editor/GenericNoteEditor.vue'
 const timeOut = 3000
 const route = useRoute()
 
-// 笔记数据
 const noteUuid = ref('')
 const noteTitle = ref('')
 const noteContent = ref('')
 const originalContent = ref('')
 const isMeetingNote = ref(false)
 
-// 编辑器引用
 const genericEditor = ref(null)
 const showSaveConfirmModal = ref(false)
 
-// 窗口状态
 const isMaximized = ref(false)
 const currentWindow = getCurrentWindow()
 
-// 主题状态
 const isLightMode = ref(false)
 
-// 获取认证头
 async function getAuthHeader() {
   try {
     const { getDeviceId, getTotp } = await import('../components/data/bluetooth.js')
@@ -123,7 +103,6 @@ async function getAuthHeader() {
   }
 }
 
-// API 请求
 async function apiRequest(url, data = {}) {
   const authHeader = await getAuthHeader()
   const response = await axios.post(getBackendUrl() + url, data, {
@@ -133,45 +112,41 @@ async function apiRequest(url, data = {}) {
   return response.data
 }
 
-// 初始化
 onMounted(async () => {
-  // 从 URL 参数获取笔记信息
+
   const uuid = route.query.uuid
   const title = route.query.title
-  
+
   if (!uuid) {
     showToast('笔记信息不完整', '#ef4444')
     setTimeout(() => closeWindow(), 1500)
     return
   }
-  
+
   noteUuid.value = uuid
   noteTitle.value = title || '未命名笔记'
   noteContent.value = ''
   originalContent.value = ''
   isMeetingNote.value = route.query.isMeetingNote === 'true'
-  
-  // 获取笔记内容
+
   const fetchNoteContent = async () => {
     if (isMeetingNote.value) {
       noteContent.value = ''
       originalContent.value = ''
       return
     }
-    
-    // TODO: 这里可能会重复请求，主窗口已经发过内容了
-    // 但暂时保留作为备用方案（主窗口发送失败时）
+
     try {
       const noteData = await apiRequest('/note/query_by_uuid', { uuid })
       let content = ''
       if (noteData && typeof noteData === 'object') {
         content = noteData.content || noteData.data?.content || noteData.note?.content || ''
       }
-      
+
       noteContent.value = content
       originalContent.value = content
     } catch (e) {
-      // 404 错误可能是主窗口已经发送过内容了，不用提示
+
       if (e.response?.status === 404) {
         console.log('笔记内容已通过事件加载，跳过直接请求')
         return
@@ -180,10 +155,9 @@ onMounted(async () => {
       showToast('获取笔记内容失败: ' + (e.message || '网络错误'), '#ef4444')
     }
   }
-  
+
   await fetchNoteContent()
-  
-  // 监听主窗口发送的内容（作为备用方案）
+
   const unlistenContent = await listen('load-note-content', (event) => {
     const content = event.payload?.content || ''
     noteContent.value = content
@@ -192,19 +166,15 @@ onMounted(async () => {
       genericEditor.value.setContent(content)
     }
   })
-  
+
   window._unlistenContent = unlistenContent
-  
-  // 检查窗口状态
+
   checkWindowState()
-  
-  // 初始化主题
+
   initTheme()
-  
-  // 监听主题变化
+
   setupThemeListener()
-  
-  // 通知主窗口刷新笔记列表（打开时）
+
   try {
     const { emit } = await import('@tauri-apps/api/event')
     await emit('note-editor-opened', { uuid })
@@ -214,13 +184,12 @@ onMounted(async () => {
 })
 
 onUnmounted(async () => {
-  // 清理事件监听
+
   if (window._unlistenContent) {
     window._unlistenContent()
   }
 })
 
-// 检查窗口状态
 async function checkWindowState() {
   try {
     isMaximized.value = await currentWindow.isMaximized()
@@ -229,7 +198,6 @@ async function checkWindowState() {
   }
 }
 
-// 最小化窗口
 async function minimizeWindow() {
   try {
     await currentWindow.minimize()
@@ -238,7 +206,6 @@ async function minimizeWindow() {
   }
 }
 
-// 切换最大化
 async function toggleMaximize() {
   try {
     if (isMaximized.value) {
@@ -246,7 +213,7 @@ async function toggleMaximize() {
     } else {
       await currentWindow.maximize()
     }
-    // 等待一小段时间让窗口状态更新
+
     setTimeout(() => {
       checkWindowState()
     }, 50)
@@ -255,14 +222,13 @@ async function toggleMaximize() {
   }
 }
 
-// 初始化主题
 function initTheme() {
   try {
     const savedTheme = localStorage.getItem('theme-preference')
     if (savedTheme === 'light' || savedTheme === 'dark') {
       isLightMode.value = savedTheme === 'light'
     } else {
-      // 检测系统偏好
+
       isLightMode.value = window.matchMedia('(prefers-color-scheme: light)').matches
     }
   } catch (e) {
@@ -271,10 +237,9 @@ function initTheme() {
   }
 }
 
-// 监听主题变化
 function setupThemeListener() {
   try {
-    // 监听来自主窗口的主题变化事件
+
     listen('theme-changed', (event) => {
       const theme = event.payload
       isLightMode.value = theme === 'light'
@@ -285,19 +250,18 @@ function setupThemeListener() {
   }
 }
 
-// 关闭窗口
 async function closeWindow() {
   try {
-    // 先通知主窗口刷新笔记列表
+
     try {
       const { emit } = await import('@tauri-apps/api/event')
       await emit('note-editor-closed', { uuid: noteUuid.value })
     } catch (e) {
       console.error('发送关闭事件失败:', e)
     }
-    // 等待 0.1s 让主窗口刷新
+
     await new Promise(resolve => setTimeout(resolve, 100))
-    // 再关闭子窗口
+
     const appWindow = getCurrentWindow()
     await appWindow.close()
   } catch (e) {
@@ -306,13 +270,11 @@ async function closeWindow() {
   }
 }
 
-// 保存并关闭
 async function saveAndClose() {
   await saveNote()
   await closeWindow()
 }
 
-// 处理关闭按钮
 function handleClose() {
   if (noteContent.value !== originalContent.value) {
     showSaveConfirmModal.value = true
@@ -321,58 +283,51 @@ function handleClose() {
   }
 }
 
-// 确认保存
 async function confirmSave() {
   await saveNote()
   showSaveConfirmModal.value = false
   await closeWindow()
 }
 
-// 放弃更改
 async function discardChanges() {
   showSaveConfirmModal.value = false
   await closeWindow()
 }
 
-// 取消关闭
 function cancelClose() {
   showSaveConfirmModal.value = false
 }
 
-// 处理保存快捷键
 function handleSaveShortcut() {
   saveNote()
 }
 
-// 会议模式禁止插入图片提示
 function handleImageBlocked() {
   showToast('会议模式下不允许插入图片', '#f59e0b')
 }
 
-// 保存笔记
 async function saveNote() {
   if (!noteUuid.value) return
-  
+
   try {
-    // 检查是否是会议笔记
+
     const isMeetingNote = route.query.isMeetingNote === 'true'
-    
+
     if (isMeetingNote) {
-      // 会议笔记，发送到后端接口
+
       await sendMeetingNoteToBackend()
     } else {
-      // 普通笔记，调用原有接口
-      await apiRequest('/note/update', { 
-        uuid: noteUuid.value, 
+
+      await apiRequest('/note/update', {
+        uuid: noteUuid.value,
         content: noteContent.value || '',
-        title: noteTitle.value 
+        title: noteTitle.value
       })
     }
-    
+
     originalContent.value = noteContent.value
     showToast('保存成功', '#10b981')
-    
-    // 通知主窗口刷新笔记列表
+
     await emit('note-saved', { uuid: noteUuid.value })
   } catch (e) {
     console.error('保存笔记失败:', e)
@@ -380,7 +335,6 @@ async function saveNote() {
   }
 }
 
-// 发送会议笔记到后端
 async function sendMeetingNoteToBackend() {
   try {
     const authHeader = await getAuthHeader()
@@ -413,7 +367,6 @@ async function sendMeetingNoteToBackend() {
   color: var(--text-primary, #1e293b);
 }
 
-/* 窗口标题栏 - 与主窗口 TitleBar 保持一致 */
 .editor-header {
   display: flex;
   align-items: center;
@@ -513,7 +466,6 @@ async function sendMeetingNoteToBackend() {
   color: white;
 }
 
-/* 编辑器主体包装器 */
 .editor-body-wrapper {
   flex: 1;
   overflow: hidden;
@@ -521,7 +473,6 @@ async function sendMeetingNoteToBackend() {
   flex-direction: column;
 }
 
-/* 模态框样式 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -663,7 +614,6 @@ async function sendMeetingNoteToBackend() {
   background: #2563eb;
 }
 
-/* 过渡动画 */
 .modal-enter-active,
 .modal-leave-active {
   transition: all 0.3s ease;
@@ -681,7 +631,6 @@ async function sendMeetingNoteToBackend() {
   transform: scale(1);
 }
 
-/* 覆盖通用编辑器的样式以适配窗口 */
 :deep(.generic-note-editor) {
   height: 100%;
 }

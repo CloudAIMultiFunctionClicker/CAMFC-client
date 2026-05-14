@@ -1,18 +1,4 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="notes-container">
@@ -68,7 +54,7 @@ Email: admin@mc666.top
     </div>
 
     <div class="notes-content">
-      <!-- 骨架屏：加载时显示灰色占位块 -->
+
       <div v-if="isLoading" class="skeleton-grid">
         <div v-for="i in 12" :key="i" class="skeleton-card">
           <div class="skeleton-title"></div>
@@ -79,8 +65,7 @@ Email: admin@mc666.top
           </div>
         </div>
       </div>
-      
-      <!-- 网络错误提示 -->
+
       <div v-else-if="hasError" class="error-state">
         <AlertCircle :size="48" class="error-icon" />
         <p class="error-message">网络连接错误</p>
@@ -90,8 +75,7 @@ Email: admin@mc666.top
           重试
         </button>
       </div>
-      
-      <!-- 笔记列表 -->
+
       <template v-else-if="currentTab === 'notes'">
         <div v-if="filteredNotes.length === 0 && notes.length > 0" class="empty-state">
           <i class="ri-search-line empty-icon" style="font-size: 64px;"></i>
@@ -129,8 +113,8 @@ Email: admin@mc666.top
                   @keyup.escape="cancelCardTitleEdit"
                   @click.stop
                 />
-                <span 
-                  v-else 
+                <span
+                  v-else
                   class="note-title"
                   @dblclick.stop="startCardTitleEdit(note)"
                   title="双击编辑标题"
@@ -147,7 +131,7 @@ Email: admin@mc666.top
               </div>
             </div>
           </div>
-          
+
           <div v-if="totalPages > 1" class="pagination">
             <button class="page-btn" :disabled="currentPage === 1" @click="prevPage">
               <i class="ri-arrow-left-s-line"></i>
@@ -170,7 +154,6 @@ Email: admin@mc666.top
         </div>
       </template>
 
-      <!-- 会议记录列表 -->
       <template v-else-if="currentTab === 'meetings'">
         <div v-if="filteredMeetings.length === 0 && meetings.length > 0" class="empty-state">
           <i class="ri-search-line empty-icon" style="font-size: 64px;"></i>
@@ -228,7 +211,7 @@ Email: admin@mc666.top
               </div>
             </div>
           </div>
-          
+
           <div v-if="meetingTotalPages > 1" class="pagination">
             <button class="page-btn" :disabled="meetingCurrentPage === 1" @click="prevMeetingPage">
               <i class="ri-arrow-left-s-line"></i>
@@ -371,8 +354,8 @@ Email: admin@mc666.top
           </div>
           <div class="modal-footer">
             <button class="cancel-btn" @click="closeShareModal">取消</button>
-            <button 
-              class="confirm-btn" 
+            <button
+              class="confirm-btn"
               @click="confirmShareToGroup"
               :disabled="!selectedShareGroup || shareSubmitting"
             >
@@ -422,8 +405,8 @@ Email: admin@mc666.top
           </div>
           <div class="modal-footer">
             <button class="cancel-btn" @click="closeMeetingShareModal">取消</button>
-            <button 
-              class="confirm-btn" 
+            <button
+              class="confirm-btn"
               @click="confirmShareMeetingToGroup"
               :disabled="!selectedShareGroup || shareSubmitting"
             >
@@ -460,9 +443,8 @@ const props = defineProps({
 const route = useRoute()
 const router = useRouter()
 
-const timeOut = 10000 // 10 秒超时
+const timeOut = 10000
 
-// 当前标签页：'notes' 或 'meetings'
 const currentTab = ref(props.defaultTab === 'meetings' ? 'meetings' : 'notes')
 
 async function getAuthHeader() {
@@ -531,7 +513,6 @@ const showImportExportMenu = ref(false)
 const isConfirmingDelete = ref(false)
 const refreshBtnSpinning = ref(false)
 
-// 分享相关
 const showShareModal = ref(false)
 const showMeetingShareModal = ref(false)
 const shareGroups = ref([])
@@ -540,10 +521,8 @@ const selectedShareGroup = ref(null)
 const shareSubmitting = ref(false)
 const selectedMeetingToShare = ref(null)
 
-// 搜索关键词
 const searchKeyword = ref('')
 
-// 过滤后的笔记列表（按标题搜索）
 const filteredNotes = computed(() => {
   if (!searchKeyword.value.trim()) return notes.value
   const keyword = searchKeyword.value.toLowerCase().trim()
@@ -552,7 +531,6 @@ const filteredNotes = computed(() => {
   )
 })
 
-// 过滤后的课堂记录列表（按标题和关键词搜索）
 const filteredMeetings = computed(() => {
   if (!searchKeyword.value.trim()) return meetings.value
   const keyword = searchKeyword.value.toLowerCase().trim()
@@ -573,13 +551,11 @@ const hasError = ref(false)
 const totalPages = ref(1)
 const isPageChanging = ref(false)
 
-// 会议记录分页
 const meetingPageSize = 9
 const meetingCurrentPage = ref(1)
 const meetingTotalPages = ref(1)
 const isMeetingPageChanging = ref(false)
 
-// 后端已经返回了当前页的数据，直接使用 notes.value 即可
 const currentPageNotes = computed(() => {
   return notes.value
 })
@@ -590,33 +566,29 @@ let unlistenCreateNewNote = null
 let unlistenRefreshNotes = null
 
 onMounted(async () => {
-  // 根据当前标签页加载对应的数据
+
   if (currentTab.value === 'meetings') {
     loadMeetings()
   } else {
     loadNotes()
   }
 
-  // 监听笔记保存事件，刷新列表 (不显示 toast)
   unlistenNoteSaved = await listen('note-saved', () => {
     loadNotes(false)
   })
 
-  // 监听蓝牙新建笔记命令，调用 createAndOpenNote 方法
   const { listen } = await import('@tauri-apps/api/event')
   unlistenCreateNewNote = await listen('create-new-note', () => {
     createAndOpenNote()
   })
 
-  // 监听刷新笔记列表事件（来自编辑器窗口，不显示 toast）
   unlistenRefreshNotes = await listen('refresh-notes', () => {
     loadNotes(false)
   })
 })
 
-// 监听路由变化，同步标签页
 watch(() => route.path, (newPath) => {
-  // 根据路由路径确定标签页
+
   let newTab = 'notes'
   if (newPath.includes('_meetings')) {
     newTab = 'meetings'
@@ -640,7 +612,6 @@ function clearSearch() {
   searchKeyword.value = ''
 }
 
-// 加载会议记录列表
 async function loadMeetings(showSuccessToast = false) {
   isLoading.value = true
   hasError.value = false
@@ -658,8 +629,7 @@ async function loadMeetings(showSuccessToast = false) {
     if (data && data.success) {
       meetings.value = data.meetings || []
       meetingTotalPages.value = data.total_page || 1
-      
-      // 获取每个会议的关键词
+
       await loadMeetingKeyWords()
     } else {
       meetings.value = []
@@ -682,7 +652,6 @@ async function loadMeetings(showSuccessToast = false) {
   }, 500)
 }
 
-// 获取课堂关键词
 async function loadMeetingKeyWords() {
   try {
     for (const meeting of meetings.value) {
@@ -697,7 +666,7 @@ async function loadMeetingKeyWords() {
             timeout: 10000
           }
         )
-        
+
         if (response.data && response.data.status === 'success') {
           meeting.key_words = response.data.key_words || []
         } else {
@@ -713,7 +682,6 @@ async function loadMeetingKeyWords() {
   }
 }
 
-// 会议记录分页
 function goToMeetingPage(page) {
   if (page < 1 || page > meetingTotalPages.value) return
   if (isMeetingPageChanging.value) return
@@ -729,7 +697,6 @@ function nextMeetingPage() {
   goToMeetingPage(meetingCurrentPage.value + 1)
 }
 
-// 格式化课堂时间
 function formatMeetingTime(timeStr) {
   if (!timeStr) return ''
   const date = new Date(timeStr)
@@ -737,7 +704,6 @@ function formatMeetingTime(timeStr) {
   return `${date.getMonth() + 1}月${date.getDate()}日 ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
-// 格式化会议时长
 function formatDuration(startTime, endTime) {
   if (!startTime || !endTime) return ''
   const start = new Date(startTime)
@@ -753,7 +719,6 @@ function formatDuration(startTime, endTime) {
   return `${minutes}分钟`
 }
 
-// 选择会议记录
 async function selectMeeting(meeting) {
   try {
     const response = await axios.get(getBackendUrl() + '/meeting/history/query_by_uuid', {
@@ -776,7 +741,6 @@ async function selectMeeting(meeting) {
   }
 }
 
-// 打开会议记录编辑窗口
 async function openMeetingEditorWindow(meeting) {
   const windowLabel = `meeting-editor-${meeting.meeting_uuid}`
   const url = `/meeting-editor?uuid=${meeting.meeting_uuid}&title=${encodeURIComponent(meeting.title)}`
@@ -811,7 +775,7 @@ async function openMeetingEditorWindow(meeting) {
     console.error('会议记录编辑窗口创建失败:', e)
     const errorMsg = e?.payload || ''
     if (typeof errorMsg === 'string' && errorMsg.includes('already exists')) {
-      // 窗口已存在，获取并置顶
+
       try {
         const existingWindow = await Window.getByLabel(windowLabel)
         if (existingWindow) {
@@ -855,24 +819,22 @@ async function loadNotes(showSuccessToast = false) {
       headers: await getAuthHeader(),
       timeout: timeOut
     })
-    
+
     const data = response.data
     let notesList = data
     if (data && typeof data === 'object' && !Array.isArray(data)) {
       notesList = data.data || data.notes || data.result || []
     }
     notes.value = Array.isArray(notesList) ? notesList : []
-    
-    // 更新总页数（后端返回 total_page 字段）
+
     if (data && typeof data === 'object' && 'total_page' in data) {
       totalPages.value = data.total_page || 1
     }
-    
+
     if (notes.value.length === 0) {
       await createDefaultNote()
     }
-    
-    // 只在手动刷新时显示成功提示
+
     if (showSuccessToast) {
       showToast('刷新成功', '#10b981')
     }
@@ -934,7 +896,6 @@ function nextPage() {
   goToPage(currentPage.value + 1)
 }
 
-// 获取单个笔记内容
 async function getNoteContent(uuid) {
   try {
     const data = await apiRequest('/note/query_by_uuid', { uuid })
@@ -950,14 +911,13 @@ async function getNoteContent(uuid) {
   }
 }
 
-// 打开笔记编辑窗口
 async function openNoteEditorWindow(note) {
   const windowLabel = `note-editor-${note.uuid}`
   let url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
   if (note.isMeetingNote) {
     url += '&isMeetingNote=true'
   }
-  
+
   const webview = new WebviewWindow(windowLabel, {
     url: url,
     title: note.title || '编辑笔记',
@@ -969,21 +929,21 @@ async function openNoteEditorWindow(note) {
     decorations: false,
     resizable: true
   })
-  
+
   webview.once('tauri://created', async () => {
     console.log('笔记编辑窗口创建成功:', windowLabel)
     await new Promise(resolve => setTimeout(resolve, 300))
-    
+
     try {
       if (note.isMeetingNote) {
-        await webview.emit('load-note-content', { 
-          content: note.content || '' 
+        await webview.emit('load-note-content', {
+          content: note.content || ''
         })
       } else {
         const noteData = await getNoteContent(note.uuid)
         if (noteData) {
-          await webview.emit('load-note-content', { 
-            content: noteData.content || '' 
+          await webview.emit('load-note-content', {
+            content: noteData.content || ''
           })
         }
       }
@@ -996,7 +956,7 @@ async function openNoteEditorWindow(note) {
     console.error('笔记编辑窗口创建失败:', e)
     const errorMsg = e?.payload || ''
     if (typeof errorMsg === 'string' && errorMsg.includes('already exists')) {
-      // 窗口已存在，获取并置顶
+
       try {
         const existingWindow = await Window.getByLabel(windowLabel)
         if (existingWindow) {
@@ -1029,12 +989,11 @@ async function createAndOpenNote() {
   const now = new Date()
   const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
   const defaultTitle = `未命名笔记_${timestamp}`
-  
-  // 检查会议状态
+
   const meetingActive = await checkMeetingStatus()
-  
+
   if (meetingActive) {
-    // 会议进行中，打开编辑窗口但标记为会议笔记（不添加到笔记列表）
+
     console.log('会议进行中，打开会议笔记编辑窗口')
     const newNote = {
       uuid,
@@ -1047,8 +1006,7 @@ async function createAndOpenNote() {
     openNoteEditorWindow(newNote)
     return
   }
-  
-  // 先在云端创建空白笔记
+
   try {
     await apiRequest('/note/add', { uuid, title: defaultTitle, content: '' })
   } catch (e) {
@@ -1056,8 +1014,7 @@ async function createAndOpenNote() {
     showToast('创建笔记失败: ' + (e.message || '网络错误'), '#ef4444')
     return
   }
-  
-  // 本地添加笔记
+
   const newNote = {
     uuid,
     title: defaultTitle,
@@ -1066,8 +1023,7 @@ async function createAndOpenNote() {
     updatedAt: now.toISOString()
   }
   notes.value.unshift(newNote)
-  
-  // 打开编辑窗口
+
   openNoteEditorWindow(newNote)
 }
 
@@ -1087,8 +1043,7 @@ async function addNote() {
     notes.value.unshift(newNote)
     newNoteTitle.value = ''
     showAddModal.value = false
-    
-    // 创建后直接打开编辑窗口
+
     openNoteEditorWindow(newNote)
   } catch (e) {
     console.error('添加笔记失败:', e)
@@ -1097,7 +1052,7 @@ async function addNote() {
 }
 
 function selectNote(note) {
-  // 打开独立编辑窗口
+
   openNoteEditorWindow(note)
 }
 
@@ -1190,7 +1145,7 @@ function cancelCardTitleEdit() {
 
 function handleDeleteClick() {
   if (isConfirmingDelete.value) {
-    // 确认删除，执行删除操作
+
     if (moreMenuNote.value) {
       noteToDelete.value = moreMenuNote.value.uuid
       confirmDelete()
@@ -1198,12 +1153,10 @@ function handleDeleteClick() {
       closeMoreMenu()
     }
   } else {
-    // 第一次点击，进入确认状态
+
     isConfirmingDelete.value = true
   }
 }
-
-
 
 function formatDate(dateStr) {
   if (!dateStr) {
@@ -1282,14 +1235,13 @@ function importNotes() {
   input.click()
 }
 
-// 分享相关函数
 async function openShareModal() {
   closeMoreMenu()
   showShareModal.value = true
   shareGroupsLoading.value = true
   shareGroups.value = []
   selectedShareGroup.value = null
-  
+
   try {
     const groups = await getGroupList()
     shareGroups.value = groups || []
@@ -1310,16 +1262,16 @@ function closeShareModal() {
 
 async function confirmShareToGroup() {
   if (!selectedShareGroup.value || !moreMenuNote.value) return
-  
+
   shareSubmitting.value = true
-  
+
   try {
     const result = await shareNoteToGroup(
       moreMenuNote.value.uuid,
       selectedShareGroup.value,
       'personal'
     )
-    
+
     if (result && result.success) {
       showToast('分享成功', '#10b981')
       closeShareModal()
@@ -1341,7 +1293,7 @@ async function openMeetingShareModal(meeting) {
   shareGroupsLoading.value = true
   shareGroups.value = []
   selectedShareGroup.value = null
-  
+
   try {
     const groups = await getGroupList()
     shareGroups.value = groups || []
@@ -1365,14 +1317,14 @@ async function confirmShareMeetingToGroup() {
   console.log('开始分享课堂记录')
   console.log('selectedShareGroup:', selectedShareGroup.value)
   console.log('selectedMeetingToShare:', selectedMeetingToShare.value)
-  
+
   if (!selectedShareGroup.value || !selectedMeetingToShare.value) {
     console.error('缺少必要参数')
     return
   }
-  
+
   shareSubmitting.value = true
-  
+
   try {
     console.log('调用 shareNoteToGroup API')
     const result = await shareNoteToGroup(
@@ -1381,9 +1333,9 @@ async function confirmShareMeetingToGroup() {
       'meeting',
       selectedMeetingToShare.value.meeting_uuid
     )
-    
+
     console.log('API 返回结果:', result)
-    
+
     if (result && result.success) {
       showToast('分享成功', '#10b981')
       closeMeetingShareModal()
@@ -1416,7 +1368,7 @@ async function confirmShareMeetingToGroup() {
   justify-content: space-between;
   align-items: center;
   padding: 30px 0;
-  flex-shrink: 0; /* 防止被压缩 */
+  flex-shrink: 0;
   position: sticky;
   top: 0;
   background-color: var(--bg-primary);
@@ -1431,7 +1383,6 @@ async function confirmShareMeetingToGroup() {
   gap: 24px;
 }
 
-/* 搜索框样式 */
 .search-wrapper {
   display: flex;
   align-items: center;
@@ -1685,7 +1636,6 @@ async function confirmShareMeetingToGroup() {
   margin-top: 16px;
 }
 
-/* 骨架屏样式 */
 .skeleton-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -1914,7 +1864,6 @@ async function confirmShareMeetingToGroup() {
   box-shadow: 0 4px 12px rgba(var(--accent-blue-rgb), 0.15);
 }
 
-/* 课堂记录卡片样式 */
 .meeting-card {
   display: flex;
   flex-direction: column;
@@ -2223,7 +2172,6 @@ async function confirmShareMeetingToGroup() {
   opacity: 0.9;
 }
 
-/* 删除确认按钮图标 */
 .delete-confirm-btn i,
 .delete-confirm-btn svg {
   color: inherit;
@@ -2352,7 +2300,6 @@ async function confirmShareMeetingToGroup() {
   animation: pulse-confirm 1s ease-in-out infinite;
 }
 
-/* 更多菜单危险项图标 - 继承颜色 */
 .more-menu-item.danger i,
 .more-menu-item.danger svg {
   color: inherit;
@@ -2404,7 +2351,6 @@ async function confirmShareMeetingToGroup() {
   opacity: 0;
 }
 
-/* 分享弹窗样式 */
 .share-groups-list {
   max-height: 300px;
   overflow-y: auto;
@@ -2451,7 +2397,6 @@ async function confirmShareMeetingToGroup() {
   color: var(--text-muted);
 }
 
-/* 会议记录分享按钮 */
 .meeting-actions {
   display: flex;
   justify-content: flex-end;

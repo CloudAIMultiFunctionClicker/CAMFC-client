@@ -1,18 +1,4 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="settings-panel">
@@ -30,8 +16,8 @@ Email: admin@mc666.top
           <span class="label-desc">保持蓝牙连接的心跳包，过短可能影响电量</span>
         </div>
         <div class="setting-control">
-          <input 
-            type="number" 
+          <input
+            type="number"
             v-model.number="hardwareSettings.keepAliveInterval"
             class="number-input"
             min="1"
@@ -42,7 +28,7 @@ Email: admin@mc666.top
         </div>
       </div>
     </div>
-    
+
     <div class="setting-card">
       <h4 class="card-title">蓝牙版本信息</h4>
       <div class="info-grid">
@@ -75,7 +61,6 @@ const hardwareSettings = ref({
 const cpenBluetoothVersion = ref('未连接')
 const localBluetoothVersion = ref('5.0')
 
-// 保活定时器
 let keepAliveTimer = null
 
 const saveKeepAliveInterval = async () => {
@@ -86,8 +71,7 @@ const saveKeepAliveInterval = async () => {
     hardwareSettings.value.keepAliveInterval = 300
   }
   await saveAppData('hardware_settings', JSON.stringify(hardwareSettings.value))
-  
-  // 重启保活定时器
+
   stopKeepAliveTimer()
   if (hardwareSettings.value.keepAliveInterval > 0) {
     startKeepAliveTimer()
@@ -98,9 +82,9 @@ const startKeepAliveTimer = () => {
   if (keepAliveTimer) {
     clearInterval(keepAliveTimer)
   }
-  
-  const interval = hardwareSettings.value.keepAliveInterval * 1000 // 转换为毫秒
-  
+
+  const interval = hardwareSettings.value.keepAliveInterval * 1000
+
   keepAliveTimer = setInterval(async () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core')
@@ -110,7 +94,7 @@ const startKeepAliveTimer = () => {
       console.warn('发送保活心跳包失败:', e)
     }
   }, interval)
-  
+
   console.log(`蓝牙保活定时器已启动，间隔：${hardwareSettings.value.keepAliveInterval}秒`)
 }
 
@@ -136,8 +120,7 @@ const loadHardwareSettings = async () => {
 const fetchBluetoothVersions = async () => {
   try {
     const { invoke } = await import('@tauri-apps/api/core')
-    
-    // 获取本地蓝牙版本
+
     try {
       const localVersion = await invoke('get_local_bluetooth_version')
       localBluetoothVersion.value = localVersion
@@ -145,8 +128,7 @@ const fetchBluetoothVersions = async () => {
       console.warn('获取本地蓝牙版本失败:', e)
       localBluetoothVersion.value = '获取失败'
     }
-    
-    // 获取 Cpen 设备蓝牙版本
+
     try {
       const cpenVersion = await invoke('get_cpen_bluetooth_version')
       cpenBluetoothVersion.value = cpenVersion
@@ -162,15 +144,14 @@ const fetchBluetoothVersions = async () => {
 onMounted(() => {
   loadHardwareSettings()
   fetchBluetoothVersions()
-  
-  // 启动保活定时器
+
   if (hardwareSettings.value.keepAliveInterval > 0) {
     startKeepAliveTimer()
   }
 })
 
 onUnmounted(() => {
-  // 组件卸载时停止保活定时器
+
   stopKeepAliveTimer()
 })
 </script>
@@ -542,7 +523,6 @@ onUnmounted(() => {
   border-color: var(--danger-btn-hover-border, #f85149);
 }
 
-/* 危险按钮图标 - 继承按钮颜色 */
 .action-btn.danger i,
 .action-btn.danger svg {
   color: inherit;
@@ -699,7 +679,6 @@ onUnmounted(() => {
   margin: 0;
 }
 
-/* 开源软件声明样式 */
 .opensource-desc {
   font-size: 14px;
   color: var(--text-secondary, #57606a);
@@ -977,7 +956,6 @@ onUnmounted(() => {
   }
 }
 
-/* 学生认证设置样式 */
 .setting-actions {
   display: flex;
   gap: 12px;

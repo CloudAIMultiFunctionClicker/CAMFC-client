@@ -13,20 +13,20 @@ impl ScreenshotTool {
 
     pub fn capture(&self, output_path: &str) -> Result<()> {
         let screens = Screen::all()?;
-        
+
         if screens.is_empty() {
             return Err(anyhow::anyhow!("No screen found"));
         }
 
         let screen = &screens[0];
         let image = screen.capture()?;
-        
+
         if Path::new(output_path).exists() {
             std::fs::remove_file(output_path)?;
         }
-        
+
         image.save(output_path)?;
-        
+
         Ok(())
     }
 

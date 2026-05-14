@@ -1,18 +1,4 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh09@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="group-detail-container">
@@ -29,8 +15,8 @@ Email: admin@mc666.top
           <p class="group-uid">UID: {{ groupUid }}</p>
         </div>
       </div>
-      <button 
-        class="refresh-btn" 
+      <button
+        class="refresh-btn"
         @click="loadData"
         :disabled="isLoading"
         title="刷新数据"
@@ -40,8 +26,8 @@ Email: admin@mc666.top
     </div>
 
     <div class="tab-navigation">
-      <button 
-        class="tab-btn" 
+      <button
+        class="tab-btn"
         :class="{ active: currentTab === 'notes' }"
         @click="switchTab('notes')"
       >
@@ -49,8 +35,8 @@ Email: admin@mc666.top
         共享笔记
         <span v-if="sharedNotes.length > 0" class="count-badge">{{ sharedNotes.length }}</span>
       </button>
-      <button 
-        class="tab-btn" 
+      <button
+        class="tab-btn"
         :class="{ active: currentTab === 'files' }"
         @click="switchTab('files')"
       >
@@ -61,7 +47,7 @@ Email: admin@mc666.top
     </div>
 
     <div v-if="currentTab === 'notes'" class="tab-content notes-tab">
-      <!-- 骨架屏：笔记列表加载状态 -->
+
       <div v-if="isLoading" class="skeleton-notes-list">
         <div v-for="i in 5" :key="i" class="skeleton-note-item">
           <div class="skeleton-icon"></div>
@@ -84,8 +70,8 @@ Email: admin@mc666.top
       </div>
 
       <div v-else class="notes-list">
-        <div 
-          v-for="note in sharedNotes" 
+        <div
+          v-for="note in sharedNotes"
           :key="note.share_uuid"
           class="note-item"
           @click="openNoteViewer(note)"
@@ -118,7 +104,7 @@ Email: admin@mc666.top
     </div>
 
     <div v-else-if="currentTab === 'files'" class="tab-content files-tab">
-      <!-- 骨架屏：文件列表加载状态 -->
+
       <div v-if="isLoading" class="skeleton-files-timeline">
         <div v-for="i in 4" :key="i" class="skeleton-timeline-item">
           <div class="skeleton-marker"></div>
@@ -142,8 +128,8 @@ Email: admin@mc666.top
       </div>
 
       <div v-else class="files-timeline">
-        <div 
-          v-for="file in sortedFiles" 
+        <div
+          v-for="file in sortedFiles"
           :key="file.share_uuid"
           class="timeline-item"
         >
@@ -166,7 +152,7 @@ Email: admin@mc666.top
               </span>
             </div>
             <div class="timeline-actions">
-              <button 
+              <button
                 class="action-btn download-btn"
                 @click="downloadFile(file)"
                 title="下载文件"
@@ -174,7 +160,7 @@ Email: admin@mc666.top
                 <i class="ri-download-line"></i>
                 下载
               </button>
-              <button 
+              <button
                 v-if="isCurrentUser(file.shared_by)"
                 class="action-btn delete-btn"
                 @click="confirmDeleteFile(file)"
@@ -211,7 +197,6 @@ const sharedNotes = ref([])
 const sharedFiles = ref([])
 const currentUserId = ref('')
 
-// 按时间排序的文件列表（最新的在前）
 const sortedFiles = computed(() => {
   return [...sharedFiles.value].sort((a, b) => {
     const timeA = new Date(a.shared_at || 0).getTime()
@@ -227,7 +212,7 @@ function getFileExtension(filename) {
 
 function getFileIcon(filename) {
   const ext = getFileExtension(filename).toLowerCase()
-  
+
   if (ext === 'pdf') return 'ri-file-pdf-line'
   if (['doc', 'docx'].includes(ext)) return 'ri-file-word-line'
   if (['xls', 'xlsx'].includes(ext)) return 'ri-file-excel-line'
@@ -236,7 +221,7 @@ function getFileIcon(filename) {
   if (['mp4', 'avi', 'mov', 'wmv'].includes(ext)) return 'ri-movie-line'
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) return 'ri-archive-line'
   if (['js', 'ts', 'py', 'java', 'cpp', 'c', 'h', 'vue', 'html', 'css', 'json', 'md'].includes(ext)) return 'ri-code-s-slash-line'
-  
+
   return 'ri-file-text-line'
 }
 
@@ -252,7 +237,7 @@ function getFileTypeInfo(type) {
     archive: { label: '压缩包', icon: 'ri-archive-line' },
     other: { label: '其他文件', icon: 'ri-file-text-line' }
   }
-  
+
   return typeInfo[type] || typeInfo.other
 }
 
@@ -273,7 +258,7 @@ function getNotePreview(content) {
 
 function formatTime(timestamp) {
   if (!timestamp) return '未知时间'
-  
+
   let date
   if (typeof timestamp === 'number') {
     date = new Date(timestamp * 1000)
@@ -282,19 +267,19 @@ function formatTime(timestamp) {
   } else {
     return '未知时间'
   }
-  
+
   if (isNaN(date.getTime())) {
     console.error('无效的时间格式:', timestamp)
     return '未知时间'
   }
-  
+
   const now = new Date()
   const diff = now - date
-  
+
   const minute = 60 * 1000
   const hour = 60 * minute
   const day = 24 * hour
-  
+
   if (diff < minute) {
     return '刚刚'
   } else if (diff < hour) {
@@ -359,58 +344,50 @@ function openFileDetail(file) {
   showToast('文件详情功能开发中', '#f59e0b')
 }
 
-// 判断是否是当前用户
 function isCurrentUser(sharedBy) {
   if (!currentUserId.value || !sharedBy) return false
   return currentUserId.value === sharedBy
 }
 
-// 下载文件
 async function downloadFile(file) {
   try {
-    // 获取文件下载信息
+
     const downloadInfo = await getSharedFileDownloadInfo(file.share_uuid, groupUid.value)
-    
+
     if (!downloadInfo || !downloadInfo.success) {
       showToast('获取下载信息失败', '#ef4444')
       return
     }
-    
+
     const storagePath = downloadInfo.storage_path
     const groupUuid = downloadInfo.group_uuid
     const fileName = downloadInfo.file_name
-    
-    // 调用后端下载接口 - 使用路径参数格式
-    // 正确的格式：/download/{file_path:path}?group_uuid={group_uuid}
+
     const encodedPath = encodeURIComponent(storagePath)
     const downloadUrl = `${getBackendUrl()}/download/${encodedPath}?group_uuid=${groupUuid}`
-    
+
     console.log('下载 URL:', downloadUrl)
-    
-    // 获取认证头
+
     const authHeader = await getAuthHeader()
     console.log('认证头信息:', authHeader)
-    
-    // 检查是否有认证信息
+
     if (!authHeader.Username && !authHeader.Id) {
       console.error('缺少认证信息！请检查是否设置了学生用户名密码或连接了蓝牙设备')
       showToast('缺少认证信息，请先设置学生账号或连接蓝牙设备', '#f59e0b')
       return
     }
-    
-    // 使用 Tauri 的 fetch 下载文件
+
     const response = await fetch(downloadUrl, {
       headers: authHeader
     })
-    
+
     if (!response.ok) {
       throw new Error('下载失败')
     }
-    
+
     const arrayBuffer = await response.arrayBuffer()
     const blob = new Blob([arrayBuffer])
-    
-    // 使用 Tauri 的 save 对话框保存文件
+
     const { save } = await import('@tauri-apps/plugin-dialog')
     const filePath = await save({
       filters: [{
@@ -419,7 +396,7 @@ async function downloadFile(file) {
       }],
       defaultPath: fileName
     })
-    
+
     if (filePath) {
       const { writeBinaryFile } = await import('@tauri-apps/plugin-fs')
       await writeBinaryFile(filePath, new Uint8Array(arrayBuffer))
@@ -431,7 +408,6 @@ async function downloadFile(file) {
   }
 }
 
-// 确认删除文件
 function confirmDeleteFile(file) {
   const confirmed = confirm(`确定要删除文件 "${file.file_name}" 吗？此操作不可恢复。`)
   if (confirmed) {
@@ -439,13 +415,12 @@ function confirmDeleteFile(file) {
   }
 }
 
-// 删除文件
 async function deleteSharedFileFromGroup(file) {
   try {
     const result = await deleteSharedFile(file.share_uuid, groupUid.value)
     if (result && result.success) {
       showToast('文件删除成功', '#10b981')
-      // 重新加载文件列表
+
       await loadData()
     } else {
       showToast('删除失败', '#ef4444')
@@ -463,7 +438,7 @@ function switchTab(tab) {
 
 async function loadData() {
   isLoading.value = true
-  
+
   try {
     if (currentTab.value === 'notes') {
       const notes = await getSharedNotes(groupUid.value)
@@ -493,8 +468,7 @@ async function loadData() {
 onMounted(async () => {
   groupUid.value = route.query.uid || ''
   groupName.value = route.query.name || '未知群组'
-  
-  // 获取当前用户 ID
+
   try {
     const deviceId = await invoke('get_device_id')
     currentUserId.value = deviceId
@@ -502,13 +476,13 @@ onMounted(async () => {
   } catch (error) {
     console.error('获取用户 ID 失败:', error)
   }
-  
+
   if (!groupUid.value) {
     showToast('缺少群组 UID 参数', '#ef4444')
     setTimeout(() => goBack(), 1500)
     return
   }
-  
+
   console.info('群组详情页面已加载:', { uid: groupUid.value, name: groupName.value })
   loadData()
 })
@@ -709,7 +683,6 @@ onMounted(async () => {
   margin-bottom: 16px;
 }
 
-/* 骨架屏样式 - 笔记列表 */
 .skeleton-notes-list {
   display: flex;
   flex-direction: column;
@@ -789,7 +762,6 @@ onMounted(async () => {
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
 
-/* 骨架屏样式 - 文件时间线 */
 .skeleton-files-timeline {
   display: flex;
   flex-direction: column;
@@ -1328,21 +1300,21 @@ onMounted(async () => {
   .group-detail-container {
     padding: 16px;
   }
-  
+
   .page-header {
     gap: 12px;
   }
-  
+
   .page-title {
     font-size: 20px;
   }
-  
+
   .note-item,
   .file-item {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .note-arrow,
   .file-arrow {
     display: none;
@@ -1353,7 +1325,7 @@ onMounted(async () => {
   .group-detail-container {
     padding: 16px;
   }
-  
+
   .page-title {
     font-size: 20px;
   }

@@ -1,18 +1,4 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="float-container" @mousedown="startDrag" :style="themeVars">
@@ -25,10 +11,7 @@ Email: admin@mc666.top
       {{ isConnected ? '已连接' : '未连接' }}
     </span>
     <div class="float-buttons">
-      <!-- <button v-if="!isMainWindowVisible" class="float-btn open-main-btn" @click.stop="openMainWindow" title="打开主窗口">
-        <i class="ri-home-2-line"></i>
-        <span class="btn-text">主窗口</span>
-      </button> -->
+
       <button class="float-btn" @click.stop="openMainPage('/fileView')" title="云盘">
         <i class="ri-cloud-line"></i>
       </button>
@@ -47,11 +30,6 @@ Email: admin@mc666.top
       </button>
     </div>
 
-
-
-
-
-    <!-- 未连接提示框 -->
     <Transition name="tip-fade">
       <div v-if="showConnectTip" class="connect-tip">
         <i class="ri-information-line"></i>
@@ -99,11 +77,10 @@ const themeVars = computed(() => ({
   '--float-tip-bg': isLightMode.value ? '#ffffff' : '#1a1a1a',
 }))
 
-// 点击外部指令的处理函数
 let clickOutsideHandler = null
 
 onMounted(() => {
-  // 添加全局点击监听，用于点击外部关闭菜单
+
   clickOutsideHandler = (event) => {
     handleClickOutside(event)
   }
@@ -111,13 +88,11 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
-  // 移除全局点击监听
+
   if (clickOutsideHandler) {
     document.removeEventListener('click', clickOutsideHandler)
   }
 })
-
-
 
 let keepOnTopInterval = null
 let visibilityCheckInterval = null
@@ -126,7 +101,7 @@ let unlistenConnection = null
 
 onMounted(async () => {
   console.log('FloatView mounted')
-  
+
   try {
     const { getFloatWindowEnabled } = await import('../components/data/storage.js')
     const enabled = await getFloatWindowEnabled()
@@ -145,7 +120,7 @@ onMounted(async () => {
     console.log('[悬浮窗] 收到主题变化事件:', newTheme)
     isLightMode.value = newTheme === 'light'
     console.log('[悬浮窗] 主题已更新为:', isLightMode.value ? '浅色' : '深色')
-    // 不再写入 localStorage，由主窗口统一管理主题状态
+
   })
 
   unlistenConnection = await listen('connection-status', (event) => {
@@ -153,20 +128,17 @@ onMounted(async () => {
     isConnected.value = event.payload
   })
 
-  // 监听截图命令（来自 0x12 按键）
   const unlistenScreenshot = await listen('screenshot-command', async () => {
     console.log('悬浮窗收到截图命令（0x12）')
-    // 直接触发截图
+
     await handleScreenshot()
   })
 
-  // 监听会议切换命令（来自 0x02 按键）
   const unlistenToggleMeeting = await listen('toggle-meeting', async () => {
     console.log('悬浮窗收到会议切换命令（0x02）')
     await toggleMeeting()
   })
 
-  // 监听悬浮窗开关状态变化
   let unlistenFloatToggle = null
   try {
     unlistenFloatToggle = await listen('float-window-toggled', async (event) => {
@@ -190,10 +162,6 @@ onMounted(async () => {
     console.error('[悬浮窗] 监听悬浮窗状态变化失败:', e)
   }
 
-  // 不再主动查询主题，由主窗口在主题切换时主动通知悬浮窗
-  // 避免了双向通信导致的主题状态循环更新问题
-
-  // 检查主窗口可见性状态
   const checkMainWindowVisibility = async () => {
     try {
       const mainWindow = await Window.getByLabel('main')
@@ -208,15 +176,12 @@ onMounted(async () => {
     }
   }
 
-  // 初始检查
   await checkMainWindowVisibility()
 
-  // 定期检查主窗口可见性（每500毫秒检查一次，响应更快）
   visibilityCheckInterval = setInterval(async () => {
     await checkMainWindowVisibility()
   }, 500)
 
-  // 保持置顶（每 5 秒执行一次）
   keepOnTopInterval = setInterval(async () => {
     try {
       const floatWindow = await getCurrentWindow()
@@ -226,7 +191,6 @@ onMounted(async () => {
     }
   }, 5000)
 
-  // 监听窗口大小变化并强制恢复（保持位置和大小）
   const limitWindowSize = async () => {
     try {
       const { invoke } = await import('@tauri-apps/api/core')
@@ -239,18 +203,15 @@ onMounted(async () => {
       console.error('限制窗口大小失败:', e)
     }
   }
-  
-  // 初始设置一次
+
   limitWindowSize()
-  
-  // 使用 ResizeObserver 监听窗口大小变化
+
   const resizeObserver = new ResizeObserver(() => {
-    // 窗口大小改变时立即恢复
+
     limitWindowSize()
   })
   resizeObserver.observe(document.body)
-  
-  // 备用方案：定时检查（每 500ms）
+
   const sizeCheckInterval = setInterval(limitWindowSize, 500)
 
   onUnmounted(() => {
@@ -281,8 +242,8 @@ function handleConnectionClick() {
 }
 
 async function startDrag(e) {
-  // 排除所有可点击元素
-  if (e.target.closest('.float-btn') || 
+
+  if (e.target.closest('.float-btn') ||
       e.target.closest('.connection-status')) {
     return
   }
@@ -294,26 +255,18 @@ async function startDrag(e) {
   }
 }
 
-/**
- * 显示未连接提示
- */
 function showTip() {
   showConnectTip.value = true
-  
-  // 清除之前的定时器
+
   if (connectTipTimer) {
     clearTimeout(connectTipTimer)
   }
-  
-  // 1 秒后自动关闭
+
   connectTipTimer = setTimeout(() => {
     hideTip()
   }, 1000)
 }
 
-/**
- * 隐藏提示
- */
 function hideTip() {
   showConnectTip.value = false
   if (connectTipTimer) {
@@ -322,53 +275,48 @@ function hideTip() {
   }
 }
 
-/**
- * 打开主页面（检查连接状态）
- */
 async function openMainPage(path) {
   console.log('点击按钮，目标是:', path)
 
-  // 检查是否需要连接设备（云盘、设置、笔记管理需要连接）
   const needConnection = ['/fileView', '/settings', '/notes'].includes(path)
   if (needConnection && !isConnected.value) {
     console.log('设备未连接，显示提示并打开首页')
     showTip()
-    // 自动打开首页让用户连接设备
+
     path = '/'
   }
 
   try {
-    // 使用 Window.getByLabel 获取主窗口
+
     const mainWindow = await Window.getByLabel('main')
 
-    // 检查主窗口是否存在且没有被关闭
     if (mainWindow) {
       try {
-        // 检查窗口是否可见（包括是否在托盘）
+
         const isVisible = await mainWindow.isVisible()
-        
+
         if (isVisible) {
           console.log('主窗口可见，聚焦并导航')
-          // 取消最小化（如果窗口被最小化）
+
           await mainWindow.unminimize()
-          // 将窗口提到前台并聚焦
+
           await mainWindow.show()
           await mainWindow.center()
           await mainWindow.setFocus()
-          // 发送导航事件
+
           const webview = await WebviewWindow.getByLabel('main')
           if (webview) {
             await webview.emit('navigate', path)
           }
           console.log('发送导航事件:', path)
         } else {
-          // 窗口存在但不可见（可能在托盘），显示窗口
+
           console.log('主窗口在托盘，显示并聚焦')
           await mainWindow.show()
           await mainWindow.unminimize()
           await mainWindow.center()
           await mainWindow.setFocus()
-          // 发送导航事件
+
           const webview = await WebviewWindow.getByLabel('main')
           if (webview) {
             await webview.emit('navigate', path)
@@ -376,7 +324,7 @@ async function openMainPage(path) {
           console.log('显示窗口并发送导航事件:', path)
         }
       } catch (windowError) {
-        // 窗口已关闭或出错，需要重新创建
+
         console.log('主窗口出错，重新创建:', windowError)
         await createMainWindow(path)
       }
@@ -391,7 +339,6 @@ async function openMainPage(path) {
   }
 }
 
-// 创建主窗口的辅助函数
 async function createMainWindow(path) {
   console.log('创建新主窗口，路径:', path)
   const webview = new WebviewWindow('main', {
@@ -411,32 +358,20 @@ async function createMainWindow(path) {
   })
 }
 
-/**
- * 切换截图菜单显示
- */
 function toggleScreenshotMenu() {
   showScreenshotMenu.value = !showScreenshotMenu.value
   console.log('截图菜单状态:', showScreenshotMenu.value)
 }
 
-/**
- * 关闭截图菜单
- */
 function closeScreenshotMenu() {
   showScreenshotMenu.value = false
 }
 
-/**
- * 切换隐藏主窗口选项
- */
 function toggleHideWindowOption() {
   hideWindowBeforeScreenshot.value = !hideWindowBeforeScreenshot.value
   console.log('隐藏主窗口选项:', hideWindowBeforeScreenshot.value)
 }
 
-/**
- * 切换课堂状态（上课/下课）
- */
 async function toggleMeeting() {
   console.log('切换会议状态，当前状态:', meetingActive.value)
 
@@ -453,8 +388,7 @@ async function toggleMeeting() {
     meetingActive.value = newState
     console.log('课堂状态已切换:', newState ? '课堂开始' : '课堂结束')
     showToast(newState ? '课堂已开始' : '课堂已结束', '#10b981')
-    
-    // 显示 Windows 原生通知
+
     if (newState) {
       try {
         const { invoke } = await import('@tauri-apps/api/core')
@@ -473,9 +407,6 @@ async function toggleMeeting() {
   }
 }
 
-/**
- * 获取认证头信息
- */
 async function getAuthHeader() {
   try {
     const { getDeviceId, getTotp } = await import('../components/data/bluetooth.js')
@@ -487,72 +418,62 @@ async function getAuthHeader() {
   }
 }
 
-/**
- * 处理屏幕截图
- * 根据设置决定是否隐藏主窗口
- */
 async function handleScreenshot() {
   console.log('开始截图流程')
 
   try {
-    // 先调用后端接口检查会议状态
+
     console.log('检查会议状态...')
     let meetingActive = false
-    
+
     try {
       const authHeader = await getAuthHeader()
       const response = await axios.get(getBackendUrl() + '/meeting/status', {
         headers: authHeader,
         timeout: 5000
       })
-      
+
       meetingActive = response.data.in_meeting === true
       console.log('会议状态:', meetingActive ? '进行中' : '未进行')
     } catch (error) {
       console.error('获取会议状态失败:', error)
-      // 如果接口调用失败，默认允许截图
+
       meetingActive = true
     }
 
-    // 从设置中读取是否隐藏主窗口
     const hideWindowSetting = await loadAppData('screenshot_hide_window')
     const shouldHideWindow = hideWindowSetting ? JSON.parse(hideWindowSetting) : true
 
-    // 获取主窗口
     const mainWindow = await Window.getByLabel('main')
     let wasVisible = false
 
-    // 如果设置要求隐藏主窗口且主窗口存在且可见，先隐藏它
     if (shouldHideWindow && mainWindow) {
       wasVisible = await mainWindow.isVisible()
       if (wasVisible) {
         console.log('隐藏主窗口以便截图')
         await mainWindow.hide()
-        // 等待一段时间确保窗口完全隐藏
+
         await new Promise(resolve => setTimeout(resolve, 300))
       }
     }
 
-    // 调用截图命令
     console.log('执行截图')
     const result = await invoke('capture_screen')
 
     if (result.success) {
       console.log('截图成功')
-      
-      // 如果会议进行中，直接发送截图到后端（非阻塞）
+
       if (meetingActive) {
         console.log('会议进行中，发送截图到后端（非阻塞）')
         sendScreenshotToBackend(result.image_data)
         return
       }
-      
-      // 课堂未进行，打开截图窗口显示
+
       console.log('打开截图窗口')
       await openScreenshotWindow(result)
     } else {
       console.error('截图失败:', result.error)
-      // 截图失败，如果之前窗口是可见的且被隐藏了，恢复显示
+
       if (wasVisible && mainWindow) {
         await mainWindow.show()
       }
@@ -562,9 +483,6 @@ async function handleScreenshot() {
   }
 }
 
-/**
- * 发送截图到后端
- */
 async function sendScreenshotToBackend(imageData) {
   try {
     const authHeader = await getAuthHeader()
@@ -574,7 +492,7 @@ async function sendScreenshotToBackend(imageData) {
       headers: authHeader,
       timeout: 10000
     })
-    
+
     console.log('课堂截图发送成功:', response.data)
     showToast('课堂截图已保存', '#10b981')
   } catch (error) {
@@ -583,15 +501,12 @@ async function sendScreenshotToBackend(imageData) {
   }
 }
 
-/**
- * 打开截图窗口显示截图结果
- */
 async function openScreenshotWindow(screenshotData) {
   try {
     console.log('创建独立的截图窗口')
-    
+
     const screenshotWindowLabel = `screenshot-${Date.now()}`
-    
+
     const screenshotWindow = new WebviewWindow(screenshotWindowLabel, {
       url: '/screenshot-window',
       title: '截图',
@@ -604,11 +519,9 @@ async function openScreenshotWindow(screenshotData) {
 
     screenshotWindow.once('tauri://created', async () => {
       console.log('截图窗口创建成功')
-      
-      // 等待窗口完全加载
+
       await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // 检查窗口是否仍然存在
+
       try {
         const windowExists = await Window.getByLabel(screenshotWindowLabel)
         if (windowExists) {
@@ -624,21 +537,16 @@ async function openScreenshotWindow(screenshotData) {
     screenshotWindow.once('tauri://error', (e) => {
       console.error('截图窗口创建失败:', e)
     })
-    
+
     console.log('截图窗口已创建，标签:', screenshotWindowLabel)
   } catch (e) {
     console.error('打开截图窗口失败:', e)
   }
 }
 
-/**
- * 处理笔记管理
- * 开会模式下直接新建会议笔记，否则打开主窗口的笔记管理页面
- */
 async function handleNoteManager() {
   console.log('处理笔记按钮点击')
-  
-  // 检查会议状态
+
   let meetingActive = false
   try {
     const authHeader = await getAuthHeader()
@@ -650,33 +558,29 @@ async function handleNoteManager() {
     console.log('会议状态:', meetingActive ? '进行中' : '未进行')
   } catch (error) {
     console.error('获取会议状态失败:', error)
-    // 如果接口调用失败，默认会议未进行
+
     meetingActive = false
   }
-  
+
   if (meetingActive) {
-    // 课堂进行中，直接创建课堂笔记
+
     console.log('课堂进行中，创建课堂笔记')
     await createMeetingNote()
   } else {
-    // 会议未进行，打开笔记管理页面
+
     console.log('会议未进行，打开笔记管理页面')
     await openMainPage('/notes')
   }
 }
 
-/**
- * 创建会议笔记
- * 调用 /meeting/note/add API 创建笔记并打开编辑窗口
- */
 async function createMeetingNote() {
   const uuid = crypto.randomUUID()
   const now = new Date()
   const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
   const defaultTitle = `会议笔记_${timestamp}`
-  
+
   try {
-    // 调用后端 API 创建课堂笔记
+
     const authHeader = await getAuthHeader()
     const response = await axios.post(getBackendUrl() + '/meeting/note/add', {
       title: defaultTitle,
@@ -687,8 +591,7 @@ async function createMeetingNote() {
     })
     console.log('会议笔记创建成功:', response.data)
     showToast('会议笔记已创建', '#10b981')
-    
-    // 打开笔记编辑窗口
+
     openNoteEditorWindow({
       uuid,
       title: defaultTitle,
@@ -701,16 +604,13 @@ async function createMeetingNote() {
   }
 }
 
-/**
- * 打开笔记编辑窗口
- */
 function openNoteEditorWindow(note) {
   const windowLabel = `note-editor-${note.uuid}`
   let url = `/note-editor?uuid=${note.uuid}&title=${encodeURIComponent(note.title)}`
   if (note.isMeetingNote) {
     url += '&isMeetingNote=true'
   }
-  
+
   const webview = new WebviewWindow(windowLabel, {
     url: url,
     title: note.title || '编辑笔记',
@@ -722,15 +622,15 @@ function openNoteEditorWindow(note) {
     decorations: false,
     resizable: true
   })
-  
+
   webview.once('tauri://created', async () => {
     console.log('笔记编辑窗口创建成功:', windowLabel)
     await new Promise(resolve => setTimeout(resolve, 300))
-    
+
     try {
       if (note.isMeetingNote) {
-        await webview.emit('load-note-content', { 
-          content: note.content || '' 
+        await webview.emit('load-note-content', {
+          content: note.content || ''
         })
       }
     } catch (e) {
@@ -749,50 +649,42 @@ function openNoteEditorWindow(note) {
   })
 }
 
-/**
- * 处理点击菜单外部区域
- * 保留函数以防未来需要
- */
 function handleClickOutside(event) {
-  // 预留功能
+
 }
 
-/**
- * 打开主窗口
- * 专门用于显示主窗口，不指定具体页面路径
- */
 async function openMainWindow() {
   console.log('打开主窗口')
 
   try {
-    // 使用 Window.getByLabel 获取主窗口
+
     const mainWindow = await Window.getByLabel('main')
 
     if (mainWindow) {
       try {
-        // 检查窗口是否可见
+
         const isVisible = await mainWindow.isVisible()
 
         if (isVisible) {
           console.log('主窗口已可见，聚焦')
-          // 取消最小化（如果窗口被最小化）
+
           await mainWindow.unminimize()
-          // 将窗口提到前台并聚焦
+
           await mainWindow.show()
           await mainWindow.center()
           await mainWindow.setFocus()
         } else {
-          // 窗口存在但不可见（可能在托盘），显示窗口
+
           console.log('主窗口在托盘，显示并聚焦')
           await mainWindow.show()
           await mainWindow.unminimize()
           await mainWindow.center()
           await mainWindow.setFocus()
         }
-        // 更新状态为可见
+
         isMainWindowVisible.value = true
       } catch (windowError) {
-        // 窗口出错，重新创建
+
         console.log('主窗口出错，重新创建:', windowError)
         await createMainWindow('/')
         isMainWindowVisible.value = true
@@ -825,11 +717,11 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 防止文本缩放导致的布局变化 */
+
   text-size-adjust: none;
   -webkit-text-size-adjust: none;
   -moz-text-size-adjust: none;
-  /* 防止 DPI 缩放影响 */
+
   image-rendering: -webkit-optimize-contrast;
   image-rendering: crisp-edges;
 }
@@ -841,7 +733,7 @@ html, body {
   align-items: center;
   justify-content: center;
   background: transparent;
-  /* 确保内容不受系统缩放影响 */
+
   zoom: 1;
 }
 </style>
@@ -923,13 +815,11 @@ html, body {
   color: var(--float-btn-hover-color, #333);
 }
 
-/* 笔记按钮激活状态 */
 .note-btn.active {
   background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.15);
   color: var(--accent-blue, #3178c6);
 }
 
-/* 打开主窗口按钮 - 特殊样式 */
 .open-main-btn {
   background-color: rgba(76, 175, 80, 0.1);
   color: #4caf50;
@@ -940,7 +830,6 @@ html, body {
   color: #2e7d32;
 }
 
-/* 课堂按钮样式 */
 .meeting-btn {
   background-color: rgba(255, 152, 0, 0.1);
   color: #ff9800;
@@ -961,14 +850,12 @@ html, body {
   color: #d32f2f;
 }
 
-/* 按钮文字样式 */
 .btn-text {
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
 }
 
-/* 扩散动画遮罩 - 适配扁平悬浮窗 */
 .ripple-overlay {
   position: fixed;
   top: 0;
@@ -982,7 +869,6 @@ html, body {
   justify-content: center;
 }
 
-/* 扩散动画效果 - 扁平化设计 */
 .ripple-animation {
   position: absolute;
   width: 30px;
@@ -1008,7 +894,6 @@ html, body {
   }
 }
 
-/* 笔记功能菜单 - 水平排布，从右到左滑入 */
 .note-menu {
   position: fixed;
   right: 8px;
@@ -1036,7 +921,6 @@ html, body {
   }
 }
 
-/* 未连接提示框 - 在 float-container 内居中显示 */
 .connect-tip {
   position: absolute;
   left: 50%;
@@ -1053,12 +937,10 @@ html, body {
   z-index: 1002;
 }
 
-/* 进入动画 */
 .tip-fade-enter-active {
   animation: tip-fade-in 0.2s ease-out forwards;
 }
 
-/* 离开动画 */
 .tip-fade-leave-active {
   animation: tip-fade-out 0.2s ease-in forwards;
 }

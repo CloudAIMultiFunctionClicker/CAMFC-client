@@ -38,7 +38,7 @@ impl ApiClient {
 
     pub async fn check_health(&self) -> Result<bool> {
         let url = format!("{}/api/agent/health", self.base_url);
-        
+
         match self.client.get(&url).timeout(std::time::Duration::from_secs(5)).send().await {
             Ok(response) => Ok(response.status().is_success()),
             Err(_) => Ok(false),
@@ -52,7 +52,7 @@ impl ApiClient {
         history: &[String],
     ) -> Result<PredictResponse> {
         let url = format!("{}/api/agent/predict", self.base_url);
-        
+
         let request = PredictRequest {
             instruction: instruction.to_string(),
             screenshot: screenshot_base64.to_string(),

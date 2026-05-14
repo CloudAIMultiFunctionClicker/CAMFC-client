@@ -5,9 +5,9 @@
         <h3>深色模式</h3>
         <div class="setting-item">
           <span>启用深色模式</span>
-          <button 
-            class="toggle-btn" 
-            :class="{ active: !theme?.isLightMode.value }" 
+          <button
+            class="toggle-btn"
+            :class="{ active: !theme?.isLightMode.value }"
             @click="theme?.toggleTheme()"
           >
             <span class="toggle-slider"></span>
@@ -15,8 +15,8 @@
         </div>
         <div class="setting-item">
           <span>跟随系统主题</span>
-          <button 
-            class="toggle-btn" 
+          <button
+            class="toggle-btn"
             :class="{ active: storageSettings.followSystemTheme }"
             @click="toggleFollowSystemTheme"
           >
@@ -41,7 +41,6 @@ const storageSettings = ref({
 
 const isLightMode = ref(false)
 
-// 监听主题变化
 watch(() => theme?.isLightMode, (newVal) => {
   if (newVal !== undefined) {
     isLightMode.value = newVal
@@ -51,7 +50,7 @@ watch(() => theme?.isLightMode, (newVal) => {
 const toggleFollowSystemTheme = async () => {
   storageSettings.value.followSystemTheme = !storageSettings.value.followSystemTheme
   await saveAppData('settings_storage', JSON.stringify(storageSettings.value))
-  
+
   if (storageSettings.value.followSystemTheme) {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     theme?.setTheme(!mediaQuery.matches)
@@ -73,7 +72,7 @@ onMounted(async () => {
     const saved = await loadAppData('settings_storage')
     if (saved) {
       storageSettings.value = JSON.parse(saved)
-      // 如果已开启跟随系统主题，注册监听
+
       if (storageSettings.value.followSystemTheme) {
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
         mediaQuery.addEventListener('change', handleSystemThemeChange)

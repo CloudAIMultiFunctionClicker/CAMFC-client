@@ -1,11 +1,9 @@
-<!--
-Agent 自动化执行窗口
--->
+
 
 <template>
   <div class="agent-window">
     <div class="agent-content">
-      <!-- 指令输入区域 -->
+
       <div class="input-section">
         <label class="input-label">请输入您想要执行的操作：</label>
         <textarea
@@ -16,7 +14,6 @@ Agent 自动化执行窗口
         ></textarea>
       </div>
 
-      <!-- 步数设置 -->
       <div class="settings-section">
         <label class="settings-label">
           <span>最大执行步数：</span>
@@ -31,7 +28,6 @@ Agent 自动化执行窗口
         <span class="settings-hint">建议值：10-20 步</span>
       </div>
 
-      <!-- 热键设置 -->
       <div class="hotkey-section">
         <label class="hotkey-label">
           <span>停止热键：</span>
@@ -54,7 +50,6 @@ Agent 自动化执行窗口
         <span class="hotkey-hint">执行时按此键停止</span>
       </div>
 
-      <!-- 执行和停止按钮 -->
       <div class="button-group">
         <button
           class="execute-btn"
@@ -72,7 +67,6 @@ Agent 自动化执行窗口
         </button>
       </div>
 
-      <!-- 执行日志区域 -->
       <div v-if="executionLog" class="log-section">
         <div class="log-header">
           <h3>执行日志</h3>
@@ -83,7 +77,6 @@ Agent 自动化执行窗口
         </div>
       </div>
 
-      <!-- 状态提示 -->
       <div v-if="statusMessage" :class="['status-message', statusType]">
         {{ statusMessage }}
       </div>
@@ -97,7 +90,6 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 
-// 响应式数据
 const instruction = ref('')
 const maxSteps = ref(15)
 const isRunning = ref(false)
@@ -107,7 +99,6 @@ const statusType = ref('info')
 const logContainer = ref(null)
 const hotkey = ref('Escape')
 
-// 监听日志变化，自动滚动到底部
 watch(executionLog, () => {
   nextTick(() => {
     if (logContainer.value) {
@@ -116,7 +107,6 @@ watch(executionLog, () => {
   })
 })
 
-// 加载热键配置
 onMounted(async () => {
   try {
     const savedHotkey = await invoke('get_agent_hotkey')
@@ -124,8 +114,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('加载热键配置失败:', error)
   }
-  
-  // 监听全局键盘事件
+
   window.addEventListener('keydown', handleGlobalKeydown)
 })
 
@@ -133,24 +122,21 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown)
 })
 
-// 处理全局键盘事件
 async function handleGlobalKeydown(event) {
   if (!isRunning.value) return
-  
+
   if (event.key === hotkey.value) {
     event.preventDefault()
     await stopAutomation()
   }
 }
 
-// 执行自动化
 async function executeAutomation() {
   if (!instruction.value.trim()) {
     showStatus('请输入操作指令', 'error')
     return
   }
 
-  // 保存热键配置
   try {
     await invoke('set_agent_hotkey', { hotkey: hotkey.value })
   } catch (error) {
@@ -177,7 +163,6 @@ async function executeAutomation() {
   }
 }
 
-// 停止自动化
 async function stopAutomation() {
   if (!isRunning.value) {
     showStatus('Agent 未在运行', 'info')
@@ -193,7 +178,6 @@ async function stopAutomation() {
   }
 }
 
-// 显示状态消息
 function showStatus(message, type) {
   statusMessage.value = message
   statusType.value = type
@@ -202,12 +186,10 @@ function showStatus(message, type) {
   }, 5000)
 }
 
-// 清空日志
 function clearLog() {
   executionLog.value = ''
 }
 
-// 关闭窗口
 async function closeWindow() {
   try {
     const appWindow = getCurrentWindow()

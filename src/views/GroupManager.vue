@@ -1,25 +1,11 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh09@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
   <div class="group-manager-container">
     <div class="page-header">
       <h1 class="page-title">班级管理</h1>
-      <button 
-        class="refresh-btn" 
+      <button
+        class="refresh-btn"
         @click="loadData"
         :disabled="isLoading"
         title="刷新数据"
@@ -38,8 +24,8 @@ Email: admin@mc666.top
           @keyup.enter="handleCreateGroup"
           maxlength="15"
         />
-        <button 
-          class="create-btn" 
+        <button
+          class="create-btn"
           @click="handleCreateGroup"
           :disabled="!newGroupName.trim()"
         >
@@ -48,10 +34,8 @@ Email: admin@mc666.top
       </div>
     </div>
 
-
-
     <div v-if="currentTab === 'groups'" class="tab-content groups-tab">
-      <!-- 群组列表骨架屏 -->
+
       <div v-if="isLoading" class="skeleton-groups-grid">
         <div v-for="i in 6" :key="i" class="skeleton-group-card">
           <div class="skeleton-group-avatar"></div>
@@ -71,8 +55,8 @@ Email: admin@mc666.top
       </div>
 
       <div v-else class="groups-grid">
-        <div 
-          v-for="group in groups" 
+        <div
+          v-for="group in groups"
           :key="group.uid"
           class="group-card"
           @click="goToGroupDetail(group)"
@@ -95,8 +79,8 @@ Email: admin@mc666.top
             </div>
           </div>
           <div class="group-actions">
-            <button 
-              class="enter-btn" 
+            <button
+              class="enter-btn"
               @click.stop="goToGroupDetail(group)"
             >
               进入群组
@@ -107,7 +91,7 @@ Email: admin@mc666.top
     </div>
 
     <div v-else-if="currentTab === 'applications'" class="tab-content applications-tab">
-      <!-- 申请列表骨架屏 -->
+
       <div v-if="isLoading" class="skeleton-applications-list">
         <div v-for="i in 4" :key="i" class="skeleton-application-item">
           <div class="skeleton-application-info">
@@ -134,8 +118,8 @@ Email: admin@mc666.top
       </div>
 
       <div v-else class="applications-list">
-        <div 
-          v-for="message in messages" 
+        <div
+          v-for="message in messages"
           :key="message.uuid"
           class="application-item"
           :class="message.type"
@@ -171,17 +155,17 @@ Email: admin@mc666.top
             </div>
           </div>
           <div v-if="message.status === 'pending'" class="action-buttons">
-            <button 
-              class="approve-btn" 
+            <button
+              class="approve-btn"
               @click="handleApprove(message)"
               :title="message.type === 'join' ? '批准入群' : '批准退群'"
             >
               <i class="ri-checkbox-line"></i>
               批准
             </button>
-            <button 
+            <button
               v-if="message.type === 'join'"
-              class="reject-btn" 
+              class="reject-btn"
               @click="handleReject(message.uuid)"
               title="拒绝申请"
             >
@@ -252,12 +236,12 @@ async function handleCreateGroup() {
 
 async function handleDeleteGroup(uid) {
   const confirmed = confirm('确定要删除这个群组吗？此操作不可逆！')
-  
+
   if (!confirmed) {
     console.info('用户取消了删除操作')
     return
   }
-  
+
   try {
     const result = await deleteGroup(uid)
     if (result && result.success) {
@@ -278,7 +262,7 @@ async function handleApprove(message) {
     } else if (message.type === 'quit') {
       result = await approveQuit(message.uuid)
     }
-    
+
     if (result && result.success) {
       showToast('申请已批准', '#10b981')
       messages.value = messages.value.filter(m => m.uuid !== message.uuid)
@@ -307,11 +291,11 @@ function formatTime(timestamp) {
   const date = new Date(timestamp * 1000)
   const now = new Date()
   const diff = now - date
-  
+
   const minute = 60 * 1000
   const hour = 60 * minute
   const day = 24 * hour
-  
+
   if (diff < minute) {
     return '刚刚'
   } else if (diff < hour) {
@@ -337,14 +321,14 @@ function goToGroupDetail(group) {
 
 async function loadData() {
   isLoading.value = true
-  
+
   try {
     const groupData = await getGroupList()
     groups.value = Array.isArray(groupData) ? groupData : []
-    
+
     const messageData = await getMessageList()
     messages.value = Array.isArray(messageData) ? messageData : []
-    
+
     if (groups.value.length > 0 && currentTab.value === 'groups') {
     }
   } catch (error) {
@@ -360,9 +344,8 @@ onMounted(() => {
   loadData()
 })
 
-// 监听路由变化，同步标签页
 watch(() => route.path, (newPath) => {
-  // 根据路由路径确定标签页
+
   let newTab = 'groups'
   if (newPath.includes('_applications')) {
     newTab = 'applications'
@@ -498,7 +481,6 @@ watch(() => route.path, (newPath) => {
   min-height: 400px;
 }
 
-/* 骨架屏样式 */
 .skeleton-groups-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -922,32 +904,32 @@ watch(() => route.path, (newPath) => {
   .group-manager-container {
     padding: 16px;
   }
-  
+
   .page-title {
     font-size: 24px;
   }
-  
+
   .input-group {
     flex-direction: column;
   }
-  
+
   .groups-grid,
   .skeleton-groups-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .application-item,
   .skeleton-application-item {
     flex-direction: column;
     gap: 16px;
   }
-  
+
   .action-buttons,
   .skeleton-action-buttons {
     width: 100%;
     margin-left: 0;
   }
-  
+
   .action-buttons button {
     flex: 1;
   }
@@ -957,11 +939,11 @@ watch(() => route.path, (newPath) => {
   .group-manager-container {
     padding: 16px;
   }
-  
+
   .page-title {
     font-size: 24px;
   }
-  
+
   .groups-grid,
   .skeleton-groups-grid {
     grid-template-columns: 1fr;

@@ -10,17 +10,17 @@
               <span class="label-desc">文件将下载到指定目录，留空使用系统默认下载目录</span>
             </div>
             <div class="path-control">
-              <input 
-                type="text" 
-                v-model="downloadPath" 
-                class="path-input" 
+              <input
+                type="text"
+                v-model="downloadPath"
+                class="path-input"
                 placeholder="点击右侧按钮选择目录"
                 readonly
               />
               <button class="action-btn small" @click="selectDownloadPath">选择</button>
-              <button 
-                v-if="downloadPath" 
-                class="action-btn small danger" 
+              <button
+                v-if="downloadPath"
+                class="action-btn small danger"
                 @click="clearDownloadPath"
               >
                 清除
@@ -65,7 +65,7 @@ const selectDownloadPath = async () => {
       multiple: false,
       title: '选择下载目录'
     })
-    
+
     if (selected) {
       downloadPath.value = selected
       const { invoke } = await import('@tauri-apps/api/core')
@@ -94,7 +94,7 @@ const openDownloadFolder = async () => {
   try {
     const { invoke } = await import('@tauri-apps/api/core')
     let targetPath = downloadPath.value
-    
+
     if (!targetPath) {
       try {
         targetPath = await invoke('get_default_download_path')
@@ -104,7 +104,7 @@ const openDownloadFolder = async () => {
         return
       }
     }
-    
+
     if (targetPath) {
       await invoke('open_folder', { folderPath: targetPath })
       showToast('已打开下载目录', '#10b981')

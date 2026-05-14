@@ -11,24 +11,24 @@
               <span class="label-desc">选择点击窗口右上角关闭按钮时的行为</span>
             </div>
             <div class="close-behavior-options">
-              <button 
-                class="behavior-option" 
+              <button
+                class="behavior-option"
                 :class="{ active: closeBehavior === 'minimize' }"
                 @click="setCloseBehavior('minimize')"
               >
                 <i class="ri-window-line"></i>
                 <span>隐藏到托盘</span>
               </button>
-              <button 
-                class="behavior-option" 
+              <button
+                class="behavior-option"
                 :class="{ active: closeBehavior === 'exit' }"
                 @click="setCloseBehavior('exit')"
               >
                 <i class="ri-close-circle-line"></i>
                 <span>完全关闭</span>
               </button>
-              <button 
-                class="behavior-option" 
+              <button
+                class="behavior-option"
                 :class="{ active: closeBehavior === 'ask' }"
                 @click="setCloseBehavior('ask')"
               >
@@ -38,7 +38,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="setting-card">
           <h4>悬浮窗功能</h4>
           <div class="setting-item">
@@ -47,8 +47,8 @@
               <span class="label-desc">显示可拖动的悬浮窗，提供快速访问功能</span>
             </div>
             <div class="setting-control">
-              <button 
-                class="toggle-btn" 
+              <button
+                class="toggle-btn"
                 :class="{ active: floatWindowEnabled }"
                 @click="toggleFloatWindow"
               >
@@ -57,7 +57,7 @@
             </div>
           </div>
         </div>
-        
+
         <div class="setting-card">
           <h4>截图功能</h4>
           <div class="setting-item">
@@ -66,8 +66,8 @@
               <span class="label-desc">截图时自动隐藏主窗口，避免截图中包含主窗口内容</span>
             </div>
             <div class="setting-control">
-              <button 
-                class="toggle-btn" 
+              <button
+                class="toggle-btn"
                 :class="{ active: screenshotHideWindow }"
                 @click="toggleScreenshotHideWindow"
               >
@@ -92,7 +92,7 @@ const screenshotHideWindow = ref(true)
 
 const loadSettings = async () => {
   try {
-    // 加载关闭行为偏好
+
     try {
       const savedCloseBehavior = await loadAppData('close_preference')
       if (savedCloseBehavior) {
@@ -103,8 +103,7 @@ const loadSettings = async () => {
       console.warn('加载关闭偏好失败:', e)
       closeBehavior.value = 'ask'
     }
-    
-    // 加载悬浮窗启用状态
+
     try {
       const { getFloatWindowEnabled } = await import('../components/data/storage.js')
       floatWindowEnabled.value = await getFloatWindowEnabled()
@@ -112,8 +111,7 @@ const loadSettings = async () => {
       console.warn('加载悬浮窗状态失败:', e)
       floatWindowEnabled.value = true
     }
-    
-    // 加载截图隐藏窗口设置
+
     try {
       const savedScreenshotHideWindow = await loadAppData('screenshot_hide_window')
       if (savedScreenshotHideWindow) {
@@ -136,8 +134,7 @@ const toggleFloatWindow = async () => {
     const status = floatWindowEnabled.value ? '已启用' : '已禁用'
     showToast(`悬浮窗功能：${status}`, '#3b82f6')
     console.log('[应用设置] 悬浮窗状态已更新:', floatWindowEnabled.value)
-    
-    // 广播悬浮窗状态变化事件
+
     try {
       const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
       console.log('[应用设置] 尝试获取悬浮窗...')
@@ -147,7 +144,7 @@ const toggleFloatWindow = async () => {
         console.log('[应用设置] 发送悬浮窗状态变化事件...')
         await floatWindow.emit('float-window-toggled', floatWindowEnabled.value)
         console.log('[应用设置] 事件发送成功')
-        
+
         if (floatWindowEnabled.value) {
           const isVisible = await floatWindow.isVisible()
           if (!isVisible) {

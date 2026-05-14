@@ -1,56 +1,29 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
-
-<!--
-左侧边栏组件 - 用于主要导航
-现在加上新的折叠功能：完全消失 + 悬浮按钮！
-TODO: 动态菜单、路由高亮这些以后再加
-FIXME: 悬浮按钮的样式还可以再优化，让它更融入整体设计
--->
 
 <script setup>
-// 导入 Vue 的响应式功能
+
 import { ref, computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
-// 导入 Pinia store 来获取蓝牙状态
+
 import { useBluetoothStore } from "../../stores/bluetooth";
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 
-// 侧边栏折叠状态 - 默认展开
 const isCollapsed = ref(false);
 
-// 定义 emit 函数，用于触发事件
 const emit = defineEmits(["collapse-change"]);
 
-// 切换折叠状态的函数
 const toggleCollapse = () => {
     isCollapsed.value = !isCollapsed.value;
-    // 触发事件，通知父组件状态变化
+
     emit("collapse-change", isCollapsed.value);
 };
 
-// 获取蓝牙 store
 const bluetoothStore = useBluetoothStore();
 
-// 计算蓝牙是否已连接
 const isConnected = computed(() => bluetoothStore.isConnected());
 
 const route = useRoute()
 
-// 根据路径匹配所属的一级菜单
 const getMenuKeyByPath = (path) => {
     if (path === '/' || path === '/welcome') return 'connection'
     if (path.startsWith('/fileView') || path.startsWith('/transfer') || path.startsWith('/recent-activities') || path.startsWith('/agent-window')) return 'cloud'
@@ -60,34 +33,30 @@ const getMenuKeyByPath = (path) => {
     return null
 }
 
-// 菜单折叠状态管理
 const expandedMenus = ref({
-    connection: false,  // 连接状态
-    cloud: false,       // 云盘
-    records: false,     // 记录
-    class: false,       // 班级管理
-    settings: false     // 设置
+    connection: false,
+    cloud: false,
+    records: false,
+    class: false,
+    settings: false
 });
 
-// 检查菜单是否可展开（连接状态始终可用，其他需要蓝牙连接）
 const isMenuDisabled = (menuKey) => {
     if (menuKey === 'connection') return false
     return !isConnected.value
 }
 
-// 切换菜单展开/折叠（手风琴：同时只展开一个）
 const toggleMenu = (menuKey) => {
     if (isMenuDisabled(menuKey)) return
     const willExpand = !expandedMenus.value[menuKey]
-    // 全部收起
+
     Object.keys(expandedMenus.value).forEach(key => {
         expandedMenus.value[key] = false
     })
-    // 只展开当前点击的那个
+
     expandedMenus.value[menuKey] = willExpand
 };
 
-// 打开 agent 自动化窗口（从废弃的 Main.vue 移过来）
 const openAgentWindow = async () => {
   const agentWindow = new WebviewWindow('agent-window', {
     url: '/agent-window',
@@ -113,7 +82,6 @@ const openAgentWindow = async () => {
   })
 }
 
-// 挂载时自动展开当前页面所在的一级菜单
 onMounted(() => {
     const key = getMenuKeyByPath(route.path)
     if (key) {
@@ -123,7 +91,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <!-- 悬浮按钮 - 只在侧边栏收起时显示 -->
+
     <button
         v-if="isCollapsed"
         class="float-collapse-btn"
@@ -133,20 +101,18 @@ onMounted(() => {
         <i class="ri-side-bar-line"></i>
     </button>
 
-    <!-- 侧边栏容器 - 根据折叠状态添加类名 -->
-    <!-- 移除了v-show，让CSS过渡处理显示/隐藏 -->
     <aside
         class="sidebar"
         :class="{ collapsed: isCollapsed }"
     >
-        <!-- Logo 区域 - 简单放个标题 -->
+
         <div class="logo-area">
             <h2>
                 <i class="ri-folder-line"></i>
-                <!-- 文件夹图标，跟云存储主题相关 -->
+
                 <span>CAMFC Cloud</span>
             </h2>
-            <!-- 用量进度条 -->
+
             <div class="storage-usage">
                 <div class="usage-label">
                     <span>云空间用量</span>
@@ -157,7 +123,6 @@ onMounted(() => {
                 </div>
             </div>
 
-            <!-- 折叠按钮 - 放在 logo 区域右上角 -->
             <button
                 class="collapse-btn"
                 @click="toggleCollapse"
@@ -167,9 +132,8 @@ onMounted(() => {
             </button>
         </div>
 
-        <!-- 主菜单区域 -->
         <nav class="main-menu">
-            <!-- 连接状态（默认显示蓝牙连接扫描） -->
+
             <div class="menu-section">
                 <div class="menu-section-header" @click="toggleMenu('connection')">
                     <div class="menu-section-title">
@@ -194,7 +158,6 @@ onMounted(() => {
                 </ul>
             </div>
 
-            <!-- 云盘 -->
             <div class="menu-section">
                 <div class="menu-section-header" :class="{ disabled: isMenuDisabled('cloud') }" :title="isMenuDisabled('cloud') ? '需要连接蓝牙先' : ''" @click="toggleMenu('cloud')">
                     <div class="menu-section-title">
@@ -231,7 +194,6 @@ onMounted(() => {
                 </ul>
             </div>
 
-            <!-- 记录 -->
             <div class="menu-section">
                 <div class="menu-section-header" :class="{ disabled: isMenuDisabled('records') }" :title="isMenuDisabled('records') ? '需要连接蓝牙先' : ''" @click="toggleMenu('records')">
                     <div class="menu-section-title">
@@ -256,7 +218,6 @@ onMounted(() => {
                 </ul>
             </div>
 
-            <!-- 班级管理 -->
             <div class="menu-section">
                 <div class="menu-section-header" :class="{ disabled: isMenuDisabled('class') }" :title="isMenuDisabled('class') ? '需要连接蓝牙先' : ''" @click="toggleMenu('class')">
                     <div class="menu-section-title">
@@ -281,7 +242,6 @@ onMounted(() => {
                 </ul>
             </div>
 
-            <!-- 设置 -->
             <div class="menu-section">
                 <div class="menu-section-header" :class="{ disabled: isMenuDisabled('settings') }" :title="isMenuDisabled('settings') ? '需要连接蓝牙先' : ''" @click="toggleMenu('settings')">
                     <div class="menu-section-title">
@@ -343,17 +303,14 @@ onMounted(() => {
             </div>
         </nav>
 
-
     </aside>
 </template>
 
 <style scoped>
-/* 侧边栏基础样式 - 使用 CSS 变量支持主题切换 */
-/* 现在颜色都从全局变量获取，亮色/暗色模式自动切换 */
 
 .sidebar {
     width: 240px;
-    height: calc(100vh - 48px); /* 减去标题栏高度 */
+    height: calc(100vh - 48px);
     background: var(--bg-sidebar, #161b22);
     border-right: 1px solid var(--border-color, #30363d);
     display: flex;
@@ -361,7 +318,7 @@ onMounted(() => {
     padding: 20px 0;
     box-sizing: border-box;
     position: fixed;
-    top: 48px; /* 标题栏高度 */
+    top: 48px;
     left: 0;
     bottom: 0;
     z-index: 900;
@@ -369,7 +326,6 @@ onMounted(() => {
     overflow-y: auto;
 }
 
-/* 自定义滚动条样式 */
 .sidebar::-webkit-scrollbar {
     width: 6px;
 }
@@ -387,20 +343,18 @@ onMounted(() => {
     background: var(--text-muted, #8b949e);
 }
 
-/* 折叠状态 - 侧边栏向左滑出屏幕 */
 .sidebar.collapsed {
-    width: 240px; /* 保持宽度，但靠transform来移动 */
+    width: 240px;
     opacity: 0;
-    transform: translateX(-100%); /* 完全滑出屏幕左边 */
+    transform: translateX(-100%);
     overflow: hidden;
     padding: 0;
     border-right: none;
-    /* 移除了visibility: hidden，让opacity和transform来处理隐藏效果 */
-    pointer-events: none; /* 确保折叠时无法点击 */
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* 折叠时过渡时间稍长 */
+
+    pointer-events: none;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 悬浮按钮样式 - 调整得更协调 */
 .float-collapse-btn {
     position: fixed;
     left: 16px;
@@ -436,7 +390,6 @@ onMounted(() => {
     transition: transform 0.3s ease;
 }
 
-/* 悬浮按钮的动画效果 */
 .float-collapse-btn {
     animation: floatIn 0.3s ease-out;
 }
@@ -452,7 +405,6 @@ onMounted(() => {
     }
 }
 
-/* Logo 区域样式 */
 .logo-area {
     padding: 0 20px 20px;
     border-bottom: 1px solid var(--border-color, #d0d7de);
@@ -485,10 +437,9 @@ onMounted(() => {
 
 .collapse-btn i {
     font-size: 1.2rem;
-    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); /* 更平滑的旋转动画 */
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 折叠状态下侧边栏内按钮旋转 */
 .sidebar:not(.collapsed) .collapse-btn i {
     transform: rotate(0deg);
 }
@@ -520,7 +471,6 @@ onMounted(() => {
     line-height: 1.4;
 }
 
-/* 用量进度条样式 */
 .storage-usage {
     padding: 8px 0;
 }
@@ -557,13 +507,11 @@ onMounted(() => {
     background: var(--accent-green, #2da44e);
 }
 
-/* 菜单通用样式 */
 .main-menu {
     padding: 0 20px;
     margin-bottom: 24px;
 }
 
-/* 菜单分组样式 */
 .menu-section {
     margin-bottom: 16px;
 }
@@ -654,32 +602,27 @@ onMounted(() => {
     color: var(--accent-blue, #0969da);
 }
 
-/* 禁用状态 */
 .menu-link.disabled {
     opacity: 0.5;
     cursor: not-allowed;
     pointer-events: none;
 }
 
-/* 响应式设计 - 小屏幕时可能需要调整 */
-/* 现在折叠功能能用了，但手机端可能还需要调整 */
 @media (max-width: 1024px) {
     .sidebar {
         width: 200px;
-        /* 稍微窄一点 */
+
     }
 }
 
-/* 超小屏幕 - 可能需要完全不同的布局 */
-/* TODO: 在手机上侧边栏可能应该变成底部导航或者可滑出的抽屉 */
 @media (max-width: 768px) {
     .sidebar {
         width: 200px;
-        /* 手机端稍微窄一点 */
+
     }
 
     .float-collapse-btn {
-        top: 70px; /* 手机端调整悬浮按钮位置 */
+        top: 70px;
         left: 8px;
         width: 36px;
         height: 36px;

@@ -1,56 +1,39 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <template>
-    <!-- 导航栏组件 - 用于路由切换 -->
+
     <div class="header">
         <h1>最简陋的多路由网页</h1>
-        <!-- 导航菜单 -->
+
         <nav>
-            <!-- 使用router-link进行导航 -->
-            <router-link to="/">首页</router-link> | 
-            <router-link to="/about">关于</router-link> | 
+
+            <router-link to="/">首页</router-link> |
+            <router-link to="/about">关于</router-link> |
             <router-link to="/contact">联系</router-link>
         </nav>
     </div>
 </template>
 
 <style scoped>
-/* 导航栏容器样式 */
+
 .header {
-    background-color: #f0f0f0; /* 浅灰色背景 */
-    padding: 20px; /* 内边距 */
-    text-align: center; /* 居中文本 */
+    background-color: #f0f0f0;
+    padding: 20px;
+    text-align: center;
 }
 
-/* 导航菜单样式 */
 nav {
-    margin-top: 10px; /* 与标题的间距 */
+    margin-top: 10px;
 }
 
-/* 导航链接基础样式 */
 nav a {
-    margin: 0 10px; /* 左右边距 */
-    text-decoration: none; /* 去除下划线 */
-    color: #333; /* 深灰色文字 */
+    margin: 0 10px;
+    text-decoration: none;
+    color: #333;
 }
 
-/* 激活状态的路由链接样式 */
 nav a.router-link-active {
-    font-weight: bold; /* 加粗 */
-    color: #007bff; /* 蓝色主题色 */
+    font-weight: bold;
+    color: #007bff;
 }
 </style>

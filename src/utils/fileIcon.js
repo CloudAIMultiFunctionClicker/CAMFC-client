@@ -1,26 +1,5 @@
-/**
- * CAMFC Client - 文件类型图标映射工具
- * 根据文件扩展名返回对应的图标类名
- *
- * 保留所有权利
- *
- * Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
- * Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
- *
- * Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
- * Email: abc.cxh2009@foxmail.com
- *
- * Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
- * Email: 1220594170@qq.com
- *
- * Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
- * Email: admin@mc666.top
- */
 
-// 文件类型图标映射
-// 根据文件扩展名返回对应的图标类名
 
-// 文件类型分类
 const FILE_TYPES = {
   IMAGE: 'image',
   VIDEO: 'video',
@@ -31,9 +10,8 @@ const FILE_TYPES = {
   OTHER: 'other'
 }
 
-// 文件扩展名到类型的映射
 const EXTENSION_MAP = {
-  // 图片
+
   'jpg': FILE_TYPES.IMAGE,
   'jpeg': FILE_TYPES.IMAGE,
   'png': FILE_TYPES.IMAGE,
@@ -42,8 +20,7 @@ const EXTENSION_MAP = {
   'webp': FILE_TYPES.IMAGE,
   'svg': FILE_TYPES.IMAGE,
   'ico': FILE_TYPES.IMAGE,
-  
-  // 视频
+
   'mp4': FILE_TYPES.VIDEO,
   'avi': FILE_TYPES.VIDEO,
   'mkv': FILE_TYPES.VIDEO,
@@ -52,8 +29,7 @@ const EXTENSION_MAP = {
   'flv': FILE_TYPES.VIDEO,
   'webm': FILE_TYPES.VIDEO,
   'm4v': FILE_TYPES.VIDEO,
-  
-  // 音频
+
   'mp3': FILE_TYPES.AUDIO,
   'wav': FILE_TYPES.AUDIO,
   'flac': FILE_TYPES.AUDIO,
@@ -61,8 +37,7 @@ const EXTENSION_MAP = {
   'ogg': FILE_TYPES.AUDIO,
   'm4a': FILE_TYPES.AUDIO,
   'wma': FILE_TYPES.AUDIO,
-  
-  // 文档
+
   'pdf': FILE_TYPES.DOCUMENT,
   'doc': FILE_TYPES.DOCUMENT,
   'docx': FILE_TYPES.DOCUMENT,
@@ -75,8 +50,7 @@ const EXTENSION_MAP = {
   'odt': FILE_TYPES.DOCUMENT,
   'ods': FILE_TYPES.DOCUMENT,
   'odp': FILE_TYPES.DOCUMENT,
-  
-  // 压缩包
+
   'zip': FILE_TYPES.ARCHIVE,
   'rar': FILE_TYPES.ARCHIVE,
   '7z': FILE_TYPES.ARCHIVE,
@@ -84,8 +58,7 @@ const EXTENSION_MAP = {
   'gz': FILE_TYPES.ARCHIVE,
   'bz2': FILE_TYPES.ARCHIVE,
   'xz': FILE_TYPES.ARCHIVE,
-  
-  // 代码
+
   'js': FILE_TYPES.CODE,
   'ts': FILE_TYPES.CODE,
   'html': FILE_TYPES.CODE,
@@ -105,7 +78,6 @@ const EXTENSION_MAP = {
   'kt': FILE_TYPES.CODE
 }
 
-// 文件类型到图标类名的映射（使用 Remix Icon）
 const TYPE_ICON_MAP = {
   [FILE_TYPES.IMAGE]: 'ri-image-line',
   [FILE_TYPES.VIDEO]: 'ri-video-line',
@@ -116,7 +88,6 @@ const TYPE_ICON_MAP = {
   [FILE_TYPES.OTHER]: 'ri-file-line'
 }
 
-// 从文件名中提取扩展名
 function getExtension(filename) {
   if (!filename) return ''
   const parts = filename.split('.')
@@ -124,19 +95,16 @@ function getExtension(filename) {
   return parts[parts.length - 1].toLowerCase()
 }
 
-// 根据文件名获取文件类型
 function getFileType(filename) {
   const ext = getExtension(filename)
   return EXTENSION_MAP[ext] || FILE_TYPES.OTHER
 }
 
-// 根据文件名获取图标类名
 function getFileIcon(filename) {
   const fileType = getFileType(filename)
   return TYPE_ICON_MAP[fileType]
 }
 
-// 根据文件名获取文件类型名称（中文）
 function getFileTypeName(filename) {
   const fileType = getFileType(filename)
   const typeNameMap = {

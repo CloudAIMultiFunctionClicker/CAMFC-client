@@ -1,48 +1,33 @@
-// 保留所有权利
-//
-// Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-// Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-//
-// Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-// Email: abc.cxh2009@foxmail.com
-//
-// Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-// Email: 1220594170@qq.com
-//
-// Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-// Email: admin@mc666.top
 
-// 蓝牙模块导入
+
 mod bluetooth;
 mod cpen_device_manager;
-// 下载模块导入
+
 mod download;
-// 上传模块导入
+
 mod upload;
-// 配置模块导入
+
 mod config;
-// 存储模块导入
+
 mod storage;
-// 事件发射模块导入
+
 mod event_emitter;
-// 截图模块导入
+
 mod screenshot;
-// 活动日志模块导入
+
 mod activity_log;
-// 窗口工具模块导入
+
 mod window_utils;
-// agent 自动化模块导入
+
 mod agent;
-// 通知模块导入
+
 mod notification;
 
-// 托盘相关导入
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::Manager;
 use tauri::WindowEvent;
 
-// 使用新的Cpen设备管理器作为业务逻辑层
 use cpen_device_manager::CpenDeviceManager;
 use bluetooth::DeviceInfo;
 use download::{DownloadTask, AuthInfo, get_app_data_dir};
@@ -53,38 +38,29 @@ use activity_log::{get_recent_activities, record_upload_activity, record_downloa
 use notification::show_notification;
 use window_utils::{set_window_size_by_label, get_window_size_by_label};
 
-// 导入同步原语
-// 原来用tokio::sync::Mutex，继续用这个，适合异步环境
 use tokio::sync::Mutex;
 use std::sync::OnceLock;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tracing;
 
-// 下载任务管理器
 static DOWNLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<download::DownloadTask>>>> = OnceLock::new();
-// 上传任务管理器
+
 static UPLOAD_TASKS: OnceLock<Mutex<HashMap<String, Arc<upload::UploadTask>>>> = OnceLock::new();
-// Agent 停止标志
+
 static AGENT_STOP_FLAG: OnceLock<Mutex<bool>> = OnceLock::new();
-// Agent 热键配置
+
 static AGENT_HOTKEY: OnceLock<Mutex<String>> = OnceLock::new();
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-/// 退出应用程序
-///
-/// 前端调用这个命令来完全退出应用
-/// 会先断开蓝牙连接，再关闭应用
 #[tauri::command]
 fn exit_app(app_handle: tauri::AppHandle) {
     tracing::info!("前端请求退出应用...");
-    
-    // 退出前先断开蓝牙连接
+
     let rt = tokio::runtime::Runtime::new().expect("创建运行时失败");
     rt.block_on(async {
         if let Some(manager) = CPEN_DEVICE_MANAGER.get() {
@@ -95,30 +71,26 @@ fn exit_app(app_handle: tauri::AppHandle) {
             }
         }
     });
-    
+
     app_handle.exit(0);
 }
 
-// 全局Cpen设备管理器实例
-// 用OnceLock确保只初始化一次，Mutex保证线程安全
-// 思考：原来的蓝牙管理器现在作为底层被CpenDeviceManager使用
 static CPEN_DEVICE_MANAGER: OnceLock<Mutex<CpenDeviceManager>> = OnceLock::new();
 
-/// 初始化Cpen设备管理器（懒初始化，实际用的时候再初始化）
 fn get_cpen_device_manager() -> Result<&'static Mutex<CpenDeviceManager>, String> {
     // 使用get()检查是否已初始化，如果没有则初始化
     if let Some(manager) = CPEN_DEVICE_MANAGER.get() {
         return Ok(manager);
     }
-    
+
     // 初始化新的管理器
     tracing::info!("自动初始化Cpen设备管理器...");
     let new_manager = Mutex::new(CpenDeviceManager::new());
-    
+
     // 设置到OnceLock中
     CPEN_DEVICE_MANAGER.set(new_manager)
         .map_err(|_| "Cpen设备管理器已初始化".to_string())?;
-    
+
     // 现在可以安全地获取引用
     Ok(CPEN_DEVICE_MANAGER.get().unwrap())
 }
@@ -135,21 +107,21 @@ fn get_cpen_device_manager() -> Result<&'static Mutex<CpenDeviceManager>, String
 // 现在只暴露少数几个简洁的命令给前端
 
 /// 获取TOTP（主要业务功能）
-/// 
+///
 /// 前端只需要调用这个命令，所有业务逻辑都在Rust端处理：
 /// 1. 自动扫描蓝牙设备
 /// 2. 自动识别Cpen设备（根据名前缀）
 /// 3. 保证只连接一个Cpen设备（重要！）
 /// 4. 自动发送setTime和getTotp命令
 /// 5. 30秒TOTP缓存
-/// 
+///
 /// 返回值：TOTP字符串，或包含错误信息的字符串
 #[tauri::command]
 async fn get_totp() -> Result<String, String> {
     tracing::info!("前端调用get_totp命令...");
-    
+
     let mut manager = get_cpen_device_manager()?.lock().await;
-    
+
     match manager.get_totp().await {
         Ok(totp) => {
             // 成功获取TOTP，返回给前端
@@ -165,17 +137,17 @@ async fn get_totp() -> Result<String, String> {
 }
 
 /// 获取设备ID（设备UUID）
-/// 
+///
 /// 前端调用这个命令获取设备唯一标识。
 /// 内部会自动处理连接、发送getId命令等。
-/// 
+///
 /// 返回值：设备ID字符串，或包含错误信息的字符串
 #[tauri::command]
 async fn get_device_id() -> Result<String, String> {
     tracing::info!("前端调用get_device_id命令...");
-    
+
     let mut manager = get_cpen_device_manager()?.lock().await;
-    
+
     match manager.get_device_id().await {
         Ok(device_id) => {
             tracing::info!("设备ID获取成功，返回给前端");
@@ -189,33 +161,33 @@ async fn get_device_id() -> Result<String, String> {
 }
 
 /// 获取连接状态
-/// 
+///
 /// 前端可以调用这个命令获取当前连接状态。
 /// 返回格式化的状态字符串，包含设备信息。
-/// 
+///
 /// 思考：这个命令比较简单，不会尝试连接设备，只返回当前状态。
 #[tauri::command]
 async fn get_connection_status() -> Result<String, String> {
     tracing::info!("前端调用get_connection_status命令...");
-    
+
     let manager = get_cpen_device_manager()?.lock().await;
-    
+
     let status = manager.get_connection_status();
     tracing::info!("当前连接状态: {}", status);
-    
+
     Ok(status)
 }
 
 /// 检查是否已建立稳定连接
-/// 
+///
 /// 前端可以调用这个命令检查连接是否真的还活着。
 /// 返回布尔值：true表示已建立稳定连接，false表示未连接或连接已断开。
-/// 
+///
 /// 注意：这个方法会实际检查蓝牙物理连接状态，而不仅仅是内存中的记录。
 #[tauri::command]
 async fn is_connected() -> Result<bool, String> {
     let mut manager = get_cpen_device_manager()?.lock().await;
-    
+
     match manager.is_connected().await {
         Ok(connected) => Ok(connected),
         Err(e) => Err(format!("检查连接状态失败: {}", e))
@@ -223,15 +195,15 @@ async fn is_connected() -> Result<bool, String> {
 }
 
 /// 获取用户UUID
-/// 
+///
 /// 从设备ID中解析user_uuid（假设设备ID格式为 "user_uuid:device_id"）
 /// 如果是DEBUG模式，从环境变量CAMFC_UUID获取
 #[tauri::command]
 async fn get_user_uuid() -> Result<String, String> {
     tracing::info!("前端调用get_user_uuid命令...");
-    
+
     let mut manager = get_cpen_device_manager()?.lock().await;
-    
+
     match manager.get_user_uuid().await {
         Ok(user_uuid) => {
             tracing::info!("用户UUID获取成功: {}", user_uuid);
@@ -245,17 +217,17 @@ async fn get_user_uuid() -> Result<String, String> {
 }
 
 /// 扫描并返回所有Cpen设备列表
-/// 
+///
 /// 前端调用这个命令获取所有可连接的Cpen设备。
 /// 不会自动连接，只返回设备列表供用户选择。
-/// 
+///
 /// 返回值：设备列表（包含name和address）
 #[tauri::command]
 async fn scan_cpen_devices() -> Result<Vec<DeviceInfo>, String> {
     tracing::info!("前端调用scan_cpen_devices命令...");
-    
+
     let mut manager = get_cpen_device_manager()?.lock().await;
-    
+
     match manager.scan_cpen_devices().await {
         Ok(devices) => {
             tracing::info!("扫描成功，找到 {} 个Cpen设备", devices.len());
@@ -269,17 +241,17 @@ async fn scan_cpen_devices() -> Result<Vec<DeviceInfo>, String> {
 }
 
 /// 扫描并返回所有蓝牙设备（包括Cpen和其他设备）
-/// 
+///
 /// 前端调用这个命令获取所有可发现的蓝牙设备。
 /// 不会自动连接，只返回设备列表供用户选择。
-/// 
+///
 /// 返回值：设备列表（包含name和address）
 #[tauri::command]
 async fn scan_all_bluetooth_devices() -> Result<Vec<DeviceInfo>, String> {
     tracing::info!("前端调用scan_all_bluetooth_devices命令...");
-    
+
     let mut manager = get_cpen_device_manager()?.lock().await;
-    
+
     match manager.scan_all_bluetooth_devices().await {
         Ok(devices) => {
             tracing::info!("扫描成功，找到 {} 个蓝牙设备", devices.len());
@@ -293,18 +265,18 @@ async fn scan_all_bluetooth_devices() -> Result<Vec<DeviceInfo>, String> {
 }
 
 /// 连接到指定的Cpen设备
-/// 
+///
 /// 前端调用这个命令连接用户选择的设备。
 /// 参数为设备的Bluetooth地址。
-/// 
+///
 /// 参数：设备地址（address）
 /// 返回值：设备信息
 #[tauri::command]
 async fn connect_cpen_device(address: String) -> Result<DeviceInfo, String> {
     tracing::info!("前端调用connect_cpen_device命令，地址: {}", address);
-    
+
     let mut manager = get_cpen_device_manager()?.lock().await;
-    
+
     match manager.connect_to_device(&address).await {
         Ok(device_info) => {
             tracing::info!("连接成功: {}", device_info.name);
@@ -317,17 +289,17 @@ async fn connect_cpen_device(address: String) -> Result<DeviceInfo, String> {
     }
 }
 /// 断开连接并清理资源
-/// 
+///
 /// 前端可以调用这个命令手动断开蓝牙连接。
 /// 会清理所有缓存和连接状态。
-/// 
+///
 /// 注意：断开后，下次调用get_totp或get_device_id会自动重新连接。
 #[tauri::command]
 async fn disconnect() -> Result<(), String> {
     tracing::info!("前端调用disconnect命令...");
-    
+
     let mut manager = get_cpen_device_manager()?.lock().await;
-    
+
     match manager.disconnect().await {
         Ok(_) => {
             tracing::info!("断开连接成功");
@@ -341,16 +313,16 @@ async fn disconnect() -> Result<(), String> {
 }
 
 /// 清理所有蓝牙资源
-/// 
+///
 /// 这个命令可以用于应用退出时，或者需要完全重置蓝牙状态时。
 /// 比disconnect更彻底，但一般用disconnect就够了。
 #[tauri::command]
 async fn cleanup() -> Result<(), String> {
     tracing::info!("前端调用cleanup命令...");
-    
+
     // 实际上和disconnect差不多，就叫cleanup保持兼容性
     let mut manager = get_cpen_device_manager()?.lock().await;
-    
+
     match manager.disconnect().await {
         Ok(_) => {
             tracing::info!("清理成功");
@@ -366,7 +338,7 @@ async fn cleanup() -> Result<(), String> {
 // 注意：以下旧的命令已删除，因为业务逻辑已迁移到CpenDeviceManager
 // - simple_scan_devices
 // - start_listening_for_data
-// - stop_listening_for_data  
+// - stop_listening_for_data
 // - is_listening_for_data
 //
 // 如果前端需要设备扫描功能，可以考虑加一个简单的scan命令，但用户说尽量简化接口。
@@ -375,72 +347,72 @@ async fn cleanup() -> Result<(), String> {
 // 下载相关命令
 
 /// 下载文件
-/// 
+///
 /// 前端调用这个命令下载文件到应用内目录
 /// 会自动从蓝牙设备获取认证信息，支持分片下载和断点续传
-/// 
+///
 /// 注意：file_id参数应该是完整的云盘路径，例如"ds/下载.png"而不是"下载.png"
 /// 因为后端API需要完整的路径信息：http://localhost:8005/download/ds/下载.png
-/// 
+///
 /// 这个版本支持真正的分片下载和断点续传
 #[tauri::command]
 async fn download_file(file_id: String) -> Result<String, String> {
     tracing::info!("前端调用download_file命令，文件路径: {}", file_id);
-    
+
     // 初始化下载路径缓存
     let _ = load_download_path_to_cache().await;
-    
+
     // 先获取设备ID、用户UUID和TOTP
     let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
     let user_uuid = get_user_uuid().await.map_err(|e| format!("获取用户UUID失败: {}", e))?;
     let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
-    
+
     // 创建认证信息（克隆user_uuid）
     let auth_info = AuthInfo {
         device_id,
         totp,
         user_uuid: user_uuid.clone(),
     };
-    
+
     // 获取下载目录
     let download_dir = get_app_data_dir()
         .map_err(|e| format!("获取下载目录失败: {}", e))?;
-    
+
     // 保持用户原始的目录结构
     // file_id 格式可能是 "ds/下载.png" 或 "新建文件夹/python.zip"
     // 直接使用 file_id 作为相对路径，保持原始目录结构
     let save_path = download_dir.join(&file_id);
-    
+
     tracing::info!("创建下载任务: {} -> {:?}", file_id, save_path);
-    
+
     // 创建下载任务（传递user_uuid）
     let task = DownloadTask::new(file_id.clone(), save_path.clone(), auth_info, Some(user_uuid.clone()))
         .await
         .map_err(|e| format!("创建下载任务失败: {}", e))?;
-    
+
     // 将任务保存到全局管理器中
     let task_arc = Arc::new(task);
-    
+
     // 初始化下载任务管理器
     let download_tasks = DOWNLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
     let mut tasks_map = download_tasks.lock().await;
     tasks_map.insert(file_id.clone(), task_arc.clone());
-    
+
     tracing::info!("下载任务已添加到管理器，开始后台下载...");
-    
+
     // 在后台异步执行下载，不阻塞前端响应
     let task_for_spawn = task_arc.clone();
     let file_id_for_spawn = file_id.clone();
     let save_path_for_spawn = save_path.clone();
     let _user_uuid_for_spawn = user_uuid.clone();
-    
+
     tokio::spawn(async move {
         tracing::info!("后台下载任务开始: {}", file_id_for_spawn);
-        
+
         match task_for_spawn.start().await {
             Ok(_) => {
                 tracing::info!("后台下载完成: {}，保存到: {:?}", file_id_for_spawn, save_path_for_spawn);
-                
+
                 // 下载完成后更新状态为完成
                 // 状态已经在start()方法中更新了
             }
@@ -449,7 +421,7 @@ async fn download_file(file_id: String) -> Result<String, String> {
             }
         }
     });
-    
+
     // 立即返回，不等待下载完成
     let result = format!("下载已开始，文件将保存到: {:?}，可使用get_download_progress查询进度", save_path);
     tracing::info!("{}", result);
@@ -457,21 +429,21 @@ async fn download_file(file_id: String) -> Result<String, String> {
 }
 
 /// 获取下载进度
-/// 
+///
 /// 从下载任务管理器中获取真实的下载进度信息
 /// 如果任务不存在，返回一个默认的进度信息
 #[tauri::command]
 async fn get_download_progress(file_id: String) -> Result<serde_json::Value, String> {
     tracing::info!("前端调用get_download_progress命令，文件ID: {}", file_id);
-    
+
     // 尝试从下载任务管理器中获取任务
     let download_tasks = DOWNLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
     let tasks_map = download_tasks.lock().await;
-    
+
     if let Some(task) = tasks_map.get(&file_id) {
         // 获取真实的进度信息
         let progress = task.get_progress().await;
-        
+
         // 将进度信息转换为JSON
         let status_str = match &progress.status {
             download::DownloadStatus::Pending => "Pending",
@@ -497,14 +469,14 @@ async fn get_download_progress(file_id: String) -> Result<serde_json::Value, Str
                 }));
             }
         };
-        
-        tracing::info!("获取到真实下载进度: {} - {}%", file_id, 
+
+        tracing::info!("获取到真实下载进度: {} - {}%", file_id,
             if progress.total_size > 0 {
                 (progress.downloaded as f64 / progress.total_size as f64 * 100.0).round() as u32
             } else {
                 0
             });
-        
+
         return Ok(serde_json::json!({
             "file_id": progress.file_id,
             "file_name": progress.file_name,
@@ -521,10 +493,10 @@ async fn get_download_progress(file_id: String) -> Result<serde_json::Value, Str
             },
         }));
     }
-    
+
     // 如果任务不存在，返回一个默认的进度信息
     tracing::info!("下载任务 {} 不存在，返回默认进度信息", file_id);
-    
+
     Ok(serde_json::json!({
         "file_id": file_id,
         "file_name": "未知文件",
@@ -539,26 +511,26 @@ async fn get_download_progress(file_id: String) -> Result<serde_json::Value, Str
 }
 
 /// 暂停下载
-/// 
+///
 /// TODO: 需要下载任务管理器来实现真正的暂停功能
 /// 先简单返回成功
 #[tauri::command]
 async fn pause_download(file_id: String) -> Result<(), String> {
     tracing::info!("前端调用pause_download命令，文件ID: {}", file_id);
-    
+
     // 暂时简单实现
     tracing::info!("下载暂停功能待实现");
     Ok(())
 }
 
 /// 恢复下载
-/// 
+///
 /// TODO: 需要下载任务管理器来实现真正的恢复功能
 /// 先简单返回成功
 #[tauri::command]
 async fn resume_download(file_id: String) -> Result<(), String> {
     tracing::info!("前端调用resume_download命令，文件ID: {}", file_id);
-    
+
     // 暂时简单实现
     tracing::info!("下载恢复功能待实现");
     Ok(())
@@ -567,56 +539,56 @@ async fn resume_download(file_id: String) -> Result<(), String> {
 // 上传相关命令
 
 /// 上传文件
-/// 
+///
 /// 前端调用这个命令上传文件到云盘
 /// 支持分片上传和断点续传，分片大小为4MB
 /// 文件路径应该是本地文件系统的路径
-/// 
+///
 /// 注意：上传过程可能需要较长时间，特别是大文件
 /// 会在后台异步执行上传，不阻塞前端响应
 #[tauri::command]
 async fn upload_file(file_path: String) -> Result<String, String> {
     tracing::info!("前端调用upload_file命令，文件路径: {}", file_path);
-    
+
     // 先获取设备ID、用户UUID和TOTP
     let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
     let user_uuid = get_user_uuid().await.map_err(|e| format!("获取用户UUID失败: {}", e))?;
     let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
-    
+
     // 创建认证信息（克隆user_uuid）
     let auth_info = AuthInfo {
         device_id,
         totp,
         user_uuid: user_uuid.clone(),
     };
-    
+
     // 创建上传任务（传递user_uuid）
     let task = UploadTask::new(std::path::PathBuf::from(&file_path), auth_info, None, Some(user_uuid.clone()))
         .await
         .map_err(|e| format!("创建上传任务失败: {}", e))?;
-    
+
     // 将任务保存到全局管理器中
     let task_arc = Arc::new(task);
     let upload_id = {
         let progress = task_arc.get_progress().await;
         progress.upload_id.clone()
     };
-    
+
     // 初始化上传任务管理器
     let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
     let mut tasks_map = upload_tasks.lock().await;
     tasks_map.insert(upload_id.clone(), task_arc.clone());
-    
+
     tracing::info!("上传任务已添加到管理器，upload_id: {}，开始后台上传...", upload_id);
-    
+
     // 在后台异步执行上传，不阻塞前端响应
     let task_for_spawn = task_arc.clone();
     let upload_id_for_spawn = upload_id.clone();
     let _user_uuid_for_spawn = user_uuid.clone();
-    
+
     tokio::spawn(async move {
         tracing::info!("后台上传任务开始: {}", upload_id_for_spawn);
-        
+
         match task_for_spawn.start().await {
             Ok(_) => {
                 tracing::info!("后台上传完成: {}", upload_id_for_spawn);
@@ -626,7 +598,7 @@ async fn upload_file(file_path: String) -> Result<String, String> {
             }
         }
     });
-    
+
     // 立即返回，不等待上传完成
     let result = format!("上传已开始，upload_id: {}，可使用get_upload_progress查询进度", upload_id);
     tracing::info!("{}", result);
@@ -634,21 +606,21 @@ async fn upload_file(file_path: String) -> Result<String, String> {
 }
 
 /// 获取上传进度
-/// 
+///
 /// 从上传任务管理器中获取真实的上传进度信息
 /// 如果任务不存在，返回一个默认的进度信息
 #[tauri::command]
 async fn get_upload_progress(upload_id: String) -> Result<serde_json::Value, String> {
     tracing::info!("前端调用get_upload_progress命令，upload_id: {}", upload_id);
-    
+
     // 尝试从上转任务管理器中获取任务
     let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
     let tasks_map = upload_tasks.lock().await;
-    
+
     if let Some(task) = tasks_map.get(&upload_id) {
         // 获取真实的进度信息
         let progress = task.get_progress().await;
-        
+
         // 将进度信息转换为JSON
         let status_str = match &progress.status {
             upload::UploadStatus::Pending => "Pending",
@@ -674,14 +646,14 @@ async fn get_upload_progress(upload_id: String) -> Result<serde_json::Value, Str
                 }));
             }
         };
-        
-        tracing::info!("获取到真实上传进度: {} - {}%", upload_id, 
+
+        tracing::info!("获取到真实上传进度: {} - {}%", upload_id,
             if progress.total_size > 0 {
                 (progress.uploaded as f64 / progress.total_size as f64 * 100.0).round() as u32
             } else {
                 0
             });
-        
+
         return Ok(serde_json::json!({
             "upload_id": progress.upload_id,
             "filename": progress.filename,
@@ -698,10 +670,10 @@ async fn get_upload_progress(upload_id: String) -> Result<serde_json::Value, Str
             },
         }));
     }
-    
+
     // 如果任务不存在，返回一个默认的进度信息
     tracing::info!("上传任务 {} 不存在，返回默认进度信息", upload_id);
-    
+
     Ok(serde_json::json!({
         "upload_id": upload_id,
         "filename": "未知文件",
@@ -716,17 +688,17 @@ async fn get_upload_progress(upload_id: String) -> Result<serde_json::Value, Str
 }
 
 /// 暂停上传
-/// 
+///
 /// TODO: 需要上传任务管理器来实现真正的暂停功能
 /// 先简单返回成功
 #[tauri::command]
 async fn pause_upload(upload_id: String) -> Result<(), String> {
     tracing::info!("前端调用pause_upload命令，upload_id: {}", upload_id);
-    
+
     // 尝试从上传任务管理器中获取任务
     let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
     let tasks_map = upload_tasks.lock().await;
-    
+
     if let Some(task) = tasks_map.get(&upload_id) {
         task.pause().await;
         tracing::info!("上传已暂停: {}", upload_id);
@@ -738,17 +710,17 @@ async fn pause_upload(upload_id: String) -> Result<(), String> {
 }
 
 /// 恢复上传
-/// 
+///
 /// 从上传任务管理器中找到任务并重新启动上传
 /// 支持断点续传，会自动跳过已上传的分片
 #[tauri::command]
 async fn resume_upload(upload_id: String) -> Result<(), String> {
     tracing::info!("前端调用resume_upload命令，upload_id: {}", upload_id);
-    
+
     // 从上传任务管理器中获取任务
     let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
     let tasks_map = upload_tasks.lock().await;
-    
+
     if let Some(task) = tasks_map.get(&upload_id) {
         // 检查当前状态
         let progress = task.get_progress().await;
@@ -769,19 +741,19 @@ async fn resume_upload(upload_id: String) -> Result<(), String> {
                 return Ok(());
             }
         }
-        
+
         // 注意：这里需要释放锁，然后在后台重新获取任务来执行
         drop(tasks_map);
-        
+
         // 在后台异步执行上传
         let upload_id_for_spawn = upload_id.clone();
         tokio::spawn(async move {
             tracing::info!("后台恢复上传任务: {}", upload_id_for_spawn);
-            
+
             // 重新获取任务管理器和任务
             let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
             let tasks_map = upload_tasks.lock().await;
-            
+
             if let Some(task) = tasks_map.get(&upload_id_for_spawn) {
                 // 直接使用引用来启动任务
                 match task.start().await {
@@ -796,7 +768,7 @@ async fn resume_upload(upload_id: String) -> Result<(), String> {
                 tracing::error!("恢复时找不到任务: {}", upload_id_for_spawn);
             }
         });
-        
+
         tracing::info!("上传任务已恢复: {}", upload_id);
         Ok(())
     } else {
@@ -806,76 +778,76 @@ async fn resume_upload(upload_id: String) -> Result<(), String> {
 }
 
 /// 批量上传文件（从文件路径列表）
-/// 
+///
 /// 前端提供文件路径列表，后端依次上传每个文件
 /// 支持分片上传和断点续传，分片大小为4MB
-/// 
+///
 /// 注意：上传过程可能需要较长时间，特别是大文件
 /// 会在后台异步执行上传，不阻塞前端响应
 #[tauri::command]
 async fn upload_files_from_paths(file_paths: Vec<String>, target_path: Option<String>) -> Result<serde_json::Value, String> {
     tracing::info!("前端调用upload_files_from_paths命令，文件数量: {}, 目标路径: {:?}", file_paths.len(), target_path);
-    
+
     if file_paths.is_empty() {
         return Ok(serde_json::json!({
             "success": false,
             "message": "没有提供文件路径"
         }));
     }
-    
+
     // 先获取设备ID、用户UUID和TOTP（只需要获取一次）
     let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
     let user_uuid = get_user_uuid().await.map_err(|e| format!("获取用户UUID失败: {}", e))?;
     let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
-    
+
     // 创建认证信息
     let auth_info = AuthInfo {
         device_id,
         totp,
         user_uuid: user_uuid.clone(),
     };
-    
+
     let mut upload_ids = Vec::new();
     let mut file_paths_str = Vec::new();
-    
+
     // 初始化上传任务管理器
     let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
-    
+
     // 为每个文件创建上传任务
     for file_path in file_paths {
         let file_path_str = file_path.clone();
         file_paths_str.push(file_path_str.clone());
-        
+
         // 创建上传任务，传递目标路径和user_uuid
         let task = UploadTask::new(
-            std::path::PathBuf::from(&file_path), 
-            auth_info.clone(), 
+            std::path::PathBuf::from(&file_path),
+            auth_info.clone(),
             target_path.as_deref(),
             Some(user_uuid.clone())
         )
             .await
             .map_err(|e| format!("创建上传任务失败: {}", e))?;
-        
+
         // 将任务保存到全局管理器中
         let task_arc = Arc::new(task);
         let upload_id = {
             let progress = task_arc.get_progress().await;
             progress.upload_id.clone()
         };
-        
+
         upload_ids.push(upload_id.clone());
-        
+
         let mut tasks_map = upload_tasks.lock().await;
         tasks_map.insert(upload_id.clone(), task_arc.clone());
-        
+
         // 在后台异步执行上传，不阻塞前端响应
         let task_for_spawn = task_arc.clone();
         let upload_id_for_spawn = upload_id.clone();
         let _user_uuid_for_spawn = user_uuid.clone();
-        
+
         tokio::spawn(async move {
             tracing::info!("后台上传任务开始: {}", upload_id_for_spawn);
-            
+
             match task_for_spawn.start().await {
                 Ok(_) => {
                     tracing::info!("后台上传完成: {}", upload_id_for_spawn);
@@ -886,9 +858,9 @@ async fn upload_files_from_paths(file_paths: Vec<String>, target_path: Option<St
             }
         });
     }
-    
+
     tracing::info!("批量上传任务已添加到管理器，共 {} 个文件，目标路径: {:?}", upload_ids.len(), target_path);
-    
+
     // 返回上传ID列表
     Ok(serde_json::json!({
         "success": true,
@@ -900,65 +872,65 @@ async fn upload_files_from_paths(file_paths: Vec<String>, target_path: Option<St
 }
 
 /// 选择文件并上传（支持指定目标路径）
-/// 
+///
 /// 使用系统原生文件对话框选择文件，然后开始上传
 /// 支持单个文件选择和指定上传目标路径
 #[tauri::command]
 async fn select_and_upload_file(target_path: Option<String>) -> Result<serde_json::Value, String> {
     tracing::info!("前端调用select_and_upload_file命令，目标路径: {:?}", target_path);
-    
+
     // 使用 rfd 库打开系统原生文件选择对话框
     let file = rfd::FileDialog::new()
         .pick_file();
-    
+
     match file {
         Some(file_path) => {
             tracing::info!("用户选择了文件: {:?}", file_path);
-            
+
             // 转换为字符串
             let file_path_str = file_path.to_string_lossy().to_string();
-            
+
             // 先获取设备ID、用户UUID和TOTP
             let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
             let user_uuid = get_user_uuid().await.map_err(|e| format!("获取用户UUID失败: {}", e))?;
             let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
-            
+
             // 创建认证信息（克隆user_uuid）
             let auth_info = AuthInfo {
                 device_id,
                 totp,
                 user_uuid: user_uuid.clone(),
             };
-            
+
             // 创建上传任务，传递目标路径和user_uuid
             tracing::info!("[DEBUG] 开始创建上传任务，目标路径: {:?}", target_path);
             let task = UploadTask::new(
-                file_path.clone(), 
-                auth_info, 
+                file_path.clone(),
+                auth_info,
                 target_path.as_deref(),
                 Some(user_uuid.clone())
             )
                 .await
                 .map_err(|e| format!("创建上传任务失败: {}", e))?;
             tracing::info!("[DEBUG] 上传任务创建成功");
-            
+
             // 将任务保存到全局管理器中
             let task_arc = Arc::new(task);
             let upload_id = {
                 let progress = task_arc.get_progress().await;
                 progress.upload_id.clone()
             };
-            
+
             // 初始化上传任务管理器
             let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
             let mut tasks_map = upload_tasks.lock().await;
             tasks_map.insert(upload_id.clone(), task_arc.clone());
-            
+
             tracing::info!("上传任务已添加到管理器，upload_id: {}，目标路径: {:?}", upload_id, target_path);
-            
+
             // 同步执行上传，等待完成
             tracing::info!("开始同步上传...");
-            
+
             match task_arc.start().await {
                 Ok(_) => {
                     tracing::info!("上传完成: {}", upload_id);
@@ -968,7 +940,7 @@ async fn select_and_upload_file(target_path: Option<String>) -> Result<serde_jso
                     return Err(format!("上传失败: {}", e));
                 }
             }
-            
+
             // 返回上传ID和结果
             Ok(serde_json::json!({
                 "success": true,
@@ -988,68 +960,68 @@ async fn select_and_upload_file(target_path: Option<String>) -> Result<serde_jso
 }
 
 /// 选择多个文件并上传
-/// 
+///
 /// 使用系统原生文件对话框选择多个文件，然后开始批量上传
 #[tauri::command]
 async fn select_and_upload_multiple_files() -> Result<serde_json::Value, String> {
     tracing::info!("前端调用select_and_upload_multiple_files命令，打开多文件选择对话框");
-    
+
     // 使用 rfd 库打开系统原生多文件选择对话框
     let files = rfd::FileDialog::new()
         .pick_files();
-    
+
     match files {
         Some(file_paths) => {
             tracing::info!("用户选择了 {} 个文件", file_paths.len());
-            
+
             if file_paths.is_empty() {
                 return Ok(serde_json::json!({
                     "success": false,
                     "cancelled": true
                 }));
             }
-            
+
             // 先获取设备ID、用户UUID和TOTP（只需要获取一次）
             let device_id = get_device_id().await.map_err(|e| format!("获取设备ID失败: {}", e))?;
             let user_uuid = get_user_uuid().await.map_err(|e| format!("获取用户UUID失败: {}", e))?;
             let totp = get_totp().await.map_err(|e| format!("获取TOTP失败: {}", e))?;
-            
+
             let auth_info = AuthInfo {
                 device_id,
                 totp,
                 user_uuid: user_uuid.clone(),
             };
-            
+
             let mut upload_ids = Vec::new();
             let mut file_paths_str = Vec::new();
-            
+
             // 为每个文件创建上传任务
             for file_path in file_paths {
                 let file_path_str = file_path.to_string_lossy().to_string();
                 file_paths_str.push(file_path_str.clone());
-                
+
                 // 创建上传任务（传递user_uuid）
                 let task = UploadTask::new(file_path.clone(), auth_info.clone(), None, Some(user_uuid.clone()))
                     .await
                     .map_err(|e| format!("创建上传任务失败: {}", e))?;
-                
+
                 // 将任务保存到全局管理器中
                 let task_arc = Arc::new(task);
                 let upload_id = {
                     let progress = task_arc.get_progress().await;
                     progress.upload_id.clone()
                 };
-                
+
                 upload_ids.push(upload_id.clone());
-                
+
                 // 初始化上传任务管理器
                 let upload_tasks = UPLOAD_TASKS.get_or_init(|| Mutex::new(HashMap::new()));
                 let mut tasks_map = upload_tasks.lock().await;
                 tasks_map.insert(upload_id.clone(), task_arc.clone());
-                
+
                 // 同步执行上传，等待完成
                 tracing::info!("开始上传: {}", file_path_str);
-                
+
                 match task_arc.start().await {
                     Ok(_) => {
                         tracing::info!("上传完成: {}", upload_id);
@@ -1060,9 +1032,9 @@ async fn select_and_upload_multiple_files() -> Result<serde_json::Value, String>
                     }
                 }
             }
-            
+
             tracing::info!("批量上传完成，共 {} 个文件", upload_ids.len());
-            
+
             // 返回上传ID列表
             Ok(serde_json::json!({
                 "success": true,
@@ -1085,20 +1057,20 @@ async fn select_and_upload_multiple_files() -> Result<serde_json::Value, String>
 #[tauri::command]
 fn select_files() -> Result<serde_json::Value, String> {
     tracing::info!("前端调用select_files命令，打开多文件选择对话框");
-    
+
     let files = rfd::FileDialog::new().pick_files();
-    
+
     match files {
         Some(file_paths) => {
             tracing::info!("用户选择了 {} 个文件", file_paths.len());
-            
+
             if file_paths.is_empty() {
                 return Ok(serde_json::json!({
                     "success": false,
                     "cancelled": true
                 }));
             }
-            
+
             let files_info: Vec<serde_json::Value> = file_paths
                 .iter()
                 .map(|p| {
@@ -1112,9 +1084,9 @@ fn select_files() -> Result<serde_json::Value, String> {
                     })
                 })
                 .collect();
-            
+
             tracing::info!("文件选择完成");
-            
+
             Ok(serde_json::json!({
                 "success": true,
                 "files": files_info,
@@ -1132,18 +1104,18 @@ fn select_files() -> Result<serde_json::Value, String> {
 }
 
 /// 获取当前使用的后端配置
-/// 
+///
 /// 前端可以调用这个命令获取当前使用的后端地址和端口
 /// 返回格式：{"base_url": "xxx", "port": 8005, "full_url": "xxx:8005"}
 #[tauri::command]
 async fn get_backend_config() -> Result<serde_json::Value, String> {
     tracing::info!("前端调用get_backend_config命令...");
-    
+
     match config::get_backend_config() {
         Ok(config) => {
             let full_url = config.get_full_url();
             tracing::info!("当前后端配置: {}", full_url);
-            
+
             Ok(serde_json::json!({
                 "base_url": config.base_url,
                 "port": config.port,
@@ -1158,13 +1130,13 @@ async fn get_backend_config() -> Result<serde_json::Value, String> {
 }
 
 /// 截取屏幕截图
-/// 
+///
 /// 前端调用这个命令截取当前屏幕
 /// 返回base64编码的PNG图片数据
 #[tauri::command]
 fn capture_screen() -> Result<serde_json::Value, String> {
     tracing::info!("前端调用capture_screen命令...");
-    
+
     match screenshot::capture_screen() {
         Ok(result) => {
             tracing::info!("截图成功: {}x{}", result.width, result.height);
@@ -1186,7 +1158,7 @@ fn capture_screen() -> Result<serde_json::Value, String> {
 #[tauri::command]
 fn get_monitors() -> Result<serde_json::Value, String> {
     tracing::info!("前端调用get_monitors命令...");
-    
+
     match screenshot::get_monitors() {
         Ok(monitors) => {
             tracing::info!("获取到 {} 个显示器", monitors.len());
@@ -1203,7 +1175,7 @@ fn get_monitors() -> Result<serde_json::Value, String> {
 }
 
 /// 模拟按下并松开右箭头键
-/// 
+///
 /// 前端调用这个命令来模拟键盘点击右箭头键
 /// 会先按下右箭头键，然后松开
 #[tauri::command]
@@ -1216,12 +1188,12 @@ fn press_win_key() -> Result<(), String> {
         KEYBD_EVENT_FLAGS,
         VK_RIGHT,
     };
-    
+
     tracing::info!("[press_right_key] 开始模拟右箭头键点击...");
-    
+
     unsafe {
         let mut inputs: [INPUT; 2] = std::mem::zeroed();
-        
+
         // 按下右箭头键
         inputs[0].r#type = INPUT_KEYBOARD;
         inputs[0].Anonymous.ki = KEYBDINPUT {
@@ -1231,7 +1203,7 @@ fn press_win_key() -> Result<(), String> {
             time: 0,
             dwExtraInfo: 0,
         };
-        
+
         // 松开右箭头键
         inputs[1].r#type = INPUT_KEYBOARD;
         inputs[1].Anonymous.ki = KEYBDINPUT {
@@ -1241,30 +1213,30 @@ fn press_win_key() -> Result<(), String> {
             time: 0,
             dwExtraInfo: 0,
         };
-        
+
         tracing::info!("[press_right_key] 调用SendInput...");
         let sent = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
         tracing::info!("[press_right_key] SendInput返回: {}", sent);
-        
+
         if sent != 2 {
             return Err(format!("SendInput失败，只发送了 {} 个输入", sent));
         }
     }
-    
+
     tracing::info!("[press_right_key] 右箭头键点击完成");
     Ok(())
 }
 
 /// 获取本地蓝牙版本
-/// 
+///
 /// 返回本地计算机的蓝牙适配器版本
 #[tauri::command]
 async fn get_local_bluetooth_version() -> Result<String, String> {
     tracing::info!("获取本地蓝牙版本...");
-    
+
     let manager = get_cpen_device_manager()?;
     let mut device_manager = manager.lock().await;
-    
+
     match device_manager.get_local_bluetooth_version().await {
         Ok(version) => {
             tracing::info!("本地蓝牙版本：{}", version);
@@ -1278,16 +1250,16 @@ async fn get_local_bluetooth_version() -> Result<String, String> {
 }
 
 /// 获取 Cpen 设备蓝牙版本
-/// 
+///
 /// 返回已连接 Cpen 设备的蓝牙版本
 /// 需要先连接设备才能获取
 #[tauri::command]
 async fn get_cpen_bluetooth_version() -> Result<String, String> {
     tracing::info!("获取 Cpen 设备蓝牙版本...");
-    
+
     let manager = get_cpen_device_manager()?;
     let mut device_manager = manager.lock().await;
-    
+
     match device_manager.get_cpen_bluetooth_version().await {
         Ok(version) => {
             tracing::info!("Cpen 设备蓝牙版本：{}", version);
@@ -1301,15 +1273,15 @@ async fn get_cpen_bluetooth_version() -> Result<String, String> {
 }
 
 /// 发送蓝牙保活心跳包
-/// 
+///
 /// 手动发送一次心跳包以保持连接
 #[tauri::command]
 async fn send_keep_alive() -> Result<String, String> {
     tracing::info!("发送蓝牙保活心跳包...");
-    
+
     let manager = get_cpen_device_manager()?;
     let mut device_manager = manager.lock().await;
-    
+
     match device_manager.send_keep_alive().await {
         Ok(_) => {
             tracing::info!("保活心跳包发送成功");
@@ -1323,7 +1295,7 @@ async fn send_keep_alive() -> Result<String, String> {
 }
 
 /// 模拟按下并松开左箭头键
-/// 
+///
 /// GPIO9 按钮松开时调用，模拟按下左箭头键
 #[tauri::command]
 fn press_left_key() -> Result<(), String> {
@@ -1335,12 +1307,12 @@ fn press_left_key() -> Result<(), String> {
         KEYBD_EVENT_FLAGS,
         VK_LEFT,
     };
-    
+
     tracing::info!("[press_left_key] 开始模拟左箭头键点击...");
-    
+
     unsafe {
         let mut inputs: [INPUT; 2] = std::mem::zeroed();
-        
+
         // 按下左箭头键
         inputs[0].r#type = INPUT_KEYBOARD;
         inputs[0].Anonymous.ki = KEYBDINPUT {
@@ -1350,7 +1322,7 @@ fn press_left_key() -> Result<(), String> {
             time: 0,
             dwExtraInfo: 0,
         };
-        
+
         // 松开左箭头键
         inputs[1].r#type = INPUT_KEYBOARD;
         inputs[1].Anonymous.ki = KEYBDINPUT {
@@ -1360,26 +1332,26 @@ fn press_left_key() -> Result<(), String> {
             time: 0,
             dwExtraInfo: 0,
         };
-        
+
         let sent = SendInput(&inputs, std::mem::size_of::<INPUT>() as i32);
-        
+
         if sent != 2 {
             return Err(format!("SendInput失败，只发送了 {} 个输入", sent));
         }
     }
-    
+
     tracing::info!("[press_left_key] 左箭头键点击完成");
     Ok(())
 }
 
 /// 运行 GUI 自动化 agent
-/// 
+///
 /// instruction: 用户指令，例如"打开 bilibili"
 /// max_step: 最大执行步数
 #[tauri::command]
 async fn run_agent_automation(instruction: String, max_step: usize) -> Result<String, String> {
     tracing::info!("启动 agent 自动化，指令：{}", instruction);
-    
+
     // 初始化并重置停止标志
     if AGENT_STOP_FLAG.get().is_none() {
         AGENT_STOP_FLAG.set(Mutex::new(false))
@@ -1388,7 +1360,7 @@ async fn run_agent_automation(instruction: String, max_step: usize) -> Result<St
         let mut flag = AGENT_STOP_FLAG.get().unwrap().lock().await;
         *flag = false;
     }
-    
+
     match agent::run_gui_automation(&instruction, max_step).await {
         Ok(log) => {
             tracing::info!("agent 自动化完成");
@@ -1405,7 +1377,7 @@ async fn run_agent_automation(instruction: String, max_step: usize) -> Result<St
 #[tauri::command]
 async fn stop_agent_automation() -> Result<String, String> {
     tracing::info!("收到停止 agent 自动化请求");
-    
+
     if let Some(stop_flag) = AGENT_STOP_FLAG.get() {
         let mut flag = stop_flag.lock().await;
         *flag = true;
@@ -1431,7 +1403,7 @@ async fn is_agent_running() -> Result<bool, String> {
 #[tauri::command]
 async fn set_agent_hotkey(hotkey: String) -> Result<String, String> {
     tracing::info!("设置 agent 停止热键：{}", hotkey);
-    
+
     if AGENT_HOTKEY.get().is_none() {
         AGENT_HOTKEY.set(Mutex::new(hotkey.clone()))
             .map_err(|_| "热键配置已初始化".to_string())?;
@@ -1439,7 +1411,7 @@ async fn set_agent_hotkey(hotkey: String) -> Result<String, String> {
         let mut key = AGENT_HOTKEY.get().unwrap().lock().await;
         *key = hotkey.clone();
     }
-    
+
     Ok(format!("热键已设置为：{}", hotkey))
 }
 
@@ -1456,7 +1428,7 @@ async fn get_agent_hotkey() -> Result<String, String> {
 }
 
 /// 显示 Windows 原生通知
-/// 
+///
 /// 用于在特定事件（如开启上课模式）时显示系统通知
 #[tauri::command]
 fn show_windows_notification(title: String, message: String) -> Result<(), String> {
@@ -1465,19 +1437,19 @@ fn show_windows_notification(title: String, message: String) -> Result<(), Strin
 }
 
 /// 显示 Windows 原生通知（带配置）
-/// 
+///
 /// 用于在特定事件（如开启上课模式）时显示系统通知
 /// 可以指定通知的持续时间和应用 ID
 #[tauri::command]
 fn show_windows_notification_with_config(
-    title: String, 
+    title: String,
     message: String,
     app_id: Option<String>,
     duration: Option<String>,
 ) -> Result<(), String> {
     tracing::info!("[通知] 收到显示通知请求（带配置）：{} - {}", title, message);
     crate::notification::show_notification_with_config(
-        &title, 
+        &title,
         &message,
         app_id.as_deref(),
         duration.as_deref(),

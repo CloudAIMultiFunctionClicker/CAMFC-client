@@ -1,18 +1,4 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <script setup>
 import { ls,mkdir,rm } from '../data/fileSystem.js'
@@ -25,10 +11,6 @@ import { openFile } from '../data/storage.js'
 import { getDownloadProgress } from '../data/download.js'
 import { shareFileToGroup, getGroupList } from '../data/group.js'
 
-
-// TODO: 这里要不要把路径编辑功能抽成单独组件？先放一起看看，如果代码太多再考虑
-
-// 接受当前路径作为参数，默认空字符串就是根目录
 const props = defineProps({
   currentPath: {
     type: String,
@@ -36,43 +18,33 @@ const props = defineProps({
   }
 })
 
-
-
-// 响应式数据
 const fileList = ref([])
 const loading = ref(false)
 const error = ref(null)
 
-// 上传弹窗相关状态
 const showUploadModal = ref(false)
 const droppedFiles = ref([])
 
-// 新建文件夹弹窗相关状态
 const showNewFolderModal = ref(false)
 const newFolderName = ref('')
 
-// 删除确认弹窗相关状态
 const showDeleteModal = ref(false)
 const deleteCount = ref(0)
 
-// 分享文件到群组弹窗相关状态
 const showShareModal = ref(false)
 const shareTargetFile = ref(null)
 const groupList = ref([])
 const selectedGroup = ref(null)
 
-// 文件选择相关状态
-const selectedFiles = ref(new Set()) // 用Set存储选中的文件路径，因为Set查询更快
-const lastSelectedIndex = ref(-1) // 记录上一次选中的文件索引，用于Shift连续选择
-const ctrlPressed = ref(false) // 是否按下了Ctrl键
-const shiftPressed = ref(false) // 是否按下了Shift键
-const focusedIndex = ref(-1) // 当前焦点的文件索引，用于键盘上下键切换
+const selectedFiles = ref(new Set())
+const lastSelectedIndex = ref(-1)
+const ctrlPressed = ref(false)
+const shiftPressed = ref(false)
+const focusedIndex = ref(-1)
 
-// 路径编辑相关状态 - 支持点击当前路径手动输入
 const isEditingPath = ref(false)
 const editingPathValue = ref('')
 
-// 操作按钮点击处理 - 暂时先定义空函数，功能后面再加
 const handleRefreshClick = async () => {
   console.log('刷新文件列表')
   await fetchFiles(props.currentPath)
@@ -85,13 +57,12 @@ const handleUploadClick = () => {
   console.log('打开上传弹窗')
 }
 
-// 文件选择处理
 const handleFileSelect = (e) => {
   if (e.target.files.length) {
     const newFiles = Array.from(e.target.files)
-    // 追加到现有文件列表，避免重复文件
+
     newFiles.forEach(newFile => {
-      const exists = droppedFiles.value.some(existingFile => 
+      const exists = droppedFiles.value.some(existingFile =>
         existingFile.name === newFile.name && existingFile.size === newFile.size
       )
       if (!exists) {
@@ -102,17 +73,16 @@ const handleFileSelect = (e) => {
   }
 }
 
-// 点击选择文件按钮
 const triggerFileSelect = async () => {
   try {
     const result = await selectFiles()
-    
+
     if (result.success && result.files && result.files.length > 0) {
       result.files.forEach(fileInfo => {
-        const exists = droppedFiles.value.some(existingFile => 
+        const exists = droppedFiles.value.some(existingFile =>
           existingFile.name === fileInfo.name
         )
-        
+
         if (!exists) {
           droppedFiles.value.push({
             name: fileInfo.name,
@@ -121,7 +91,7 @@ const triggerFileSelect = async () => {
           })
         }
       })
-      
+
       console.log('选择的文件:', droppedFiles.value)
     }
   } catch (error) {
@@ -130,17 +100,14 @@ const triggerFileSelect = async () => {
   }
 }
 
-// 移除单个文件
 const removeFile = (index) => {
   droppedFiles.value.splice(index, 1)
 }
 
-// 清空所有文件
 const clearFiles = () => {
   droppedFiles.value = []
 }
 
-// 计算文件大小显示
 const formatFileSize = (bytes) => {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -150,39 +117,33 @@ const formatFileSize = (bytes) => {
 }
 
 const confirmUpload = async () => {
-  // 检查是否有文件
+
   if (droppedFiles.value.length === 0) {
     showToast('请先选择要上传的文件', '#f59e0b')
     return
   }
-  
-  // 关闭弹窗
+
   showUploadModal.value = false
-  
+
   try {
-    // 获取当前目标路径 - 空字符串表示根目录
+
     const targetPath = props.currentPath || ''
     console.log(`准备上传文件到目录: ${targetPath || '/'}`)
-    
-    // 提取文件路径列表
+
     const filePaths = droppedFiles.value.map(file => file.path)
     console.log('要上传的文件路径:', filePaths)
-    
-    // 调用批量上传函数，逐一上传文件
+
     const result = await uploadFilesFromPaths(filePaths, targetPath)
-    
+
     if (result.success) {
       console.log('上传任务已创建，共', result.count, '个文件')
-      
-      // 上传任务已在后端执行，传输页面会显示进度
-      // 这里不等待上传完成，让用户在传输页面查看进度
+
     }
   } catch (error) {
     console.error('上传失败:', error)
     showToast(`上传失败: ${error.message}`, '#ef4444')
   }
-  
-  // 清空文件列表
+
   droppedFiles.value = []
 }
 
@@ -194,73 +155,63 @@ const cancelUpload = () => {
 
 const handleDownloadClick = async () => {
   console.log('下载点击，处理选中的文件')
-  
+
   const selectedCount = selectedFiles.value.size
   if (selectedCount === 0) {
     showToast('请先选择要下载的文件', '#f59e0b')
     return
   }
-  
-  // 获取选中的文件信息
-  const selectedFileInfos = fileList.value.filter(item => 
+
+  const selectedFileInfos = fileList.value.filter(item =>
     selectedFiles.value.has(item.path)
   )
-  
+
   console.log('选中的文件信息:', selectedFileInfos)
-  
-  // 提取文件ID - 使用完整的文件路径，因为文件可能在子目录中
+
   const fileIds = selectedFileInfos.map(file => {
-    // 如果是文件夹，不能下载
+
     if (file.is_dir) {
       console.warn(`跳过文件夹下载: ${file.name}`)
       return null
     }
-    
-    // 使用完整的文件路径，而不仅仅是文件名
-    // 文件路径相对于用户存储目录，例如 "ds/下载.png"
-    // 注意：path字段已经包含完整路径，不需要再拼接当前路径
+
     if (file.path) {
       console.log(`下载文件完整路径: ${file.path}`)
       return file.path
     }
-    
-    // 如果没有path字段，尝试使用file_id或name
-    // 但这种情况应该很少见，因为API应该总是返回path
+
     console.warn(`文件缺少path字段，使用name作为备用: ${file.name}`)
     return file.file_id || file.name
   }).filter(id => id !== null)
-  
+
   if (fileIds.length === 0) {
     showToast('选中的都是文件夹，请选择文件进行下载', '#f59e0b')
     return
   }
-  
+
   console.log('要下载的文件ID:', fileIds)
-  
-  // 直接下载，不需要二次确认
+
   try {
-    // 调用批量下载函数
+
     const results = await batchDownloadFiles(fileIds)
-    
-    // 显示下载结果
+
     const successCount = results.filter(r => r.success).length
     const errorCount = results.filter(r => !r.success).length
-    
+
     console.log(`下载完成：${successCount} 成功，${errorCount} 失败`)
-    
+
     if (errorCount > 0) {
-      // 如果有失败的文件，显示详细信息
+
       const errorFiles = results.filter(r => !r.success)
       console.error('下载失败的文件:', errorFiles)
     }
-    
+
   } catch (error) {
     console.error('下载过程中出错:', error)
     showToast(`下载出错：${error.message}`, '#ef4444')
   }
 }
 
-// 双击文件处理：下载并打开
 const handleFileDoubleClick = async (item) => {
   console.log('===== 双击事件触发 =====')
   console.log('双击 item:', item)
@@ -270,14 +221,12 @@ const handleFileDoubleClick = async (item) => {
   console.log('item.is_file:', item.is_file)
   console.log('item.type:', item.type)
   console.log('loading:', loading.value)
-  
-  // 如果是文件夹，进入文件夹
-  // 兼容两种数据格式：is_dir 字段或 type === 'dir'
+
   const isDir = item.is_dir || item.type === 'dir' || item.type === 'folder'
   const isFile = item.is_file || item.type === 'file'
-  
+
   console.log('判断结果 - isDir:', isDir, 'isFile:', isFile)
-  
+
   if (isDir) {
     console.log('进入文件夹:', item.path)
     if (!loading) {
@@ -285,58 +234,52 @@ const handleFileDoubleClick = async (item) => {
     }
     return
   }
-  
-  // 如果是文件，下载并打开
+
   if (isFile && !loading) {
     console.log('开始下载并打开文件:', item.name)
-    
+
     try {
-      // 显示下载提示
+
       showToast(`下载中：${item.name}`, '#3b82f6')
       console.log('开始调用 downloadFile, path:', item.path)
-      
-      // 下载文件
+
       const result = await downloadFile(item.path)
-      
+
       console.log('downloadFile 返回结果:', result)
-      
-      // 延迟检查下载进度，等待文件完全下载并校验
+
       let downloadComplete = false
       let checkCount = 0
-      const maxChecks = 30 // 最多检查 30 次（约 15 秒）
-      
+      const maxChecks = 30
+
       while (!downloadComplete && checkCount < maxChecks) {
-        await new Promise(resolve => setTimeout(resolve, 500)) // 每 500ms 检查一次
+        await new Promise(resolve => setTimeout(resolve, 500))
         const progress = await getDownloadProgress(item.path)
-        
+
         console.log(`检查下载进度 #${checkCount + 1}:`, progress.status, `进度：${progress.progress_percentage}%`)
-        
-        // 检查下载是否完成（状态为 Completed 且进度 100%）
+
         if (progress.status === 'Completed' && progress.progress_percentage >= 100) {
           downloadComplete = true
           console.log('下载完成并校验通过')
         } else if (progress.status === 'Error') {
-          // 下载出错
+
           showToast(`${item.name} 下载失败：${progress.status}`, '#ef4444')
           return
         }
-        
+
         checkCount++
       }
-      
+
       if (!downloadComplete) {
         showToast(`${item.name} 下载超时，请检查网络`, '#f59e0b')
         return
       }
-      
-      // 确认下载完成后再显示成功提示
+
       showToast(`${item.name} 下载成功`, '#10b981')
-      
-      // 延迟一下再打开文件，确保文件已完全写入
+
       setTimeout(async () => {
         try {
           console.log('准备打开文件:', result)
-          // 打开文件
+
           await openFile(result)
           console.log('文件已打开:', result)
         } catch (openError) {
@@ -344,10 +287,10 @@ const handleFileDoubleClick = async (item) => {
           showToast(`打开文件失败：${openError.message}`, '#ef4444')
         }
       }, 500)
-      
+
     } catch (error) {
       console.error('双击下载文件失败:', error)
-      // 错误提示已在 downloadFile 中显示
+
     }
   } else {
     console.log('不是文件或正在加载中, isFile:', isFile, 'loading:', loading.value)
@@ -362,7 +305,7 @@ const handleNewFolderClick = () => {
 const confirmNewFolder = async () => {
   if (newFolderName.value.trim()) {
     console.log('创建文件夹:', newFolderName.value, '在当前路径:', props.currentPath)
-    
+
     try {
       const result = await mkdir(props.currentPath, newFolderName.value)
       if (result !== null) {
@@ -392,38 +335,35 @@ const handleDeleteClick = async () => {
     showToast('请先选择要删除的文件', '#f59e0b')
     return
   }
-  
+
   deleteCount.value = selectedCount
   showDeleteModal.value = true
 }
 
-// 分享文件到群组
 const handleShareClick = async () => {
   const selectedCount = selectedFiles.value.size
   if (selectedCount === 0) {
     showToast('请先选择要分享的文件', '#f59e0b')
     return
   }
-  
+
   if (selectedCount > 1) {
     showToast('暂不支持批量分享，请选择单个文件', '#f59e0b')
     return
   }
-  
-  // 获取选中的文件
+
   const selectedPath = Array.from(selectedFiles.value)[0]
   const selectedItem = fileList.value.find(item => item.path === selectedPath)
-  
+
   if (!selectedItem || selectedItem.is_dir) {
     showToast('只能分享文件，不能分享文件夹', '#f59e0b')
     return
   }
-  
+
   shareTargetFile.value = selectedItem
   showShareModal.value = true
   selectedGroup.value = null
-  
-  // 加载群组列表
+
   try {
     const groups = await getGroupList()
     groupList.value = groups
@@ -439,15 +379,15 @@ const confirmShare = async () => {
     showToast('请选择要分享到的群组', '#f59e0b')
     return
   }
-  
+
   if (!shareTargetFile.value) {
     showToast('没有要分享的文件', '#ef4444')
     return
   }
-  
+
   try {
     const result = await shareFileToGroup(shareTargetFile.value.path, selectedGroup.value.uuid)
-    
+
     if (result && result.success) {
       showToast(`文件已分享到群组 "${selectedGroup.value.name}"`, '#10b981')
       console.log('分享成功:', result)
@@ -458,7 +398,7 @@ const confirmShare = async () => {
     console.error('分享失败:', error)
     showToast(`分享失败：${error.response?.data?.detail || error.message}`, '#ef4444')
   }
-  
+
   showShareModal.value = false
   shareTargetFile.value = null
   selectedGroup.value = null
@@ -475,11 +415,11 @@ const cancelShare = () => {
 const confirmDelete = async () => {
   showDeleteModal.value = false
   console.log('删除选中的文件:', Array.from(selectedFiles.value))
-  
+
   try {
     let successCount = 0
     let errorCount = 0
-    
+
     for (const file of selectedFiles.value) {
       try {
         const result = await rm(file, true)
@@ -495,14 +435,14 @@ const confirmDelete = async () => {
         console.error('删除失败:', file, error)
       }
     }
-    
+
     if (successCount > 0) {
       showToast(`成功删除 ${successCount} 个文件${errorCount > 0 ? `，${errorCount} 个失败` : ''}`)
       await fetchFiles(props.currentPath)
     } else {
       showToast('删除失败，请重试', '#ef4444')
     }
-    
+
   } catch (error) {
     console.error('删除过程中出错:', error)
     showToast(`删除出错: ${error.message}`, '#ef4444')
@@ -513,22 +453,21 @@ const cancelDelete = () => {
   showDeleteModal.value = false
 }
 
-// 获取文件列表
 const fetchFiles = async (path) => {
   loading.value = true
   error.value = null
-  
+
   try {
     console.log('正在获取路径:', path)
     const result = await ls(path)
-    
+
     if (result && result.entries) {
-      // 统一转换数据格式，确保有 is_dir 和 is_file 字段
+
       fileList.value = result.entries.map(item => {
-        // 兼容不同的数据格式
+
         const isDir = item.is_dir || item.type === 'dir' || item.type === 'folder' || item.is_directory
         const isFile = item.is_file || item.type === 'file' || !isDir
-        
+
         return {
           ...item,
           is_dir: isDir,
@@ -537,15 +476,15 @@ const fetchFiles = async (path) => {
       })
       console.log('获取到文件列表:', fileList.value.length, '个项目')
     } else {
-      // 如果返回 null 或者没有 entries，可能是超时了
+
       fileList.value = []
       error.value = '请求超时或返回数据格式不对'
       console.warn('API 返回数据格式不对:', result)
     }
   } catch (err) {
-    // 处理错误信息，根据状态码显示不同的提示
+
     if (err.response) {
-      // 服务器返回了错误状态码
+
       const status = err.response.status
       if (status === 400) {
         error.value = '路径违规'
@@ -555,13 +494,13 @@ const fetchFiles = async (path) => {
         error.value = `服务器错误 (${status})`
       }
       console.error('获取文件列表出错 - 状态码:', status, err)
-      
+
     } else if (err.request) {
-      // 请求已发出但没有收到响应
+
       error.value = '网络错误，请检查连接'
       console.error('网络错误:', err)
     } else {
-      // 其他错误
+
       error.value = err.message || '获取文件列表失败'
       console.error('其他错误:', err)
     }
@@ -572,118 +511,98 @@ const fetchFiles = async (path) => {
   }
 }
 
-
-
-// 点击文件夹进入子目录 - 这里只处理，让父组件知道路径变化
 const emit = defineEmits(['path-change'])
 
 const enterFolder = (folderPath) => {
   console.log('点击进入文件夹:', folderPath)
-  // 进入新文件夹时清空选择状态，不然上个目录选中的文件在新目录里可能不存在
+
   selectedFiles.value.clear()
   lastSelectedIndex.value = -1
   emit('path-change', folderPath)
 }
 
-// 开始编辑路径 - 点击当前路径时触发
 const startEditing = () => {
   isEditingPath.value = true
-  // 显示路径时要以'/'开头，空路径显示为'/'，非空路径也加上'/'前缀
-  // 这样用户编辑时看到的就是/test1这样的格式
+
   editingPathValue.value = props.currentPath === '' ? '/' : '/' + props.currentPath
   console.log('开始编辑路径，当前值:', editingPathValue.value)
 }
 
-// 确认路径编辑 - 回车或点击确认按钮
 const confirmEdit = () => {
   if (!isEditingPath.value) return
-  
+
   let newPath = editingPathValue.value.trim()
   console.log('确认编辑路径，输入值:', newPath)
-  
-  // 处理输入值：如果输入的是'/'，转为空字符串（根目录）
+
   if (newPath === '/') {
     newPath = ''
   } else if (newPath.startsWith('/')) {
-    // 去掉开头的斜杠，因为API不需要开头的斜杠
-    // 用户输入/test1，传到后端应该是test1
+
     newPath = newPath.substring(1)
   }
-  
-  // 结束编辑模式
+
   isEditingPath.value = false
-  
-  // 如果路径没变，就不发请求了
+
   if (newPath !== props.currentPath) {
     console.log('路径变化，跳转到:', newPath)
     emit('path-change', newPath)
   }
 }
 
-// 取消路径编辑
 const cancelEdit = () => {
   isEditingPath.value = false
   console.log('取消路径编辑')
 }
 
-// 返回上级目录
 const goUp = () => {
-  if (!props.currentPath) return // 已经在根目录
-  
-  // 改用正斜杠作为路径分隔符 - 之前用的反斜杠是Windows风格，不通用
-  // 注意：这里要过滤掉空字符串，因为split('/')会在路径开头产生空元素
+  if (!props.currentPath) return
+
   const parts = props.currentPath.split('/').filter(p => p !== '')
-  parts.pop() // 去掉最后一级
-  
-  // 重新拼接路径，如果parts空了就返回根目录''
+  parts.pop()
+
   const newPath = parts.length > 0 ? parts.join('/') : ''
   emit('path-change', newPath)
 }
 
-// 监听路径变化，重新获取数据
 watch(() => props.currentPath, (newPath) => {
   console.log('路径变化了，重新获取:', newPath)
-  // 路径变化时清空选择状态和焦点
+
   selectedFiles.value.clear()
   lastSelectedIndex.value = -1
   focusedIndex.value = -1
   fetchFiles(newPath)
 })
 
-// 组件挂载时获取初始数据
 onMounted(() => {
   fetchFiles(props.currentPath)
-  
-  // 添加键盘事件监听，用于检测Ctrl和Shift键
+
   const handleKeyDown = (e) => {
-    if (e.key === 'Control' || e.key === 'Meta') { // Meta是Mac的Command键
+    if (e.key === 'Control' || e.key === 'Meta') {
       ctrlPressed.value = true
     } else if (e.key === 'Shift') {
       shiftPressed.value = true
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      // 上下键：切换文件焦点
+
       e.preventDefault()
       if (fileList.value.length === 0) return
-      
-      // 如果没有焦点，先选中第一个
+
       if (focusedIndex.value === -1) {
         focusedIndex.value = 0
         lastSelectedIndex.value = 0
         selectedFiles.value.clear()
         selectedFiles.value.add(fileList.value[0].path)
       } else {
-        // 根据方向键调整焦点
+
         if (e.key === 'ArrowUp' && focusedIndex.value > 0) {
           focusedIndex.value--
         } else if (e.key === 'ArrowDown' && focusedIndex.value < fileList.value.length - 1) {
           focusedIndex.value++
         }
-        
-        // 处理Shift+上下键（连续选择）
+
         if (shiftPressed.value && lastSelectedIndex.value !== -1) {
           const start = Math.min(lastSelectedIndex.value, focusedIndex.value)
           const end = Math.max(lastSelectedIndex.value, focusedIndex.value)
-          
+
           selectedFiles.value.clear()
           for (let i = start; i <= end; i++) {
             if (i < fileList.value.length) {
@@ -691,20 +610,19 @@ onMounted(() => {
             }
           }
         } else {
-          // 普通上下键，只选中当前焦点
+
           lastSelectedIndex.value = focusedIndex.value
           selectedFiles.value.clear()
           selectedFiles.value.add(fileList.value[focusedIndex.value].path)
         }
       }
-      
-      // 滚动到焦点位置
+
       const focusedRow = document.querySelector(`.table-row:nth-child(${focusedIndex.value + 1})`)
       if (focusedRow) {
         focusedRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
       }
     } else if (e.key === 'Enter') {
-      // Enter键：进入选中的文件夹
+
       if (selectedFiles.value.size === 1) {
         const selectedPath = Array.from(selectedFiles.value)[0]
         const selectedItem = fileList.value.find(item => item.path === selectedPath)
@@ -712,7 +630,7 @@ onMounted(() => {
           enterFolder(selectedPath)
         }
       } else if (selectedFiles.value.size > 1) {
-        // 多选时，找第一个文件夹进入
+
         for (const path of selectedFiles.value) {
           const item = fileList.value.find(f => f.path === path)
           if (item && item.is_dir) {
@@ -722,15 +640,14 @@ onMounted(() => {
         }
       }
     } else if (e.key === 'Backspace') {
-      // Backspace键：返回上一级目录
-      // 如果正在编辑路径，就别触发返回，让用户正常删除文字
+
       if (!isEditingPath.value) {
-        e.preventDefault() // 防止浏览器后退
+        e.preventDefault()
         goUp()
       }
     }
   }
-  
+
   const handleKeyUp = (e) => {
     if (e.key === 'Control' || e.key === 'Meta') {
       ctrlPressed.value = false
@@ -738,30 +655,25 @@ onMounted(() => {
       shiftPressed.value = false
     }
   }
-  
-  // 全局点击事件，点击空白处清空选择（除了Ctrl和Shift操作时）
-  // 这里有个问题：如果点击的是按钮或其他可交互元素，不应该清空选择
-  // 先简单实现，后面再优化
+
   const handleGlobalClick = (e) => {
-    // 检查点击的是不是文件行，如果是的话就不在这里处理（文件行有自己的点击事件）
-    // 主要处理点击表格空白区域的情况
+
     const isFileRow = e.target.closest('.table-row') !== null
-    const isClickableElement = e.target.closest('button') !== null || 
+    const isClickableElement = e.target.closest('button') !== null ||
                               e.target.closest('input') !== null ||
                               e.target.closest('.current-path') !== null
-    
+
     if (!isFileRow && !isClickableElement && !ctrlPressed.value && !shiftPressed.value) {
-      // 点击空白处且没有按Ctrl/Shift，清空选择
+
       selectedFiles.value.clear()
       lastSelectedIndex.value = -1
     }
   }
-  
+
   window.addEventListener('keydown', handleKeyDown)
   window.addEventListener('keyup', handleKeyUp)
   window.addEventListener('click', handleGlobalClick)
-  
-  // 组件卸载时清理事件监听
+
   onUnmounted(() => {
     window.removeEventListener('keydown', handleKeyDown)
     window.removeEventListener('keyup', handleKeyUp)
@@ -769,10 +681,6 @@ onMounted(() => {
   })
 })
 
-// 点击其他地方取消编辑 - 简单处理，先不弄，用ESC键取消就行
-// TODO: 可以加个点击外部关闭编辑的功能，但需要处理事件冒泡，有点麻烦
-
-// 格式化文件大小显示
 const formatSize = (size) => {
   if (size === 0) return '0 B'
   if (size < 1024) return size + ' B'
@@ -780,77 +688,65 @@ const formatSize = (size) => {
   return (size / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
-// 格式化时间显示 - 简单处理，只显示日期
 const formatTime = (timeStr) => {
   if (!timeStr) return ''
-  // 去掉时区部分，简单显示
+
   return timeStr.split('T')[0]
 }
 
-// 文件选择逻辑 - 处理三种情况：普通点击、Ctrl+ 点击、Shift+ 点击
 const handleFileClick = (item, index, event) => {
-  if (loading.value) return // 加载时不能点击
-  if (event) event.stopPropagation() // 阻止事件冒泡
-  
+  if (loading.value) return
+  if (event) event.stopPropagation()
+
   const itemPath = item.path
   const isDir = item.is_dir || item.type === 'dir' || item.type === 'folder'
-  
-  // 如果是文件夹，且是普通点击（没有按 Ctrl 或 Shift），直接进入文件夹
-  // 这样可以实现点击整个文件框进入文件夹
+
   if (isDir && !ctrlPressed.value && !shiftPressed.value) {
     console.log('单击文件夹，直接进入:', itemPath)
     enterFolder(itemPath)
     return
   }
-  
-  // 处理 Shift+ 点击（连续选择）
+
   if (shiftPressed.value && lastSelectedIndex.value !== -1) {
-    // 找到开始和结束索引（从小到大）
+
     const start = Math.min(lastSelectedIndex.value, index)
     const end = Math.max(lastSelectedIndex.value, index)
-    
-    // 清除选择（除非按着 Ctrl，但 Shift+Ctrl 组合比较复杂，先不处理）
+
     if (!ctrlPressed.value) {
       selectedFiles.value.clear()
     }
-    
-    // 选择这个范围内的所有文件
+
     for (let i = start; i <= end; i++) {
       if (i < fileList.value.length) {
         selectedFiles.value.add(fileList.value[i].path)
       }
     }
-    
-    // 更新最后一次选中的索引
+
     lastSelectedIndex.value = index
     return
   }
-  
-  // 处理 Ctrl+ 点击（多选/取消选择）
+
   if (ctrlPressed.value) {
     if (selectedFiles.value.has(itemPath)) {
-      // 已经选中了，就取消选择
+
       selectedFiles.value.delete(itemPath)
-      // 这里有个问题：如果取消了最后一个选中的，lastSelectedIndex 不好处理
-      // 先简单设为 -1，后面可能会出 bug
+
       if (selectedFiles.value.size === 0) {
         lastSelectedIndex.value = -1
       }
     } else {
-      // 没选中，就添加选择
+
       selectedFiles.value.add(itemPath)
       lastSelectedIndex.value = index
     }
     return
   }
-  
-  // 普通点击（单选）- 只有文件才会走到这里，文件夹已经在上面处理了
+
   selectedFiles.value.clear()
   selectedFiles.value.add(itemPath)
   lastSelectedIndex.value = index
 }
 
-// 检查文件是否被选中
 const isFileSelected = (itemPath) => {
   return selectedFiles.value.has(itemPath)
 }
@@ -858,7 +754,7 @@ const isFileSelected = (itemPath) => {
 
 <template>
   <div class="file-table-container">
-    <!-- 上传弹窗 - 中间显示，带模糊背景 -->
+
     <div v-if="showUploadModal" class="upload-modal-overlay" @click.self="cancelUpload">
       <div class="upload-modal">
         <div class="modal-header">
@@ -868,16 +764,15 @@ const isFileSelected = (itemPath) => {
           </button>
         </div>
         <div class="modal-body">
-          <!-- 文件选择区域 -->
-          <div 
+
+          <div
             class="upload-select-area"
           >
             <i class="ri-folder-add-line"></i>
             <p>点击 <span class="upload-link" @click.stop="triggerFileSelect">选择文件</span></p>
             <p class="upload-hint">支持多个文件同时上传</p>
           </div>
-          
-          <!-- 文件列表 -->
+
           <div v-if="droppedFiles.length > 0" class="file-list-container">
             <div class="file-list-header">
               <span class="file-list-title">已选择 {{ droppedFiles.length }} 个文件</span>
@@ -902,7 +797,6 @@ const isFileSelected = (itemPath) => {
       </div>
     </div>
 
-    <!-- 新建文件夹弹窗 - 中间显示，带模糊背景 -->
     <div v-if="showNewFolderModal" class="upload-modal-overlay" @click.self="cancelNewFolder">
       <div class="upload-modal">
         <div class="modal-header">
@@ -912,8 +806,8 @@ const isFileSelected = (itemPath) => {
           </button>
         </div>
         <div class="modal-body">
-          <input 
-            v-model="newFolderName" 
+          <input
+            v-model="newFolderName"
             @keyup.enter="confirmNewFolder"
             @keyup.esc="cancelNewFolder"
             class="folder-input"
@@ -928,7 +822,6 @@ const isFileSelected = (itemPath) => {
       </div>
     </div>
 
-    <!-- 删除确认弹窗 -->
     <div v-if="showDeleteModal" class="upload-modal-overlay" @click.self="cancelDelete">
       <div class="upload-modal">
         <div class="modal-header">
@@ -948,7 +841,6 @@ const isFileSelected = (itemPath) => {
       </div>
     </div>
 
-    <!-- 分享文件到群组弹窗 -->
     <div v-if="showShareModal" class="upload-modal-overlay" @click.self="cancelShare">
       <div class="upload-modal">
         <div class="modal-header">
@@ -959,11 +851,10 @@ const isFileSelected = (itemPath) => {
         </div>
         <div class="modal-body">
           <p class="share-info">将文件 <strong>{{ shareTargetFile?.name }}</strong> 分享到：</p>
-          
-          <!-- 群组列表 -->
+
           <div v-if="groupList.length > 0" class="group-list">
-            <div 
-              v-for="group in groupList" 
+            <div
+              v-for="group in groupList"
               :key="group.uuid"
               class="group-item"
               :class="{ 'selected': selectedGroup?.uuid === group.uuid }"
@@ -974,8 +865,7 @@ const isFileSelected = (itemPath) => {
               <i v-if="selectedGroup?.uuid === group.uuid" class="ri-check-line check-icon"></i>
             </div>
           </div>
-          
-          <!-- 没有群组时的提示 -->
+
           <div v-else class="no-groups">
             <i class="ri-group-line"></i>
             <p>暂无群组</p>
@@ -989,16 +879,14 @@ const isFileSelected = (itemPath) => {
       </div>
     </div>
 
-    <!-- 路径导航栏 -->
     <div class="path-nav">
       <button @click="goUp" :disabled="!currentPath" class="nav-btn">
         <i class="ri-arrow-left-line"></i> 上一级
       </button>
-      
-      <!-- 路径编辑模式 -->
+
       <div v-if="isEditingPath" class="path-edit-container">
-        <input 
-          v-model="editingPathValue" 
+        <input
+          v-model="editingPathValue"
           @keyup.enter="confirmEdit"
           @keyup.esc="cancelEdit"
           class="path-input"
@@ -1013,14 +901,12 @@ const isFileSelected = (itemPath) => {
           <i class="ri-close-line"></i>
         </button>
       </div>
-      
-      <!-- 路径显示模式（可点击） -->
+
       <div v-else class="current-path" @click="startEditing">
         {{ currentPath === '' ? '/' : currentPath }}
         <i class="ri-edit-line edit-icon" title="点击编辑路径"></i>
       </div>
-      
-      <!-- 操作按钮区域 - 路径编辑模式下隐藏 -->
+
       <div v-if="!isEditingPath" class="operation-buttons">
         <button class="btn-refresh" @click="handleRefreshClick">
           <i class="ri-refresh-line"></i>
@@ -1049,11 +935,8 @@ const isFileSelected = (itemPath) => {
       </div>
     </div>
 
-
-
-    <!-- 文件表格 - 始终显示，加载时加上遮罩 -->
     <div class="file-table">
-      <!-- 表头 -->
+
       <div class="table-header">
         <div class="header-cell name">名称</div>
         <div class="header-cell type">类型</div>
@@ -1061,7 +944,6 @@ const isFileSelected = (itemPath) => {
         <div class="header-cell time">修改时间</div>
       </div>
 
-      <!-- 骨架屏：加载时显示 -->
       <div v-if="loading" class="skeleton-body">
         <div v-for="i in 8" :key="i" class="skeleton-row">
           <div class="skeleton-cell name">
@@ -1080,13 +962,11 @@ const isFileSelected = (itemPath) => {
         </div>
       </div>
 
-      <!-- 空状态 -->
       <div v-else-if="fileList.length === 0" class="empty-state">
         <i class="ri-folder-open-line"></i>
         <p>这个目录是空的</p>
       </div>
 
-      <!-- 文件列表 -->
       <div v-else class="table-body">
         <div
           v-for="(item, index) in fileList"
@@ -1122,7 +1002,6 @@ const isFileSelected = (itemPath) => {
       </div>
     </div>
 
-    <!-- 底部信息 -->
     <div class="table-footer">
       <span>共 {{ fileList.length }} 个项目</span>
       <span v-if="selectedFiles.size > 0">已选中 {{ selectedFiles.size }} 个</span>
@@ -1140,7 +1019,6 @@ const isFileSelected = (itemPath) => {
   flex-direction: column;
 }
 
-/* 路径导航 */
 .path-nav {
   display: flex;
   align-items: center;
@@ -1203,7 +1081,6 @@ const isFileSelected = (itemPath) => {
   opacity: 1;
 }
 
-/* 路径编辑容器 */
 .path-edit-container {
   flex: 1;
   display: flex;
@@ -1257,9 +1134,6 @@ const isFileSelected = (itemPath) => {
   background: var(--hover-bg, #f3f4f6);
 }
 
-
-
-/* 淡入动画，给空状态用 */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -1274,7 +1148,6 @@ const isFileSelected = (itemPath) => {
   cursor: pointer;
 }
 
-/* 表格样式 - 添加渐变效果解决闪烁问题 */
 .file-table {
   flex: 1;
   overflow-y: auto;
@@ -1303,11 +1176,10 @@ const isFileSelected = (itemPath) => {
 }
 
 .table-body {
-  /* 文件列表内容 */
+
   transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
-/* 骨架屏样式 */
 .skeleton-body {
   padding: 0;
 }
@@ -1384,7 +1256,6 @@ const isFileSelected = (itemPath) => {
   cursor: pointer;
 }
 
-/* 选中状态 - 给选中的行添加明显的背景色 */
 .table-row.selected {
   background: var(--selected-bg, #ddf4ff) !important;
   border-left: 3px solid var(--accent-blue, #0969da);
@@ -1434,7 +1305,6 @@ const isFileSelected = (itemPath) => {
   color: var(--accent-blue);
 }
 
-/* 类型徽章 */
 .type-badge {
   padding: 3px 8px;
   border-radius: 2px;
@@ -1451,7 +1321,6 @@ const isFileSelected = (itemPath) => {
   color: var(--text-muted, #8c959f);
 }
 
-/* 空状态 - 添加淡入动画 */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1469,7 +1338,6 @@ const isFileSelected = (itemPath) => {
   opacity: 0.5;
 }
 
-/* 底部信息 */
 .table-footer {
   display: flex;
   justify-content: space-between;
@@ -1483,16 +1351,14 @@ const isFileSelected = (itemPath) => {
   flex-shrink: 0;
 }
 
-/* 操作按钮区域 */
 .operation-buttons {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-left: auto; /* 靠右对齐 */
+  margin-left: auto;
   flex-wrap: nowrap;
 }
 
-/* 按钮基础样式 - 参考 AppHeader 的样式 */
 .btn-refresh,
 .btn-upload,
 .btn-download,
@@ -1511,17 +1377,15 @@ const isFileSelected = (itemPath) => {
   font-weight: 500;
   transition: all 0.2s ease;
   height: 40px;
-  white-space: nowrap; /* 防止文字换行 */
+  white-space: nowrap;
 }
 
-/* 刷新按钮 - 中性色 */
 .btn-refresh {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
 }
 
-/* 上传按钮 - 主操作按钮 */
 .btn-upload {
   background: var(--accent-blue, #0969da);
   color: white;
@@ -1529,21 +1393,18 @@ const isFileSelected = (itemPath) => {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-/* 下载按钮 - 深蓝色 */
 .btn-download {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
 }
 
-/* 新建文件夹按钮 - 绿色 */
 .btn-new-folder {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
   border: 1px solid var(--border-color, #d0d7de);
 }
 
-/* 删除按钮 - 红色危险样式 */
 .btn-delete {
   background-color: var(--danger-btn-bg, #212830);
   color: var(--danger-btn-text, #f85149);
@@ -1556,7 +1417,6 @@ const isFileSelected = (itemPath) => {
   border-color: var(--danger-btn-hover-border, #f85149);
 }
 
-/* 分享按钮 - 中性色，与其他按钮保持一致 */
 .btn-share {
   background-color: var(--bg-secondary, #f6f8fa);
   color: var(--text-primary, #24292f);
@@ -1569,13 +1429,11 @@ const isFileSelected = (itemPath) => {
   color: var(--text-primary, #24292f);
 }
 
-/* 删除按钮图标 - 继承按钮颜色 */
 .btn-delete i,
 .btn-delete svg {
   color: inherit;
 }
 
-/* 按钮 hover 效果 */
 .btn-refresh:hover {
   background-color: var(--hover-bg, #f3f4f6);
   border-color: var(--text-muted, #8c959f);
@@ -1599,19 +1457,15 @@ const isFileSelected = (itemPath) => {
   color: var(--text-primary, #24292f);
 }
 
-/* 按钮文字 - 响应式隐藏 */
 .btn-text {
   display: inline;
 }
 
-
-
-/* 小屏幕只显示图标 */
 @media (max-width: 1024px) {
   .btn-text {
     display: none;
   }
-  
+
   .btn-refresh,
   .btn-upload,
   .btn-download,
@@ -1621,13 +1475,12 @@ const isFileSelected = (itemPath) => {
     width: 40px;
     justify-content: center;
   }
-  
+
   .operation-buttons {
     gap: 6px;
   }
 }
 
-/* 响应式调整 */
 @media (max-width: 768px) {
   .table-header,
   .table-row,
@@ -1650,7 +1503,6 @@ const isFileSelected = (itemPath) => {
   }
 }
 
-/* 上传弹窗样式 - 模糊背景 */
 .upload-modal-overlay {
   position: fixed;
   top: 0;
@@ -1779,7 +1631,6 @@ const isFileSelected = (itemPath) => {
   border-color: var(--danger-btn-hover-border, #f85149);
 }
 
-/* 文件选择区域样式 */
 .upload-select-area {
   width: 100%;
   padding: 24px 16px;
@@ -1833,12 +1684,10 @@ const isFileSelected = (itemPath) => {
   margin: 0;
 }
 
-/* 隐藏的文件输入 */
 .hidden-file-input {
   display: none;
 }
 
-/* 文件列表样式 */
 .file-list-container {
   margin-top: 16px;
   background: var(--bg-tertiary, #f6f8fa);
@@ -1929,7 +1778,6 @@ const isFileSelected = (itemPath) => {
   color: var(--accent-red, #cf222e);
 }
 
-/* 分享弹窗样式 */
 .share-info {
   font-size: 15px;
   color: var(--text-primary, #24292f);

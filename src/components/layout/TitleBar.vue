@@ -1,18 +1,4 @@
-<!--
-保留所有权利
 
-Copyright (C) 2026 Jiale Xu (许嘉乐) (ANTmmmmm) <https://github.com/ant-cave>
-Email: ANTmmmmm@outlook.com, ANTmmmmm@126.com, 1504596931@qq.com
-
-Copyright (C) 2026 Xinhang Chen (陈欣航) <https://github.com/cxh09>
-Email: abc.cxh2009@foxmail.com
-
-Copyright (C) 2026 Zimo Wen (温子墨) <https://github.com/lusamaqq>
-Email: 1220594170@qq.com
-
-Copyright (C) 2026 Kaibin Zeng (曾楷彬) <https://github.com/Waple1145>
-Email: admin@mc666.top
--->
 
 <script setup>
 import { inject, ref, onMounted, onUnmounted } from 'vue'
@@ -27,7 +13,7 @@ const router = useRouter()
 
 const showConfirmDialog = ref(false)
 const rememberChoice = ref(false)
-const closePreference = ref(null) // 'minimize' | 'exit' | null
+const closePreference = ref(null)
 
 const currentWindow = getCurrentWindow()
 
@@ -82,8 +68,7 @@ const saveClosePreference = async (preference) => {
     console.log('[关闭偏好] 准备保存:', preference)
     await saveAppData('close_preference', JSON.stringify({ preference }))
     console.log('[关闭偏好] 保存成功:', preference)
-    
-    // 验证保存
+
     const verify = await loadAppData('close_preference')
     console.log('[关闭偏好] 验证保存结果:', verify)
   } catch (error) {
@@ -121,18 +106,17 @@ const closeApp = async () => {
 }
 
 const requestClose = async () => {
-  // 每次都重新读取最新的偏好设置
+
   await loadClosePreference()
-  
-  // 根据偏好执行不同的操作
+
   if (closePreference.value === 'minimize') {
-    // 直接隐藏到托盘
+
     hideToTray(true)
   } else if (closePreference.value === 'exit') {
-    // 直接退出
+
     confirmClose(true)
   } else {
-    // 'ask' 或者未设置，显示确认对话框
+
     showConfirmDialog.value = true
     rememberChoice.value = false
   }
@@ -175,7 +159,7 @@ const hideToTray = async (fromPreference = false) => {
 const startWindowDrag = async (event) => {
   if (event.button !== 0) return
   if (event.target.closest('button, .window-controls, .home-btn')) return
-  
+
   try {
     await currentWindow.startDragging()
   } catch (error) {
@@ -188,34 +172,28 @@ const goHome = () => {
 }
 
 const goBack = () => {
-  // 检查当前路径
+
   const currentPath = router.currentRoute.value.path
-  
-  // 如果当前在根路径（InitialView/连接页面），则不执行任何操作
-  // 因为已经在连接页面了，不能再返回
+
   if (currentPath === '/') {
     return
   }
-  
-  // 如果在其他页面，尝试返回
+
   if (window.history.length > 1) {
-    // 先保存当前历史长度
+
     const currentHistoryLength = window.history.length
-    
-    // 执行返回操作
+
     router.back()
-    
-    // 使用 setTimeout 检查返回后的路径
-    // 如果返回到了根路径（InitialView），则自动跳转到主页面
+
     setTimeout(() => {
       const newPath = router.currentRoute.value.path
       if (newPath === '/') {
-        // 返回到连接页面了，自动跳转到主页面
+
         router.replace('/main')
       }
     }, 50)
   } else {
-    // 没有历史记录，直接跳转到主页面
+
     router.push('/main')
   }
 }
@@ -234,19 +212,19 @@ const showDevelopingToast = () => {
           <Home :size="18" :stroke-width="3" />
         </button>
       </div>
-      
+
       <div class="title-right">
         <button class="icon-btn tray-btn" @click="hideToTray" title="隐藏到托盘">
           <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-picture-in-picture-icon lucide-picture-in-picture"><path d="M2 10h6V4"/><path d="m2 4 6 6"/><path d="M21 10V7a2 2 0 0 0-2-2h-7"/><path d="M3 14v2a2 2 0 0 0 2 2h3"/><rect x="12" y="14" width="10" height="7" rx="1"/></svg>
         </button>
-        
+
         <button class="icon-btn theme-btn" @click="theme?.toggleTheme" title="切换主题">
           <Moon v-if="theme?.isLightMode.value" :size="18" :stroke-width="2.5" />
           <Sun v-else :size="18" :stroke-width="2.5" />
         </button>
-        
+
         <div class="divider"></div>
-        
+
         <div class="window-controls">
           <button class="icon-btn window-btn" @click="minimizeWindow" title="最小化">
             <Minus :size="18" :stroke-width="3" />
@@ -262,12 +240,11 @@ const showDevelopingToast = () => {
       </div>
     </div>
   </header>
-  
-  <!-- 窗口关闭扩散波纹 -->
+
   <Transition name="ripple-fade">
     <div v-if="showCloseRipple" class="close-ripple" :style="closeRippleStyle"></div>
   </Transition>
-  
+
   <Transition name="confirm">
     <div v-if="showConfirmDialog" class="confirm-container" @click="cancelClose">
       <div class="ripple-effect" @click.stop></div>
@@ -421,19 +398,18 @@ const showDevelopingToast = () => {
   .title-bar {
     height: 36px;
   }
-  
+
   .icon-btn {
     width: 28px;
     height: 28px;
     font-size: 14px;
   }
-  
+
   .app-title {
     font-size: 13px;
   }
 }
 
-/* 关闭确认对话框样式 */
 .confirm-container {
   position: fixed;
   top: 0;
@@ -443,7 +419,6 @@ const showDevelopingToast = () => {
   z-index: 9999;
 }
 
-/* 窗口关闭扩散波纹 */
 .close-ripple {
   position: fixed;
   top: 0;
@@ -476,7 +451,6 @@ const showDevelopingToast = () => {
   }
 }
 
-/* 波纹淡入淡出 */
 .ripple-fade-enter-active,
 .ripple-fade-leave-active {
   transition: opacity 0.4s ease;
@@ -487,7 +461,6 @@ const showDevelopingToast = () => {
   opacity: 0;
 }
 
-/* 扩散波纹效果 */
 .ripple-effect {
   position: absolute;
   top: 56px;
@@ -724,7 +697,6 @@ const showDevelopingToast = () => {
   background-color: var(--hover-bg);
 }
 
-/* 对话框进入动画 - 干净利落的效果 */
 .confirm-enter-active {
   transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
