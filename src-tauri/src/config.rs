@@ -27,15 +27,36 @@ static BACKEND_CONFIG: OnceLock<BackendConfig> = OnceLock::new();
 pub async fn init_config() -> Result<()> {
     tracing::info!("开始初始化后端配置...");
 
+    // 优先级 1: 尝试从环境变量读取
+    if let Some(env_config) = try_load_from_env().await {
+        tracing::info!("使用环境变量配置：{}", env_config.get_full_url());
+        BACKEND_CONFIG.set(env_config)
+            .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
+        return Ok(());
+    }
+
+    // 优先级 2: 尝试从远程配置读取
+    match try_load_from_remote().await {
+        Ok(remote_config) => {
+            tracing::info!("使用远程配置：{}", remote_config.get_full_url());
+            BACKEND_CONFIG.set(remote_config)
+                .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
+            return Ok(());
+        }
+        Err(e) => {
+            tracing::info!("加载远程配置失败：{}，使用硬编码默认配置", e);
+        }
+    }
+
+    // 优先级 3: 使用硬编码默认配置
     let config = BackendConfig {
         base_url: "https://camfc.seven-cloud.cn".to_string(),
         port: 8005,
     };
-    tracing::info!("使用硬编码配置：{}", config.get_full_url());
+    tracing::info!("使用硬编码默认配置：{}", config.get_full_url());
     BACKEND_CONFIG.set(config)
         .map_err(|_| anyhow::anyhow!("配置已初始化"))?;
     Ok(())
-
 }
 
 async fn check_env_backend_available(config: &BackendConfig) -> bool {
@@ -121,8 +142,27 @@ async fn check_env_backend_available(config: &BackendConfig) -> bool {
 }
 
 async fn try_load_from_env() -> Option<BackendConfig> {
-
-    dotenv::dotenv().ok();
+    // 尝试从多个可能的位置加载 .env 文件
+    let env_loaded = dotenv::dotenv().ok().is_some();
+    
+    if !env_loaded {
+        // 如果默认位置加载失败，尝试从可执行目录的父目录加载
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                let env_path = exe_dir.join(".env");
+                if env_path.exists() {
+                    dotenv::from_path(&env_path).ok();
+                }
+            }
+        }
+        
+        // 尝试从项目根目录加载（开发环境）
+        let project_root = std::env::current_dir().ok()?;
+        let env_path = project_root.join(".env");
+        if env_path.exists() {
+            dotenv::from_path(&env_path).ok();
+        }
+    }
 
     let base_url = std::env::var("CAMFC_BASE").ok()?;
     let port_str = std::env::var("CAMFC_PORT").ok()?;
@@ -389,6 +429,36 @@ pub fn get_backend_config() -> Result<&'static BackendConfig> {
 }
 
 // 获取完整的后端 URL（便捷函数）
+// 添加重试逻辑，等待配置初始化完成
 pub fn get_backend_url() -> Result<String> {
-    Ok(get_backend_config()?.get_full_url())
+    const MAX_RETRIES: u32 = 10;
+    const RETRY_DELAY_MS: u64 = 100;
+    
+    for attempt in 1..=MAX_RETRIES {
+        if let Some(config) = BACKEND_CONFIG.get() {
+            return Ok(config.get_full_url());
+        }
+        
+        if attempt < MAX_RETRIES {
+            tracing::info!("等待配置初始化... ({}/{})", attempt, MAX_RETRIES);
+            std::thread::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS));
+        }
+    }
+    
+    // 如果等待后仍未初始化，尝试同步初始化
+    tracing::warn!("配置未初始化，尝试同步加载...");
+    match tokio::runtime::Runtime::new() {
+        Ok(runtime) => {
+            if let Err(e) = runtime.block_on(init_config()) {
+                tracing::error!("同步配置初始化失败：{}", e);
+            }
+        }
+        Err(e) => {
+            tracing::error!("创建运行时失败：{}", e);
+        }
+    }
+    
+    BACKEND_CONFIG.get()
+        .map(|c| c.get_full_url())
+        .ok_or_else(|| anyhow::anyhow!("后端配置未初始化"))
 }

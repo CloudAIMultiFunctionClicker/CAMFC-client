@@ -115,6 +115,15 @@ onMounted(async () => {
     console.error('加载热键配置失败:', error)
   }
 
+  try {
+    const config = await invoke('get_backend_config')
+    executionLog.value = `[配置信息] 后端地址: ${config.full_url}\n[配置加载完成]\n`
+    console.log('后端配置:', config)
+  } catch (error) {
+    executionLog.value = `[配置信息] 获取配置失败: ${error}\n`
+    console.error('获取配置失败:', error)
+  }
+
   window.addEventListener('keydown', handleGlobalKeydown)
 })
 
