@@ -705,16 +705,24 @@ function formatMeetingTime(timeStr) {
 }
 
 function formatDuration(startTime, endTime) {
-  if (!startTime || !endTime) return ''
+  if (!startTime || !endTime) return '未知时长'
   const start = new Date(startTime)
   const end = new Date(endTime)
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) return ''
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) return '未知时长'
   const durationMs = end - start
+  if (durationMs < 0) return '未知时长'
   const minutes = Math.floor(durationMs / 60000)
   const hours = Math.floor(minutes / 60)
   const remainingMinutes = minutes % 60
   if (hours > 0) {
     return `${hours}小时${remainingMinutes}分钟`
+  }
+  if (minutes === 0) {
+    const seconds = Math.floor(durationMs / 1000)
+    if (seconds > 0) {
+      return `${seconds}秒`
+    }
+    return '0 分钟'
   }
   return `${minutes}分钟`
 }
