@@ -30,7 +30,13 @@ pub struct ActionParameters {
     pub pixels: Option<i32>,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub scroll_amount: Option<i32>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub time: Option<f64>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration: Option<f64>,
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
@@ -166,11 +172,11 @@ impl ToolCallParser {
     }
 
     pub fn get_pixels(&self, action: &ToolCall) -> i32 {
-        action.arguments.pixels.unwrap_or(1)
+        action.arguments.scroll_amount.or(action.arguments.pixels).unwrap_or(1)
     }
 
     pub fn get_wait_time(&self, action: &ToolCall) -> f64 {
-        action.arguments.time.unwrap_or(2.0)
+        action.arguments.duration.or(action.arguments.time).unwrap_or(2.0)
     }
 
     pub fn get_status(&self, action: &ToolCall) -> Option<String> {

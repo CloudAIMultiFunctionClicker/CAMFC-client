@@ -29,9 +29,18 @@ pub struct ApiClient {
 
 impl ApiClient {
     pub fn new() -> Self {
-        let base_url = get_backend_url().unwrap_or_else(|_| "http://localhost:7548".to_string());
+        let base_url = get_backend_url().unwrap_or_else(|_| {
+            tracing::warn!("无法获取后端配置，使用默认值 https://camfc.seven-cloud.cn:8005");
+            "https://camfc.seven-cloud.cn:8005".to_string()
+        });
+        
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(120))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+        
         ApiClient {
-            client: reqwest::Client::new(),
+            client,
             base_url,
         }
     }
@@ -39,8 +48,14 @@ impl ApiClient {
     pub async fn check_health(&self) -> Result<bool> {
         let url = format!("{}/api/agent/health", self.base_url);
 
-        match self.client.get(&url).timeout(std::time::Duration::from_secs(5)).send().await {
-            Ok(response) => Ok(response.status().is_success()),
+        match self.client.get(&url).timeout(std::time::Duration::from_secs(10)).send().await {
+            Ok(response) => {
+                if response.status().is_success() {
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            },
             Err(_) => Ok(false),
         }
     }
@@ -63,7 +78,6 @@ impl ApiClient {
             .client
             .post(&url)
             .json(&request)
-            .timeout(std::time::Duration::from_secs(60))
             .send()
             .await?;
 
@@ -71,8 +85,9 @@ impl ApiClient {
             let result = response.json::<PredictResponse>().await?;
             Ok(result)
         } else {
+            let status = response.status();
             let error_text = response.text().await?;
-            Err(anyhow::anyhow!("Server error: {}", error_text))
+            Err(anyhow::anyhow!("HTTP {}: {}", status, error_text))
         }
     }
 }
