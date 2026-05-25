@@ -52,6 +52,24 @@ static AGENT_STOP_FLAG: OnceLock<Mutex<bool>> = OnceLock::new();
 
 static AGENT_HOTKEY: OnceLock<Mutex<String>> = OnceLock::new();
 
+pub async fn set_agent_stop_flag(stop: bool) {
+    if AGENT_STOP_FLAG.get().is_none() {
+        AGENT_STOP_FLAG.set(Mutex::new(stop)).ok();
+    } else if let Some(flag) = AGENT_STOP_FLAG.get() {
+        let mut f = flag.lock().await;
+        *f = stop;
+    }
+}
+
+pub async fn check_agent_stop_flag() -> bool {
+    if let Some(flag) = AGENT_STOP_FLAG.get() {
+        let f = flag.lock().await;
+        *f
+    } else {
+        false
+    }
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)

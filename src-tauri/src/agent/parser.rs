@@ -44,23 +44,75 @@ impl ToolCallParser {
     }
 
     pub fn extract_tool_calls(&self, text: &str) -> Vec<ToolCall> {
-        let re = Regex::new(r"(?s)<tool_call>(.*?)</tool_call>").unwrap();
         let mut tool_calls = Vec::new();
 
-        for cap in re.captures_iter(text) {
-            if let Some(content) = cap.get(1) {
-                let content_str = content.as_str().trim();
-                println!("[解析] 尝试解析：{}", content_str);
-                match serde_json::from_str::<ToolCall>(content_str) {
-                    Ok(tool_call) => {
-                        println!("[解析] 成功：{} - {}", tool_call.name, tool_call.arguments.action);
+        // 尝试格式 0: AI Agent 格式 - Action: 描述 + JSON 对象
+        // 例如: Action: 点击开始菜单\n{"name": "computer_use", "arguments": {"action": "left_click", "coordinate": [50, 990]}}
+        if tool_calls.is_empty() {
+            let re0 = Regex::new(r#"Action:[^\n]*\n*(\{.*\})"#).unwrap();
+            if let Some(cap) = re0.captures(text) {
+                if let Some(json_match) = cap.get(1) {
+                    let content_str = json_match.as_str().trim();
+                    println!("[解析] 尝试解析 AI Agent 格式：{}", content_str);
+                    if let Ok(tool_call) = serde_json::from_str::<ToolCall>(content_str) {
+                        println!("[解析] AI Agent 格式成功：{} - {}", tool_call.name, tool_call.arguments.action);
                         tool_calls.push(tool_call);
-                    },
-                    Err(e) => {
-                        eprintln!("[解析失败] {} | 内容：{}", e, content_str);
                     }
                 }
             }
+        }
+
+        // 尝试格式 1: <tool_call>...</tool_call>
+        let re1 = Regex::new(r"(?s)<tool_call>(.*?)</tool_call>").unwrap();
+        for cap in re1.captures_iter(text) {
+            if let Some(content) = cap.get(1) {
+                let content_str = content.as_str().trim();
+                println!("[解析] 尝试解析 <tool_call> 格式：{}", content_str);
+                if let Ok(tool_call) = serde_json::from_str::<ToolCall>(content_str) {
+                    println!("[解析] 成功：{} - {}", tool_call.name, tool_call.arguments.action);
+                    tool_calls.push(tool_call);
+                }
+            }
+        }
+
+        // 尝试格式 2: 纯 JSON 对象 { "name": ..., "arguments": ... }
+        if tool_calls.is_empty() {
+            let re2 = Regex::new(r#"\{[^{}]*"name"[^{}]*"arguments"[^{}]*\}"#).unwrap();
+            if let Some(cap) = re2.find(text) {
+                let content_str = cap.as_str().trim();
+                println!("[解析] 尝试解析纯 JSON 格式：{}", content_str);
+                if let Ok(tool_call) = serde_json::from_str::<ToolCall>(content_str) {
+                    println!("[解析] 成功：{} - {}", tool_call.name, tool_call.arguments.action);
+                    tool_calls.push(tool_call);
+                }
+            }
+        }
+
+        // 尝试格式 3: JSON 数组 [...其中某个元素是 ToolCall]
+        if tool_calls.is_empty() {
+            if let Ok(json) = serde_json::from_str::<serde_json::Value>(text) {
+                if let Some(arr) = json.as_array() {
+                    for item in arr {
+                        if let Ok(tool_call) = serde_json::from_value::<ToolCall>(item.clone()) {
+                            println!("[解析] 从数组中解析成功：{} - {}", tool_call.name, tool_call.arguments.action);
+                            tool_calls.push(tool_call);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 尝试格式 4: 尝试直接解析整个文本为 ToolCall
+        if tool_calls.is_empty() {
+            println!("[解析] 尝试直接解析整个响应");
+            if let Ok(tool_call) = serde_json::from_str::<ToolCall>(text) {
+                println!("[解析] 直接解析成功：{} - {}", tool_call.name, tool_call.arguments.action);
+                tool_calls.push(tool_call);
+            }
+        }
+
+        if tool_calls.is_empty() {
+            eprintln!("[解析] 未提取到有效操作，原始文本：{}", text);
         }
 
         tool_calls

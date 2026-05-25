@@ -11,12 +11,11 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use std::sync::OnceLock;
 
+use crate::{check_agent_stop_flag, set_agent_stop_flag};
 use api::ApiClient;
 use gui::ComputerTools;
 use parser::ToolCallParser;
 use screenshot::ScreenshotTool;
-
-static STOP_FLAG: OnceLock<Mutex<bool>> = OnceLock::new();
 
 fn get_current_time() -> String {
     Local::now().format("%H:%M:%S").to_string()
@@ -28,18 +27,13 @@ fn get_output_dir() -> PathBuf {
 }
 
 async fn check_stop_flag() -> bool {
-    if let Some(flag) = STOP_FLAG.get() {
-        let stop = flag.lock().await;
-        *stop
-    } else {
-        false
-    }
+    check_agent_stop_flag().await
 }
 
 pub async fn run_gui_automation(instruction: &str, max_step: usize) -> Result<String> {
     let mut output_log = String::new();
 
-    STOP_FLAG.set(Mutex::new(false)).ok();
+    set_agent_stop_flag(false).await;
 
     let log = "[检查服务端连接...]".to_string();
     output_log.push_str(&log);
@@ -121,6 +115,19 @@ pub async fn run_gui_automation(instruction: &str, max_step: usize) -> Result<St
             break;
         }
 
+        // 显示提取到的操作详情
+        let log = format!("\n[解析结果] 提取到 {} 个操作:\n", action_list.len());
+        output_log.push_str(&log);
+        for (i, action) in action_list.iter().enumerate() {
+            let coords = parser.get_coordinate(action);
+            let coord_str = match coords {
+                Some((x, y)) => format!("坐标({}, {})", x, y),
+                None => "无坐标".to_string()
+            };
+            let log = format!("  {}. [{}] {}\n", i + 1, action.arguments.action, coord_str);
+            output_log.push_str(&log);
+        }
+
         let (screen_width, screen_height) = ComputerTools::get_screen_size();
         let log = format!("[屏幕分辨率] {}x{}", screen_width, screen_height);
         output_log.push_str(&log);
@@ -138,76 +145,101 @@ pub async fn run_gui_automation(instruction: &str, max_step: usize) -> Result<St
 
             let action_type = parser.get_action_type(action);
 
+            let log = format!("\n▶ 执行操作 [{}]\n", action_type.to_uppercase());
+            output_log.push_str(&log);
+
             match action_type {
                 "click" | "left_click" => {
                     if let Some((x, y)) = parser.get_coordinate(action) {
-                        computer_tools.left_click(x, y)?;
-                        let log = format!("✓ 左键点击 ({}, {})", x, y);
+                        let log = format!("  → 移动到坐标 ({}, {})\n", x, y);
                         output_log.push_str(&log);
-                        output_log.push('\n');
+                        computer_tools.left_click(x, y)?;
+                        let log = format!("✓ 完成: 左键点击 ({}, {})\n", x, y);
+                        output_log.push_str(&log);
                     }
                 }
                 "mouse_move" => {
                     if let Some((x, y)) = parser.get_coordinate(action) {
-                        computer_tools.mouse_move(x, y)?;
-                        let log = "✓ 移动鼠标".to_string();
+                        let log = format!("  → 移动到坐标 ({}, {})\n", x, y);
                         output_log.push_str(&log);
-                        output_log.push('\n');
+                        computer_tools.mouse_move(x, y)?;
+                        let log = "✓ 完成: 移动鼠标\n".to_string();
+                        output_log.push_str(&log);
                     }
                 }
                 "middle_click" => {
                     if let Some((x, y)) = parser.get_coordinate(action) {
-                        computer_tools.middle_click(x, y)?;
-                        let log = "✓ 中键点击".to_string();
+                        let log = format!("  → 移动到坐标 ({}, {})\n", x, y);
                         output_log.push_str(&log);
-                        output_log.push('\n');
+                        computer_tools.middle_click(x, y)?;
+                        let log = format!("✓ 完成: 中键点击 ({}, {})\n", x, y);
+                        output_log.push_str(&log);
                     }
                 }
                 "right_click" | "right click" => {
                     if let Some((x, y)) = parser.get_coordinate(action) {
-                        computer_tools.right_click(x, y)?;
-                        let log = format!("✓ 右键点击 ({}, {})", x, y);
+                        let log = format!("  → 移动到坐标 ({}, {})\n", x, y);
                         output_log.push_str(&log);
-                        output_log.push('\n');
+                        computer_tools.right_click(x, y)?;
+                        let log = format!("✓ 完成: 右键点击 ({}, {})\n", x, y);
+                        output_log.push_str(&log);
                     }
                 }
                 "key" | "hotkey" => {
-                    if let Some(keys) = parser.get_keys(action) {
-                        computer_tools.press_key(keys.clone())?;
-                        let log = format!("✓ 按键 {:?}", keys);
+                    // 优先使用 keys 字段，如果没有则使用 text 字段
+                    let keys = parser.get_keys(action);
+                    if keys.is_none() {
+                        // 尝试从 text 字段获取单个按键
+                        if let Some(text) = parser.get_text(action) {
+                            let key_vec = vec![text.clone()];
+                            let log = format!("  → 按键 (text): {}\n", text);
+                            output_log.push_str(&log);
+                            computer_tools.press_key(key_vec.clone())?;
+                            let log = format!("✓ 完成: 按键 {}\n", text);
+                            output_log.push_str(&log);
+                        }
+                    } else if let Some(keys) = keys {
+                        let log = format!("  → 按键: {:?}\n", keys);
                         output_log.push_str(&log);
-                        output_log.push('\n');
+                        computer_tools.press_key(keys.clone())?;
+                        let log = format!("✓ 完成: 按键 {:?}\n", keys);
+                        output_log.push_str(&log);
                     }
                 }
                 "type" => {
                     if let Some(text) = parser.get_text(action) {
-                        computer_tools.type_text(&text)?;
-                        let log = format!("✓ 输入文本：{}", text);
+                        let display_text = if text.len() > 30 { format!("{}...", &text[..30]) } else { text.clone() };
+                        let log = format!("  → 输入文本: {}\n", display_text);
                         output_log.push_str(&log);
-                        output_log.push('\n');
+                        computer_tools.type_text(&text)?;
+                        let log = format!("✓ 完成: 输入 {} 个字符\n", text.len());
+                        output_log.push_str(&log);
                     }
                 }
                 "drag" => {
                     if let Some((x, y)) = parser.get_coordinate(action) {
-                        computer_tools.left_click_drag(x, y)?;
-                        let log = "✓ 拖拽".to_string();
+                        let log = format!("  → 拖拽到坐标 ({}, {})\n", x, y);
                         output_log.push_str(&log);
-                        output_log.push('\n');
+                        computer_tools.left_click_drag(x, y)?;
+                        let log = "✓ 完成: 拖拽\n".to_string();
+                        output_log.push_str(&log);
                     }
                 }
                 "scroll" => {
                     let pixels = parser.get_pixels(action);
-                    computer_tools.scroll(pixels)?;
-                    let log = format!("✓ 滚动 {} 像素", pixels);
+                    let log = format!("  → 滚动 {} 像素\n", pixels);
                     output_log.push_str(&log);
-                    output_log.push('\n');
+                    computer_tools.scroll(pixels)?;
+                    let log = format!("✓ 完成: 滚动 {} 像素\n", pixels);
+                    output_log.push_str(&log);
                 }
                 "computer_double_click" | "double_click" => {
                     if let Some((x, y)) = parser.get_coordinate(action) {
-                        computer_tools.double_click(x, y)?;
-                        let log = "✓ 双击".to_string();
+                        let log = format!("  → 移动到坐标 ({}, {})\n", x, y);
                         output_log.push_str(&log);
-                        output_log.push('\n');
+                        computer_tools.double_click(x, y)?;
+                        let log = format!("✓ 完成: 双击 ({}, {})\n", x, y);
+                        output_log.push_str(&log);
                     }
                 }
                 "wait" => {
