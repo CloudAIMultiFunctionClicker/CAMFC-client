@@ -584,10 +584,12 @@ impl BluetoothManager {
                                         crate::event_emitter::emit_screenshot_command();
                                     });
                                 } else if first_byte == 0x10 {
-                                    tracing::info!("[BLUETOOTH] 收到跳转到笔记列表命令（0x10/10）");
+                                    tracing::info!("[BLUETOOTH] 按钮 5 按下（截图 0x10）");
                                     tokio::spawn(async move {
-                                        emit_navigate_to_notes();
+                                        crate::event_emitter::emit_screenshot_command();
                                     });
+                                } else if first_byte == 0x11 {
+                                    tracing::info!("[BLUETOOTH] 按钮 5 松开（0x11）");
                                 } else if first_byte == 0x08 {
                                     tracing::info!("[BLUETOOTH] 收到打开云盘命令（0x08）");
                                     tokio::spawn(async move {
@@ -619,10 +621,10 @@ impl BluetoothManager {
                                     tracing::info!("[BLUETOOTH] 按钮 3 松开（0x05）");
                                     *state_guard = Some("button3_release".to_string());
                                 } else if first_byte == 0x06 {
-                                    tracing::info!("[BLUETOOTH] 按钮 7 按下（跳转到课堂记录 0x06）");
+                                    tracing::info!("[BLUETOOTH] 按钮 7 按下（打开智能体 agent 0x06）");
                                     *state_guard = Some("button7_press".to_string());
                                     tokio::spawn(async move {
-                                        emit_navigate_to_meetings();
+                                        emit_open_agent_window();
                                     });
                                 } else if first_byte == 0x07 {
                                     tracing::info!("[BLUETOOTH] 按钮 7 松开（0x07）");
