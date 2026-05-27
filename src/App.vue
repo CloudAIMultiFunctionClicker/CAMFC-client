@@ -356,6 +356,31 @@ onMounted(async () => {
     }
   })
 
+  const navigateToMeetingsUnlisten = await listen('navigate-to-meetings', async () => {
+    if (currentWindowLabel !== 'main') {
+      return
+    }
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到跳转到课堂记录命令（按钮 7 0x06）')
+    showToast('跳转到课堂记录', '#8b5cf6')
+
+    try {
+      const { Window } = await import('@tauri-apps/api/window')
+      const mainWindow = await Window.getByLabel('main')
+      if (mainWindow) {
+        await mainWindow.show()
+        await mainWindow.unminimize()
+        await mainWindow.setFocus()
+      }
+
+      router.push('/notes_meetings')
+    } catch (e) {
+      console.error('跳转到课堂记录失败:', e)
+    }
+  })
+
   const createNoteUnlisten = await listen('create-note', async () => {
     if (currentWindowLabel !== 'main') {
       return
@@ -379,6 +404,80 @@ onMounted(async () => {
       await emit('create-new-note')
     } catch (e) {
       console.error('新建笔记失败:', e)
+    }
+  })
+
+  const volumeUpUnlisten = await listen('volume-up', async () => {
+    if (currentWindowLabel !== 'main') {
+      return
+    }
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到音量增加命令（按钮 1 0x0C）')
+    showToast('音量增加 🔊', '#22c55e')
+  })
+
+  const volumeDownUnlisten = await listen('volume-down', async () => {
+    if (currentWindowLabel !== 'main') {
+      return
+    }
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到音量减少命令（按钮 3 0x04）')
+    showToast('音量减少 🔉', '#ef4444')
+  })
+
+  const openAgentWindowUnlisten = await listen('open-agent-window', async () => {
+    if (currentWindowLabel !== 'main') {
+      return
+    }
+    if (route.path === '/float') {
+      return
+    }
+    console.log('收到打开 agent 窗口命令（按钮 7 0x06）')
+    showToast('打开智能体窗口', '#8b5cf6')
+
+    try {
+      // 显示主窗口
+      const { Window } = await import('@tauri-apps/api/window')
+      const mainWindow = await Window.getByLabel('main')
+      if (mainWindow) {
+        await mainWindow.show()
+        await mainWindow.unminimize()
+        await mainWindow.setFocus()
+      }
+
+      // 打开 agent 窗口
+      const agentWindow = new WebviewWindow('agent-window', {
+        url: '/agent-window',
+        title: '自动执行 - CAMFC',
+        width: 600,
+        height: 700,
+        resizable: true,
+        center: true,
+        decorations: true,
+        maximizable: false,
+        fullscreen: false,
+      })
+
+      agentWindow.once('tauri://created', () => {
+        console.log('agent 窗口已创建')
+      })
+
+      agentWindow.once('tauri://error', (e) => {
+        console.error('创建 agent 窗口失败:', e)
+        // 如果窗口已存在，显示并聚焦
+        WebviewWindow.getByLabel('agent-window').then(w => {
+          if (w) {
+            w.show()
+            w.setFocus()
+          }
+        })
+      })
+    } catch (e) {
+      console.error('打开 agent 窗口失败:', e)
     }
   })
 
@@ -530,6 +629,15 @@ onMounted(async () => {
     }
     if (openCloudUnlisten) {
       openCloudUnlisten()
+    }
+    if (volumeUpUnlisten) {
+      volumeUpUnlisten()
+    }
+    if (volumeDownUnlisten) {
+      volumeDownUnlisten()
+    }
+    if (navigateToAgentUnlisten) {
+      navigateToAgentUnlisten()
     }
     if (noteEditorOpenedUnlisten) {
       noteEditorOpenedUnlisten()

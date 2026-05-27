@@ -8,7 +8,8 @@ use tokio::time::{sleep, timeout};
 use std::error::Error;
 use uuid::Uuid;
 use serde::{Serialize, Deserialize};
-use crate::event_emitter::{emit_button_event, emit_navigate_to_notes, emit_toggle_meeting};
+use enigo::KeyboardControllable;
+use crate::event_emitter::{emit_button_event, emit_navigate_to_notes, emit_navigate_to_meetings, emit_toggle_meeting, emit_volume_up, emit_volume_down, emit_open_agent_window};
 
 use windows::Devices::Radios::Radio;
 use windows::Devices::Radios::RadioAccessStatus;
@@ -544,44 +545,39 @@ impl BluetoothManager {
                                 (notif.value[0] == 0xAA || notif.value[0] == 0xAB ||
                                  notif.value[0] == 0xAC || notif.value[0] == 0xAD ||
                                  notif.value[0] == 0x12 || notif.value[0] == 0x10 ||
-                                 notif.value[0] == 0x08 || notif.value[0] == 0x02);
+                                 notif.value[0] == 0x08 || notif.value[0] == 0x02 ||
+                                 notif.value[0] == 0x0C || notif.value[0] == 0x0D ||
+                                 notif.value[0] == 0x04 || notif.value[0] == 0x05 ||
+                                 notif.value[0] == 0x06 || notif.value[0] == 0x07);
 
                             if is_button_event {
                                 let first_byte = notif.value[0];
                                 let mut state_guard = last_button_state_clone.lock().await;
 
                                 if first_byte == 0xAA {
-                                    if state_guard.as_ref().map_or(true, |s| s != "press") {
-                                        tracing::info!("[BLUETOOTH] 上一页（GPIO10 按下 0xAA）");
-                                        *state_guard = Some("press".to_string());
-                                        tokio::spawn(async move {
-                                            emit_button_event("button_press_left");
-                                        });
-                                    }
+                                    tracing::info!("[BLUETOOTH] 上一页（GPIO10 按下 0xAA）");
+                                    *state_guard = Some("press".to_string());
+                                    tokio::spawn(async move {
+                                        emit_button_event("button_press_left");
+                                    });
                                 } else if first_byte == 0xAB {
-                                    if state_guard.as_ref().map_or(true, |s| s != "release") {
-                                        tracing::info!("[BLUETOOTH] 上一页松开（GPIO10 松开 0xAB）");
-                                        *state_guard = Some("release".to_string());
-                                        tokio::spawn(async move {
-                                            emit_button_event("button_release_left");
-                                        });
-                                    }
+                                    tracing::info!("[BLUETOOTH] 上一页松开（GPIO10 松开 0xAB）");
+                                    *state_guard = Some("release".to_string());
+                                    tokio::spawn(async move {
+                                        emit_button_event("button_release_left");
+                                    });
                                 } else if first_byte == 0xAC {
-                                    if state_guard.as_ref().map_or(true, |s| s != "press_left") {
-                                        tracing::info!("[BLUETOOTH] 下一页（GPIO9 按下 0xAC）");
-                                        *state_guard = Some("press_left".to_string());
-                                        tokio::spawn(async move {
-                                            emit_button_event("button_press");
-                                        });
-                                    }
+                                    tracing::info!("[BLUETOOTH] 下一页（GPIO9 按下 0xAC）");
+                                    *state_guard = Some("press_left".to_string());
+                                    tokio::spawn(async move {
+                                        emit_button_event("button_press");
+                                    });
                                 } else if first_byte == 0xAD {
-                                    if state_guard.as_ref().map_or(true, |s| s != "release_left") {
-                                        tracing::info!("[BLUETOOTH] 下一页松开（GPIO9 松开 0xAD）");
-                                        *state_guard = Some("release_left".to_string());
-                                        tokio::spawn(async move {
-                                            emit_button_event("button_release");
-                                        });
-                                    }
+                                    tracing::info!("[BLUETOOTH] 下一页松开（GPIO9 松开 0xAD）");
+                                    *state_guard = Some("release_left".to_string());
+                                    tokio::spawn(async move {
+                                        emit_button_event("button_release");
+                                    });
                                 } else if first_byte == 0x12 {
                                     tracing::info!("[BLUETOOTH] 收到截图命令（0x12）");
                                     tokio::spawn(async move {
@@ -602,6 +598,35 @@ impl BluetoothManager {
                                     tokio::spawn(async move {
                                         emit_toggle_meeting();
                                     });
+                                } else if first_byte == 0x0C {
+                                    tracing::info!("[BLUETOOTH] 按钮 1 按下（音量增加 0x0C）");
+                                    *state_guard = Some("button1_press".to_string());
+                                    tokio::spawn(async move {
+                                        emit_volume_up();
+                                        let mut enigo = enigo::Enigo::new();
+                                        enigo.key_click(enigo::Key::VolumeUp);
+                                    });
+                                } else if first_byte == 0x0D {
+                                    tracing::info!("[BLUETOOTH] 按钮 1 松开（0x0D）");
+                                    *state_guard = Some("button1_release".to_string());
+                                } else if first_byte == 0x04 {
+                                    tracing::info!("[BLUETOOTH] 按钮 3 按下（跳转到课堂笔记 0x04）");
+                                    *state_guard = Some("button3_press".to_string());
+                                    tokio::spawn(async move {
+                                        emit_navigate_to_notes();
+                                    });
+                                } else if first_byte == 0x05 {
+                                    tracing::info!("[BLUETOOTH] 按钮 3 松开（0x05）");
+                                    *state_guard = Some("button3_release".to_string());
+                                } else if first_byte == 0x06 {
+                                    tracing::info!("[BLUETOOTH] 按钮 7 按下（跳转到课堂记录 0x06）");
+                                    *state_guard = Some("button7_press".to_string());
+                                    tokio::spawn(async move {
+                                        emit_navigate_to_meetings();
+                                    });
+                                } else if first_byte == 0x07 {
+                                    tracing::info!("[BLUETOOTH] 按钮 7 松开（0x07）");
+                                    *state_guard = Some("button7_release".to_string());
                                 }
 
                                 drop(state_guard);

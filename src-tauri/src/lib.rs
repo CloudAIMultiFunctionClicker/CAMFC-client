@@ -23,6 +23,8 @@ mod agent;
 
 mod notification;
 
+mod volume_control;
+
 use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::Manager;

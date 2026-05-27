@@ -83,6 +83,19 @@ pub fn emit_navigate_to_notes() {
     }
 }
 
+/// 发射跳转到课堂记录事件
+pub fn emit_navigate_to_meetings() {
+    if let Some(handle) = get_app_handle() {
+        tracing::info!("[EVENT] 发射跳转到课堂记录事件");
+        // 只发送到主窗口
+        if let Some(main_window) = handle.get_webview_window("main") {
+            let _ = main_window.emit("navigate-to-meetings", ());
+        } else {
+            tracing::warn!("主窗口不存在，无法发送跳转课堂记录命令");
+        }
+    }
+}
+
 /// 发射新建笔记事件
 pub fn emit_create_note() {
     if let Some(handle) = get_app_handle() {
@@ -120,6 +133,49 @@ pub fn emit_bluetooth_disconnect() {
             let _ = main_window.emit("bluetooth-disconnect", ());
         } else {
             tracing::warn!("主窗口不存在，无法发送蓝牙断开事件");
+        }
+    }
+}
+
+/// 发射音量增加事件
+pub fn emit_volume_up() {
+    if let Some(handle) = get_app_handle() {
+        tracing::info!("[EVENT] 发射音量增加事件");
+        if let Some(main_window) = handle.get_webview_window("main") {
+            let _ = main_window.emit("volume-up", ());
+        } else {
+            tracing::warn!("主窗口不存在，无法发送音量增加事件");
+        }
+    }
+}
+
+/// 发射音量减少事件
+pub fn emit_volume_down() {
+    if let Some(handle) = get_app_handle() {
+        tracing::info!("[EVENT] 发射音量减少事件");
+        if let Some(main_window) = handle.get_webview_window("main") {
+            let _ = main_window.emit("volume-down", ());
+        } else {
+            tracing::warn!("主窗口不存在，无法发送音量减少事件");
+        }
+    }
+}
+
+/// 发射打开 agent 窗口事件
+pub fn emit_open_agent_window() {
+    if let Some(handle) = get_app_handle() {
+        tracing::info!("[EVENT] 发射打开 agent 窗口事件");
+        // 检查 agent 窗口是否已存在
+        if let Some(existing_window) = handle.get_webview_window("agent-window") {
+            tracing::info!("[EVENT] agent 窗口已存在，显示并聚焦");
+            let _ = existing_window.show();
+            let _ = existing_window.set_focus();
+        } else {
+            tracing::info!("[EVENT] 创建新的 agent 窗口");
+            // 在主窗口中发送事件，让前端创建窗口
+            if let Some(main_window) = handle.get_webview_window("main") {
+                let _ = main_window.emit("open-agent-window", ());
+            }
         }
     }
 }
