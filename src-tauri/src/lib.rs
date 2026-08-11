@@ -1134,7 +1134,7 @@ fn select_files() -> Result<serde_json::Value, String> {
 /// 获取当前使用的后端配置
 /// 
 /// 前端可以调用这个命令获取当前使用的后端地址和端口
-/// 返回格式：{"base_url": "xxx", "port": 8005, "full_url": "xxx:8005"}
+/// 返回格式：{"base_url": "xxx", "port": 8005, "full_url": "xxx"}
 #[tauri::command]
 async fn get_backend_config() -> Result<serde_json::Value, String> {
     tracing::info!("前端调用get_backend_config命令...");

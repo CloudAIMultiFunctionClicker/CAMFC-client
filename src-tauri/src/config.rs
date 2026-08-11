@@ -16,7 +16,7 @@
 // 负责管理后端域名和端口的配置
 //
 // 优先级：
-// 1. 硬编码配置 https://camfc.seven-cloud.cn:8005/
+// 1. 硬编码配置 https://camfc.011420.xyz
 // 2. 环境变量 CAMFC_BASE 和 CAMFC_PORT (已禁用)
 // 3. 远程配置 https://me.011420.xyz/api/camfc/data.json (已禁用)
 // 4. 默认值 http://localhost:8005 (已禁用)
@@ -39,9 +39,9 @@ pub struct BackendConfig {
 }
 
 impl BackendConfig {
-    // 获取完整的 URL（包含端口）
+    // 获取完整的 URL（不带端口，直接用域名）
     pub fn get_full_url(&self) -> String {
-        format!("{}:{}", self.base_url, self.port)
+        format!("{}", self.base_url)
     }
 }
 
@@ -54,7 +54,7 @@ pub async fn init_config() -> Result<()> {
     
     // 使用硬编码配置
     let config = BackendConfig {
-        base_url: "https://camfc.seven-cloud.cn".to_string(),
+        base_url: "https://camfc.011420.xyz".to_string(),
         port: 8005,
     };
     tracing::info!("使用硬编码配置：{}", config.get_full_url());

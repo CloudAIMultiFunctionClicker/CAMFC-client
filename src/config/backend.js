@@ -20,9 +20,9 @@ import { ref } from 'vue'
 
 // 后端配置
 const backendConfig = ref({
-  base_url: 'https://camfc.seven-cloud.cn',
+  base_url: 'https://camfc.011420.xyz',
   port: 8005,
-  full_url: 'https://camfc.seven-cloud.cn:8005'
+  full_url: 'https://camfc.011420.xyz'
 })
 
 // 配置是否已加载
@@ -37,9 +37,9 @@ export async function initBackendConfig() {
 
   // 使用硬编码配置
   backendConfig.value = {
-    base_url: 'https://camfc.seven-cloud.cn',
+    base_url: 'https://camfc.011420.xyz',
     port: 8005,
-    full_url: 'https://camfc.seven-cloud.cn:8005'
+    full_url: 'https://camfc.011420.xyz'
   }
   isConfigLoaded.value = true
   console.log('后端配置已加载:', backendConfig.value.full_url)
