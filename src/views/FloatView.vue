@@ -62,7 +62,7 @@ Email: admin@mc666.top
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { WebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { getCurrentWindow, Window } from '@tauri-apps/api/window'
 import { listen } from '@tauri-apps/api/event'
@@ -73,7 +73,6 @@ import { getBackendUrl } from '../config/backend.js'
 import { loadAppData } from '../components/data/storage.js'
 
 const isConnected = ref(false)
-const isMainWindowVisible = ref(true)
 const meetingActive = ref(false)
 const showConnectTip = ref(false)
 let connectTipTimer = null
@@ -99,28 +98,7 @@ const themeVars = computed(() => ({
   '--float-tip-bg': isLightMode.value ? '#ffffff' : '#1a1a1a',
 }))
 
-// 点击外部指令的处理函数
-let clickOutsideHandler = null
-
-onMounted(() => {
-  // 添加全局点击监听，用于点击外部关闭菜单
-  clickOutsideHandler = (event) => {
-    handleClickOutside(event)
-  }
-  document.addEventListener('click', clickOutsideHandler)
-})
-
-onBeforeUnmount(() => {
-  // 移除全局点击监听
-  if (clickOutsideHandler) {
-    document.removeEventListener('click', clickOutsideHandler)
-  }
-})
-
-
-
 let keepOnTopInterval = null
-let visibilityCheckInterval = null
 let unlistenTheme = null
 let unlistenConnection = null
 
@@ -193,29 +171,6 @@ onMounted(async () => {
   // 不再主动查询主题，由主窗口在主题切换时主动通知悬浮窗
   // 避免了双向通信导致的主题状态循环更新问题
 
-  // 检查主窗口可见性状态
-  const checkMainWindowVisibility = async () => {
-    try {
-      const mainWindow = await Window.getByLabel('main')
-      if (mainWindow) {
-        isMainWindowVisible.value = await mainWindow.isVisible()
-      } else {
-        isMainWindowVisible.value = false
-      }
-    } catch (e) {
-      console.error('检查主窗口可见性失败:', e)
-      isMainWindowVisible.value = false
-    }
-  }
-
-  // 初始检查
-  await checkMainWindowVisibility()
-
-  // 定期检查主窗口可见性（每500毫秒检查一次，响应更快）
-  visibilityCheckInterval = setInterval(async () => {
-    await checkMainWindowVisibility()
-  }, 500)
-
   // 保持置顶（每 5 秒执行一次）
   keepOnTopInterval = setInterval(async () => {
     try {
@@ -267,9 +222,6 @@ onMounted(async () => {
     if (unlistenFloatToggle) unlistenFloatToggle()
     if (keepOnTopInterval) {
       clearInterval(keepOnTopInterval)
-    }
-    if (visibilityCheckInterval) {
-      clearInterval(visibilityCheckInterval)
     }
   })
 })
@@ -409,29 +361,6 @@ async function createMainWindow(path) {
   webview.once('tauri://error', (e) => {
     console.error('主窗口创建失败:', e)
   })
-}
-
-/**
- * 切换截图菜单显示
- */
-function toggleScreenshotMenu() {
-  showScreenshotMenu.value = !showScreenshotMenu.value
-  console.log('截图菜单状态:', showScreenshotMenu.value)
-}
-
-/**
- * 关闭截图菜单
- */
-function closeScreenshotMenu() {
-  showScreenshotMenu.value = false
-}
-
-/**
- * 切换隐藏主窗口选项
- */
-function toggleHideWindowOption() {
-  hideWindowBeforeScreenshot.value = !hideWindowBeforeScreenshot.value
-  console.log('隐藏主窗口选项:', hideWindowBeforeScreenshot.value)
 }
 
 /**
@@ -750,14 +679,6 @@ function openNoteEditorWindow(note) {
 }
 
 /**
- * 处理点击菜单外部区域
- * 保留函数以防未来需要
- */
-function handleClickOutside(event) {
-  // 预留功能
-}
-
-/**
  * 打开主窗口
  * 专门用于显示主窗口，不指定具体页面路径
  */
@@ -789,18 +710,14 @@ async function openMainWindow() {
           await mainWindow.center()
           await mainWindow.setFocus()
         }
-        // 更新状态为可见
-        isMainWindowVisible.value = true
       } catch (windowError) {
         // 窗口出错，重新创建
         console.log('主窗口出错，重新创建:', windowError)
         await createMainWindow('/')
-        isMainWindowVisible.value = true
       }
     } else {
       console.log('主窗口不存在，创建新窗口')
       await createMainWindow('/')
-      isMainWindowVisible.value = true
     }
 
   } catch (e) {
@@ -875,7 +792,7 @@ html, body {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 2px;
-  background-color: #ff6b6b;
+  background-color: var(--accent-red);
   color: white;
   cursor: pointer;
   transition: all 0.2s;
@@ -888,7 +805,7 @@ html, body {
 }
 
 .connection-status.connected {
-  background-color: #52c41a;
+  background-color: var(--accent-green);
 }
 
 .connection-status.connected:hover {
@@ -932,33 +849,33 @@ html, body {
 /* 打开主窗口按钮 - 特殊样式 */
 .open-main-btn {
   background-color: rgba(76, 175, 80, 0.1);
-  color: #4caf50;
+  color: var(--accent-green);
 }
 
 .open-main-btn:hover {
   background-color: rgba(76, 175, 80, 0.2);
-  color: #2e7d32;
+  color: var(--accent-green);
 }
 
 /* 课堂按钮样式 */
 .meeting-btn {
   background-color: rgba(255, 152, 0, 0.1);
-  color: #ff9800;
+  color: var(--accent-yellow);
 }
 
 .meeting-btn:hover {
   background-color: rgba(255, 152, 0, 0.2);
-  color: #f57c00;
+  color: var(--accent-yellow);
 }
 
 .meeting-btn.active {
   background-color: rgba(244, 67, 54, 0.1);
-  color: #f44336;
+  color: var(--accent-red);
 }
 
 .meeting-btn.active:hover {
   background-color: rgba(244, 67, 54, 0.2);
-  color: #d32f2f;
+  color: var(--accent-red);
 }
 
 /* 按钮文字样式 */
@@ -966,74 +883,6 @@ html, body {
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
-}
-
-/* 扩散动画遮罩 - 适配扁平悬浮窗 */
-.ripple-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* 扩散动画效果 - 扁平化设计 */
-.ripple-animation {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  background-color: rgba(59, 130, 246, 0.4);
-  border-radius: 2px;
-  animation: ripple-expand 0.4s ease-out forwards;
-  right: 45px;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-@keyframes ripple-expand {
-  0% {
-    width: 30px;
-    height: 30px;
-    opacity: 1;
-  }
-  100% {
-    width: 120px;
-    height: 120px;
-    opacity: 0;
-  }
-}
-
-/* 笔记功能菜单 - 水平排布，从右到左滑入 */
-.note-menu {
-  position: fixed;
-  right: 8px;
-  top: 50%;
-  background-color: var(--float-menu-bg, white);
-  border: 1px solid var(--float-menu-border, #e5e5e5);
-  border-radius: 2px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-  padding: 6px 8px;
-  z-index: 1001;
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
-  animation: menu-slide-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-}
-
-@keyframes menu-slide-in {
-  0% {
-    opacity: 0;
-    transform: translateY(-50%) translateX(50px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-  }
 }
 
 /* 未连接提示框 - 在 float-container 内居中显示 */

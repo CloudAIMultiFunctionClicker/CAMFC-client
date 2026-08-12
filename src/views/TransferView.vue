@@ -252,6 +252,18 @@ const handlePause = async (item, type) => {
 }
 
 const handleCancel = async (item, type) => {
+  // 后端没有独立的取消接口，这里做前端状态清理
+  // 暂停任务避免后台继续占用资源
+  try {
+    if (type === 'upload') {
+      await pauseUpload(item.uploadId || item.id)
+    } else {
+      await pauseDownload(item.fileId || item.id)
+    }
+  } catch (e) {
+    console.error('暂停任务失败:', e)
+  }
+
   if (type === 'upload') {
     const stored = await getActiveUploads()
     const newList = stored.filter(id => id !== item.id)
@@ -263,11 +275,24 @@ const handleCancel = async (item, type) => {
     await setActiveDownloads(newList)
     downloadList.value = downloadList.value.filter(i => i.id !== item.id)
   }
+  showToast('任务已取消', '#f59e0b')
 }
 
-const handleRetry = (item, type) => {
-  item.status = type === 'upload' ? 'uploading' : 'downloading'
-  item.progress = 0
+const handleRetry = async (item, type) => {
+  // 真正重新发起后端任务（断点续传）
+  try {
+    if (type === 'upload') {
+      await resumeUpload(item.uploadId || item.id)
+    } else {
+      await resumeDownload(item.fileId || item.id)
+    }
+    item.status = type === 'upload' ? 'uploading' : 'downloading'
+    item.progress = 0
+    showToast('任务已重新开始', '#10b981')
+  } catch (e) {
+    console.error('重试任务失败:', e)
+    showToast('重试失败: ' + (e.message || '未知错误'), '#ef4444')
+  }
 }
 
 const deleteHistoryItem = async (item, type) => {
@@ -326,56 +351,6 @@ const handleOpenFolder = async (item) => {
     await openFolder(filePath)
   } catch (error) {
     console.error('打开文件夹失败:', error)
-  }
-}
-
-const clearCompleted = async (type) => {
-  if (type === 'upload') {
-    const completedItems = uploadList.value.filter(i => i.status === 'completed' || i.status === 'failed')
-    const completedIds = completedItems.map(i => i.id)
-    if (completedIds.length > 0) {
-      const history = await getUploadHistory()
-      const newHistory = [
-        ...completedItems.map(item => ({
-          id: item.id,
-          name: item.name,
-          size: item.size,
-          status: item.status,
-          speed: item.speed,
-          completedTime: Date.now()
-        })),
-        ...history
-      ].slice(0, 100)
-      await saveUploadHistory(newHistory)
-      
-      const stored = await getActiveUploads()
-      const newList = stored.filter(id => !completedIds.includes(id))
-      await setActiveUploads(newList)
-    }
-    uploadList.value = uploadList.value.filter(i => i.status !== 'completed' && i.status !== 'failed')
-  } else {
-    const completedItems = downloadList.value.filter(i => i.status === 'completed' || i.status === 'failed')
-    const completedIds = completedItems.map(i => i.id)
-    if (completedIds.length > 0) {
-      const history = await getDownloadHistory()
-      const newHistory = [
-        ...completedItems.map(item => ({
-          id: item.id,
-          name: item.name,
-          size: item.size,
-          status: item.status,
-          speed: item.speed,
-          completedTime: Date.now()
-        })),
-        ...history
-      ].slice(0, 100)
-      await saveDownloadHistory(newHistory)
-      
-      const stored = await getActiveDownloads()
-      const newList = stored.filter(id => !completedIds.includes(id))
-      await setActiveDownloads(newList)
-    }
-    downloadList.value = downloadList.value.filter(i => i.status !== 'completed' && i.status !== 'failed')
   }
 }
 
@@ -872,22 +847,22 @@ onUnmounted(() => {
 
 .status-paused {
   background: rgba(245, 158, 11, 0.2);
-  color: #f59e0b;
+  color: var(--accent-yellow);
 }
 
 .status-waiting {
   background: rgba(100, 116, 139, 0.2);
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .status-completed {
   background: rgba(16, 185, 129, 0.2);
-  color: #10b981;
+  color: var(--accent-green);
 }
 
 .status-failed {
   background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
+  color: var(--accent-red);
 }
 
 .speed-text {
@@ -922,11 +897,11 @@ onUnmounted(() => {
 }
 
 .action-btn.cancel:hover {
-  background: #ef4444;
+  background: var(--accent-red);
 }
 
 .action-btn.retry:hover {
-  background: #f59e0b;
+  background: var(--accent-yellow);
 }
 
 .action-btn.delete-btn {
@@ -946,22 +921,6 @@ onUnmounted(() => {
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: flex-end;
-}
-
-.clear-btn {
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: 2px;
-  color: var(--text-secondary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.clear-btn:hover {
-  background: var(--bg-primary);
-  color: var(--text-primary);
 }
 
 .empty-state {
@@ -1149,7 +1108,7 @@ onUnmounted(() => {
     opacity: 1;
   }
   50% {
-    opacity: 0.4;
+    opacity: 0.5;
   }
 }
 

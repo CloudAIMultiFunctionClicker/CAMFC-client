@@ -971,7 +971,7 @@ defineExpose({
   max-height: 100%;
   object-fit: contain;
   transform-origin: center center;
-  transition: transform 0.1s ease-out;
+  /* 拖动/缩放由 JS 实时驱动，加过渡反而会拖影、不跟手 */
 }
 
 .annotate-canvas-wrapper.panning {

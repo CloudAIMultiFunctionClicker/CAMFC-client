@@ -189,7 +189,6 @@ const confirmUpload = async () => {
 const cancelUpload = () => {
   showUploadModal.value = false
   droppedFiles.value = []
-  dragActive.value = false
 }
 
 const handleDownloadClick = async () => {
@@ -2053,15 +2052,6 @@ const isFileSelected = (itemPath) => {
 .btn-confirm:hover {
   background: var(--accent-blue-bright, #0550ae);
   box-shadow: 0 4px 15px rgba(9, 105, 218, 0.3);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 @keyframes slideIn {

@@ -29,7 +29,7 @@
 </template>
 
 <script setup>
-import { inject, ref, onMounted, watch } from 'vue'
+import { inject, ref, onMounted } from 'vue'
 import { showToast } from '../components/layout/showToast.js'
 import { loadAppData, saveAppData } from '../components/data/storage.js'
 
@@ -38,15 +38,6 @@ const theme = inject('theme')
 const storageSettings = ref({
   followSystemTheme: false
 })
-
-const isLightMode = ref(false)
-
-// 监听主题变化
-watch(() => theme?.isLightMode, (newVal) => {
-  if (newVal !== undefined) {
-    isLightMode.value = newVal
-  }
-}, { immediate: true })
 
 const toggleFollowSystemTheme = async () => {
   storageSettings.value.followSystemTheme = !storageSettings.value.followSystemTheme

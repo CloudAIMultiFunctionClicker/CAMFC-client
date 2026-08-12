@@ -1038,7 +1038,7 @@ function initTheme() {
   padding: 12px;
   background: var(--bg-secondary, #161b22);
   border-radius: 2px;
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid var(--accent-blue);
 }
 
 .light-mode .viewer-content :deep(.ai-summary) {
@@ -1049,7 +1049,7 @@ function initTheme() {
   padding: 12px;
   background: var(--bg-tertiary, #0d1117);
   border-radius: 2px;
-  border-left: 3px solid #10b981;
+  border-left: 3px solid var(--accent-green);
 }
 
 .light-mode .viewer-content :deep(.ai-detail) {
@@ -1080,7 +1080,7 @@ function initTheme() {
   gap: 4px;
   margin-top: 12px;
   padding: 8px 16px;
-  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  background: linear-gradient(135deg, var(--accent-yellow) 0%, #f97316 100%);
   color: white;
   border: none;
   border-radius: 2px;
@@ -1254,7 +1254,7 @@ function initTheme() {
   font-weight: 500;
   border: none;
   border-radius: 2px;
-  background: #3b82f6;
+  background: var(--accent-blue);
   color: white;
   cursor: pointer;
   transition: all 0.2s;
@@ -1375,7 +1375,7 @@ function initTheme() {
 /* [题目] 标记高亮样式 */
 .question-tag {
   display: inline-block;
-  background: #f59e0b;
+  background: var(--accent-yellow);
   color: white;
   padding: 2px 8px;
   border-radius: 2px;
@@ -1392,7 +1392,7 @@ function initTheme() {
   gap: 4px;
   margin-top: 12px;
   padding: 8px 16px;
-  background: #f59e0b;
+  background: var(--accent-yellow);
   color: white;
   border: none;
   border-radius: 2px;
@@ -1509,7 +1509,7 @@ function initTheme() {
   margin: 0 0 12px 0;
   font-size: 15px;
   font-weight: 600;
-  color: #f59e0b;
+  color: var(--accent-yellow);
 }
 
 .question-text-content,
@@ -1527,7 +1527,7 @@ function initTheme() {
 .reveal-answer-btn {
   width: 100%;
   padding: 12px;
-  background: #4f46e5;
+  background: var(--accent-purple);
   color: white;
   border: none;
   border-radius: 2px;
@@ -1547,7 +1547,7 @@ function initTheme() {
   background: var(--bg-primary, #0d1117);
   border-radius: 2px;
   padding: 16px;
-  border-left: 3px solid #4f46e5;
+  border-left: 3px solid var(--accent-purple);
 }
 
 .light-mode .answer-section {

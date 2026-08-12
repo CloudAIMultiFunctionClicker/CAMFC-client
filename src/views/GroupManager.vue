@@ -644,7 +644,7 @@ watch(() => route.path, (newPath) => {
     opacity: 1;
   }
   50% {
-    opacity: 0.6;
+    opacity: 0.5;
   }
 }
 

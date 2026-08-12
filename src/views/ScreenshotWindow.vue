@@ -226,9 +226,6 @@ import { showToast } from '../components/layout/showToast.js'
 import AnnotatePanel from '../components/annotate/AnnotatePanel.vue'
 import { saveAnnotations, loadAnnotations, generateImageId } from '../utils/annotationStorage.js'
 
-
-import { Window } from '@tauri-apps/api/window'
-
 // 主题状态
 const isLightMode = ref(false)
 
@@ -366,11 +363,6 @@ const setupScreenshotListener = async () => {
   })
   
   console.log('截图监听器已设置完成')
-}
-
-const captureScreenshot = async () => {
-  // 重新截图需要从FloatView触发
-  showToast('请从悬浮窗重新截图', '#f59e0b')
 }
 
 const zoomIn = () => {
@@ -922,46 +914,6 @@ const handleKeyDown = (e) => {
   }
 }
 
-const startCropDrag = (e) => {
-  isCropping.value = true
-  cropStart.value = { x: e.clientX, y: e.clientY }
-  cropOriginal.value = { ...cropBox.value }
-  
-  document.addEventListener('mousemove', onCropDrag)
-  document.addEventListener('mouseup', stopCropDrag)
-  e.preventDefault()
-}
-
-const onCropDrag = (e) => {
-  if (!isCropping.value) return
-  
-  const dx = e.clientX - cropStart.value.x
-  const dy = e.clientY - cropStart.value.y
-  
-  cropBox.value.x = cropOriginal.value.x + dx
-  cropBox.value.y = cropOriginal.value.y + dy
-  
-  // 边界检查
-  const wrapper = cropImageWrapper.value
-  if (wrapper) {
-    const img = wrapper.querySelector('.crop-base-image')
-    if (img) {
-      const imgDisplayWidth = img.width
-      const imgDisplayHeight = img.height
-      
-      // 限制在图片范围内
-      cropBox.value.x = Math.max(0, Math.min(cropBox.value.x, imgDisplayWidth - cropBox.value.width))
-      cropBox.value.y = Math.max(0, Math.min(cropBox.value.y, imgDisplayHeight - cropBox.value.height))
-    }
-  }
-}
-
-const stopCropDrag = () => {
-  isCropping.value = false
-  document.removeEventListener('mousemove', onCropDrag)
-  document.removeEventListener('mouseup', stopCropDrag)
-}
-
 // 初始化主题
 function initTheme() {
   try {
@@ -1127,7 +1079,7 @@ onUnmounted(() => {
 
 /* 标注工具按钮激活状态 */
 .toolbar .zoom-btn.active {
-  background-color: #3b82f6;
+  background-color: var(--accent-blue);
   color: #fff;
 }
 
@@ -1205,7 +1157,7 @@ onUnmounted(() => {
 
 /* 完成/取消按钮样式 */
 .toolbar .primary-btn {
-  background-color: #10b981;
+  background-color: var(--accent-green);
   color: #fff;
 }
 
@@ -1215,7 +1167,7 @@ onUnmounted(() => {
 }
 
 .toolbar .cancel-btn:hover {
-  background-color: #ef4444;
+  background-color: var(--accent-red);
   color: white;
 }
 
@@ -1278,7 +1230,7 @@ onUnmounted(() => {
 
 .crop-selection {
   position: absolute;
-  border: 2px solid #3b82f6;
+  border: 2px solid var(--accent-blue);
   background-color: rgba(59, 130, 246, 0.2);
   cursor: move;
 }
@@ -1287,7 +1239,7 @@ onUnmounted(() => {
   position: absolute;
   width: 12px;
   height: 12px;
-  background-color: #3b82f6;
+  background-color: var(--accent-blue);
   border: 2px solid white;
   border-radius: 2px;
 }
@@ -1306,7 +1258,7 @@ onUnmounted(() => {
   top: -28px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: #3b82f6;
+  background-color: var(--accent-blue);
   color: white;
   padding: 2px 8px;
   border-radius: 2px;
@@ -1336,7 +1288,7 @@ onUnmounted(() => {
 }
 
 .crop-action-btn.cancel {
-  background-color: #ef4444;
+  background-color: var(--accent-red);
   color: white;
 }
 
@@ -1345,7 +1297,7 @@ onUnmounted(() => {
 }
 
 .crop-action-btn.apply {
-  background-color: #10b981;
+  background-color: var(--accent-green);
   color: white;
 }
 

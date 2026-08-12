@@ -51,7 +51,8 @@ const developerEmails = [
 const currentEmailIndex = ref(0)
 
 const showFaq = () => {
-  // 功能已移除,按钮保留但无反应
+  // FAQ 内容暂未上线，先给用户一个明确反馈，避免点了没反应
+  showToast('常见问题功能暂未开放，敬请期待', '#f59e0b')
 }
 
 const openGitHubIssue = () => {

@@ -21,23 +21,15 @@
 import { inject, ref, onMounted } from 'vue'
 import { showToast } from '../components/layout/showToast.js'
 import { disconnect, getDeviceId } from '../components/data/bluetooth.js'
-import { ls } from '../components/data/fileSystem.js'
-import { loadAppData } from '../components/data/storage.js'
 
 const theme = inject('theme')
 
 const deviceId = ref(null)
 const deviceName = ref(null)
 
-const cpenSettings = ref({
-  autoConnect: false,
-  lastDeviceAddress: ''
-})
-
 const checkFilesystemLogin = async () => {
   try {
     let id = null
-    let cloudAccessible = false
     let name = null
 
     try {
@@ -62,16 +54,6 @@ const checkFilesystemLogin = async () => {
     } catch (idError) {
       console.warn('获取设备信息失败:', idError)
     }
-
-    if (id) {
-      try {
-        const result = await ls('')
-        cloudAccessible = result !== null
-      } catch (lsError) {
-        console.warn('访问云盘失败:', lsError)
-        cloudAccessible = false
-      }
-    }
   } catch (error) {
     console.warn('检查登录状态失败:', error)
     deviceId.value = null
@@ -87,19 +69,7 @@ const disconnectDevice = async () => {
   showToast('已断开设备连接', '#10b981')
 }
 
-const loadSettings = async () => {
-  try {
-    const savedCpen = await loadAppData('settings_cpen')
-    if (savedCpen) {
-      cpenSettings.value = JSON.parse(savedCpen)
-    }
-  } catch (error) {
-    console.error('加载设置失败:', error)
-  }
-}
-
 onMounted(() => {
-  loadSettings()
   checkFilesystemLogin()
 })
 </script>

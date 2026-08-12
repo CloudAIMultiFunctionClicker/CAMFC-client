@@ -20,7 +20,7 @@ Email: admin@mc666.top
     
     <div class="placeholder-content">
       <!-- 占位图标 -->
-      <div class="placeholder-icon">ℹ️</div>
+      <div class="placeholder-icon"><i class="ri-information-line"></i></div>
       
       <p class="placeholder-message">
         更多信息页面正在开发中...
@@ -170,7 +170,7 @@ function goToContact() {
   transition: background-color 0.2s;
   
   &:hover {
-    background-color: #4a8bd6;
+    background-color: var(--accent-blue-bright);
   }
   
   &:active {
@@ -189,7 +189,7 @@ function goToContact() {
   margin-top: 20px;
   
   &:hover {
-    background-color: #4a8bd6;
+    background-color: var(--accent-blue-bright);
   }
   
   &:active {

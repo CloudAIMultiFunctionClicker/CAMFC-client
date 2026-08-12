@@ -240,22 +240,6 @@ function getFileIcon(filename) {
   return 'ri-file-text-line'
 }
 
-function getFileTypeInfo(type) {
-  const typeInfo = {
-    pdf: { label: 'PDF 文档', icon: 'ri-file-pdf-line' },
-    doc: { label: 'Word 文档', icon: 'ri-file-word-line' },
-    xls: { label: 'Excel 表格', icon: 'ri-file-excel-line' },
-    ppt: { label: 'PowerPoint', icon: 'ri-file-ppt-line' },
-    image: { label: '图片', icon: 'ri-image-line' },
-    video: { label: '视频', icon: 'ri-movie-line' },
-    code: { label: '代码文件', icon: 'ri-code-s-slash-line' },
-    archive: { label: '压缩包', icon: 'ri-archive-line' },
-    other: { label: '其他文件', icon: 'ri-file-text-line' }
-  }
-  
-  return typeInfo[type] || typeInfo.other
-}
-
 function formatFileSize(bytes) {
   if (!bytes) return '0 B'
   const k = 1024
@@ -353,10 +337,6 @@ function openNoteViewer(note) {
       showToast('打开笔记查看窗口失败', '#ef4444')
     }
   })
-}
-
-function openFileDetail(file) {
-  showToast('文件详情功能开发中', '#f59e0b')
 }
 
 // 判断是否是当前用户
@@ -516,7 +496,7 @@ onMounted(async () => {
 
 <style scoped>
 .group-detail-container {
-  padding: 20px;
+  padding: 24px;
   max-width: 1200px;
   margin: 0 auto;
 }
@@ -581,7 +561,7 @@ onMounted(async () => {
 }
 
 .page-title {
-  font-size: 24px;
+  font-size: 28px;
   margin: 0 0 4px 0;
   color: var(--text-primary, #f0f6fc);
   white-space: nowrap;
@@ -688,25 +668,6 @@ onMounted(async () => {
 
 .tab-content {
   min-height: 400px;
-}
-
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
-  color: var(--text-muted, #8b949e);
-}
-
-.loading-spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border-color, #30363d);
-  border-top-color: var(--accent-blue, #3178c6);
-  border-radius: 2px;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
 }
 
 /* 骨架屏样式 - 笔记列表 */
@@ -974,7 +935,7 @@ onMounted(async () => {
 
 .note-type-tag.meeting {
   background-color: rgba(139, 92, 246, 0.2);
-  color: #a78bfa;
+  color: var(--accent-purple);
 }
 
 .note-shared-by {
@@ -1176,25 +1137,25 @@ onMounted(async () => {
 
 .download-btn {
   background-color: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  color: var(--accent-green);
   border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .download-btn:hover {
   background-color: rgba(16, 185, 129, 0.25);
-  border-color: #10b981;
+  border-color: var(--accent-green);
   transform: translateY(-1px);
 }
 
 .delete-btn {
   background-color: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  color: var(--accent-red);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .delete-btn:hover {
   background-color: rgba(239, 68, 68, 0.25);
-  border-color: #ef4444;
+  border-color: var(--accent-red);
   transform: translateY(-1px);
 }
 

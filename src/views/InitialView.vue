@@ -286,7 +286,24 @@ async function selectDevice(device) {
  * 开始倒计时
  */
 function startCountdown() {
-  jumpToWelcome()
+  // 重置倒计时状态
+  countdownSeconds.value = 5
+  countdownProgress.value = 100
+  showCountdown.value = true
+
+  // 每秒递减，进度条同步缩短
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+  }
+  countdownTimer = setInterval(() => {
+    countdownSeconds.value -= 1
+    countdownProgress.value = (countdownSeconds.value / 5) * 100
+    if (countdownSeconds.value <= 0) {
+      clearInterval(countdownTimer)
+      countdownTimer = null
+      jumpToWelcome()
+    }
+  }, 1000)
 }
 
 /**
@@ -295,6 +312,7 @@ function startCountdown() {
 function skipCountdown() {
   if (countdownTimer) {
     clearInterval(countdownTimer)
+    countdownTimer = null
   }
   jumpToWelcome()
 }
@@ -304,6 +322,10 @@ function skipCountdown() {
  */
 function jumpToWelcome() {
   showCountdown.value = false
+  if (countdownTimer) {
+    clearInterval(countdownTimer)
+    countdownTimer = null
+  }
   // 确保蓝牙状态已设置为已连接
   // 这样路由守卫才会放行
   if (!bluetoothStore.isConnected()) {

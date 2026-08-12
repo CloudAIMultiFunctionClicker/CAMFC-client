@@ -536,7 +536,7 @@ html, body {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 2px;
-  background-color: #ff6b6b;
+  background-color: var(--accent-red);
   color: white;
   cursor: pointer;
   transition: all 0.2s;
@@ -549,7 +549,7 @@ html, body {
 }
 
 .connection-status.connected {
-  background-color: #52c41a;
+  background-color: var(--accent-green);
 }
 
 .connection-status.connected:hover {
@@ -594,12 +594,12 @@ html, body {
 /* 打开主窗口按钮 - 特殊样式 */
 .open-main-btn {
   background-color: rgba(76, 175, 80, 0.1);
-  color: #4caf50;
+  color: var(--accent-green);
 }
 
 .open-main-btn:hover {
   background-color: rgba(76, 175, 80, 0.2);
-  color: #2e7d32;
+  color: var(--accent-green);
 }
 
 /* 按钮文字样式 */
@@ -609,24 +609,32 @@ html, body {
   white-space: nowrap;
 }
 
-/* 扩散动画遮罩 - 适配扁平悬浮窗 */
-.ripple-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.3);
-  z-index: 99999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* 未连接提示框过渡动画 */
+.tip-fade-enter-active {
+  animation: tip-fade-in 0.2s ease-out forwards;
 }
 
-/* 扩散动画效果 - 扁平化设计 */
-.ripple-animation {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  background-color: rgba(59, 130, 246, 0.4);}
+.tip-fade-leave-active {
+  animation: tip-fade-out 0.2s ease-in forwards;
+}
+
+@keyframes tip-fade-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes tip-fade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+}
   </style>

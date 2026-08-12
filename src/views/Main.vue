@@ -123,10 +123,11 @@ async function rescanDevices() {
     const devices = await scanCpenDevices()
     if (devices.length === 0) {
       showToast('未发现 Cpen 设备')
-      router.push('/')
     } else {
-      router.push('/')
+      showToast(`发现 ${devices.length} 个 Cpen 设备，请选择连接`)
     }
+    // 跳转到连接页面，让用户选择设备进行连接
+    router.push('/')
   } catch (error) {
     console.error('扫描失败:', error)
     showToast('扫描失败: ' + error.message)

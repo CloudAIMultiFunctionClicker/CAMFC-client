@@ -543,7 +543,7 @@ onUnmounted(async () => {
 }
 
 .action-btn.close-btn:hover {
-  background-color: #ef4444;
+  background-color: var(--accent-red);
   color: white;
 }
 
@@ -582,7 +582,7 @@ onUnmounted(async () => {
 
 .error-icon {
   font-size: 48px;
-  color: #ef4444;
+  color: var(--accent-red);
 }
 
 .retry-btn {
@@ -597,7 +597,7 @@ onUnmounted(async () => {
 }
 
 .retry-btn:hover {
-  background: #2563eb;
+  background: var(--accent-blue);
 }
 
 /* 笔记内容包装器 */
@@ -783,7 +783,7 @@ onUnmounted(async () => {
 .keyword-tag {
   padding: 8px 16px;
   background: rgba(139, 92, 246, 0.2);
-  color: #a78bfa;
+  color: var(--accent-purple);
   border-radius: 2px;
   font-size: 13px;
   font-weight: 500;

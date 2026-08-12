@@ -206,7 +206,6 @@ onMounted(async () => {
   
   // 通知主窗口刷新笔记列表（打开时）
   try {
-    const { emit } = await import('@tauri-apps/api/event')
     await emit('note-editor-opened', { uuid })
   } catch (e) {
     console.error('发送打开事件失败:', e)
@@ -290,7 +289,6 @@ async function closeWindow() {
   try {
     // 先通知主窗口刷新笔记列表
     try {
-      const { emit } = await import('@tauri-apps/api/event')
       await emit('note-editor-closed', { uuid: noteUuid.value })
     } catch (e) {
       console.error('发送关闭事件失败:', e)
@@ -537,7 +535,7 @@ async function sendMeetingNoteToBackend() {
 }
 
 .modal-content {
-  background: #252525;
+  background: var(--bg-secondary);
   border-radius: 2px;
   width: 100%;
   max-width: 400px;
@@ -555,7 +553,7 @@ async function sendMeetingNoteToBackend() {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .light-mode .modal-header {
@@ -571,13 +569,13 @@ async function sendMeetingNoteToBackend() {
 }
 
 .modal-header h3 i {
-  color: #3b82f6;
+  color: var(--accent-blue);
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: #666;
+  color: var(--text-muted);
   cursor: pointer;
   font-size: 20px;
   padding: 4px;
@@ -589,13 +587,13 @@ async function sendMeetingNoteToBackend() {
 }
 
 .close-btn:hover {
-  background: #333;
+  background: var(--border-color);
   color: #e0e0e0;
 }
 
 .light-mode .close-btn:hover {
   background: #f0f0f0;
-  color: #333;
+  color: var(--border-color);
 }
 
 .modal-body {
@@ -604,12 +602,12 @@ async function sendMeetingNoteToBackend() {
 
 .save-modal-body p {
   text-align: center;
-  color: #aaa;
+  color: var(--text-muted);
   font-size: 14px;
 }
 
 .light-mode .save-modal-body p {
-  color: #666;
+  color: var(--text-muted);
 }
 
 .modal-footer {
@@ -617,7 +615,7 @@ async function sendMeetingNoteToBackend() {
   justify-content: flex-end;
   gap: 12px;
   padding: 16px 20px;
-  border-top: 1px solid #333;
+  border-top: 1px solid var(--border-color);
 }
 
 .light-mode .modal-footer {
@@ -626,7 +624,7 @@ async function sendMeetingNoteToBackend() {
 
 .cancel-btn {
   padding: 8px 16px;
-  border: 1px solid #444;
+  border: 1px solid var(--border-color);
   border-radius: 2px;
   background: transparent;
   color: #e0e0e0;
@@ -637,11 +635,11 @@ async function sendMeetingNoteToBackend() {
 
 .light-mode .cancel-btn {
   border-color: #ddd;
-  color: #333;
+  color: var(--border-color);
 }
 
 .cancel-btn:hover {
-  background: #333;
+  background: var(--border-color);
 }
 
 .light-mode .cancel-btn:hover {
@@ -652,7 +650,7 @@ async function sendMeetingNoteToBackend() {
   padding: 8px 16px;
   border: none;
   border-radius: 2px;
-  background: #3b82f6;
+  background: var(--accent-blue);
   color: white;
   cursor: pointer;
   font-size: 14px;

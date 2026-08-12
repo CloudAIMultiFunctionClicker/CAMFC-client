@@ -145,7 +145,7 @@ const startWindowDrag = async (event) => {
             <h1>
                 <span>CAMFC Cloud</span>
                 <!-- 云按钮 - 现在使用 Remix Icon 云图标 -->
-                <router-link to="/main">
+                <router-link to="/welcome">
                 <button class="btn-cloud">
                     
                     <i class="ri-cloud-line"></i>

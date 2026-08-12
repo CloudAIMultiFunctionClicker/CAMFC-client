@@ -68,7 +68,7 @@ Agent 自动化执行窗口
           class="stop-btn"
           @click="stopAutomation"
         >
-          ⏹ 停止执行
+          <i class="ri-stop-circle-line"></i> 停止执行
         </button>
       </div>
 
@@ -205,16 +205,6 @@ function showStatus(message, type) {
 // 清空日志
 function clearLog() {
   executionLog.value = ''
-}
-
-// 关闭窗口
-async function closeWindow() {
-  try {
-    const appWindow = getCurrentWindow()
-    await appWindow.close()
-  } catch (e) {
-    console.error('关闭窗口失败:', e)
-  }
 }
 </script>
 
@@ -369,7 +359,7 @@ async function closeWindow() {
 }
 
 .execute-btn:hover:not(:disabled) {
-  background-color: #2868a8;
+  background-color: var(--accent-blue-bright);
   box-shadow: 0 4px 12px rgba(49, 120, 198, 0.3);
 }
 
@@ -383,7 +373,7 @@ async function closeWindow() {
 .stop-btn {
   flex: 1;
   padding: 12px;
-  background-color: #da3633;
+  background-color: var(--accent-red);
   color: white;
   border: none;
   border-radius: 2px;
@@ -395,7 +385,7 @@ async function closeWindow() {
 }
 
 .stop-btn:hover {
-  background-color: #c2322f;
+  background-color: var(--accent-red);
   box-shadow: 0 4px 12px rgba(218, 54, 51, 0.3);
 }
 
@@ -489,8 +479,8 @@ async function closeWindow() {
 
 .status-message.error {
   background-color: rgba(218, 54, 51, 0.1);
-  color: #da3633;
-  border: 1px solid #da3633;
+  color: var(--accent-red);
+  border: 1px solid var(--accent-red);
 }
 
 @keyframes fadeIn {

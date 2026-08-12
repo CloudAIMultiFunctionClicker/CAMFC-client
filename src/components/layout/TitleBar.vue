@@ -255,18 +255,13 @@ const showDevelopingToast = () => {
             <Copy v-if="isMaximized" :size="15" :stroke-width="3" class="restore-icon" />
             <Square v-else :size="15" :stroke-width="3" />
           </button>
-          <button ref="closeBtnRef" class="icon-btn window-btn close-btn" @click="requestClose" title="关闭">
+          <button class="icon-btn window-btn close-btn" @click="requestClose" title="关闭">
             <X :size="18" :stroke-width="3" />
           </button>
         </div>
       </div>
     </div>
   </header>
-  
-  <!-- 窗口关闭扩散波纹 -->
-  <Transition name="ripple-fade">
-    <div v-if="showCloseRipple" class="close-ripple" :style="closeRippleStyle"></div>
-  </Transition>
   
   <Transition name="confirm">
     <div v-if="showConfirmDialog" class="confirm-container" @click="cancelClose">
@@ -441,50 +436,6 @@ const showDevelopingToast = () => {
   right: 0;
   bottom: 0;
   z-index: 9999;
-}
-
-/* 窗口关闭扩散波纹 */
-.close-ripple {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 10000;
-}
-
-.close-ripple::before {
-  content: '';
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  background: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.3);
-  border-radius: 2px;
-  transform: translate(-50%, -50%) scale(0);
-  animation: closeRippleExpand 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes closeRippleExpand {
-  0% {
-    transform: translate(-50%, -50%) scale(0);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(50);
-    opacity: 0;
-  }
-}
-
-/* 波纹淡入淡出 */
-.ripple-fade-enter-active,
-.ripple-fade-leave-active {
-  transition: opacity 0.4s ease;
-}
-
-.ripple-fade-enter-from,
-.ripple-fade-leave-to {
-  opacity: 0;
 }
 
 /* 扩散波纹效果 */

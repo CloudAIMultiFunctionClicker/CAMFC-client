@@ -42,7 +42,6 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { showToast } from '../components/layout/showToast.js'
-import { loadAppData } from '../components/data/storage.js'
 import { open } from '@tauri-apps/plugin-dialog'
 
 const downloadPath = ref('')

@@ -121,8 +121,6 @@ const screenshotData = ref(null)
 const width = ref(0)
 const height = ref(0)
 const screenshotTime = ref('')
-const loading = ref(false)
-const error = ref(null)
 
 // 裁切模式相关
 const isCropMode = ref(false)
@@ -199,17 +197,11 @@ const setupScreenshotListener = async () => {
     if (result.success) {
       processScreenshotData(result)
     } else {
-      error.value = result.error || '截图失败'
-      showToast(error.value, '#ef4444')
+      showToast(result.error || '截图失败', '#ef4444')
     }
   })
   
   console.log('截图监听器已设置完成')
-}
-
-const captureScreenshot = async () => {
-  // 重新截图需要从FloatView触发
-  showToast('请从悬浮窗重新截图', '#f59e0b')
 }
 
 const zoomIn = () => {
@@ -632,10 +624,6 @@ const openNoteEditorWindow = (note) => {
   })
 }
 
-const goBack = () => {
-  window.history.back()
-}
-
 // 键盘快捷键支持
 const handleKeyDown = (e) => {
   if (!isCropMode.value) return
@@ -651,46 +639,6 @@ const handleKeyDown = (e) => {
     e.preventDefault()
     cancelCrop()
   }
-}
-
-const startCropDrag = (e) => {
-  isCropping.value = true
-  cropStart.value = { x: e.clientX, y: e.clientY }
-  cropOriginal.value = { ...cropBox.value }
-  
-  document.addEventListener('mousemove', onCropDrag)
-  document.addEventListener('mouseup', stopCropDrag)
-  e.preventDefault()
-}
-
-const onCropDrag = (e) => {
-  if (!isCropping.value) return
-  
-  const dx = e.clientX - cropStart.value.x
-  const dy = e.clientY - cropStart.value.y
-  
-  cropBox.value.x = cropOriginal.value.x + dx
-  cropBox.value.y = cropOriginal.value.y + dy
-  
-  // 边界检查
-  const wrapper = cropImageWrapper.value
-  if (wrapper) {
-    const img = wrapper.querySelector('.crop-base-image')
-    if (img) {
-      const imgDisplayWidth = img.width
-      const imgDisplayHeight = img.height
-      
-      // 限制在图片范围内
-      cropBox.value.x = Math.max(0, Math.min(cropBox.value.x, imgDisplayWidth - cropBox.value.width))
-      cropBox.value.y = Math.max(0, Math.min(cropBox.value.y, imgDisplayHeight - cropBox.value.height))
-    }
-  }
-}
-
-const stopCropDrag = () => {
-  isCropping.value = false
-  document.removeEventListener('mousemove', onCropDrag)
-  document.removeEventListener('mouseup', stopCropDrag)
 }
 
 const startResize = (handle) => {
@@ -875,38 +823,6 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.loading-state,
-.error-state {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted, #64748b);
-}
-
-.loading-state .spinner {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-top-color: var(--accent-blue, #3178c6);
-  border-radius: 2px;
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.error-state i {
-  font-size: 48px;
-  color: #ef4444;
-  margin-bottom: 16px;
-}
-
 .preview-container {
   flex: 1;
   display: flex;
@@ -974,18 +890,18 @@ onUnmounted(() => {
 }
 
 .zoom-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text-secondary, #cbd5e1);
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  background-color: var(--bg-secondary, #1e293b);
-  color: var(--text-primary, #f1f5f9);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: 2px;
-  font-size: 18px;
-  cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  font-size: 16px;
 }
 
 .zoom-btn:hover:not(:disabled) {
@@ -1032,8 +948,8 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.95);
-  z-index: 99999;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 50;
   overflow: hidden;
 }
 
@@ -1082,8 +998,8 @@ onUnmounted(() => {
 
 .crop-cancel-btn:hover {
   background-color: rgba(239, 68, 68, 0.1);
-  border-color: #ef4444;
-  color: #ef4444;
+  border-color: var(--accent-red);
+  color: var(--accent-red);
 }
 
 .crop-cancel-btn i {
@@ -1152,8 +1068,8 @@ onUnmounted(() => {
 /* 裁切选框样式 */
 .crop-selection {
   position: absolute;
-  border: 2px solid var(--accent-blue, #3178c6);
-  background-color: rgba(var(--accent-blue-rgb, 49, 120, 198), 0.1);
+  border: 2px solid var(--accent-blue);
+  background-color: rgba(59, 130, 246, 0.2);
   cursor: move;
   z-index: 10;
   pointer-events: none;
@@ -1204,8 +1120,8 @@ onUnmounted(() => {
 
 .crop-action-btn.cancel:hover {
   background-color: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border-color: #ef4444;
+  color: var(--accent-red);
+  border-color: var(--accent-red);
 }
 
 .crop-action-btn.apply {
@@ -1215,16 +1131,16 @@ onUnmounted(() => {
 
 .crop-action-btn.apply:hover {
   background-color: rgba(16, 185, 129, 0.1);
-  color: #10b981;
-  border-color: #10b981;
+  color: var(--accent-green);
+  border-color: var(--accent-green);
 }
 
 .crop-handle {
   position: absolute;
-  width: 10px;
-  height: 10px;
-  background-color: #fff;
-  border: 2px solid #3b82f6;
+  width: 12px;
+  height: 12px;
+  background-color: var(--accent-blue);
+  border: 2px solid white;
   border-radius: 2px;
   z-index: 10;
 }
@@ -1244,8 +1160,8 @@ onUnmounted(() => {
   left: 50%;
   transform: translateX(-50%);
   background-color: rgba(0, 0, 0, 0.8);
-  color: #fff;
-  padding: 4px 8px;
+  color: white;
+  padding: 2px 8px;
   border-radius: 2px;
   font-size: 12px;
   white-space: nowrap;
