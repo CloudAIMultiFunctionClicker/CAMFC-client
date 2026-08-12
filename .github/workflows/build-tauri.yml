@@ -1,6 +1,6 @@
-name: 构建并发布 Tauri Windows
+name: 构建并发布 Tauri Windows 独立 exe
 
-# 每次推送 tag 时触发,自动构建并发布对应的 GitHub Release
+# 每次推送 tag 时触发,自动构建独立 exe 并发布对应的 GitHub Release
 on:
   push:
     tags:
@@ -38,16 +38,16 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: 构建 Tauri 应用并发布 Release
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - name: 构建 Tauri 独立 exe
+        run: pnpm tauri build --no-bundle
+
+      - name: 发布 Release 并上传 exe
+        uses: softprops/action-gh-release@v2
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Release ${{ github.ref_name }}'
-          releaseBody: '自动生成的 Windows 安装包 Release。'
-          releaseDraft: false
-          prerelease: false
-          args: --bundles nsis
+          tag_name: ${{ github.ref_name }}
+          name: 'Release ${{ github.ref_name }}'
+          body: '自动生成的 Windows 独立 exe，解压即用。'
+          files: |
+            src-tauri/target/release/camfc-client.exe
+            src-tauri/target/release/云笔 - 智能翻页笔客户端.exe
+          generate_release_notes: true
