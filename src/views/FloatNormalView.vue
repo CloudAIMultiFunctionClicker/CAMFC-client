@@ -115,9 +115,9 @@ onMounted(async () => {
     isConnected.value = event.payload
   })
 
-  // 监听截图命令（来自 0x12 按键）
+  // 监听截图命令（来自 0x05 按键）
   const unlistenScreenshot = await listen('screenshot-command', async () => {
-    console.log('悬浮窗收到截图命令（0x12）')
+    console.log('悬浮窗收到截图命令（0x05）')
     // 直接触发截图
     await handleScreenshot()
   })

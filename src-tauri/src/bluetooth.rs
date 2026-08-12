@@ -635,7 +635,7 @@ impl BluetoothManager {
                             let is_button_event = notif.value.len() >= 1 && 
                                 (notif.value[0] == 0xAA || notif.value[0] == 0xAB || 
                                  notif.value[0] == 0xAC || notif.value[0] == 0xAD ||
-                                 notif.value[0] == 0x12 || notif.value[0] == 0x10 || 
+                                 notif.value[0] == 0x05 || notif.value[0] == 0x10 || 
                                  notif.value[0] == 0x08 || notif.value[0] == 0x02);
                             
                             if is_button_event {
@@ -674,8 +674,8 @@ impl BluetoothManager {
                                             emit_button_event("button_release");
                                         });
                                     }
-                                } else if first_byte == 0x12 {
-                                    tracing::info!("[BLUETOOTH] 收到截图命令（0x12）");
+                                } else if first_byte == 0x05 {
+                                    tracing::info!("[BLUETOOTH] 收到截图命令（0x05）");
                                     tokio::spawn(async move {
                                         crate::event_emitter::emit_screenshot_command();
                                     });

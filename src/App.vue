@@ -407,7 +407,7 @@ onMounted(async () => {
     }
   })
   
-  // 监听截图命令（0x12）- 只在主窗口处理
+  // 监听截图命令（0x05）- 只在主窗口处理
   const screenshotUnlisten = await listen('screenshot-command', async () => {
     if (currentWindowLabel !== 'main') {
       return
@@ -415,7 +415,7 @@ onMounted(async () => {
     if (route.path === '/float') {
       return
     }
-    console.log('收到截图命令（0x12）')
+    console.log('收到截图命令（0x05）')
     showToast('触发截图', '#3b82f6')
   })
   
